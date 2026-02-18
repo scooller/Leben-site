@@ -13,8 +13,8 @@ class SyncProjectsWidget extends Widget
     protected static ?int $sort = 2;
 
     public ?string $lastSyncTime = null;
+
     public int $totalProjects = 0;
-    public bool $isSyncing = false;
 
     public function mount(): void
     {
@@ -31,7 +31,6 @@ class SyncProjectsWidget extends Widget
 
     public function syncProjects(): void
     {
-        $this->isSyncing = true;
         $this->dispatch('sync-started');
 
         try {
@@ -59,7 +58,6 @@ class SyncProjectsWidget extends Widget
                 ->danger()
                 ->send();
         } finally {
-            $this->isSyncing = false;
             $this->dispatch('sync-completed');
         }
     }

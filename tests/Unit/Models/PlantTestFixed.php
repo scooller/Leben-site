@@ -35,7 +35,7 @@ class PlantTestFixed extends TestCase
             'last_synced_at',
         ];
 
-        $plant = new Plant();
+        $plant = new Plant;
 
         $this->assertEquals($fillable, $plant->getFillable());
     }
@@ -49,9 +49,9 @@ class PlantTestFixed extends TestCase
         ]);
 
         // Decimal casts are returned as strings in Laravel for precision
-        $this->assertIsString((string)$plant->precio_venta);
+        $this->assertIsString((string) $plant->precio_venta);
         $this->assertEquals('5000.50', $plant->precio_venta);
-        $this->assertIsString((string)$plant->superficie_total_principal);
+        $this->assertIsString((string) $plant->superficie_total_principal);
         $this->assertEquals('75.25', $plant->superficie_total_principal);
         $this->assertIsBool($plant->is_active);
         $this->assertInstanceOf(\Illuminate\Support\Carbon::class, $plant->last_synced_at);

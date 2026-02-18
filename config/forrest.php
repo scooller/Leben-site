@@ -15,31 +15,31 @@ return [
      * Likewise, callbackURI is only necessary for WebServer flow.
      * OAuthJWT requires a key, username, and private key (SF_CONSUMER_SECRET)
      */
-    'credentials'    => [
-        //Required:
-        'consumerKey'    => config('services.salesforce.consumer_key') ?? env('SF_CONSUMER_KEY'),
+    'credentials' => [
+        // Required:
+        'consumerKey' => config('services.salesforce.consumer_key') ?? env('SF_CONSUMER_KEY'),
         'consumerSecret' => config('services.salesforce.consumer_secret') ?? env('SF_CONSUMER_SECRET'),
-        'callbackURI'    => config('services.salesforce.callback_uri') ?? env('SF_CALLBACK_URI'),
-        'loginURL'       => config('services.salesforce.login_url') ?? env('SF_LOGIN_URL', 'https://login.salesforce.com'),
+        'callbackURI' => config('services.salesforce.callback_uri') ?? env('SF_CALLBACK_URI'),
+        'loginURL' => config('services.salesforce.login_url') ?? env('SF_LOGIN_URL', 'https://login.salesforce.com'),
 
         // Only required for UserPassword authentication:
-        'username'       => config('services.salesforce.username') ?? env('SF_USERNAME'),
+        'username' => config('services.salesforce.username') ?? env('SF_USERNAME'),
         // Security token might need to be amended to password unless IP Address is whitelisted
-        'password'       => config('services.salesforce.password') ?? env('SF_PASSWORD'),
+        'password' => config('services.salesforce.password') ?? env('SF_PASSWORD'),
         // Only required for OAuthJWT authentication:
-        'privateKey'     => '',
+        'privateKey' => '',
     ],
 
     /*
      * These are optional authentication parameters that can be specified for the WebServer flow.
      * https://help.salesforce.com/apex/HTViewHelpDoc?id=remoteaccess_oauth_web_server_flow.htm&language=en_US
      */
-    'parameters'     => [
-        'display'   => '',
+    'parameters' => [
+        'display' => '',
         'immediate' => false,
-        'state'     => '',
-        'scope'     => '',
-        'prompt'    => '',
+        'state' => '',
+        'scope' => '',
+        'prompt' => '',
     ],
 
     /*
@@ -47,16 +47,16 @@ return [
      * Format can be 'json', 'xml' or 'none'
      * Compression can be set to 'gzip' or 'deflate'
      */
-    'defaults'       => [
-        'method'          => 'get',
-        'format'          => 'json',
-        'compression'     => false,
+    'defaults' => [
+        'method' => 'get',
+        'format' => 'json',
+        'compression' => false,
         'compressionType' => 'gzip',
     ],
 
-    'client'    =>  [
+    'client' => [
         'http_errors' => true,
-        'verify'    => (bool) (config('services.salesforce.http_verify') ?? env('SF_HTTP_VERIFY', false)),
+        'verify' => (bool) (config('services.salesforce.http_verify') ?? env('SF_HTTP_VERIFY', false)),
     ],
 
     /*
@@ -65,9 +65,9 @@ return [
      * instance and will persist as long as the object remains in memory.
      */
     'storage' => [
-        'type'          => 'cache', // Options include: 'session', 'cache', 'object', or class instance of Omniphx\Forrest\Interfaces\StorageInterface
-        'path'          => 'forrest_', // unique storage path to avoid collisions
-        'expire_in'     => 3600, // number of seconds to expire cache/session
+        'type' => 'cache', // Options include: 'session', 'cache', 'object', or class instance of Omniphx\Forrest\Interfaces\StorageInterface
+        'path' => 'forrest_', // unique storage path to avoid collisions
+        'expire_in' => 3600, // number of seconds to expire cache/session
         'store_forever' => false, // never expire cache/session
     ],
 

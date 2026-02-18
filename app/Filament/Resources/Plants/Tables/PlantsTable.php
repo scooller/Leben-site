@@ -41,15 +41,11 @@ class PlantsTable
                     ->searchable(),
                 TextColumn::make('precio_base')
                     ->label('Precio Base')
-                    ->money('CLP')
+                    ->formatStateUsing(fn ($state) => $state ? 'UF '.number_format($state, 0, ',', '.') : '-')
                     ->sortable(),
                 TextColumn::make('precio_lista')
                     ->label('Precio Lista')
-                    ->money('CLP')
-                    ->sortable(),
-                TextColumn::make('precio_venta')
-                    ->label('Precio Venta')
-                    ->money('CLP')
+                    ->formatStateUsing(fn ($state) => $state ? 'UF '.number_format($state, 0, ',', '.') : '-')
                     ->sortable(),
                 // TextColumn::make('superficie_util')
                 //     ->label('Sup. Útil')

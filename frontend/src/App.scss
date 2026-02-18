@@ -1,0 +1,23 @@
+/**
+ * Estilos de la Aplicación Principal
+ * Usa Web Awesome design tokens
+ */
+
+@use './styles/global.scss' as *;
+
+// ============================================================
+// APLICACIÓN PRINCIPAL
+// ============================================================
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--wa-color-surface-base);
+  color: var(--wa-color-text-base);
+  transition: background-color 0.3s ease, color 0.3s ease;
+
+  main {
+    flex: 1;
+    width: 100%;
+  }
+}

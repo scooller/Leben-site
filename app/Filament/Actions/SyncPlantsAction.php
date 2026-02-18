@@ -3,10 +3,11 @@
 namespace App\Filament\Actions;
 
 use App\Models\Plant;
+use App\Models\Proyecto;
 use App\Services\Salesforce\SalesforceService;
 use Filament\Actions\Action;
-use Filament\Notifications\Notification;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class SyncPlantsAction
 {
@@ -30,10 +31,16 @@ class SyncPlantsAction
     public static function execute(): array
     {
         try {
+            Log::info('Iniciando sincronización de plantas desde Salesforce...');
+
             $salesforceService = app(SalesforceService::class);
             $plants = $salesforceService->findPlants();
 
+            Log::info('Plantas obtenidas de Salesforce: '.count($plants));
+
             if (empty($plants)) {
+                Log::warning('No se encontraron plantas en Salesforce');
+
                 return [
                     'success' => false,
                     'message' => 'No se encontraron plantas en Salesforce',
@@ -43,8 +50,25 @@ class SyncPlantsAction
 
             $synced = 0;
             $updated = 0;
+            $skipped = 0;
 
             foreach ($plants as $plantData) {
+                if (empty($plantData['proyecto_id'])) {
+                    $skipped++;
+
+                    continue;
+                }
+
+                $hasProject = Proyecto::query()
+                    ->where('salesforce_id', $plantData['proyecto_id'])
+                    ->exists();
+
+                if (! $hasProject) {
+                    $skipped++;
+
+                    continue;
+                }
+
                 $plant = Plant::updateOrCreate(
                     ['salesforce_product_id' => $plantData['id']],
                     [
@@ -57,7 +81,6 @@ class SyncPlantsAction
                         'piso' => $plantData['piso'],
                         'precio_base' => $plantData['precio_base'],
                         'precio_lista' => $plantData['precio_lista'],
-                        'precio_venta' => $plantData['precio_venta'],
                         'superficie_total_principal' => $plantData['superficie_total_principal'],
                         'superficie_interior' => $plantData['superficie_interior'],
                         'superficie_util' => $plantData['superficie_util'],
@@ -76,17 +99,25 @@ class SyncPlantsAction
                 }
             }
 
+            Log::info("Sincronización completada. {$synced} nuevas plantas, {$updated} actualizadas, {$skipped} sin proyecto o sin proyecto local");
+
             return [
                 'success' => true,
-                'message' => "Sincronización completada. {$synced} nuevas plantas, {$updated} actualizadas",
+                'message' => "Sincronización completada. {$synced} nuevas plantas, {$updated} actualizadas, {$skipped} sin proyecto o sin proyecto local",
                 'count' => $synced + $updated,
                 'created' => $synced,
                 'updated' => $updated,
+                'skipped' => $skipped,
             ];
         } catch (\Exception $e) {
+            Log::error('Error al sincronizar plantas: '.$e->getMessage(), [
+                'exception' => get_class($e),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
             return [
                 'success' => false,
-                'message' => 'Error al sincronizar: ' . $e->getMessage(),
+                'message' => 'Error al sincronizar: '.$e->getMessage(),
                 'count' => 0,
             ];
         }

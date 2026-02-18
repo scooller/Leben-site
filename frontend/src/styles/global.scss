@@ -1,0 +1,23 @@
+/**
+ * Estilos Globales SCSS
+ * Reset mínimo - Web Awesome maneja estilos con design tokens
+ * https://webawesome.com/docs/design-tokens
+ */
+
+// ============================================================
+// RESET Y NORMALIZACIÓN
+// ============================================================
+
+html {
+  scroll-behavior: smooth;
+  height: 100%;
+}
+
+body {
+  font-family: var(--wa-font-sans, system-ui, -apple-system, sans-serif);
+  font-size: var(--wa-font-size-base, 1rem);
+  line-height: 1.5;
+  color: var(--wa-color-text-base);
+  background-color: var(--wa-color-surface-base);
+  transition: color 0.3s ease, background-color 0.3s ease;
+}

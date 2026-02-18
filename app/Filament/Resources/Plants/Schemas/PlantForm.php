@@ -54,10 +54,6 @@ class PlantForm
                     ->numeric()
                     ->prefix('$')
                     ->disabled(),
-                TextInput::make('precio_venta')
-                    ->label('Precio Venta')
-                    ->numeric()
-                    ->prefix('$'),
                 TextInput::make('superficie_total_principal')
                     ->label('Superficie Total Principal')
                     ->numeric()
@@ -95,4 +91,3 @@ class PlantForm
             ]);
     }
 }
-

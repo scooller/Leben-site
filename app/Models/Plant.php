@@ -20,7 +20,6 @@ class Plant extends Model
         'piso',
         'precio_base',
         'precio_lista',
-        'precio_venta',
         'superficie_total_principal',
         'superficie_interior',
         'superficie_util',
@@ -34,7 +33,6 @@ class Plant extends Model
     protected $casts = [
         'precio_base' => 'decimal:2',
         'precio_lista' => 'decimal:2',
-        'precio_venta' => 'decimal:2',
         'superficie_total_principal' => 'decimal:2',
         'superficie_interior' => 'decimal:2',
         'superficie_util' => 'decimal:2',

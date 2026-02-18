@@ -20,7 +20,7 @@ return new class extends Migration
             $table->text('error_message')->nullable();
             $table->boolean('from_cache')->default(false);
             $table->timestamps();
-            
+
             $table->index('status');
             $table->index('created_at');
         });

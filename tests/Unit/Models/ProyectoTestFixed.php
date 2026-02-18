@@ -13,14 +13,14 @@ class ProyectoTestFixed extends TestCase
 
     public function test_proyecto_has_correct_table_name(): void
     {
-        $proyecto = new Proyecto();
+        $proyecto = new Proyecto;
 
         $this->assertEquals('proyectos', $proyecto->getTable());
     }
 
     public function test_proyecto_has_fillable_attributes(): void
     {
-        $proyecto = new Proyecto();
+        $proyecto = new Proyecto;
         $fillable = $proyecto->getFillable();
 
         $this->assertContains('salesforce_id', $fillable);
@@ -47,9 +47,9 @@ class ProyectoTestFixed extends TestCase
         ]);
 
         // Decimal casts are returned as strings in Laravel for precision
-        $this->assertIsString((string)$proyecto->dscto_m_x_prod_principal_porc);
+        $this->assertIsString((string) $proyecto->dscto_m_x_prod_principal_porc);
         $this->assertEquals('15.50', $proyecto->dscto_m_x_prod_principal_porc);
-        $this->assertIsString((string)$proyecto->tasa);
+        $this->assertIsString((string) $proyecto->tasa);
         $this->assertEquals('5.25', $proyecto->tasa);
     }
 

@@ -3,6 +3,11 @@ Instrucciones para Copilot – Proyecto Laravel 12 + Filament + Salesforce + Rea
 LEE el archivo AGENT.md en la raiz para entender el contexto general del proyecto y las expectativas de tu rol como asistente de desarrollo.
 tambien lee el archivo .github/skills para entender tus habilidades y limitaciones técnicas.
 
+Revisa tus Skills antes de generar cualquier código o sugerencia técnica, para asegurarte de que lo que propones es algo que puedes hacer correctamente.
+Tus Skills son tu guía para saber qué tipo de código puedes generar, qué tecnologías puedes usar, y cómo debes estructurar tus respuestas.
+
+NO crees archivos .md innecesarios, ni generes código que no se haya pedido explícitamente en este documento o en las instrucciones del AGENT.md.
+
 1. Reglas generales del proyecto
 El proyecto es backend-first: primero se implementa el backoffice en Laravel 12 con Filament 5, luego se define y construye el frontend en React (Vite).
 Siempre usar las últimas versiones estables de los paquetes, respetando compatibilidad con Laravel 12.
@@ -19,6 +24,11 @@ Filament (panel administrativo, resources, forms, tables, panels)
 Consulta primero la documentación oficial de Filament 5 (Panel Builder, Resources, Pages, Widgets):
 
 https://filamentphp.com/docs/5.x/getting-started​
+
+Web Awesome (temas, variables CSS, NO Tailwind, react custom elements [https://react.dev/blog/2024/12/05/react-19#support-for-custom-elements])
+Consulta primero la documentación oficial de Web Awesome Themes:
+
+https://webawesome.com/docs/
 
 Si tu sugerencia entra en conflicto con estas documentaciones, prioriza lo que indiquen las docs oficiales de Laravel y Filament.
 

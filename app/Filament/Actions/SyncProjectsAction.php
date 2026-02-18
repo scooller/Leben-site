@@ -5,7 +5,6 @@ namespace App\Filament\Actions;
 use App\Models\Proyecto;
 use App\Services\Salesforce\SalesforceService;
 use Filament\Actions\Action;
-use Filament\Notifications\Notification;
 use Illuminate\Support\Carbon;
 
 class SyncProjectsAction
@@ -101,7 +100,7 @@ class SyncProjectsAction
         } catch (\Exception $e) {
             return [
                 'success' => false,
-                'message' => 'Error al sincronizar: ' . $e->getMessage(),
+                'message' => 'Error al sincronizar: '.$e->getMessage(),
                 'count' => 0,
             ];
         }

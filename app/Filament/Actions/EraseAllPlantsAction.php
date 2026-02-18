@@ -26,7 +26,7 @@ class EraseAllPlantsAction
                 try {
                     $count = Plant::count();
                     Plant::truncate();
-                    
+
                     Notification::make()
                         ->title('✅ Éxito')
                         ->body("Se eliminaron {$count} plantas correctamente")
@@ -35,7 +35,7 @@ class EraseAllPlantsAction
                 } catch (\Exception $e) {
                     Notification::make()
                         ->title('❌ Error')
-                        ->body('Error al borrar plantas: ' . $e->getMessage())
+                        ->body('Error al borrar plantas: '.$e->getMessage())
                         ->danger()
                         ->send();
                 }

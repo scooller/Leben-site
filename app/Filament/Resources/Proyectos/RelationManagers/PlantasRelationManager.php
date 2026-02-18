@@ -36,10 +36,6 @@ class PlantasRelationManager extends RelationManager
                     ->label('Precio Lista')
                     ->formatStateUsing(fn ($state) => number_format((float) $state, 2, ',', '.'))
                     ->sortable(),
-                Tables\Columns\TextColumn::make('precio_venta')
-                    ->label('Precio Venta')
-                    ->formatStateUsing(fn ($state) => number_format((float) $state, 2, ',', '.'))
-                    ->sortable(),
                 Tables\Columns\TextColumn::make('superficie_util')
                     ->label('Superficie Útil')
                     ->formatStateUsing(fn ($state) => number_format((float) $state, 2, ',', '.'))

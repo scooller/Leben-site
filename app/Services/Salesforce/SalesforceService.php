@@ -3,7 +3,9 @@
 namespace App\Services\Salesforce;
 
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Omniphx\Forrest\Exceptions\MissingKeyException;
+use Omniphx\Forrest\Exceptions\MissingResourceException;
 use Omniphx\Forrest\Providers\Laravel\Facades\Forrest;
 
 class SalesforceService
@@ -24,92 +26,17 @@ class SalesforceService
         return Cache::remember($cacheKey, $ttl, function () use ($soql) {
             try {
                 $result = Forrest::query($soql);
+
                 return $result['records'] ?? [];
-            } catch (MissingKeyException $e) {
-                // Re-autenticar si el token expiró
+            } catch (MissingKeyException|MissingResourceException $e) {
+                // Re-autenticar si el token expiró o no hay recursos disponibles
+                Log::info('Salesforce: Re-autenticando debido a: '.$e->getMessage());
                 $this->authenticate();
                 $result = Forrest::query($soql);
+
                 return $result['records'] ?? [];
             }
         });
-    }
-
-    /**
-     * Buscar leads por email
-     */
-    public function findLeadByEmail(string $email): ?array
-    {
-        $soql = sprintf(
-            "SELECT Id, FirstName, LastName, Email, Company, Status FROM Lead WHERE Email = '%s' LIMIT 1",
-            addslashes($email)
-        );
-
-        $results = $this->query($soql, 600); // 10 minutos de caché
-        return $results[0] ?? null;
-    }
-
-    /**
-     * Buscar cuenta por ID
-     */
-    public function findAccountById(string $accountId): ?array
-    {
-        $soql = sprintf(
-            "SELECT Id, Name, Type, BillingCountry, BillingCity FROM Account WHERE Id = '%s' LIMIT 1",
-            addslashes($accountId)
-        );
-
-        $results = $this->query($soql);
-        return $results[0] ?? null;
-    }
-
-    /**
-     * Crear un nuevo Lead en Salesforce
-     */
-    public function createLead(array $data): array
-    {
-        try {
-            $result = Forrest::sobjects('Lead', [
-                'method' => 'post',
-                'body' => $data
-            ]);
-
-            // Invalidar caché relacionado
-            if (isset($data['Email'])) {
-                $this->invalidateLeadCache($data['Email']);
-            }
-
-            return $result;
-        } catch (MissingKeyException $e) {
-            $this->authenticate();
-            return Forrest::sobjects('Lead', [
-                'method' => 'post',
-                'body' => $data
-            ]);
-        }
-    }
-
-    /**
-     * Actualizar un Lead existente
-     */
-    public function updateLead(string $leadId, array $data): array
-    {
-        try {
-            $result = Forrest::sobjects("Lead/{$leadId}", [
-                'method' => 'patch',
-                'body' => $data
-            ]);
-
-            // Invalidar caché
-            Cache::forget("salesforce:lead:id:{$leadId}");
-
-            return $result;
-        } catch (MissingKeyException $e) {
-            $this->authenticate();
-            return Forrest::sobjects("Lead/{$leadId}", [
-                'method' => 'patch',
-                'body' => $data
-            ]);
-        }
     }
 
     /**
@@ -117,20 +44,14 @@ class SalesforceService
      */
     public function authenticate(): void
     {
-        Forrest::authenticate();
-    }
-
-    /**
-     * Invalidar caché de lead por email
-     */
-    public function invalidateLeadCache(string $email): void
-    {
-        $soql = sprintf(
-            "SELECT Id, FirstName, LastName, Email, Company, Status FROM Lead WHERE Email = '%s' LIMIT 1",
-            addslashes($email)
-        );
-        $cacheKey = $this->generateCacheKey($soql);
-        Cache::forget($cacheKey);
+        Log::info('Salesforce: Iniciando autenticación...');
+        try {
+            Forrest::authenticate();
+            Log::info('Salesforce: Autenticación exitosa');
+        } catch (\Exception $e) {
+            Log::error('Salesforce: Error en autenticación - '.$e->getMessage());
+            throw $e;
+        }
     }
 
     /**
@@ -138,7 +59,7 @@ class SalesforceService
      */
     protected function generateCacheKey(string $soql): string
     {
-        return 'salesforce:soql:' . md5($soql);
+        return 'salesforce:soql:'.md5($soql);
     }
 
     /**
@@ -152,38 +73,37 @@ class SalesforceService
     /**
      * Obtener plantas desde Product2 disponibles
      * Estructura: Departamentos activos con estado "Disponible"
-     * 
+     *
      * @return array Array de plantas con estructura:
-     *   [
-     *     'id' => string,
-     *     'name' => string,
-     *     'product_code' => string,
-     *     'orientacion' => string,
-     *     'programa' => string,
-     *     'programa2' => string,
-     *     'piso' => string,
-     *     'precio_base' => float,
-     *     'precio_lista' => float,
-     *     'precio_venta' => float|null,
-     *     'superficie_total_principal' => float,
-     *     'superficie_interior' => float,
-     *     'superficie_util' => float,
-     *     'opportunity_id' => string|null,
-     *     'superficie_terraza' => float,
-     *     'superficie_vendible' => float
-     *   ]
+     *               [
+     *               'id' => string,
+     *               'name' => string,
+     *               'product_code' => string,
+     *               'orientacion' => string,
+     *               'programa' => string,
+     *               'programa2' => string,
+     *               'piso' => string,
+     *               'precio_base' => float,
+     *               'precio_lista' => float,
+     *               'superficie_total_principal' => float,
+     *               'superficie_interior' => float,
+     *               'superficie_util' => float,
+     *               'opportunity_id' => string|null,
+     *               'superficie_terraza' => float,
+     *               'superficie_vendible' => float
+     *               ]
      */
     public function findPlants(?int $cacheTtl = null): array
     {
         // SOQL para obtener plantas desde Product2
-        $soql = "SELECT Id, Name, ProductCode, Orientacion2__c, Programa__c, Programa2__c, Piso__c, "
-            . "Precio_Base__c, Precio_Lista__c, Precio_Venta__c, "
-            . "Superficie_Total_Producto_Principal__c, Superficie_Interior__c, Superficie_Util__c, "
-            . "Opportunity__c, Superficie_Terraza__c, Superficie_Vendible__c, Proyecto__c "
-            . "FROM Product2 "
-            . "WHERE IsActive = true AND Estado__c = 'Disponible' AND Tipo_Producto__c = 'DEPARTAMENTO' "
-            . "ORDER BY Name "
-            . "LIMIT 1000";
+        $soql = 'SELECT Id, Name, ProductCode, Orientacion2__c, Programa__c, Programa2__c, Piso__c, '
+            .'Precio_Base__c, Precio_Lista__c, '
+            .'Superficie_Total_Producto_Principal__c, Superficie_Interior__c, Superficie_Util__c, '
+            .'Opportunity__c, Superficie_Terraza__c, Superficie_Vendible__c, Proyecto__c '
+            .'FROM Product2 '
+            ."WHERE IsActive = true AND Estado__c = 'Disponible' AND Tipo_Producto__c = 'DEPARTAMENTO' "
+            .'ORDER BY Name '
+            .'LIMIT 1000';
 
         $ttl = $cacheTtl ?? $this->defaultCacheTtl;
 
@@ -202,9 +122,8 @@ class SalesforceService
                         'programa' => $entry['Programa__c'] ?? null,
                         'programa2' => $entry['Programa2__c'] ?? null,
                         'piso' => $entry['Piso__c'] ?? null,
-                        'precio_base' => (float) ($entry['Precio_Base__c'] ?? 0),
-                        'precio_lista' => (float) ($entry['Precio_Lista__c'] ?? 0),
-                        'precio_venta' => $entry['Precio_Venta__c'] ? (float) $entry['Precio_Venta__c'] : null,
+                        'precio_base' => (float) ($entry['Precio_Base__c'] ?? 0) ?: 0,
+                        'precio_lista' => (float) ($entry['Precio_Lista__c'] ?? 0) ?: 0,
                         'superficie_total_principal' => (float) ($entry['Superficie_Total_Producto_Principal__c'] ?? 0),
                         'superficie_interior' => (float) ($entry['Superficie_Interior__c'] ?? 0),
                         'superficie_util' => (float) ($entry['Superficie_Util__c'] ?? 0),
@@ -214,7 +133,9 @@ class SalesforceService
                         'proyecto_id' => $entry['Proyecto__c'] ?? null,
                     ];
                 }, $entries);
-            } catch (MissingKeyException $e) {
+            } catch (MissingKeyException|MissingResourceException $e) {
+                // Re-autenticar si el token expiró o no hay recursos disponibles
+                Log::info('Salesforce: Re-autenticando plantas debido a: '.$e->getMessage());
                 $this->authenticate();
                 $result = Forrest::query($soql);
                 $entries = $result['records'] ?? [];
@@ -228,9 +149,8 @@ class SalesforceService
                         'programa' => $entry['Programa__c'] ?? null,
                         'programa2' => $entry['Programa2__c'] ?? null,
                         'piso' => $entry['Piso__c'] ?? null,
-                        'precio_base' => (float) ($entry['Precio_Base__c'] ?? 0),
-                        'precio_lista' => (float) ($entry['Precio_Lista__c'] ?? 0),
-                        'precio_venta' => $entry['Precio_Venta__c'] ? (float) $entry['Precio_Venta__c'] : null,
+                        'precio_base' => (float) ($entry['Precio_Base__c'] ?? 0) ?: 0,
+                        'precio_lista' => (float) ($entry['Precio_Lista__c'] ?? 0) ?: 0,
                         'superficie_total_principal' => (float) ($entry['Superficie_Total_Producto_Principal__c'] ?? 0),
                         'superficie_interior' => (float) ($entry['Superficie_Interior__c'] ?? 0),
                         'superficie_util' => (float) ($entry['Superficie_Util__c'] ?? 0),
@@ -244,7 +164,6 @@ class SalesforceService
         });
     }
 
-
     /**
      * Invalidar caché de plantas
      */
@@ -257,43 +176,43 @@ class SalesforceService
     /**
      * Obtener proyectos desde Proyecto__c disponibles
      * Estructura: Proyectos activos de tipo DEPARTAMENTO
-     * 
+     *
      * @return array Array de proyectos con estructura:
-     *   [
-     *     'id' => string,
-     *     'name' => string,
-     *     'descripcion' => string|null,
-     *     'direccion' => string|null,
-     *     'comuna' => string|null,
-     *     'provincia' => string|null,
-     *     'region' => string|null,
-     *     'email' => string|null,
-     *     'telefono' => string|null,
-     *     'pagina_web' => string|null,
-     *     'razon_social' => string|null,
-     *     'rut' => string|null,
-     *     'fecha_inicio_ventas' => string|null,
-     *     'fecha_entrega' => string|null,
-     *     'etapa' => string|null,
-     *     'horario_atencion' => string|null,
-     *     'dscto_m_x_prod_principal_porc' => float,
-     *     'dscto_m_x_prod_principal_uf' => float,
-     *     'dscto_m_x_bodega_porc' => float,
-     *     'dscto_m_x_bodega_uf' => float,
-     *     'dscto_m_x_estac_porc' => float,
-     *     'dscto_m_x_estac_uf' => float,
-     *     'dscto_max_otros_porc' => float,
-     *     'dscto_max_otros_prod_uf' => float,
-     *     'dscto_maximo_aporte_leben' => float,
-     *     'n_anos_1' => int|null,
-     *     'n_anos_2' => int|null,
-     *     'n_anos_3' => int|null,
-     *     'n_anos_4' => int|null,
-     *     'valor_reserva_exigido_defecto_peso' => float|null,
-     *     'valor_reserva_exigido_min_peso' => float|null,
-     *     'tasa' => float|null,
-     *     'entrega_inmediata' => bool
-     *   ]
+     *               [
+     *               'id' => string,
+     *               'name' => string,
+     *               'descripcion' => string|null,
+     *               'direccion' => string|null,
+     *               'comuna' => string|null,
+     *               'provincia' => string|null,
+     *               'region' => string|null,
+     *               'email' => string|null,
+     *               'telefono' => string|null,
+     *               'pagina_web' => string|null,
+     *               'razon_social' => string|null,
+     *               'rut' => string|null,
+     *               'fecha_inicio_ventas' => string|null,
+     *               'fecha_entrega' => string|null,
+     *               'etapa' => string|null,
+     *               'horario_atencion' => string|null,
+     *               'dscto_m_x_prod_principal_porc' => float,
+     *               'dscto_m_x_prod_principal_uf' => float,
+     *               'dscto_m_x_bodega_porc' => float,
+     *               'dscto_m_x_bodega_uf' => float,
+     *               'dscto_m_x_estac_porc' => float,
+     *               'dscto_m_x_estac_uf' => float,
+     *               'dscto_max_otros_porc' => float,
+     *               'dscto_max_otros_prod_uf' => float,
+     *               'dscto_maximo_aporte_leben' => float,
+     *               'n_anos_1' => int|null,
+     *               'n_anos_2' => int|null,
+     *               'n_anos_3' => int|null,
+     *               'n_anos_4' => int|null,
+     *               'valor_reserva_exigido_defecto_peso' => float|null,
+     *               'valor_reserva_exigido_min_peso' => float|null,
+     *               'tasa' => float|null,
+     *               'entrega_inmediata' => bool
+     *               ]
      */
     public function findProjects(?int $cacheTtl = null): array
     {
@@ -306,21 +225,21 @@ class SalesforceService
 
         // SOQL para obtener proyectos desde Proyecto__c
         // Nota: Usamos Fecha_Recepcion_Municipal__c como proxy para fecha de entrega
-        $soql = "SELECT Id, Name, Descripci_n__c, Direccion__c, Comuna__c, Provincia__c, Region__c, "
-            . "Email__c, Telefono__c, Pagina_Web_Proyecto__c, Razon_Social__c, RUT__c, "
-            . "Fecha_Inicio_Ventas__c, Fecha_Recepcion_Municipal__c, Etapa__c, Horario_Atencion__c, "
-            . "Dscto_M_x_Prod_Principal_Porc__c, Dscto_M_x_Prod_Principal_UF__c, "
-            . "Dscto_M_x_Bodega_Porc__c, Dscto_M_x_Bodega_UF__c, "
-            . "Dscto_M_x_Estac_Porc__c, Dscto_M_x_Estac_UF__c, "
-            . "Dscto_Max_Otros_Porc__c, Dscto_Max_Otros_Prod_UF__c, "
-            . "Dscto_Maximo_Aporte_Leben__c, "
-            . "N_A_os_1__c, N_A_os_2__c, N_A_os_3__c, N_A_os_4__c, "
-            . "Valor_Reserva_Exigido_Defecto_Peso__c, Valor_Reserva_Exigido_Min_Peso__c, "
-            . "Tasa__c, Entrega_Inmediata__c "
-            . "FROM Proyecto__c "
-            . "WHERE IsDeleted = false AND Activo__c = true AND Tipo_Producto__c = 'DEPARTAMENTO' "
-            . "ORDER BY Name "
-            . "LIMIT 1000";
+        $soql = 'SELECT Id, Name, Descripci_n__c, Direccion__c, Comuna__c, Provincia__c, Region__c, '
+            .'Email__c, Telefono__c, Pagina_Web_Proyecto__c, Razon_Social__c, RUT__c, '
+            .'Fecha_Inicio_Ventas__c, Fecha_Recepcion_Municipal__c, Etapa__c, Horario_Atencion__c, '
+            .'Dscto_M_x_Prod_Principal_Porc__c, Dscto_M_x_Prod_Principal_UF__c, '
+            .'Dscto_M_x_Bodega_Porc__c, Dscto_M_x_Bodega_UF__c, '
+            .'Dscto_M_x_Estac_Porc__c, Dscto_M_x_Estac_UF__c, '
+            .'Dscto_Max_Otros_Porc__c, Dscto_Max_Otros_Prod_UF__c, '
+            .'Dscto_Maximo_Aporte_Leben__c, '
+            .'N_A_os_1__c, N_A_os_2__c, N_A_os_3__c, N_A_os_4__c, '
+            .'Valor_Reserva_Exigido_Defecto_Peso__c, Valor_Reserva_Exigido_Min_Peso__c, '
+            .'Tasa__c, Entrega_Inmediata__c '
+            .'FROM Proyecto__c '
+            ."WHERE IsDeleted = false AND Activo__c = true AND Tipo_Producto__c = 'DEPARTAMENTO' "
+            .'ORDER BY Name '
+            .'LIMIT 1000';
 
         $ttl = $cacheTtl ?? $this->defaultCacheTtl;
 

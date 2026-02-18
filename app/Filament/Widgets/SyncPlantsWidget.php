@@ -13,9 +13,10 @@ class SyncPlantsWidget extends Widget
     protected static ?int $sort = 1;
 
     public ?string $lastSyncTime = null;
+
     public int $totalPlants = 0;
+
     public int $activePlants = 0;
-    public bool $isSyncing = false;
 
     public function mount(): void
     {
@@ -33,7 +34,6 @@ class SyncPlantsWidget extends Widget
 
     public function syncPlants(): void
     {
-        $this->isSyncing = true;
         $this->dispatch('sync-started');
 
         try {
@@ -61,7 +61,6 @@ class SyncPlantsWidget extends Widget
                 ->danger()
                 ->send();
         } finally {
-            $this->isSyncing = false;
             $this->dispatch('sync-completed');
         }
     }

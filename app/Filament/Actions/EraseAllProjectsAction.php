@@ -24,7 +24,7 @@ class EraseAllProjectsAction
                     $count = Proyecto::count();
                     Proyecto::truncate();
 
-                    Notification::make()                        
+                    Notification::make()
                         ->title('✅ Éxito')
                         ->body("Se eliminaron {$count} proyectos correctamente.")
                         ->success()
@@ -32,7 +32,7 @@ class EraseAllProjectsAction
                 } catch (\Exception $e) {
                     Notification::make()
                         ->title('❌ Error')
-                        ->body('Error al borrar plantas: ' . $e->getMessage())
+                        ->body('Error al borrar plantas: '.$e->getMessage())
                         ->danger()
                         ->send();
                 }

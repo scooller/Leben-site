@@ -22,7 +22,7 @@ return new class extends Migration
             $table->boolean('is_active')->default(true);
             $table->timestamp('last_synced_at')->nullable();
             $table->timestamps();
-            
+
             $table->index('pricebook_name');
             $table->index('is_active');
         });
