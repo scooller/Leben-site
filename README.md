@@ -1,66 +1,260 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# iLeben - Plataforma de Venta de Proyectos
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Backend-first SPA con Laravel 12, Filament 5, React 19 y Web Awesome.
 
-## About Laravel
+## 📋 Stack Tecnológico
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+### Backend
+- **Laravel 12** - Framework PHP moderno
+- **Filament 5** - Panel administrativo SDUI
+- **PHP 8.4** - Lenguaje de programación
+- **MySQL 8** - Base de datos
+- **Salesforce API** (omniphx/forrest) - Integración CRM
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+### Frontend
+- **React 19** - UI library
+- **Vite** - Build tool
+- **Web Awesome 3.2.1** - Design system
+- **Tailwind CSS 4** - Utility-first CSS
+- **GSAP** - Animaciones
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### Gestión de Medios
+- **Filament Curator** - Gestor centralizado de archivos/imágenes
+- **CropperJS** - Editor de imágenes
 
-## Learning Laravel
+### Pasarelas de Pago
+- **Transbank** - TCPago Chile
+- **Mercado Pago** - Latam
+- **Manual** - Configuración custom
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## 🏗️ Arquitectura
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+```
+app/
+├── Models/               # Eloquent Models
+├── Filament/
+│   ├── Resources/        # CRUD Resources
+│   ├── Pages/            # Custom Pages
+│   └── Widgets/          # Dashboard Widgets
+├── Services/
+│   ├── Salesforce/       # Integración SOQL
+│   └── Payment/          # Servicios de pasarelas
+├── Http/Controllers/     # API endpoints
+├── Enums/                # Enums: PaymentGateway, PaymentStatus
+└── Contracts/            # Interfaces
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+resources/
+├── css/                  # Estilos Filament + Tailwind
+└── js/                   # JavaScript antiguo (deprecated)
 
-## Laravel Sponsors
+frontend/
+├── src/
+│   ├── components/       # React components
+│   ├── pages/            # Page layouts
+│   ├── context/          # React Context
+│   ├── hooks/            # Custom hooks
+│   └── styles/           # SCSS modules
+└── dist/                 # Build output (Vite)
+```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## 📦 Características Principales
 
-### Premium Partners
+### Panel Administrativo (Filament)
+- ✅ **Autenticación** - Laravel Sanctum + sessions
+- ✅ **Proyectos** - CRUD con Transbank commerce code por proyecto
+- ✅ **Usuarios** - Gestión de cuentas
+- ✅ **Plantas** - Catálogo de plantas con sincronización
+- ✅ **Pagos** - Registro de transacciones
+- ✅ **Configuración Global** - SiteSettings (9+ tabs)
+  - General, Banner, Branding, Colores, Tipografía
+  - SEO, Contacto, Redes Sociales, Personalización
+  - Pasarelas de Pago, Mantenimiento
+- ✅ **Gestor de Archivos** - Curator (File Manager centralizado)
+- ✅ **Modo Mantenimiento** - RichEditor + HTML mode + Web Awesome dialog
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+### Integración Salesforce
+- ✅ **SOQL Queries** - Consultas a fuerza de ventas
+- ✅ **Caching** - Cache de resultados SOQL (configurable por TTL)
+- ✅ **Sincronización** - Jobs para sincronizar datos
+- ✅ **Logging** - Auditoría de operaciones
 
-## Contributing
+### Frontend React
+- ✅ **Home Page** - Hero section + banner promocional
+- ✅ **Maintenance Mode** - Modal con Web Awesome dialog
+- ✅ **SiteConfig Context** - Datos globales (logo, theme, etc)
+- ✅ **Responsive Design** - Mobile-first con Web Awesome
+- ✅ **Themes** - 11 temas Web Awesome preinstalados
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### Gestión de Medios (Curator)
+- ✅ **Centralizado** - Single File Manager en `/admin/media`
+- ✅ **Integrado** - Logo, favicon, banner, maintenance images
+- ✅ **RichEditor** - Attachments vía AttachCuratorMediaPlugin
+- ✅ **Database** - Tabla `curator` para metadata de archivos
+- ✅ **Editor** - CropperJS para redimensionar
 
-## Code of Conduct
+## 🚀 Instalación
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### Requisitos
+- PHP 8.4+
+- Composer 2.x
+- Node.js 18+
+- MySQL 8+
 
-## Security Vulnerabilities
+### Setup Inicial
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```bash
+# 1. Clonar repo
+git clone <repo-url> sale-ileben
+cd sale-ileben
 
-## License
+# 2. Instalar dependencias backend
+composer install
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+# 3. Configurar .env
+cp .env.example .env
+php artisan key:generate
+
+# 4. Configurar Salesforce en .env
+# SF_AUTH_METHOD=username-password
+# SF_CONSUMER_KEY=xxx
+# SF_INSTANCE_URL=https://xxx.salesforce.com
+
+# 5. Ejecutar migraciones
+php artisan migrate
+
+# 6. Instalar dependencias frontend
+cd frontend
+npm install
+
+# 7. Build frontend
+npm run build
+cd ..
+
+# 8. Crear link de storage
+php artisan storage:link
+
+# 9. Crear admin user en tinker
+php artisan tinker
+# User::create(['name' => 'Admin', 'email' => 'admin@ileben.com', 'password' => Hash::make('password')])
+```
+
+## 📚 Documentación Específica
+
+- [Pagos & Pasarelas](PAYMENTS.md) - Sistema de pagos completo
+- [Salesforce Integration](app/Services/Salesforce/README.md) - Integración CRM
+- [Filament Resources](app/Filament/Resources/README.md) - Admin resources
+
+## 🔧 Tareas Comunes
+
+### Sincronizar plantas desde Salesforce
+```bash
+php artisan app:sync-plants
+```
+
+### Limpiar caché y compilar
+```bash
+php artisan optimize:clear
+cd frontend && npm run build && cd ..
+```
+
+### Activar modo mantenimiento
+```bash
+php artisan tinker
+# SiteSetting::set('maintenance_mode', true);
+# SiteSetting::set('maintenance_message', '<h1>Estamos en mantenimiento</h1>');
+```
+
+### Compilar frontend en desarrollo
+```bash
+cd frontend
+npm run dev    # Watch mode
+npm run build  # Producción
+```
+
+### Servir aplicación en desarrollo
+```bash
+php artisan serve
+# Frontend: http://localhost:5173
+# Panel Filament: http://localhost:8000/admin
+```
+
+## 🗄️ Base de Datos
+
+### Tablas Principales
+- `users` - Usuarios del sistema
+- `site_settings` - Configuración global (ID = 1)
+- `curator` - Archivos/media centralizados
+- `payments` - Transacciones de pago
+- `projects` - Proyectos disponibles
+- `plants` - Catálogo de plantas
+
+### Relaciones
+```
+User → has many Payments
+Payment → belongs to User
+SiteSetting → belongs to Media (1:1 vía logo_id, favicon_id, etc)
+Project → has Transbank commerce code
+```
+
+## 🔐 Seguridad
+
+- ✅ CSRF protection (VerifyCsrfToken)
+- ✅ Rate limiting en API
+- ✅ Sanctum tokens para API
+- ✅ Validation en todos los forms
+- ✅ Signature verification en webhooks
+- ✅ HTML sanitization en RichEditor
+- ✅ Idempotent payment webhooks
+
+## 📊 Monitoreo
+
+### Logs
+```bash
+tail -f storage/logs/laravel.log
+```
+
+### Database Queries
+```bash
+php artisan tinker
+# DB::listen(fn($query) => dump($query->sql, $query->bindings));
+```
+
+## 🎨 Customización
+
+### Agregar nuevo tema Web Awesome
+1. Editar `resources/css/filament/admin/theme.css`
+2. Tema disponible en Configuración → Colores
+
+### Agregar nueva payment gateway
+1. Crear `app/Services/Payment/NuevaGatewayService.php`
+2. Implementar `PaymentGatewayInterface`
+3. Registrar en `PaymentGatewayManager::class`
+
+### Agregar nueva Filament Resource
+```bash
+php artisan make:filament-resource NombreRecurso --generate
+```
+
+## 📝 Convenciones
+
+- Models: Singular, PascalCase (User, Payment)
+- Tables: Plural, snake_case (users, payments)
+- Fields: snake_case (first_name, user_id)
+- Enums: PascalCase (PaymentGateway, PaymentStatus)
+- Services: `Service` suffix (PaymentService)
+
+## 🤝 Contribuciones
+
+Este proyecto sigue:
+- [Laravel Boost Guidelines](AGENTS.md)
+- [Copilot Instructions](.github/copilot-instructions.md)
+- [Skills](.github/skills/)
+
+## 📄 Licencia
+
+Todos los derechos reservados - iLeben © 2026
+
+---
+
+**Última actualización:** 25 Feb 2026  
+**Versión:** 1.0.0
