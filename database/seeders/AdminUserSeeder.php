@@ -13,8 +13,8 @@ class AdminUserSeeder extends Seeder
      */
     public function run(): void
     {
-        // Crear usuario administrador si no existe
-        User::firstOrCreate(
+        // Crear o actualizar usuario administrador
+        User::updateOrCreate(
             ['email' => 'admin@ileben.cl'],
             [
                 'name' => 'Administrador',

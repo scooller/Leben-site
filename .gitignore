@@ -32,3 +32,4 @@ auth.json
 /.github
 /.github
 /frontend/public/webawesome
+bootstrap/cache/config.php
