@@ -1,67 +1,67 @@
 /**
- * Servicio para inicializar Web Awesome y aplicar temas dinámicos
+ * Servicio para inicializar Web Awesome y aplicar temas dinÃ¡micos
  * https://webawesome.com/docs/themes
  * https://webawesome.com/docs/color-palettes
  * 
- * Web Awesome soporta personalización mediante CSS Custom Properties (Design Tokens)
+ * Web Awesome soporta personalizaciÃ³n mediante CSS Custom Properties (Design Tokens)
  */
 // Import Web Awesome Pro base utilities and styles
-import { setBasePath } from '@awesome.me/webawesome-pro/dist/webawesome.js'
-import '@awesome.me/webawesome-pro/dist/styles/webawesome.css'
+import { setBasePath } from '@web.awesome.me/webawesome-pro/dist/webawesome.js'
+import '@web.awesome.me/webawesome-pro/dist/styles/webawesome.css'
 
 // Configurar basePath para que Web Awesome encuentre assets (Font Awesome icons, etc.)
-// Según documentación oficial: https://webawesome.com/docs/installation#setting-the-base-path
-// Cuando usas bundler, debes configurar explícitamente la ruta a los assets
+// SegÃºn documentaciÃ³n oficial: https://webawesome.com/docs/installation#setting-the-base-path
+// Cuando usas bundler, debes configurar explÃ­citamente la ruta a los assets
 // 
 // Opciones para Vite:
 // - En desarrollo: Vite sirve desde node_modules directamente
-// - En producción: Assets se copian a dist/assets/
+// - En producciÃ³n: Assets se copian a dist/assets/
 // 
-// Vite copia automáticamente los assets de Web Awesome al build, 
-// pero necesitamos decirle a Web Awesome dónde buscarlos.
+// Vite copia automÃ¡ticamente los assets de Web Awesome al build, 
+// pero necesitamos decirle a Web Awesome dÃ³nde buscarlos.
 // Usamos import.meta.env para detectar el entorno
 if (import.meta.env.DEV) {
   // Desarrollo: apuntar a node_modules
-  setBasePath('/node_modules/@awesome.me/webawesome-pro/dist')
+  setBasePath('/node_modules/@web.awesome.me/webawesome-pro/dist')
 } else {
-  // Producción: Vite copiará los assets, intentar auto-detección
+  // ProducciÃ³n: Vite copiarÃ¡ los assets, intentar auto-detecciÃ³n
   // Si los iconos no cargan, ajustar esta ruta manualmente
   setBasePath('/assets')
 }
 
-// Importar componentes que se usan en la aplicación
-// Según la documentación oficial, cada componente debe importarse explícitamente
+// Importar componentes que se usan en la aplicaciÃ³n
+// SegÃºn la documentaciÃ³n oficial, cada componente debe importarse explÃ­citamente
 // https://webawesome.com/docs/installation
-import '@awesome.me/webawesome-pro/dist/components/animation/animation.js'
-import '@awesome.me/webawesome-pro/dist/components/badge/badge.js'
-import '@awesome.me/webawesome-pro/dist/components/button/button.js'
-import '@awesome.me/webawesome-pro/dist/components/button-group/button-group.js'
-import '@awesome.me/webawesome-pro/dist/components/callout/callout.js'
-import '@awesome.me/webawesome-pro/dist/components/card/card.js'
-import '@awesome.me/webawesome-pro/dist/components/details/details.js'
-import '@awesome.me/webawesome-pro/dist/components/dialog/dialog.js'
-import '@awesome.me/webawesome-pro/dist/components/divider/divider.js'
-import '@awesome.me/webawesome-pro/dist/components/icon/icon.js'
-import '@awesome.me/webawesome-pro/dist/components/input/input.js'
-import '@awesome.me/webawesome-pro/dist/components/option/option.js'
-import '@awesome.me/webawesome-pro/dist/components/radio/radio.js'
-import '@awesome.me/webawesome-pro/dist/components/radio-group/radio-group.js'
-import '@awesome.me/webawesome-pro/dist/components/select/select.js'
-import '@awesome.me/webawesome-pro/dist/components/skeleton/skeleton.js'
-import '@awesome.me/webawesome-pro/dist/components/tag/tag.js'
+import '@web.awesome.me/webawesome-pro/dist/components/animation/animation.js'
+import '@web.awesome.me/webawesome-pro/dist/components/badge/badge.js'
+import '@web.awesome.me/webawesome-pro/dist/components/button/button.js'
+import '@web.awesome.me/webawesome-pro/dist/components/button-group/button-group.js'
+import '@web.awesome.me/webawesome-pro/dist/components/callout/callout.js'
+import '@web.awesome.me/webawesome-pro/dist/components/card/card.js'
+import '@web.awesome.me/webawesome-pro/dist/components/details/details.js'
+import '@web.awesome.me/webawesome-pro/dist/components/dialog/dialog.js'
+import '@web.awesome.me/webawesome-pro/dist/components/divider/divider.js'
+import '@web.awesome.me/webawesome-pro/dist/components/icon/icon.js'
+import '@web.awesome.me/webawesome-pro/dist/components/input/input.js'
+import '@web.awesome.me/webawesome-pro/dist/components/option/option.js'
+import '@web.awesome.me/webawesome-pro/dist/components/radio/radio.js'
+import '@web.awesome.me/webawesome-pro/dist/components/radio-group/radio-group.js'
+import '@web.awesome.me/webawesome-pro/dist/components/select/select.js'
+import '@web.awesome.me/webawesome-pro/dist/components/skeleton/skeleton.js'
+import '@web.awesome.me/webawesome-pro/dist/components/tag/tag.js'
 
 const themeImports = {
-  default: () => import('@awesome.me/webawesome-pro/dist/styles/themes/default.css'),
-  awesome: () => import('@awesome.me/webawesome-pro/dist/styles/themes/awesome.css'),
-  shoelace: () => import('@awesome.me/webawesome-pro/dist/styles/themes/shoelace.css'),
-  active: () => import('@awesome.me/webawesome-pro/dist/styles/themes/active.css'),
-  brutalist: () => import('@awesome.me/webawesome-pro/dist/styles/themes/brutalist.css'),
-  glossy: () => import('@awesome.me/webawesome-pro/dist/styles/themes/glossy.css'),
-  matter: () => import('@awesome.me/webawesome-pro/dist/styles/themes/matter.css'),
-  mellow: () => import('@awesome.me/webawesome-pro/dist/styles/themes/mellow.css'),
-  playful: () => import('@awesome.me/webawesome-pro/dist/styles/themes/playful.css'),
-  premium: () => import('@awesome.me/webawesome-pro/dist/styles/themes/premium.css'),
-  tailspin: () => import('@awesome.me/webawesome-pro/dist/styles/themes/tailspin.css'),
+  default: () => import('@web.awesome.me/webawesome-pro/dist/styles/themes/default.css'),
+  awesome: () => import('@web.awesome.me/webawesome-pro/dist/styles/themes/awesome.css'),
+  shoelace: () => import('@web.awesome.me/webawesome-pro/dist/styles/themes/shoelace.css'),
+  active: () => import('@web.awesome.me/webawesome-pro/dist/styles/themes/active.css'),
+  brutalist: () => import('@web.awesome.me/webawesome-pro/dist/styles/themes/brutalist.css'),
+  glossy: () => import('@web.awesome.me/webawesome-pro/dist/styles/themes/glossy.css'),
+  matter: () => import('@web.awesome.me/webawesome-pro/dist/styles/themes/matter.css'),
+  mellow: () => import('@web.awesome.me/webawesome-pro/dist/styles/themes/mellow.css'),
+  playful: () => import('@web.awesome.me/webawesome-pro/dist/styles/themes/playful.css'),
+  premium: () => import('@web.awesome.me/webawesome-pro/dist/styles/themes/premium.css'),
+  tailspin: () => import('@web.awesome.me/webawesome-pro/dist/styles/themes/tailspin.css'),
 }
 
 class WebAwesomeService {
@@ -95,14 +95,14 @@ class WebAwesomeService {
   }
 
   /**
-   * Aplicar colores semánticos específicos de Web Awesome
+   * Aplicar colores semÃ¡nticos especÃ­ficos de Web Awesome
    * Estructura: wa-{semantic}-{color}
    * Semantic: brand, neutral, success, warning, danger
    * Colors: red, orange, yellow, green, cyan, blue, indigo, purple, pink, gray
    * 
    * Ref: https://webawesome.com/docs/color-palettes#semantic-color-overrides
    * 
-   * @param {Object} colors - Objeto con los colores semánticos del backend
+   * @param {Object} colors - Objeto con los colores semÃ¡nticos del backend
    * @param {string} colors.semantic_brand_color - Color para brand
    * @param {string} colors.semantic_neutral_color - Color para neutral
    * @param {string} colors.semantic_success_color - Color para success
@@ -112,18 +112,18 @@ class WebAwesomeService {
   static applySemanticColors(colors = {}) {
     const htmlElement = document.documentElement;
     
-    // Mapeo de colores semánticos a clases CSS
+    // Mapeo de colores semÃ¡nticos a clases CSS
     const semanticGroups = ['brand', 'neutral', 'success', 'warning', 'danger'];
     const availableColors = ['red', 'orange', 'yellow', 'green', 'cyan', 'blue', 'indigo', 'purple', 'pink', 'gray'];
     
-    // Remover todas las clases de colores semánticos anteriores
+    // Remover todas las clases de colores semÃ¡nticos anteriores
     semanticGroups.forEach(group => {
       availableColors.forEach(color => {
         htmlElement.classList.remove(`wa-${group}-${color}`);
       });
     });
     
-    // Aplicar nuevos colores semánticos
+    // Aplicar nuevos colores semÃ¡nticos
     if (colors.semantic_brand_color) {
       htmlElement.classList.add(`wa-brand-${colors.semantic_brand_color}`);
     }
@@ -146,17 +146,17 @@ class WebAwesomeService {
   }
 
   /**
-   * Aplicar tipografía personalizada
+   * Aplicar tipografÃ­a personalizada
    * Configura las CSS Custom Properties de Web Awesome para fuentes
    * Ref: https://webawesome.com/docs/tokens/typography
    * 
    * Web Awesome Typography Tokens:
    * - --wa-font-family-body: Fuente para texto general del body
    * - --wa-font-family-heading: Fuente para headings (h1-h6)
-   * - --wa-font-size-*: Escalas de tamaño (2x-small a 4x-large)
+   * - --wa-font-size-*: Escalas de tamaÃ±o (2x-small a 4x-large)
    * - --wa-font-weight-*: Pesos (light, normal, semibold, bold)
    * - --wa-letter-spacing-*: Espaciado entre letras (dense, normal, loose)
-   * - --wa-line-height-*: Altura de línea (dense, normal, loose)
+   * - --wa-line-height-*: Altura de lÃ­nea (dense, normal, loose)
    * 
    * @param {Object} fonts - Objeto con fuentes del backend
    * @param {string} fonts.font_family_body - Fuente para texto general
@@ -169,12 +169,12 @@ class WebAwesomeService {
 
     const htmlElement = document.documentElement;
 
-    // Aplicar fuente del cuerpo según documentación oficial de Web Awesome
+    // Aplicar fuente del cuerpo segÃºn documentaciÃ³n oficial de Web Awesome
     if (fonts.font_family_body) {
       htmlElement.style.setProperty('--wa-font-family-body', fonts.font_family_body);
     }
 
-    // Aplicar fuente de encabezados según documentación oficial de Web Awesome
+    // Aplicar fuente de encabezados segÃºn documentaciÃ³n oficial de Web Awesome
     if (fonts.font_family_heading) {
       htmlElement.style.setProperty('--wa-font-family-heading', fonts.font_family_heading);
     }
