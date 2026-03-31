@@ -1,7 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { ScrollSmoother } from 'gsap/ScrollSmoother';
 import PlantDetailDialog from './PlantDetailDialog';
+
+gsap.registerPlugin(ScrollTrigger, ScrollSmoother);
 
 
 
@@ -24,16 +27,43 @@ function PlantsGrid({
 
   // GSAP ScrollTrigger para animar cards cuando entran al viewport
   useEffect(() => {
-    if (loading || plants.length === 0 || !gridContainerRef.current) return;
+    if (loading || plants.length === 0 || !gridContainerRef.current) {
+      return;
+    }
 
-    gsap.registerPlugin(ScrollTrigger);
+    let ctx;
+    let isMounted = true;
 
-    // Esperar a que wa-card esté definido
+    // Esperar a que wa-card esté definido para evitar condiciones de carrera al montar web components.
     customElements.whenDefined('wa-card').then(() => {
-      const ctx = gsap.context(() => {
+      if (!isMounted) {
+        return;
+      }
+
+      let smoother = ScrollSmoother.get();
+
+      if (!smoother) {
+        const wrapper = document.querySelector('#smooth-wrapper');
+        const content = document.querySelector('#smooth-content');
+
+        if (wrapper && content) {
+          smoother = ScrollSmoother.create({
+            wrapper,
+            content,
+            smooth: 1,
+            effects: true
+          });
+        }
+      }
+
+      const scrollerTarget = smoother ? smoother.wrapper() : window;
+
+      ctx = gsap.context(() => {
         const cards = gsap.utils.toArray('.plant-card', gridContainerRef.current);
 
-        if (cards.length === 0) return;
+        if (cards.length === 0) {
+          return;
+        }
 
         cards.forEach((card, index) => {
           gsap.to(card, {
@@ -43,6 +73,7 @@ function PlantsGrid({
             ease: 'Power2.in',
             scrollTrigger: {
               trigger: card,
+              scroller: scrollerTarget,
               start: 'top 85%',
               end: 'top 50%',
               toggleActions: 'play none none none',
@@ -52,11 +83,15 @@ function PlantsGrid({
         });
       }, gridContainerRef);
 
-      return () => ctx.revert();
+      ScrollTrigger.refresh();
     });
 
     return () => {
-      ScrollTrigger.getAll().forEach(trigger => trigger.kill());
+      isMounted = false;
+
+      if (ctx) {
+        ctx.revert();
+      }
     };
   }, [plants, loading]);
 
