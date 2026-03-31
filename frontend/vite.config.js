@@ -15,7 +15,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          // Separar librerÃ­as pesadas en chunks propios
+          // Separar librerías pesadas en chunks propios
           'vendor-web-awesome': ['@web.awesome.me/webawesome-pro'],
           'vendor-gsap': ['gsap'],
           'vendor-react': ['react', 'react-dom'],
@@ -24,6 +24,6 @@ export default defineConfig({
         },
       },
     },
-    chunkSizeWarningLimit: 600, // Aumentar el lÃ­mite a 600kB si es necesario
+    chunkSizeWarningLimit: 650, // Aumentar el límite a 650kB si es necesario
   },
 })

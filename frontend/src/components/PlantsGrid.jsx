@@ -47,7 +47,7 @@ function PlantsGrid({
               start: 'top 85%',
               end: 'top 50%',
               toggleActions: 'play none none none',
-              markers: true
+              markers: false
             }
           });
         });
@@ -198,14 +198,21 @@ function PlantsGrid({
         )}
         <div className="plants-grid wa-grid" ref={gridContainerRef}>
           {plants.map((plant) => (
-            <wa-card key={plant.id} className="plant-card" appearance="filled">
-                <img
-                  slot="media"
-                  src={plant.imageUrl}
-                  alt={plant.nombre}
-                  onClick={() => openPlantDetail(plant)}
-                  className="plant-image"
-                />
+            <wa-card key={plant.id} className="plant-card box-shadow-2" appearance="filled">
+                <div slot="media" className="plant-media">
+                  <img
+                    src={plant.imageUrl}
+                    alt={plant.nombre}
+                    onClick={() => openPlantDetail(plant)}
+                    className="plant-image"
+                  />
+                  {plant.discountPercentage > 0 && (
+                  <div className="discount-seal" aria-label={`Descuento ${plant.discountPercentage}%`}>
+                    <span className="discount-seal-value">{plant.discountPercentage}%</span>
+                    <span className="discount-seal-label">descto.</span>
+                  </div>
+                  )}
+                </div>
                 <div slot="header" className="plant-header-wrapper">
                     <div className="wa-cluster wa-gap-m wa-align-items-center plant-header wa-heading-l">
                         <span>{plant.proyectoNombre}</span> -
@@ -214,6 +221,9 @@ function PlantsGrid({
                 </div>
 
                 <div slot="header-actions" className="wa-cluster wa-gap-xs">
+                  {plant.proyectoEtapa && (
+                  <wa-badge variant="success">Etapa: {plant.proyectoEtapa}</wa-badge>
+                  )}
                     {plant.proyectoComuna && (
                     <wa-badge variant={plant.isPaid ? 'neutral' : 'brand'}>{plant.proyectoComuna}</wa-badge>
                     )}
@@ -270,7 +280,9 @@ function PlantsGrid({
                         {(0 < plant.precioBase) && (
                             <div className="price-final">
                             {plant.precioBase < plant.precioLista && (
-                                <span className="price-label-discount">Precio sale: </span>
+                            <span className="price-label-discount">
+                              Precio sale:
+                            </span>
                             )}
                             <span className="price-sale wa-font-weight-bold wa-heading-xl">
                                 UF {(plant.precioBase).toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}

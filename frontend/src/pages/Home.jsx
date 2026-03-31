@@ -203,23 +203,33 @@ function Home() {
 
       const totalCount = data.total ?? data.data?.length ?? 0;
 
-      const mappedPlants = (data.data || []).map(plant => ({
-        ...plant,
-        nombre: plant.name,
-        programa: plant.programa,
-        coverImage: plant.cover_image_url || plant.cover_image_media?.url || '',
-        interiorImage: plant.interior_image_url || plant.interior_image_media?.url || '',
-        precioBase: Number(plant.precio_base) || 0,
-        precioLista: Number(plant.precio_lista) || 0,
-        reservaExigidaPeso: Number(plant.proyecto?.valor_reserva_exigido_defecto_peso) || 0,
-        proyectoNombre: plant.proyecto?.name,
-        proyectoDescripcion: plant.proyecto?.descripcion,
-        proyectoDireccion: plant.proyecto?.direccion,
-        proyectoComuna: plant.proyecto?.comuna,
-        isPaid: !!plant.is_paid,
-        isAvailable: !!plant.is_available,
-        isReserved: !!plant.active_reservation,
-      }));
+      const mappedPlants = (data.data || []).map(plant => {
+        const precioBase = Number(plant.precio_base) || 0;
+        const precioLista = Number(plant.precio_lista) || 0;
+        const discountPercentage = precioLista > 0 && precioBase > 0 && precioBase < precioLista
+          ? Math.max(0, Math.round(Math.abs(((precioLista - precioBase) / precioLista) * 100)))
+          : 0;
+
+        return {
+          ...plant,
+          nombre: plant.name,
+          programa: plant.programa,
+          coverImage: plant.cover_image_url || plant.cover_image_media?.url || '',
+          interiorImage: plant.interior_image_url || plant.interior_image_media?.url || '',
+          precioBase,
+          precioLista,
+          discountPercentage,
+          reservaExigidaPeso: Number(plant.proyecto?.valor_reserva_exigido_defecto_peso) || 0,
+          proyectoNombre: plant.proyecto?.name,
+          proyectoDescripcion: plant.proyecto?.descripcion,
+          proyectoDireccion: plant.proyecto?.direccion,
+          proyectoComuna: plant.proyecto?.comuna,
+          proyectoEtapa: plant.proyecto?.etapa,
+          isPaid: !!plant.is_paid,
+          isAvailable: !!plant.is_available,
+          isReserved: !!plant.active_reservation,
+        };
+      });
 
       setPlants(mappedPlants);
       setTotalPages(data.last_page || 1);
@@ -545,7 +555,7 @@ function Home() {
     <BannerPromo banner={config?.banner} />
 
     {/* Hero Section */}
-    <div className='video-home wa-position-relative wa-overflow-hidden wa-justify-content-center'>
+    <div className='video-home wa-position-relative wa-overflow-hidden wa-justify-content-center box-shadow-1'>
         <div className="hero-section wa-position-absolute wa-z-index-1">
             {config?.logo && (
             <img src={config.logo} alt={config?.site_name} className="hero-logo" />
