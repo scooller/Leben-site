@@ -112,7 +112,7 @@ function PlantsGrid({
   if (loading) {
 
     return (
-      <div className="plants-grid wa-grid">
+      <div className="plants-grid wa-grid wa-gap-2xl">
         {[...Array(6)].map((_, i) => (
           <wa-card key={i} className="skeleton-card" appearance="filled">
             <wa-skeleton slot="media" effect="pulse" style={{ height: '220px' }}></wa-skeleton>
@@ -196,7 +196,7 @@ function PlantsGrid({
         {typeof totalPlants === 'number' && (
           <div className="plants-count">Total: {totalPlants} planta{totalPlants === 1 ? '' : 's'}</div>
         )}
-        <div className="plants-grid wa-grid" ref={gridContainerRef}>
+        <div className="plants-grid wa-grid wa-gap-2xl" ref={gridContainerRef}>
           {plants.map((plant) => (
             <wa-card key={plant.id} className="plant-card box-shadow-2" appearance="filled">
                 <div slot="media" className="plant-media">
