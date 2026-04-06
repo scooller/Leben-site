@@ -25,6 +25,7 @@ function PlantsGrid({
   onClosePlantDetail,
 }) {
   const [internalSelectedPlant, setInternalSelectedPlant] = useState(null);
+  const [detailLoadingId, setDetailLoadingId] = useState(null);
   const dialogRef = useRef(null);
   const gridContainerRef = useRef(null);
   const activePlant = selectedPlant ?? internalSelectedPlant;
@@ -39,6 +40,8 @@ function PlantsGrid({
   };
 
   const closeActivePlant = useCallback(() => {
+    setDetailLoadingId(null);
+
     if (typeof onClosePlantDetail === 'function') {
       onClosePlantDetail();
       return;
@@ -148,6 +151,7 @@ function PlantsGrid({
   const showingTo = Math.min((page - 1) * 12 + plants.length, totalPlants || 0);
 
   const openPlantDetail = (plant) => {
+    setDetailLoadingId(plant.id);
     setActivePlant(plant);
   };
 
@@ -379,7 +383,11 @@ function PlantsGrid({
                 {/* Acciones */}
                 <div slot="footer-actions" className="wa-cluster wa-gap-s">
                   <wa-button-group label="Alignment">
-                    <wa-button size="small" onClick={() => openPlantDetail(plant)}>
+                    <wa-button
+                      size="small"
+                      {...(detailLoadingId === plant.id && { loading: true })}
+                      onClick={() => openPlantDetail(plant)}
+                    >
                       <wa-icon name="building-circle-exclamation" slot="start"></wa-icon>
                       Ver Detalles
                     </wa-button>
@@ -398,7 +406,7 @@ function PlantsGrid({
                             ? <><wa-icon name="house-chimney-crack" slot="start"></wa-icon>No disponible</>
                         : checkoutLoading
                           ? 'Cargando...'
-                          : <><wa-icon name="comments-dollar" slot="start"></wa-icon>Cotizar</>
+                          : <><wa-icon name="comments-dollar" slot="start"></wa-icon>Reservar</>
                       }
                     </wa-button>
                   </wa-button-group>

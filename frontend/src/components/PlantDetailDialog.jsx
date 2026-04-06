@@ -224,7 +224,7 @@ function PlantDetailDialog({ plant, dialogRef, checkoutLoading, onCheckout }) {
                                     <wa-tag variant="primary">{plant.superficie_terraza} m²</wa-tag>
                                 </div>
                                 )}
-                                {plant.superficie_vendible !== null && plant.superficie_vendible !== undefined && (
+                                {/* {plant.superficie_vendible !== null && plant.superficie_vendible !== undefined && (
                                 <div className="wa-stack wa-gap-2xs">
                                     <div className="wa-cluster wa-gap-xs wa-align-items-center">
                                     <wa-icon name="layer-group" style={{ fontSize: '0.9em' }}></wa-icon>
@@ -232,7 +232,7 @@ function PlantDetailDialog({ plant, dialogRef, checkoutLoading, onCheckout }) {
                                     </div>
                                     <wa-tag variant="primary">{plant.superficie_vendible} m²</wa-tag>
                                 </div>
-                                )}
+                                )} */}
                             </div>
                         </wa-details>
                         )}
@@ -318,6 +318,7 @@ function PlantDetailDialog({ plant, dialogRef, checkoutLoading, onCheckout }) {
                         variant="neutral"
                         data-dialog="close"
                     >
+                        <wa-icon name="xmark" slot="start"></wa-icon>
                         Cerrar
                     </wa-button>
                 {(plant.isPaid || plant.isReserved || plant.isAvailable === false) ? (
@@ -341,7 +342,7 @@ function PlantDetailDialog({ plant, dialogRef, checkoutLoading, onCheckout }) {
                         onClick={onCheckout}
                     >
                         {checkoutLoading ? 'Cargando...' : <>
-                            <wa-icon name="hand-holding-dollar" slot="start"></wa-icon> Cotizar Ahora
+                            <wa-icon name="hand-holding-dollar" slot="start"></wa-icon> Reserva Ahora
                         </>}
                     </wa-button>
                 )}
