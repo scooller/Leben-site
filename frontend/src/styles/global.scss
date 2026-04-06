@@ -9,6 +9,7 @@
 // ============================================================
 
 :root {
+  --brand-color: #eb0029;
   --wa-color-black: #000000;
   --wa-color-white: #FFFFFF;
   --wa-color-black-rgb: 0, 0, 0;
@@ -33,10 +34,21 @@ body {
 .wa-overflow-hidden {
   overflow: hidden!important;
 }
+.wa-text-uppercase {
+  text-transform: uppercase!important;
+}
 
 @for $i from 0 through 10 {
   .wa-z-index-#{$i} {
     z-index: #{$i} !important;
+  }
+  .wa-order-#{$i} {
+    order: #{$i};
+  }
+  .wa-order-mobile-#{$i} {
+    @media (max-width: 768px) {
+      order: #{$i} !important;
+    }
   }
 }
 

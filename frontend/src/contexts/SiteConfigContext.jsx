@@ -4,20 +4,58 @@ import WebAwesomeService from '../services/webAwesome';
 
 export const SiteConfigContext = createContext(null);
 
+const COLOR_MODE_STORAGE_KEY = 'ileben-color-mode';
+
+const resolveInitialColorMode = () => {
+  if (typeof window === 'undefined') {
+    return 'dark';
+  }
+
+  const storedMode = window.localStorage.getItem(COLOR_MODE_STORAGE_KEY);
+
+  if (storedMode === 'light' || storedMode === 'dark') {
+    return storedMode;
+  }
+
+  return 'dark';
+};
+
 export const SiteConfigProvider = ({ children }) => {
   const [config, setConfig] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const hasLoadedConfig = useRef(false);  
+  const [colorMode, setColorModeState] = useState(resolveInitialColorMode);
+  const hasLoadedConfig = useRef(false);
+
+  const applyColorModeToDocument = (mode) => {
+    const htmlElement = document.documentElement;
+
+    htmlElement.classList.remove('wa-light', 'wa-dark');
+    htmlElement.classList.add(mode === 'light' ? 'wa-light' : 'wa-dark');
+  };
+
+  const setColorMode = (mode) => {
+    const nextMode = mode === 'light' ? 'light' : 'dark';
+
+    setColorModeState(nextMode);
+
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(COLOR_MODE_STORAGE_KEY, nextMode);
+    }
+
+    applyColorModeToDocument(nextMode);
+  };
+
+  const toggleColorMode = () => {
+    setColorMode(colorMode === 'dark' ? 'light' : 'dark');
+  };
 
   useEffect(() => {
     // Prevenir doble ejecución en React StrictMode
     if (hasLoadedConfig.current) return;
     hasLoadedConfig.current = true;
 
-    const htmlElement = document.documentElement;
-    htmlElement.classList.remove('wa-light');
-    htmlElement.classList.add('wa-dark');
+    applyColorModeToDocument(resolveInitialColorMode());
 
     loadConfig();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -44,6 +82,9 @@ export const SiteConfigProvider = ({ children }) => {
       const palette = data.webawesome_palette || 'natural';
       WebAwesomeService.applyPalette(palette);
 
+      // Aplicar color principal de marca en :root
+      WebAwesomeService.applyBrandColor(data.brand_color || '#eb0029');
+
       // Aplicar colores semánticos específicos (wa-brand-blue, wa-success-green, etc.)
       WebAwesomeService.applySemanticColors({
         semantic_brand_color: data.semantic_brand_color || 'blue',
@@ -61,14 +102,14 @@ export const SiteConfigProvider = ({ children }) => {
       if (data.google_fonts_stylesheet) {
         const linkId = 'google-fonts-stylesheet';
         let link = document.getElementById(linkId);
-        
+
         if (!link) {
           link = document.createElement('link');
           link.id = linkId;
           link.rel = 'stylesheet';
           document.head.appendChild(link);
         }
-        
+
         link.href = data.google_fonts_stylesheet;
       }
 
@@ -108,6 +149,9 @@ export const SiteConfigProvider = ({ children }) => {
     config,
     loading,
     error,
+    colorMode,
+    setColorMode,
+    toggleColorMode,
     reload: loadConfig,
   };
 

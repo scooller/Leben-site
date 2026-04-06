@@ -18,12 +18,13 @@ export default defineConfig({
           // Separar librerías pesadas en chunks propios
           'vendor-web-awesome': ['@web.awesome.me/webawesome-pro'],
           'vendor-gsap': ['gsap'],
+          'vendor-fancybox': ['@fancyapps/ui'],
           'vendor-react': ['react', 'react-dom'],
           // Separar axios en su propio chunk
           'vendor-axios': ['axios'],
         },
       },
     },
-    chunkSizeWarningLimit: 650, // Aumentar el límite a 650kB si es necesario
+    chunkSizeWarningLimit: 550, // Aumentar el límite si es necesario
   },
 })

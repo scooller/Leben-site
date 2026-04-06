@@ -56,7 +56,7 @@ const normalizeBrowserUrl = (url) => {
  * Usa Web Awesome components de forma nativa con íconos integrados
  */
 function Home() {
-  const { config, loading: configLoading } = useSiteConfig();
+  const { config, loading: configLoading, colorMode, toggleColorMode } = useSiteConfig();
   const [plants, setPlants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -71,6 +71,7 @@ function Home() {
   const [plantForCheckout, setPlantForCheckout] = useState(null);
   const [gatewayDialogOpen, setGatewayDialogOpen] = useState(false);
   const [selectedPlantDetail, setSelectedPlantDetail] = useState(null);
+  const [routePlantLoading, setRoutePlantLoading] = useState(false);
   const [routePlantParams, setRoutePlantParams] = useState(() => parsePlantDetailPath(window.location.pathname));
   const isAuthenticated = authService.isAuthenticated();
 
@@ -167,6 +168,17 @@ function Home() {
       proyectoDireccion: plant.proyecto?.direccion,
       proyectoComuna: plant.proyecto?.comuna,
       proyectoEtapa: plant.proyecto?.etapa,
+      asesores: Array.isArray(plant.proyecto?.asesores)
+        ? plant.proyecto.asesores.map((asesor) => ({
+          id: asesor.id,
+          fullName: asesor.full_name,
+          firstName: asesor.first_name,
+          lastName: asesor.last_name,
+          email: asesor.email,
+          whatsapp: asesor.whatsapp_owner,
+          avatarUrl: asesor.avatar_url,
+        }))
+        : [],
       isPaid: !!plant.is_paid,
       isAvailable: !!plant.is_available,
       isReserved: !!plant.active_reservation,
@@ -364,6 +376,7 @@ function Home() {
       setRoutePlantParams(parsed);
 
       if (!parsed) {
+        setRoutePlantLoading(false);
         setSelectedPlantDetail(null);
       }
     };
@@ -380,6 +393,7 @@ function Home() {
 
     const loadPlantFromRoute = async () => {
       if (!routePlantParams) {
+        setRoutePlantLoading(false);
         return;
       }
 
@@ -389,9 +403,12 @@ function Home() {
       ));
 
       if (plantInList) {
+        setRoutePlantLoading(false);
         setSelectedPlantDetail(plantInList);
         return;
       }
+
+      setRoutePlantLoading(true);
 
       try {
         const plantFromApi = await PlantsService.getByProjectAndUnit(routePlantParams.projectSlug, routePlantParams.unitName);
@@ -407,6 +424,10 @@ function Home() {
         }
 
         setSelectedPlantDetail(null);
+      } finally {
+        if (isMounted) {
+          setRoutePlantLoading(false);
+        }
       }
     };
 
@@ -724,196 +745,196 @@ function Home() {
         </video>
     </div>
     <div className="home-container" ref={heroRef}>
-      {/* Header de Plantas */}
-      <div className="plants-header">
-        <div className="wa-cluster wa-gap-s wa-align-items-center">
-          <h2>Nuestras Plantas</h2>
-          {activeFilterCount > 0 && (
-            <wa-badge variant="brand" pill>
-              {activeFilterCount} {activeFilterCount === 1 ? 'filtro' : 'filtros'} activo{activeFilterCount === 1 ? '' : 's'}
-            </wa-badge>
-          )}
+        {/* Header de Plantas */}
+        <div className="plants-header">
+            <div className="wa-cluster wa-gap-s wa-align-items-center plants-header-main">
+                <h2>Nuestras Plantas</h2>
+                {activeFilterCount > 0 && (
+                <wa-badge variant="brand" pill>
+                    {activeFilterCount} {activeFilterCount === 1 ? 'filtro' : 'filtros'} activo{activeFilterCount === 1 ? '' : 's'}
+                </wa-badge>
+                )}
+            </div>
+            <p>Descubre nuestra colección disponible</p>
         </div>
-        <p>Descubre nuestra colección disponible</p>
-      </div>
 
-      {/* Filtros */}
-      <wa-details className="filters-details wa-mb-m">
-        <span slot="summary">
-            <wa-icon name="filter-circle-dollar"></wa-icon> Filtros
-        </span>
-            <wa-card
-            appearance="filled"
-            style={{ '--spacing': 'var(--wa-space-xs)', 'background-color': 'var(--wa-color-surface-lowered)' }}
-            >
-                <div className="wa-grid wa-gap-m filters-inputs" style={{ '--min-column-size': '14rem' }}>
-                    <wa-select
-                        placeholder="Todos los proyectos"
-                        size="small"
-                        value={tempProyecto}
-                        onChange={(e) => {
-                        const value = getMultiSelectValue(e);
-                        setTempProyecto(value);
-                        }}
-                        multiple
-                        clearable
-                    >
-                        <span slot='label'><wa-icon name="building"></wa-icon> Proyecto</span>
-                        {proyectos.map((proyecto) => (
-                        <wa-option key={proyecto.id} value={proyecto.salesforce_id}>
-                            <wa-icon name="building" slot="start"></wa-icon>{proyecto.name}
-                        </wa-option>
-                        ))}
-                    </wa-select>
-
-                    <wa-select
-                        placeholder="Todos"
-                        size="small"
-                        value={tempDormitorios}
-                        onChange={(e) => {
-                        const value = getMultiSelectValue(e);
-                        setTempDormitorios(value);
-                        }}
-                        with-clear
-                        multiple
-                        clearable
-                    >
-                        <span slot='label'><wa-icon name="bed"></wa-icon> Dormitorios</span>
-                        <wa-option value="ST"><wa-icon name="bed" slot="start"></wa-icon>Studio</wa-option>
-                        <wa-option value="1D"><wa-icon name="bed" slot="start"></wa-icon>1 Dormitorio</wa-option>
-                        <wa-option value="2D"><wa-icon name="bed" slot="start"></wa-icon>2 Dormitorios</wa-option>
-                        <wa-option value="3D"><wa-icon name="bed" slot="start"></wa-icon>3 Dormitorios</wa-option>
-                        <wa-option value="4D"><wa-icon name="bed" slot="start"></wa-icon>4 Dormitorios</wa-option>
-                    </wa-select>
-
-                    <wa-select
-                        placeholder="Todos"
-                        size="small"
-                        value={tempBanos}
-                        onChange={(e) => {
-                        const value = getMultiSelectValue(e);
-                        setTempBanos(value);
-                        }}
-                        with-clear
-                        multiple
-                        clearable
-                    >
-                        <span slot='label'><wa-icon name="bath"></wa-icon> Baños</span>
-                        <wa-option value="1B"><wa-icon name="bath" slot="start"></wa-icon>1 Baño</wa-option>
-                        <wa-option value="2B"><wa-icon name="bath" slot="start"></wa-icon>2 Baños</wa-option>
-                        <wa-option value="3B"><wa-icon name="bath" slot="start"></wa-icon>3 Baños</wa-option>
-                    </wa-select>
-
-                    <wa-select
-                        with-clear
-                        placeholder="Todos"
-                        size="small"
-                        value={tempPiso}
-                        onChange={(e) => {
-                        const value = getSingleSelectValue(e);
-                        setTempPiso(value);
-                        }}
-                        multiple
-                        clearable
-                    >
-                        <span slot='label'><wa-icon name="arrow-right-to-city"></wa-icon> Piso</span>
-                        {pisoOptions.map((piso) => (
-                        <wa-option key={piso} value={piso}>
-                            <wa-icon name="arrow-right-to-city" slot="start"></wa-icon>Piso {piso}
-                        </wa-option>
-                        ))}
-                    </wa-select>
-
-                    <wa-select
-                        placeholder="Todas"
-                        size="small"
-                        value={tempRegion}
-                        onChange={(e) => {
-                        const value = getSingleSelectValue(e);
-                        setTempRegion(value);
-                        setTempComuna('');
-                        }}
-                        clearable
-                    >
-                        <span slot='label'><wa-icon name="map"></wa-icon> Región</span>
-                        {regionOptions.map((region) => (
-                        <wa-option key={region} value={region}>
-                            <wa-icon name="map" slot="start"></wa-icon>{region}
-                        </wa-option>
-                        ))}
-                    </wa-select>
-
-                    <wa-select
-                        with-clear
-                        size="small"
-                        placeholder={tempRegion ? 'Todas' : 'Primero selecciona una región'}
-                        value={tempComuna}
-                        onChange={(e) => {
-                        const value = getSingleSelectValue(e);
-                        setTempComuna(value);
-                        }}
-                        clearable
-                        disabled={!tempRegion}
-                    >
-                        <span slot='label'><wa-icon name="map-location"></wa-icon> Comuna</span>
-                        {filteredComunaOptions.map((comuna) => (
-                        <wa-option key={comuna} value={comuna}>
-                            <wa-icon name="map-location" slot="start"></wa-icon>{comuna}
-                        </wa-option>
-                        ))}
-                    </wa-select>
-
-                    <wa-input
-                        type="number"
-                        placeholder="Desde UF"
-                        value={tempPrecioMin}
-                        max='9999'
-                        size="small"
-                        onChange={(e) => {
-                            const value = e.target.value || '';
-                            setTempPrecioMin(value);
-                        }}
-                    >
-                        <span slot='label'><wa-icon name="dollar-sign"></wa-icon> Precio Mínimo</span>
-                        <wa-icon slot="start" name="dollar-sign"></wa-icon>
-                    </wa-input>
-
-                    <wa-input
-                        type="number"
-                        placeholder="Hasta UF"
-                        max='9999'
-                        size="small"
-                        value={tempPrecioMax}
-                        onChange={(e) => {
-                            const value = e.target.value || '';
-                            setTempPrecioMax(value);
-                        }}
-                    >
-                        <span slot='label'><wa-icon name="dollar-sign"></wa-icon> Precio Máximo</span>
-                        <wa-icon slot="start" name="dollar-sign"></wa-icon>
-                    </wa-input>
-                </div>
-
-                <div className="wa-cluster wa-gap-s filters-actions wa-mt-l">
-                    <wa-button
-                        variant="brand"
-                        onClick={handleApplyFilters}
-                    >
-                        <wa-icon slot="start" name="filter"></wa-icon>
-                        Aplicar Filtros
-                    </wa-button>
-
-                    {activeFilterCount > 0 && (
-                        <wa-button
-                        variant="neutral"
-                        onClick={handleClearFilters}
+        {/* Filtros */}
+        <wa-details className="filters-details wa-mb-m">
+            <span slot="summary">
+                <wa-icon name="filter-circle-dollar"></wa-icon> Filtros
+            </span>
+                <wa-card
+                appearance="filled"
+                style={{ '--spacing': 'var(--wa-space-xs)', 'background-color': 'var(--wa-color-surface-lowered)' }}
+                >
+                    <div className="wa-grid wa-gap-m filters-inputs" style={{ '--min-column-size': '14rem' }}>
+                        <wa-select
+                            placeholder="Todos los proyectos"
+                            size="small"
+                            value={tempProyecto}
+                            onChange={(e) => {
+                            const value = getMultiSelectValue(e);
+                            setTempProyecto(value);
+                            }}
+                            multiple
+                            clearable
                         >
-                        <wa-icon slot="start" name="filter-circle-xmark"></wa-icon>
-                        Limpiar Filtros
+                            <span slot='label'><wa-icon name="building"></wa-icon> Proyecto</span>
+                            {proyectos.map((proyecto) => (
+                            <wa-option key={proyecto.id} value={proyecto.salesforce_id}>
+                                <wa-icon name="building" slot="start"></wa-icon>{proyecto.name}
+                            </wa-option>
+                            ))}
+                        </wa-select>
+
+                        <wa-select
+                            placeholder="Todos"
+                            size="small"
+                            value={tempDormitorios}
+                            onChange={(e) => {
+                            const value = getMultiSelectValue(e);
+                            setTempDormitorios(value);
+                            }}
+                            with-clear
+                            multiple
+                            clearable
+                        >
+                            <span slot='label'><wa-icon name="bed"></wa-icon> Dormitorios</span>
+                            <wa-option value="ST"><wa-icon name="bed" slot="start"></wa-icon>Studio</wa-option>
+                            <wa-option value="1D"><wa-icon name="bed" slot="start"></wa-icon>1 Dormitorio</wa-option>
+                            <wa-option value="2D"><wa-icon name="bed" slot="start"></wa-icon>2 Dormitorios</wa-option>
+                            <wa-option value="3D"><wa-icon name="bed" slot="start"></wa-icon>3 Dormitorios</wa-option>
+                            <wa-option value="4D"><wa-icon name="bed" slot="start"></wa-icon>4 Dormitorios</wa-option>
+                        </wa-select>
+
+                        <wa-select
+                            placeholder="Todos"
+                            size="small"
+                            value={tempBanos}
+                            onChange={(e) => {
+                            const value = getMultiSelectValue(e);
+                            setTempBanos(value);
+                            }}
+                            with-clear
+                            multiple
+                            clearable
+                        >
+                            <span slot='label'><wa-icon name="bath"></wa-icon> Baños</span>
+                            <wa-option value="1B"><wa-icon name="bath" slot="start"></wa-icon>1 Baño</wa-option>
+                            <wa-option value="2B"><wa-icon name="bath" slot="start"></wa-icon>2 Baños</wa-option>
+                            <wa-option value="3B"><wa-icon name="bath" slot="start"></wa-icon>3 Baños</wa-option>
+                        </wa-select>
+
+                        <wa-select
+                            with-clear
+                            placeholder="Todos"
+                            size="small"
+                            value={tempPiso}
+                            onChange={(e) => {
+                            const value = getSingleSelectValue(e);
+                            setTempPiso(value);
+                            }}
+                            multiple
+                            clearable
+                        >
+                            <span slot='label'><wa-icon name="arrow-right-to-city"></wa-icon> Piso</span>
+                            {pisoOptions.map((piso) => (
+                            <wa-option key={piso} value={piso}>
+                                <wa-icon name="arrow-right-to-city" slot="start"></wa-icon>Piso {piso}
+                            </wa-option>
+                            ))}
+                        </wa-select>
+
+                        <wa-select
+                            placeholder="Todas"
+                            size="small"
+                            value={tempRegion}
+                            onChange={(e) => {
+                            const value = getSingleSelectValue(e);
+                            setTempRegion(value);
+                            setTempComuna('');
+                            }}
+                            clearable
+                        >
+                            <span slot='label'><wa-icon name="map"></wa-icon> Región</span>
+                            {regionOptions.map((region) => (
+                            <wa-option key={region} value={region}>
+                                <wa-icon name="map" slot="start"></wa-icon>{region}
+                            </wa-option>
+                            ))}
+                        </wa-select>
+
+                        <wa-select
+                            with-clear
+                            size="small"
+                            placeholder={tempRegion ? 'Todas' : 'Primero selecciona una región'}
+                            value={tempComuna}
+                            onChange={(e) => {
+                            const value = getSingleSelectValue(e);
+                            setTempComuna(value);
+                            }}
+                            clearable
+                            disabled={!tempRegion}
+                        >
+                            <span slot='label'><wa-icon name="map-location"></wa-icon> Comuna</span>
+                            {filteredComunaOptions.map((comuna) => (
+                            <wa-option key={comuna} value={comuna}>
+                                <wa-icon name="map-location" slot="start"></wa-icon>{comuna}
+                            </wa-option>
+                            ))}
+                        </wa-select>
+
+                        <wa-input
+                            type="number"
+                            placeholder="Desde UF"
+                            value={tempPrecioMin}
+                            max='9999'
+                            size="small"
+                            onChange={(e) => {
+                                const value = e.target.value || '';
+                                setTempPrecioMin(value);
+                            }}
+                        >
+                            <span slot='label'><wa-icon name="dollar-sign"></wa-icon> Precio Mínimo</span>
+                            <wa-icon slot="start" name="dollar-sign"></wa-icon>
+                        </wa-input>
+
+                        <wa-input
+                            type="number"
+                            placeholder="Hasta UF"
+                            max='9999'
+                            size="small"
+                            value={tempPrecioMax}
+                            onChange={(e) => {
+                                const value = e.target.value || '';
+                                setTempPrecioMax(value);
+                            }}
+                        >
+                            <span slot='label'><wa-icon name="dollar-sign"></wa-icon> Precio Máximo</span>
+                            <wa-icon slot="start" name="dollar-sign"></wa-icon>
+                        </wa-input>
+                    </div>
+
+                    <div className="wa-cluster wa-gap-s filters-actions wa-mt-l">
+                        <wa-button
+                            variant="brand"
+                            onClick={handleApplyFilters}
+                        >
+                            <wa-icon slot="start" name="filter"></wa-icon>
+                            Aplicar Filtros
                         </wa-button>
-                    )}
-                </div>
-            </wa-card>
+
+                        {activeFilterCount > 0 && (
+                            <wa-button
+                            variant="neutral"
+                            onClick={handleClearFilters}
+                            >
+                            <wa-icon slot="start" name="filter-circle-xmark"></wa-icon>
+                            Limpiar Filtros
+                            </wa-button>
+                        )}
+                    </div>
+                </wa-card>
         </wa-details>
 
       {/* Plantas Grid */}
@@ -956,6 +977,31 @@ function Home() {
         duration={6000}
       />
     </div>
+
+    {routePlantLoading && (
+      <wa-dialog open className="route-plant-loading-dialog">
+        <span slot="label">
+          <wa-icon name="spinner" animation="spin"></wa-icon> Cargando planta...
+        </span>
+        <div className="wa-stack wa-gap-s route-plant-loading-content">
+          <span>Estamos obteniendo la información de la unidad seleccionada.</span>
+        </div>
+      </wa-dialog>
+    )}
+
+    <wa-button
+      variant="neutral"
+      appearance="filled"
+      onClick={toggleColorMode}
+      className="theme-floating-toggle box-shadow-2"
+      id="theme-toggle-button"
+      pill
+    >
+        <wa-icon name={colorMode === 'dark' ? 'sun' : 'cloud-moon'} label={colorMode === 'dark' ? 'Modo claro' : 'Modo oscuro'}></wa-icon>
+    </wa-button>
+    <wa-tooltip for="theme-toggle-button" placement="top">
+      Cambiar a {colorMode === 'dark' ? 'modo claro' : 'modo oscuro'}
+    </wa-tooltip>
     </>
   );
 }

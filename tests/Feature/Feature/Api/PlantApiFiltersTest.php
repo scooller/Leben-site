@@ -5,10 +5,12 @@ namespace Tests\Feature\Feature\Api;
 use App\Enums\PaymentGateway;
 use App\Enums\PaymentStatus;
 use App\Enums\ReservationStatus;
+use App\Models\Asesor;
 use App\Models\Payment;
 use App\Models\Plant;
 use App\Models\PlantReservation;
 use App\Models\Proyecto;
+use App\Models\SiteSetting;
 use App\Models\User;
 use Awcodes\Curator\Models\Media;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -396,6 +398,64 @@ class PlantApiFiltersTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonPath('id', $plant->id);
+    }
+
+    public function test_it_returns_project_advisors_in_plant_payload(): void
+    {
+        $project = Proyecto::factory()->create([
+            'is_active' => true,
+        ]);
+
+        $logoMedia = Media::query()->create([
+            'disk' => 'curator',
+            'directory' => null,
+            'visibility' => 'public',
+            'name' => 'branding-logo',
+            'path' => 'branding-logo.png',
+            'width' => 320,
+            'height' => 120,
+            'size' => 10240,
+            'type' => 'image/png',
+            'ext' => 'png',
+            'title' => 'Branding Logo',
+        ]);
+
+        SiteSetting::query()->update([
+            'logo_id' => $logoMedia->id,
+        ]);
+
+        $advisor = Asesor::factory()->create([
+            'first_name' => 'Camila',
+            'last_name' => 'Diaz',
+            'email' => 'camila@example.com',
+            'whatsapp_owner' => '+56 9 8765 4321',
+            'is_active' => true,
+        ]);
+
+        $project->asesores()->attach($advisor->id);
+
+        $plant = Plant::query()->create([
+            'salesforce_product_id' => (string) Str::uuid(),
+            'salesforce_proyecto_id' => $project->salesforce_id,
+            'name' => '302',
+            'product_code' => 'PLANT-302',
+            'programa' => '2 dormitorios',
+            'programa2' => '2 baños',
+            'precio_base' => 5000,
+            'precio_lista' => 5500,
+            'is_active' => true,
+            'last_synced_at' => now(),
+        ]);
+
+        $response = $this->getJson('/api/v1/plantas/'.$plant->id);
+
+        $response->assertOk();
+        $response->assertJsonPath('proyecto.asesores.0.id', $advisor->id);
+        $response->assertJsonPath('proyecto.asesores.0.first_name', 'Camila');
+        $response->assertJsonPath('proyecto.asesores.0.last_name', 'Diaz');
+        $response->assertJsonPath('proyecto.asesores.0.email', 'camila@example.com');
+        $response->assertJsonPath('proyecto.asesores.0.whatsapp_owner', '+56 9 8765 4321');
+        $response->assertJsonPath('proyecto.asesores.0.avatar_url', $logoMedia->url);
     }
 
     private function createPlant(string $salesforceProyectoId, bool $isActive): Plant

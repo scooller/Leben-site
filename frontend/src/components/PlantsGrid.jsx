@@ -180,7 +180,11 @@ function PlantsGrid({
       return;
     }
 
-    const handleAfterHide = () => {
+    const handleAfterHide = (event) => {
+      if (event.target !== dialogElement) {
+        return;
+      }
+
       closeActivePlant();
     };
 
@@ -263,12 +267,10 @@ function PlantsGrid({
   // Estado vacío
   if (plants.length === 0) {
     return (
-      <div className="empty-plants">
-        {typeof totalPlants === 'number' && (
-          <div className="plants-count">Total: {totalPlants} planta{totalPlants === 1 ? '' : 's'}</div>
-        )}
-        <p><wa-icon name="heart-crack"></wa-icon> No hay plantas disponibles</p>
-      </div>
+    <wa-callout variant="warning">
+        <wa-icon name="heart-crack" slot="icon"></wa-icon>
+        No hay plantas disponibles por el momento. Por favor, vuelve más tarde o contáctanos para más información.
+    </wa-callout>
     );
   }
 
@@ -277,7 +279,7 @@ function PlantsGrid({
     <>
       <div className='wa-stack'>
         {typeof totalPlants === 'number' && (
-          <div className="plants-count">Total: {totalPlants} planta{totalPlants === 1 ? '' : 's'}</div>
+          <div className="plants-count"><wa-icon name="city"></wa-icon> {totalPlants} planta{totalPlants === 1 ? '' : 's'}</div>
         )}
         <div className="plants-grid wa-grid wa-gap-2xl" ref={gridContainerRef}>
           {plants.map((plant) => (
@@ -363,7 +365,7 @@ function PlantsGrid({
                         {(0 < plant.precioBase) && (
                             <div className="price-final">
                             {plant.precioBase < plant.precioLista && (
-                            <span className="price-label-discount">Precio sale: </span>
+                            <span className="price-label-discount wa-text-uppercase">Precio Sale: </span>
                             )}
                             <span className="price-sale wa-font-weight-bold wa-heading-xl">
                                 UF {(plant.precioBase).toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}

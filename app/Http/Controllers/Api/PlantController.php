@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Asesor;
 use App\Models\Plant;
 use App\Models\Proyecto;
 use App\Models\SiteSetting;
@@ -19,7 +20,7 @@ class PlantController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = Plant::query()
-            ->with(['proyecto', 'activeReservation', 'completedReservation', 'completedPayment', 'coverImageMedia', 'interiorImageMedia'])
+            ->with(['proyecto.asesores.avatarImageMedia', 'activeReservation', 'completedReservation', 'completedPayment', 'coverImageMedia', 'interiorImageMedia'])
             ->whereHas('proyecto', function ($projectQuery) {
                 $projectQuery->where('is_active', true);
             }) // Solo plantas con proyecto activo asociado
@@ -195,7 +196,7 @@ class PlantController extends Controller
     public function show(string $id): JsonResponse
     {
         $plant = Plant::query()
-            ->with(['proyecto', 'activeReservation', 'completedReservation', 'completedPayment', 'coverImageMedia', 'interiorImageMedia'])
+            ->with(['proyecto.asesores.avatarImageMedia', 'activeReservation', 'completedReservation', 'completedPayment', 'coverImageMedia', 'interiorImageMedia'])
             ->whereHas('proyecto', function ($projectQuery) {
                 $projectQuery->where('is_active', true);
             })
@@ -210,7 +211,7 @@ class PlantController extends Controller
         $normalizedUnitSlug = Str::of($normalizedUnitName)->lower()->replace(' ', '-')->value();
 
         $plant = Plant::query()
-            ->with(['proyecto', 'activeReservation', 'completedReservation', 'completedPayment', 'coverImageMedia', 'interiorImageMedia'])
+            ->with(['proyecto.asesores.avatarImageMedia', 'activeReservation', 'completedReservation', 'completedPayment', 'coverImageMedia', 'interiorImageMedia'])
             ->where('is_active', true)
             ->where(function ($plantQuery) use ($normalizedUnitName, $normalizedUnitSlug) {
                 $plantQuery
@@ -374,6 +375,8 @@ class PlantController extends Controller
             return null;
         }
 
+        $defaultAdvisorAvatarUrl = $this->getDefaultAdvisorAvatarUrl();
+
         return [
             'id' => $proyecto->id,
             'name' => $proyecto->name,
@@ -392,7 +395,44 @@ class PlantController extends Controller
             'salesforce_logo_url' => $proyecto->salesforce_logo_url,
             'valor_reserva_exigido_defecto_peso' => $proyecto->valor_reserva_exigido_defecto_peso,
             'valor_reserva_exigido_min_peso' => $proyecto->valor_reserva_exigido_min_peso,
+            'asesores' => $proyecto->asesores
+                ->where('is_active', true)
+                ->values()
+                ->map(fn (Asesor $asesor): array => $this->asesorPayload($asesor, $defaultAdvisorAvatarUrl))
+                ->all(),
         ];
+    }
+
+    private function asesorPayload(Asesor $asesor, string $defaultAvatarUrl): array
+    {
+        return [
+            'id' => $asesor->id,
+            'full_name' => $asesor->full_name,
+            'first_name' => $asesor->first_name,
+            'last_name' => $asesor->last_name,
+            'email' => $asesor->email,
+            'whatsapp_owner' => $asesor->whatsapp_owner,
+            'avatar_url' => $asesor->avatarImageMedia?->url ?: $defaultAvatarUrl,
+        ];
+    }
+
+    private function getDefaultAdvisorAvatarUrl(): string
+    {
+        $siteSettings = SiteSetting::query()->with('logoMedia', 'faviconMedia')->first();
+
+        if (filled($siteSettings?->faviconMedia?->url)) {
+            return (string) $siteSettings->faviconMedia->url;
+        }
+
+        if (filled($siteSettings?->logoMedia?->url)) {
+            return (string) $siteSettings->logoMedia->url;
+        }
+
+        if (filled($siteSettings?->logo)) {
+            return (string) $siteSettings->logo;
+        }
+
+        return 'data:image/svg+xml,'.rawurlencode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M320 312C253.7 312 200 258.3 200 192C200 125.7 253.7 72 320 72C386.3 72 440 125.7 440 192C440 258.3 386.3 312 320 312zM289.5 368L350.5 368C360.2 368 368 375.8 368 385.5C368 389.7 366.5 393.7 363.8 396.9L336.4 428.9L367.4 544L368 544L402.6 405.5C404.8 396.8 413.7 391.5 422.1 394.7C484 418.3 528 478.3 528 548.5C528 563.6 515.7 575.9 500.6 575.9L139.4 576C124.3 576 112 563.7 112 548.6C112 478.4 156 418.4 217.9 394.8C226.3 391.6 235.2 396.9 237.4 405.6L272 544.1L272.6 544.1L303.6 429L276.2 397C273.5 393.8 272 389.8 272 385.6C272 375.9 279.8 368.1 289.5 368.1z"/></svg>');
     }
 
     /**

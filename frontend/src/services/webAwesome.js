@@ -51,6 +51,7 @@ import '@web.awesome.me/webawesome-pro/dist/components/scroller/scroller.js'
 import '@web.awesome.me/webawesome-pro/dist/components/switch/switch.js'
 import '@web.awesome.me/webawesome-pro/dist/components/tag/tag.js'
 import '@web.awesome.me/webawesome-pro/dist/components/textarea/textarea.js'
+import '@web.awesome.me/webawesome-pro/dist/components/tooltip/tooltip.js'
 import '@web.awesome.me/webawesome-pro/dist/components/skeleton/skeleton.js'
 import '@web.awesome.me/webawesome-pro/dist/components/tag/tag.js'
 
@@ -71,6 +72,37 @@ const themeImports = {
 class WebAwesomeService {
   static themePromise = null;
   static currentTheme = null;
+  static customBrandTokenProps = [
+    '--wa-color-brand',
+    '--wa-color-brand-fill-quiet',
+    '--wa-color-brand-fill-normal',
+    '--wa-color-brand-fill-loud',
+    '--wa-color-brand-border-quiet',
+    '--wa-color-brand-border-normal',
+    '--wa-color-brand-border-loud',
+    '--wa-color-brand-on-quiet',
+    '--wa-color-brand-on-normal',
+    '--wa-color-brand-on-loud',
+    '--wa-color-text-link',
+    '--wa-color-focus',
+  ];
+
+  /**
+   * Aplicar color principal de marca en :root
+   * Se expone como --brand-color para uso transversal en estilos propios.
+   *
+   * @param {string|null|undefined} brandColor - Color HEX/RGB válido
+   */
+  static applyBrandColor(brandColor) {
+    const htmlElement = document.documentElement;
+
+    if (!brandColor) {
+      htmlElement.style.removeProperty('--brand-color');
+      return;
+    }
+
+    htmlElement.style.setProperty('--brand-color', brandColor);
+  }
 
   /**
    * Aplicar paleta de colores de Web Awesome
@@ -115,6 +147,7 @@ class WebAwesomeService {
    */
   static applySemanticColors(colors = {}) {
     const htmlElement = document.documentElement;
+    const usePrimaryBrandColor = colors.semantic_brand_color === 'brand_color';
 
     // Mapeo de colores semÃ¡nticos a clases CSS
     const semanticGroups = ['brand', 'neutral', 'success', 'warning', 'danger'];
@@ -128,7 +161,13 @@ class WebAwesomeService {
     });
 
     // Aplicar nuevos colores semÃ¡nticos
-    if (colors.semantic_brand_color) {
+    if (usePrimaryBrandColor) {
+      this.applyBrandTokensFromPrimaryColor();
+    } else {
+      this.clearCustomBrandTokenOverrides();
+    }
+
+    if (colors.semantic_brand_color && !usePrimaryBrandColor) {
       htmlElement.classList.add(`wa-brand-${colors.semantic_brand_color}`);
     }
 
@@ -147,6 +186,37 @@ class WebAwesomeService {
     if (colors.semantic_danger_color) {
       htmlElement.classList.add(`wa-danger-${colors.semantic_danger_color}`);
     }
+  }
+
+  static applyBrandTokensFromPrimaryColor() {
+    const htmlElement = document.documentElement;
+    const brandColor = getComputedStyle(htmlElement).getPropertyValue('--brand-color').trim();
+
+    if (!brandColor) {
+      this.clearCustomBrandTokenOverrides();
+      return;
+    }
+
+    htmlElement.style.setProperty('--wa-color-brand', brandColor);
+    htmlElement.style.setProperty('--wa-color-brand-fill-loud', brandColor);
+    htmlElement.style.setProperty('--wa-color-brand-fill-normal', `color-mix(in oklab, ${brandColor} 82%, transparent)`);
+    htmlElement.style.setProperty('--wa-color-brand-fill-quiet', `color-mix(in oklab, ${brandColor} 24%, transparent)`);
+    htmlElement.style.setProperty('--wa-color-brand-border-loud', `color-mix(in oklab, ${brandColor} 86%, transparent)`);
+    htmlElement.style.setProperty('--wa-color-brand-border-normal', `color-mix(in oklab, ${brandColor} 60%, transparent)`);
+    htmlElement.style.setProperty('--wa-color-brand-border-quiet', `color-mix(in oklab, ${brandColor} 32%, transparent)`);
+    htmlElement.style.setProperty('--wa-color-brand-on-loud', '#ffffff');
+    htmlElement.style.setProperty('--wa-color-brand-on-normal', brandColor);
+    htmlElement.style.setProperty('--wa-color-brand-on-quiet', brandColor);
+    htmlElement.style.setProperty('--wa-color-text-link', brandColor);
+    htmlElement.style.setProperty('--wa-color-focus', brandColor);
+  }
+
+  static clearCustomBrandTokenOverrides() {
+    const htmlElement = document.documentElement;
+
+    this.customBrandTokenProps.forEach((prop) => {
+      htmlElement.style.removeProperty(prop);
+    });
   }
 
   /**

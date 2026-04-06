@@ -2,6 +2,60 @@ import { Fancybox } from '@fancyapps/ui';
 import '@fancyapps/ui/dist/fancybox/fancybox.css';
 
 function PlantDetailDialog({ plant, dialogRef, checkoutLoading, onCheckout }) {
+    const sanitizePhone = (value) => `${value ?? ''}`.replace(/\D+/g, '');
+    const mobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
+
+    const getCurrentPlantUrl = () => {
+        if (typeof window === 'undefined') {
+            return '';
+        }
+
+        return `${window.location.origin}${window.location.pathname}`;
+    };
+
+    const getWhatsappMessage = (advisorName) => {
+        const unitName = `${plant?.nombre || ''}`.trim();
+        const projectName = `${plant?.proyectoNombre || ''}`.trim();
+        const name = `${advisorName || ''}`.trim();
+        const plantUrl = getCurrentPlantUrl();
+
+        const baseMessage = `Hola ${name}, me interesa la planta ${unitName} del proyecto ${projectName}. ¿Me puedes compartir más información, por favor?`;
+
+        if (!plantUrl) {
+            return baseMessage;
+        }
+
+        return `${baseMessage} URL: ${plantUrl}`;
+    };
+
+    const getWhatsappUrl = (advisor) => {
+        const phone = sanitizePhone(advisor?.whatsapp);
+
+        if (!phone) {
+            return null;
+        }
+
+        const advisorName = advisor?.fullName || advisor?.firstName || 'asesor';
+        const message = getWhatsappMessage(advisorName);
+
+        return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+    };
+
+    const getAdvisorInitials = (advisor) => {
+        const source = `${advisor?.fullName || `${advisor?.firstName || ''} ${advisor?.lastName || ''}`}`.trim();
+
+        if (!source) {
+            return 'AS';
+        }
+
+        return source
+            .split(/\s+/)
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((part) => part[0]?.toUpperCase() || '')
+            .join('');
+    };
+
     const openImageZoom = (event) => {
         event.preventDefault();
 
@@ -15,7 +69,7 @@ function PlantDetailDialog({ plant, dialogRef, checkoutLoading, onCheckout }) {
         const slide = isSvg
             ? {
                 type: 'html',
-                html: `<img src="${imageUrl.replace(/\"/g, '&quot;')}" alt="Planta ${plant?.nombre || ''}" style="display:block;width:min(92vw,1400px);height:auto;max-height:90vh;object-fit:contain;margin:0 auto;" />`,
+                html: `<img src="${imageUrl.replace(/"/g, '&quot;')}" alt="Planta ${plant?.nombre || ''}" style="display:block;width:min(92vw,1400px);height:auto;max-height:90vh;object-fit:contain;margin:0 auto;" />`,
                 caption: `Planta ${plant?.nombre || ''}`,
             }
             : {
@@ -43,8 +97,7 @@ function PlantDetailDialog({ plant, dialogRef, checkoutLoading, onCheckout }) {
     <wa-dialog
       ref={dialogRef}
       className="plant-detail-dialog"
-      style={{ '--width': '80vw' }}
-      light-dismiss
+      style={mobile ? { '--width': '100dvw','--wa-space-2xl': '1rem' } : { '--width': '80vw' }} // --width desktop 80vw, mobile 95vw
     >
       {plant && (
         <>
@@ -183,6 +236,56 @@ function PlantDetailDialog({ plant, dialogRef, checkoutLoading, onCheckout }) {
                             </div>
                         </wa-details>
                         )}
+
+                        {Array.isArray(plant.asesores) && plant.asesores.length > 0 && (
+                        <>
+                            <wa-divider></wa-divider>
+                            <wa-details summary="Contacto" appearance="plain" open>
+                                <div className="wa-stack wa-gap-s advisor-contact-list">
+                                    {plant.asesores.map((advisor) => {
+                                        const advisorName = advisor.fullName || `${advisor.firstName || ''} ${advisor.lastName || ''}`.trim() || 'Asesor';
+                                        const whatsappUrl = getWhatsappUrl(advisor);
+
+                                        return (
+                                            <article key={advisor.id} className="advisor-contact-card">
+                                                <div className="wa-cluster wa-gap-s wa-align-items-center advisor-contact-header">
+                                                    {advisor.avatarUrl ? (
+                                                        <img src={advisor.avatarUrl} alt={advisorName} className="advisor-avatar" />
+                                                    ) : (
+                                                        <span className="advisor-avatar-fallback" aria-hidden="true">
+                                                            {getAdvisorInitials(advisor)}
+                                                        </span>
+                                                    )}
+                                                    <div className="wa-stack wa-gap-3xs advisor-contact-meta">
+                                                        <strong>{advisorName}</strong>
+                                                        {advisor.email && (
+                                                            <span>{advisor.email}</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                <div className="wa-cluster wa-gap-xs advisor-contact-actions">
+                                                    {whatsappUrl ? (
+                                                        <a
+                                                            className="advisor-whatsapp-link"
+                                                            href={whatsappUrl}
+                                                            target="_blank"
+                                                            rel="noreferrer noopener"
+                                                        >
+                                                            <wa-icon name="whatsapp" family="brands" slot="start"></wa-icon>
+                                                            Contactar por WhatsApp
+                                                        </a>
+                                                    ) : (
+                                                        <wa-badge variant="neutral">Sin WhatsApp</wa-badge>
+                                                    )}
+                                                </div>
+                                            </article>
+                                        );
+                                    })}
+                                </div>
+                            </wa-details>
+                        </>
+                        )}
                     </wa-scroller>
                 </div>
             </div>
@@ -190,7 +293,7 @@ function PlantDetailDialog({ plant, dialogRef, checkoutLoading, onCheckout }) {
             <div slot="footer" className="plant-detail-dialog-footer">
                 {(plant.precioBase || plant.precioLista) && (
                 <>
-                <div className="wa-stack wa-gap-xs">
+                <div className="wa-stack wa-gap-xs precio-detail wa-order-0 wa-order-mobile-1">
                     <div className="wa-cluster wa-caption-s">
                     {plant.precioLista && plant.precioBase && plant.precioLista !== plant.precioBase && (
                         <div className="wa-split wa-gap-xs wa-mt-m">
@@ -201,7 +304,7 @@ function PlantDetailDialog({ plant, dialogRef, checkoutLoading, onCheckout }) {
                         </div>
                     )}
                         <div className="wa-split wa-gap-xs">
-                            <span>Precio sale:</span>
+                            <span className='wa-text-uppercase price-label-discount wa-font-weight-bold'>Precio Sale:</span>
                             <span className="wa-heading-xl wa-font-weight-bold">
                                 UF {(plant.precioBase || plant.precioLista).toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                             </span>
@@ -210,13 +313,13 @@ function PlantDetailDialog({ plant, dialogRef, checkoutLoading, onCheckout }) {
                 </div>
                 </>
                 )}
-                <div className="wa-cluster wa-gap-s">
-                <wa-button
-                    variant="neutral"
-                    data-dialog="close"
-                >
-                    Cerrar
-                </wa-button>
+                <div className="wa-cluster wa-gap-s wa-order-1 wa-order-mobile-0">
+                    <wa-button
+                        variant="neutral"
+                        data-dialog="close"
+                    >
+                        Cerrar
+                    </wa-button>
                 {(plant.isPaid || plant.isReserved || plant.isAvailable === false) ? (
                     <wa-button
                         variant="neutral"

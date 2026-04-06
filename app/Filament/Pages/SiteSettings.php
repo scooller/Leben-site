@@ -233,6 +233,7 @@ class SiteSettings extends Page implements HasForms
                                         Select::make('semantic_brand_color')
                                             ->label('Color Brand (Marca)')
                                             ->options([
+                                                'brand_color' => 'Color principal',
                                                 'red' => 'Red',
                                                 'orange' => 'Orange',
                                                 'yellow' => 'Yellow',
@@ -246,7 +247,7 @@ class SiteSettings extends Page implements HasForms
                                             ])
                                             ->default('blue')
                                             ->required()
-                                            ->helperText('Color principal de tu marca'),
+                                            ->helperText('Si eliges "Color principal", se usa el valor de "Color Principal de la Marca"'),
 
                                         Select::make('semantic_neutral_color')
                                             ->label('Color Neutral')

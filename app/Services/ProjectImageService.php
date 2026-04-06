@@ -24,7 +24,7 @@ class ProjectImageService
     public static function getProjectImageUrl(Proyecto $project): string
     {
         if ($project->project_image_id && $project->projectImage) {
-            return $project->projectImage->getUrl();
+            return (string) $project->projectImage->url;
         }
 
         if (filled($project->salesforce_portada_url)) {
@@ -33,7 +33,7 @@ class ProjectImageService
 
         $siteSettings = SiteSetting::first();
         if ($siteSettings && $siteSettings->logo_id && $siteSettings->logoMedia) {
-            return $siteSettings->logoMedia->getUrl();
+            return (string) $siteSettings->logoMedia->url;
         }
 
         return self::DEFAULT_ICON;

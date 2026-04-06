@@ -3,8 +3,23 @@
  * Usa Web Awesome design tokens y componentes
  * Minimalista: Deja que Web Awesome haga el trabajo, solo layout y spacing
  */
-.app{
+ html.wa-dark .app {
     background-image: url(https://sale.ileben.cl/wp-content/uploads/2020/07/fondo-1.svg);
+    .video-home {
+        &::after {
+            background: linear-gradient(180deg,rgba(var(--wa-color-black-rgb), 1) 0%, rgba(var(--wa-color-black-rgb), 0.5) 50%, rgba(var(--wa-color-black-rgb), 0) 100%);
+        }
+    }
+ }
+ html.wa-light .app {
+    background-image: url(https://sale.ileben.cl/wp-content/uploads/2020/07/fondo.svg);
+    .video-home {
+        &::after {
+            background: linear-gradient(180deg,rgba(var(--wa-color-white-rgb), 1) 0%, rgba(var(--wa-color-white-rgb), 0.5) 50%, rgba(var(--wa-color-white-rgb), 0) 100%);
+        }
+    }
+ }
+.app{
     background-size: cover;
     background-position: center;
     background-attachment: fixed;
@@ -55,7 +70,6 @@
         left: 0;
         width: 100%;
         height: 100%;
-        background: linear-gradient(180deg,rgba(var(--wa-color-black-rgb), 1) 0%, rgba(var(--wa-color-black-rgb), 0.5) 50%, rgba(var(--wa-color-black-rgb), 0) 100%);
     }
 }
 
@@ -140,11 +154,11 @@
       justify-content: flex-end;
       gap: var(--wa-space-xs);
     }
-
-    .price-label-discount {
-      text-transform: uppercase;
-    }
   }
+}
+
+.price-label-discount {
+    color: var(--wa-color-brand);
 }
 
 .discount-seal {
@@ -221,6 +235,13 @@
   display: flex;
   justify-content: space-between;
   width: 100%;
+  .precio-detail{
+    width: 60%;
+     @media (max-width: 768px) {
+        width: 100%;
+        text-align: center;
+    }
+  }
 }
 
 .plant-detail-image {
@@ -230,6 +251,109 @@
   max-height: none;
   object-fit: cover;
   width: 100%;
+}
+
+.advisor-contact-list {
+  width: 100%;
+}
+
+.advisor-contact-card {
+  background: rgba(var(--wa-color-surface-raised-rgb), 0.8);
+  border: 1px solid rgba(var(--wa-color-neutral-fill-normal-rgb), 0.3);
+  border-radius: 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--wa-space-s);
+  justify-content: space-between;
+  padding: var(--wa-space-s);
+}
+
+.advisor-contact-header {
+  min-width: min(16rem, 100%);
+}
+
+.advisor-avatar,
+.advisor-avatar-fallback {
+  border-radius: 999px;
+  flex: 0 0 2.5rem;
+  height: 2.5rem;
+  width: 2.5rem;
+}
+
+.advisor-avatar {
+  object-fit: cover;
+}
+
+.advisor-avatar-fallback {
+  align-items: center;
+  background: linear-gradient(135deg, rgba(var(--wa-color-primary-rgb), 0.9), rgba(var(--wa-color-secondary-rgb), 0.9));
+  color: var(--wa-color-neutral-on-normal);
+  display: inline-flex;
+  font-size: var(--wa-font-size-2xs);
+  font-weight: var(--wa-font-weight-semibold);
+  justify-content: center;
+  letter-spacing: 0.08em;
+}
+
+.advisor-contact-meta {
+  color: var(--wa-color-neutral-on-quiet);
+}
+
+.advisor-contact-meta span {
+  font-size: var(--wa-font-size-2xs);
+  opacity: 0.85;
+}
+
+.advisor-contact-actions {
+  align-items: center;
+}
+
+.advisor-whatsapp-link {
+  align-items: center;
+  background: #1fa750;
+  border-radius: 999px;
+  color: #ffffff;
+  display: inline-flex;
+  font-size: var(--wa-font-size-2xs);
+  font-weight: var(--wa-font-weight-semibold);
+  gap: var(--wa-space-2xs);
+  padding: 0.45rem 0.8rem;
+  text-decoration: none;
+  transition: filter 0.2s ease, transform 0.2s ease;
+}
+
+.advisor-whatsapp-link:hover {
+  color: #ffffff;
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+.theme-floating-toggle {
+  bottom: clamp(0.75rem, 2vw, 1.5rem);
+  left: clamp(0.75rem, 2vw, 1.5rem);
+  position: fixed;
+  z-index: 40;
+  border-radius: var(--wa-border-radius-circle);
+}
+
+.route-plant-loading-dialog::part(panel) {
+  max-width: min(90vw, 26rem);
+}
+
+.route-plant-loading-content {
+  align-items: center;
+  min-width: min(80vw, 20rem);
+  padding: var(--wa-space-s) var(--wa-space-xs);
+  text-align: center;
+}
+
+.route-plant-loading-content strong {
+  font-size: var(--wa-font-size-m);
+}
+
+.route-plant-loading-content span {
+  color: var(--wa-color-text-quiet);
+  font-size: var(--wa-font-size-s);
 }
 
 .box-shadow-1{
