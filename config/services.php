@@ -50,6 +50,8 @@ return [
         'password' => env('SF_PASSWORD'),
         'api_version' => env('SF_API_VERSION', '57.0'),
         'instance_url' => env('SF_INSTANCE_URL'),
+        'public_site_url' => env('SF_PUBLIC_SITE_URL'),
+        'org_id' => env('SF_ORG_ID'),
         'http_verify' => env('SF_HTTP_VERIFY', false),
         'locale' => env('SF_LOCALE', 'en_US'),
     ],

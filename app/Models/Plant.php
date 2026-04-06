@@ -34,6 +34,7 @@ class Plant extends Model
         'superficie_vendible',
         'cover_image_id',
         'interior_image_id',
+        'salesforce_interior_image_url',
         'is_active',
         'last_synced_at',
     ];

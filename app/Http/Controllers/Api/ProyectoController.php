@@ -54,6 +54,8 @@ class ProyectoController extends Controller
         'horario_atencion',
         'is_active',
         'entrega_inmediata',
+        'salesforce_logo_url',
+        'salesforce_portada_url',
         'image_url',
         'created_at',
         'updated_at',

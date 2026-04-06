@@ -59,6 +59,15 @@ function PlantDetailDialog({ plant, dialogRef, checkoutLoading, onCheckout }) {
                             style={{ cursor: 'zoom-in' }}
                         />
                     </a>
+                    {plant.projectLogoUrl && (
+                        <wa-badge variant="neutral" className="project-logo-badge" aria-label={`Logo de ${plant.proyectoNombre || 'proyecto'}`}>
+                            <img
+                                src={plant.projectLogoUrl}
+                                alt={`Logo de ${plant.proyectoNombre || 'proyecto'}`}
+                                className="project-logo-image"
+                            />
+                        </wa-badge>
+                    )}
                     {plant.discountPercentage > 0 && (
                         <div className="discount-seal" aria-label={`Descuento ${plant.discountPercentage}%`}>
                             <span className="discount-seal-value">{plant.discountPercentage}%</span>

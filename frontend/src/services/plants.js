@@ -41,6 +41,29 @@ class PlantsService {
   }
 
   /**
+   * Obtener una planta por slug de proyecto y nombre de unidad
+   */
+  async getByProjectAndUnit(projectSlug, unitName) {
+    try {
+      const response = await api.get(
+        `/plantas/proyecto/${encodeURIComponent(projectSlug)}/unidad/${encodeURIComponent(unitName)}`
+      );
+
+      return response.data;
+    } catch (error) {
+      logError('PlantsService.getByProjectAndUnit', error);
+      const parsed = parseError(error);
+      throw {
+        ...parsed,
+        context: 'getByProjectAndUnit',
+        userMessage: parsed.type === 'not_found'
+          ? 'La planta solicitada no existe.'
+          : 'No se pudo cargar la información de la planta.',
+      };
+    }
+  }
+
+  /**
    * Obtener opciones de ubicación para filtros
    */
   async getLocationFilters() {

@@ -4,7 +4,9 @@ namespace App\Filament\Resources\Proyectos\Schemas;
 
 use App\Models\Proyecto;
 use Awcodes\Curator\Components\Forms\CuratorPicker;
+use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -12,6 +14,8 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 
 class ProyectoForm
 {
@@ -103,9 +107,68 @@ class ProyectoForm
                             ->label('Activo')
                             ->required(),
 
+                        Select::make('asesores')
+                            ->label('Asesores')
+                            ->relationship(
+                                name: 'asesores',
+                                titleAttribute: 'email',
+                                modifyQueryUsing: fn (Builder $query): Builder => $query
+                                    ->orderBy('first_name')
+                                    ->orderBy('last_name')
+                            )
+                            ->multiple()
+                            ->preload()
+                            ->searchable(['first_name', 'last_name', 'email'])
+                            ->getOptionLabelFromRecordUsing(function (Model $record): string {
+                                $fullName = trim(implode(' ', array_filter([$record->first_name, $record->last_name])));
+
+                                if ($fullName !== '' && filled($record->email)) {
+                                    return "{$fullName} ({$record->email})";
+                                }
+
+                                return $fullName !== '' ? $fullName : (string) ($record->email ?? 'Asesor');
+                            })
+                            ->helperText('Puedes vincular uno o más asesores a este proyecto. Los asesores Salesforce se sincronizan automáticamente al sincronizar proyectos.')
+                            ->columnSpan(2),
+
                         CuratorPicker::make('project_image_id')
                             ->label('Imagen del Proyecto')
-                            ->helperText('Imagen que se mostrará como portada en lugar de la imagen por defecto. Si no se proporciona, se usará el logo principal del sitio o un ícono por defecto.')
+                            ->helperText('Imagen manual del proyecto. Si no se define, se usará la Portada de Salesforce; si tampoco existe, se usará el logo principal del sitio o un ícono por defecto.')
+                            ->columnSpan(2),
+
+                        Section::make('Branding Salesforce')
+                            ->description('Activos sincronizados automáticamente desde Salesforce para este proyecto')
+                            ->schema([
+                                TextInput::make('salesforce_portada_url')
+                                    ->label('Portada (Salesforce)')
+                                    ->disabled()
+                                    ->url()
+                                    ->suffixAction(
+                                        Action::make('openSalesforcePortada')
+                                            ->icon('heroicon-m-arrow-top-right-on-square')
+                                            ->url(fn (?Proyecto $record): ?string => $record?->salesforce_portada_url)
+                                            ->openUrlInNewTab()
+                                            ->visible(fn (?Proyecto $record): bool => filled($record?->salesforce_portada_url))
+                                    ),
+
+                                TextInput::make('salesforce_logo_url')
+                                    ->label('Logo (Salesforce)')
+                                    ->disabled()
+                                    ->url()
+                                    ->suffixAction(
+                                        Action::make('openSalesforceLogo')
+                                            ->icon('heroicon-m-arrow-top-right-on-square')
+                                            ->url(fn (?Proyecto $record): ?string => $record?->salesforce_logo_url)
+                                            ->openUrlInNewTab()
+                                            ->visible(fn (?Proyecto $record): bool => filled($record?->salesforce_logo_url))
+                                    ),
+
+                                Placeholder::make('salesforce_branding_hint')
+                                    ->hiddenLabel()
+                                    ->content('La portada se usa como fallback de "Imagen del Proyecto" cuando no hay imagen manual cargada en Curator.')
+                                    ->columnSpan(2),
+                            ])
+                            ->columns(2)
                             ->columnSpan(2),
                     ])
                     ->columns(2),

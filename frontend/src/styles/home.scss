@@ -169,6 +169,24 @@
   z-index: 2;
 }
 
+.project-logo-badge {
+  align-items: center;
+  left: 0.75rem;
+  max-width: min(36%, 180px);
+  min-height: 42px;
+  position: absolute;
+  top: 0.75rem;
+  z-index: 2;
+}
+
+.project-logo-image {
+  display: block;
+  height: auto;
+  max-height: 38px;
+  max-width: 100%;
+  object-fit: contain;
+}
+
 .discount-seal-value {
   font-size: 1rem;
   font-weight: 800;
@@ -192,9 +210,6 @@
 .plant-detail-media > a {
   display: block;
   height: 100%;
-}
-
-.plant-detail-layout {
 }
 
 .plant-detail-dialog::part(footer) {
@@ -232,6 +247,7 @@
 
   .plant-detail-media {
     min-height: 420px;
+    max-height: 550px;
   }
 
   .plant-detail-content wa-scroller {
@@ -258,6 +274,18 @@
     min-width: 52px;
     right: 0.6rem;
     top: 0.6rem;
+  }
+
+  .project-logo-badge {
+    left: 0.6rem;
+    max-width: min(42%, 136px);
+    min-height: 36px;
+    padding: 0.25rem 0.4rem;
+    top: 0.6rem;
+  }
+
+  .project-logo-image {
+    max-height: 30px;
   }
 
   .discount-seal-value {

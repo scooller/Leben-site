@@ -12,6 +12,45 @@ import { isRetryableError } from '../utils/errorHandler';
 import gsap from 'gsap';
 import '../styles/home.scss' with { type: 'css' };
 
+const PLANT_DETAIL_BASE_PATH = '/p';
+
+const slugifySegment = (value) => (
+  `${value ?? ''}`
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[^\w\s-]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+);
+
+const parsePlantDetailPath = (pathname) => {
+  const matcher = new RegExp(`^${PLANT_DETAIL_BASE_PATH}/([^/]+)/([^/]+)/?$`);
+  const matches = pathname.match(matcher);
+
+  if (!matches) {
+    return null;
+  }
+
+  return {
+    projectSlug: decodeURIComponent(matches[1]),
+    unitName: decodeURIComponent(matches[2]),
+  };
+};
+
+const getCurrentBrowserUrl = () => `${window.location.pathname}${window.location.search}${window.location.hash}`;
+
+const normalizeBrowserUrl = (url) => {
+  try {
+    const parsedUrl = new URL(url, window.location.origin);
+
+    return `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
+  } catch {
+    return '/';
+  }
+};
+
 /**
  * Página principal - Catálogo de plantas
  * Usa Web Awesome components de forma nativa con íconos integrados
@@ -31,6 +70,8 @@ function Home() {
   const [manualPayment, setManualPayment] = useState(null);
   const [plantForCheckout, setPlantForCheckout] = useState(null);
   const [gatewayDialogOpen, setGatewayDialogOpen] = useState(false);
+  const [selectedPlantDetail, setSelectedPlantDetail] = useState(null);
+  const [routePlantParams, setRoutePlantParams] = useState(() => parsePlantDetailPath(window.location.pathname));
   const isAuthenticated = authService.isAuthenticated();
 
   // Estados para filtros
@@ -102,6 +143,35 @@ function Home() {
     + (selectedRegion ? 1 : 0)
     + (selectedPrecioMin ? 1 : 0)
     + (selectedPrecioMax ? 1 : 0);
+
+  const mapPlant = useCallback((plant) => {
+    const precioBase = Number(plant.precio_base) || 0;
+    const precioLista = Number(plant.precio_lista) || 0;
+    const discountPercentage = precioLista > 0 && precioBase > 0 && precioBase < precioLista
+      ? Math.max(0, Math.round(Math.abs(((precioLista - precioBase) / precioLista) * 100)))
+      : 0;
+
+    return {
+      ...plant,
+      nombre: plant.name,
+      programa: plant.programa,
+      coverImage: plant.cover_image_url || plant.cover_image_media?.url || '',
+      interiorImage: plant.interior_image_url || plant.interior_image_media?.url || '',
+      precioBase,
+      precioLista,
+      discountPercentage,
+      reservaExigidaPeso: Number(plant.proyecto?.valor_reserva_exigido_defecto_peso) || 0,
+      proyectoNombre: plant.proyecto?.name,
+      proyectoSlug: plant.proyecto?.slug || slugifySegment(plant.proyecto?.name),
+      proyectoDescripcion: plant.proyecto?.descripcion,
+      proyectoDireccion: plant.proyecto?.direccion,
+      proyectoComuna: plant.proyecto?.comuna,
+      proyectoEtapa: plant.proyecto?.etapa,
+      isPaid: !!plant.is_paid,
+      isAvailable: !!plant.is_available,
+      isReserved: !!plant.active_reservation,
+    };
+  }, []);
 
   // Cargar proyectos para el filtro
   useEffect(() => {
@@ -203,33 +273,7 @@ function Home() {
 
       const totalCount = data.total ?? data.data?.length ?? 0;
 
-      const mappedPlants = (data.data || []).map(plant => {
-        const precioBase = Number(plant.precio_base) || 0;
-        const precioLista = Number(plant.precio_lista) || 0;
-        const discountPercentage = precioLista > 0 && precioBase > 0 && precioBase < precioLista
-          ? Math.max(0, Math.round(Math.abs(((precioLista - precioBase) / precioLista) * 100)))
-          : 0;
-
-        return {
-          ...plant,
-          nombre: plant.name,
-          programa: plant.programa,
-          coverImage: plant.cover_image_url || plant.cover_image_media?.url || '',
-          interiorImage: plant.interior_image_url || plant.interior_image_media?.url || '',
-          precioBase,
-          precioLista,
-          discountPercentage,
-          reservaExigidaPeso: Number(plant.proyecto?.valor_reserva_exigido_defecto_peso) || 0,
-          proyectoNombre: plant.proyecto?.name,
-          proyectoDescripcion: plant.proyecto?.descripcion,
-          proyectoDireccion: plant.proyecto?.direccion,
-          proyectoComuna: plant.proyecto?.comuna,
-          proyectoEtapa: plant.proyecto?.etapa,
-          isPaid: !!plant.is_paid,
-          isAvailable: !!plant.is_available,
-          isReserved: !!plant.active_reservation,
-        };
-      });
+      const mappedPlants = (data.data || []).map((plant) => mapPlant(plant));
 
       setPlants(mappedPlants);
       setTotalPages(data.last_page || 1);
@@ -256,12 +300,122 @@ function Home() {
     selectedRegion,
     selectedPrecioMin,
     selectedPrecioMax,
+    mapPlant,
   ]);
 
   // Cargar plantas cuando cambian los filtros
   useEffect(() => {
     loadPlants();
   }, [loadPlants]);
+
+  const buildPlantDetailPath = useCallback((plant) => {
+    const projectSlug = plant?.proyectoSlug || slugifySegment(plant?.proyectoNombre || plant?.proyecto?.name);
+    const unitName = `${plant?.nombre || plant?.name || ''}`.trim();
+
+    if (!projectSlug || !unitName) {
+      return '/';
+    }
+
+    return `${PLANT_DETAIL_BASE_PATH}/${encodeURIComponent(projectSlug)}/${encodeURIComponent(unitName)}`;
+  }, []);
+
+  const handleSelectPlantDetail = useCallback((plant) => {
+    if (!plant) {
+      return;
+    }
+
+    setSelectedPlantDetail(plant);
+
+    const currentUrl = getCurrentBrowserUrl();
+    const nextPath = buildPlantDetailPath(plant);
+
+    if (currentUrl !== nextPath) {
+      const previousUrl = parsePlantDetailPath(window.location.pathname)
+        ? normalizeBrowserUrl(window.history.state?.previousUrl || '/')
+        : currentUrl;
+
+      window.history.pushState({ plantDetail: true, previousUrl }, '', nextPath);
+    }
+  }, [buildPlantDetailPath]);
+
+  const handleClosePlantDetail = useCallback(() => {
+    setSelectedPlantDetail(null);
+
+    const parsedPath = parsePlantDetailPath(window.location.pathname);
+
+    if (!parsedPath) {
+      return;
+    }
+
+    if (window.history.state?.plantDetail && window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+
+    const fallbackUrl = normalizeBrowserUrl(window.history.state?.previousUrl || '/');
+
+    window.history.replaceState({}, '', fallbackUrl);
+    setRoutePlantParams(parsePlantDetailPath(window.location.pathname));
+  }, []);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const parsed = parsePlantDetailPath(window.location.pathname);
+      setRoutePlantParams(parsed);
+
+      if (!parsed) {
+        setSelectedPlantDetail(null);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadPlantFromRoute = async () => {
+      if (!routePlantParams) {
+        return;
+      }
+
+      const plantInList = plants.find((plant) => (
+        (plant.proyectoSlug || slugifySegment(plant.proyectoNombre)) === routePlantParams.projectSlug
+        && `${plant.nombre}`.trim().toLowerCase() === routePlantParams.unitName.trim().toLowerCase()
+      ));
+
+      if (plantInList) {
+        setSelectedPlantDetail(plantInList);
+        return;
+      }
+
+      try {
+        const plantFromApi = await PlantsService.getByProjectAndUnit(routePlantParams.projectSlug, routePlantParams.unitName);
+
+        if (!isMounted) {
+          return;
+        }
+
+        setSelectedPlantDetail(mapPlant(plantFromApi));
+      } catch {
+        if (!isMounted) {
+          return;
+        }
+
+        setSelectedPlantDetail(null);
+      }
+    };
+
+    loadPlantFromRoute();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [routePlantParams, plants, mapPlant]);
 
   // Animaciones del Hero con GSAP
   useEffect(() => {
@@ -594,7 +748,6 @@ function Home() {
             >
                 <div className="wa-grid wa-gap-m filters-inputs" style={{ '--min-column-size': '14rem' }}>
                     <wa-select
-                        label="Proyecto"
                         placeholder="Todos los proyectos"
                         size="small"
                         value={tempProyecto}
@@ -605,15 +758,15 @@ function Home() {
                         multiple
                         clearable
                     >
+                        <span slot='label'><wa-icon name="building"></wa-icon> Proyecto</span>
                         {proyectos.map((proyecto) => (
                         <wa-option key={proyecto.id} value={proyecto.salesforce_id}>
-                            {proyecto.name}
+                            <wa-icon name="building" slot="start"></wa-icon>{proyecto.name}
                         </wa-option>
                         ))}
                     </wa-select>
 
                     <wa-select
-                        label="Dormitorios"
                         placeholder="Todos"
                         size="small"
                         value={tempDormitorios}
@@ -625,15 +778,15 @@ function Home() {
                         multiple
                         clearable
                     >
-                        <wa-option value="ST">Studio</wa-option>
-                        <wa-option value="1D">1 Dormitorio</wa-option>
-                        <wa-option value="2D">2 Dormitorios</wa-option>
-                        <wa-option value="3D">3 Dormitorios</wa-option>
-                        <wa-option value="4D">4 Dormitorios</wa-option>
+                        <span slot='label'><wa-icon name="bed"></wa-icon> Dormitorios</span>
+                        <wa-option value="ST"><wa-icon name="bed" slot="start"></wa-icon>Studio</wa-option>
+                        <wa-option value="1D"><wa-icon name="bed" slot="start"></wa-icon>1 Dormitorio</wa-option>
+                        <wa-option value="2D"><wa-icon name="bed" slot="start"></wa-icon>2 Dormitorios</wa-option>
+                        <wa-option value="3D"><wa-icon name="bed" slot="start"></wa-icon>3 Dormitorios</wa-option>
+                        <wa-option value="4D"><wa-icon name="bed" slot="start"></wa-icon>4 Dormitorios</wa-option>
                     </wa-select>
 
                     <wa-select
-                        label="Baños"
                         placeholder="Todos"
                         size="small"
                         value={tempBanos}
@@ -645,14 +798,14 @@ function Home() {
                         multiple
                         clearable
                     >
-                        <wa-option value="1B">1 Baño</wa-option>
-                        <wa-option value="2B">2 Baños</wa-option>
-                        <wa-option value="3B">3 Baños</wa-option>
+                        <span slot='label'><wa-icon name="bath"></wa-icon> Baños</span>
+                        <wa-option value="1B"><wa-icon name="bath" slot="start"></wa-icon>1 Baño</wa-option>
+                        <wa-option value="2B"><wa-icon name="bath" slot="start"></wa-icon>2 Baños</wa-option>
+                        <wa-option value="3B"><wa-icon name="bath" slot="start"></wa-icon>3 Baños</wa-option>
                     </wa-select>
 
                     <wa-select
                         with-clear
-                        label="Piso"
                         placeholder="Todos"
                         size="small"
                         value={tempPiso}
@@ -663,35 +816,15 @@ function Home() {
                         multiple
                         clearable
                     >
+                        <span slot='label'><wa-icon name="arrow-right-to-city"></wa-icon> Piso</span>
                         {pisoOptions.map((piso) => (
                         <wa-option key={piso} value={piso}>
-                            Piso {piso}
+                            <wa-icon name="arrow-right-to-city" slot="start"></wa-icon>Piso {piso}
                         </wa-option>
                         ))}
                     </wa-select>
 
                     <wa-select
-                        with-clear
-                        label="Comuna"
-                        size="small"
-                        placeholder={tempRegion ? 'Todas' : 'Primero selecciona una región'}
-                        value={tempComuna}
-                        onChange={(e) => {
-                        const value = getSingleSelectValue(e);
-                        setTempComuna(value);
-                        }}
-                        clearable
-                        disabled={!tempRegion}
-                    >
-                        {filteredComunaOptions.map((comuna) => (
-                        <wa-option key={comuna} value={comuna}>
-                            {comuna}
-                        </wa-option>
-                        ))}
-                    </wa-select>
-
-                    <wa-select
-                        label="Región"
                         placeholder="Todas"
                         size="small"
                         value={tempRegion}
@@ -702,16 +835,36 @@ function Home() {
                         }}
                         clearable
                     >
+                        <span slot='label'><wa-icon name="map"></wa-icon> Región</span>
                         {regionOptions.map((region) => (
                         <wa-option key={region} value={region}>
-                            {region}
+                            <wa-icon name="map" slot="start"></wa-icon>{region}
+                        </wa-option>
+                        ))}
+                    </wa-select>
+
+                    <wa-select
+                        with-clear
+                        size="small"
+                        placeholder={tempRegion ? 'Todas' : 'Primero selecciona una región'}
+                        value={tempComuna}
+                        onChange={(e) => {
+                        const value = getSingleSelectValue(e);
+                        setTempComuna(value);
+                        }}
+                        clearable
+                        disabled={!tempRegion}
+                    >
+                        <span slot='label'><wa-icon name="map-location"></wa-icon> Comuna</span>
+                        {filteredComunaOptions.map((comuna) => (
+                        <wa-option key={comuna} value={comuna}>
+                            <wa-icon name="map-location" slot="start"></wa-icon>{comuna}
                         </wa-option>
                         ))}
                     </wa-select>
 
                     <wa-input
                         type="number"
-                        label="Precio Mínimo"
                         placeholder="Desde UF"
                         value={tempPrecioMin}
                         max='9999'
@@ -721,12 +874,12 @@ function Home() {
                             setTempPrecioMin(value);
                         }}
                     >
+                        <span slot='label'><wa-icon name="dollar-sign"></wa-icon> Precio Mínimo</span>
                         <wa-icon slot="start" name="dollar-sign"></wa-icon>
                     </wa-input>
 
                     <wa-input
                         type="number"
-                        label="Precio Máximo"
                         placeholder="Hasta UF"
                         max='9999'
                         size="small"
@@ -736,6 +889,7 @@ function Home() {
                             setTempPrecioMax(value);
                         }}
                     >
+                        <span slot='label'><wa-icon name="dollar-sign"></wa-icon> Precio Máximo</span>
                         <wa-icon slot="start" name="dollar-sign"></wa-icon>
                     </wa-input>
                 </div>
@@ -768,6 +922,9 @@ function Home() {
         loading={loading}
         checkoutLoading={checkoutLoading}
         onQuickCheckout={handleQuickCheckout}
+        selectedPlant={selectedPlantDetail}
+        onSelectPlant={handleSelectPlantDetail}
+        onClosePlantDetail={handleClosePlantDetail}
         totalPlants={totalPlants}
         page={page}
         totalPages={totalPages}

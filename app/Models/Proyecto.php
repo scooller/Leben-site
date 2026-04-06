@@ -4,10 +4,11 @@ namespace App\Models;
 
 use App\Services\ProjectImageService;
 use Awcodes\Curator\Models\Media;
-use Illuminate\Database\Eloquent\Attributes\Attribute;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
@@ -38,6 +39,8 @@ class Proyecto extends Model
         'horario_atencion',
         'is_active',
         'project_image_id',
+        'salesforce_logo_url',
+        'salesforce_portada_url',
         // Descuentos de mercado
         'dscto_m_x_prod_principal_porc',
         'dscto_m_x_prod_principal_uf',
@@ -114,12 +117,11 @@ class Proyecto extends Model
 
     /**
      * Atributo computado: obtiene la URL de imagen del proyecto
-     * Sigue la prioridad: imagen del proyecto > logo principal > ícono por defecto
+     * Sigue la prioridad: imagen del proyecto > portada Salesforce > logo principal > ícono por defecto
      */
-    #[Attribute]
-    public function imageUrl(): string
+    protected function imageUrl(): Attribute
     {
-        return ProjectImageService::getProjectImageUrl($this);
+        return Attribute::get(fn (): string => ProjectImageService::getProjectImageUrl($this));
     }
 
     /**
@@ -141,7 +143,16 @@ class Proyecto extends Model
         return $this->hasMany(Payment::class, 'project_id');
     }
 
-    public function plantas()
+    /**
+     * Relación con asesores del proyecto.
+     */
+    public function asesores(): BelongsToMany
+    {
+        return $this->belongsToMany(Asesor::class, 'asesor_proyecto')
+            ->withTimestamps();
+    }
+
+    public function plantas(): HasMany
     {
         return $this->hasMany(Plant::class, 'salesforce_proyecto_id', 'salesforce_id');
     }

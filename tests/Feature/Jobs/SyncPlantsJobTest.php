@@ -53,6 +53,10 @@ class SyncPlantsJobTest extends TestCase
                         'proyecto_id' => $proyecto->salesforce_id,
                     ],
                 ]);
+
+            $mock->shouldReceive('findPublicProjectDocuments')
+                ->zeroOrMoreTimes()
+                ->andReturn([]);
         });
 
         (new SyncPlantsJob)->handle();
@@ -93,6 +97,10 @@ class SyncPlantsJobTest extends TestCase
                         'proyecto_id' => $proyecto->salesforce_id,
                     ],
                 ]);
+
+            $mock->shouldReceive('findPublicProjectDocuments')
+                ->zeroOrMoreTimes()
+                ->andReturn([]);
         });
 
         (new SyncPlantsJob)->handle();
@@ -109,6 +117,10 @@ class SyncPlantsJobTest extends TestCase
         $this->mock(SalesforceService::class, function (MockInterface $mock) {
             $mock->shouldReceive('findPlants')
                 ->once()
+                ->andReturn([]);
+
+            $mock->shouldReceive('findPublicProjectDocuments')
+                ->zeroOrMoreTimes()
                 ->andReturn([]);
         });
 
@@ -148,6 +160,10 @@ class SyncPlantsJobTest extends TestCase
                         'proyecto_id' => $proyecto->salesforce_id,
                     ],
                 ]);
+
+            $mock->shouldReceive('findPublicProjectDocuments')
+                ->zeroOrMoreTimes()
+                ->andReturn([]);
         });
 
         (new SyncPlantsJob)->handle();

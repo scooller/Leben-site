@@ -9,6 +9,7 @@ use App\Models\SiteSetting;
 use Awcodes\Curator\Models\Media;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class PlantController extends Controller
 {
@@ -203,6 +204,29 @@ class PlantController extends Controller
         return response()->json($this->plantPayload($plant));
     }
 
+    public function showByProjectSlugAndUnitName(string $projectSlug, string $unitName): JsonResponse
+    {
+        $normalizedUnitName = trim($unitName);
+        $normalizedUnitSlug = Str::of($normalizedUnitName)->lower()->replace(' ', '-')->value();
+
+        $plant = Plant::query()
+            ->with(['proyecto', 'activeReservation', 'completedReservation', 'completedPayment', 'coverImageMedia', 'interiorImageMedia'])
+            ->where('is_active', true)
+            ->where(function ($plantQuery) use ($normalizedUnitName, $normalizedUnitSlug) {
+                $plantQuery
+                    ->where('name', $normalizedUnitName)
+                    ->orWhereRaw("LOWER(REPLACE(TRIM(name), ' ', '-')) = ?", [$normalizedUnitSlug]);
+            })
+            ->whereHas('proyecto', function ($projectQuery) use ($projectSlug) {
+                $projectQuery
+                    ->where('is_active', true)
+                    ->where('slug', $projectSlug);
+            })
+            ->firstOrFail();
+
+        return response()->json($this->plantPayload($plant));
+    }
+
     public function locationFilters(): JsonResponse
     {
         $locations = Proyecto::query()
@@ -261,8 +285,10 @@ class PlantController extends Controller
         $payload['cover_image_media'] = $this->mediaPayload($plant->coverImageMedia);
         $payload['interior_image_media'] = $this->mediaPayload($plant->interiorImageMedia);
         $payload['cover_image_url'] = $plant->coverImageMedia?->url;
-        $payload['interior_image_url'] = $plant->interiorImageMedia?->url;
+        $payload['interior_image_url'] = $plant->interiorImageMedia?->url ?: $plant->salesforce_interior_image_url;
+        $payload['salesforce_interior_image_url'] = $plant->salesforce_interior_image_url;
         $payload['proyecto'] = $this->projectPayload($plant->proyecto);
+        $payload['projectLogoUrl'] = $this->resolveProjectLogoUrl($plant);
         $payload['proyectoImageUrl'] = $plant->proyecto?->image_url;
         $payload['imageUrl'] = $this->resolveImageUrl($plant);
         $payload['detailImageUrl'] = $this->resolveDetailImageUrl($plant);
@@ -303,8 +329,22 @@ class PlantController extends Controller
             return $plant->interiorImageMedia->url;
         }
 
-        // 2. Fall back to all other images (same chain as cover)
+        // 2. Salesforce synced interior image URL
+        if (filled($plant->salesforce_interior_image_url)) {
+            return (string) $plant->salesforce_interior_image_url;
+        }
+
+        // 3. Fall back to all other images (same chain as cover)
         return $this->resolveImageUrl($plant);
+    }
+
+    private function resolveProjectLogoUrl(Plant $plant): ?string
+    {
+        if (filled($plant->proyecto?->salesforce_logo_url)) {
+            return (string) $plant->proyecto->salesforce_logo_url;
+        }
+
+        return null;
     }
 
     private function getDefaultImageUrl(): string
@@ -337,6 +377,7 @@ class PlantController extends Controller
         return [
             'id' => $proyecto->id,
             'name' => $proyecto->name,
+            'slug' => $proyecto->slug,
             'tipo' => $proyecto->tipo,
             'direccion' => $proyecto->direccion,
             'comuna' => $proyecto->comuna,
@@ -348,6 +389,7 @@ class PlantController extends Controller
             'entrega_inmediata' => $proyecto->entrega_inmediata,
             'is_active' => $proyecto->is_active,
             'image_url' => $proyecto->image_url,
+            'salesforce_logo_url' => $proyecto->salesforce_logo_url,
             'valor_reserva_exigido_defecto_peso' => $proyecto->valor_reserva_exigido_defecto_peso,
             'valor_reserva_exigido_min_peso' => $proyecto->valor_reserva_exigido_min_peso,
         ];

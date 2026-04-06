@@ -2,11 +2,14 @@
 
 namespace App\Services\Salesforce;
 
+use Exception;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Omniphx\Forrest\Exceptions\MissingKeyException;
 use Omniphx\Forrest\Exceptions\MissingResourceException;
 use Omniphx\Forrest\Providers\Laravel\Facades\Forrest;
+use Throwable;
 
 class SalesforceService
 {
@@ -48,7 +51,7 @@ class SalesforceService
         try {
             Forrest::authenticate();
             Log::info('Salesforce: Autenticación exitosa');
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Salesforce: Error en autenticación - '.$e->getMessage());
             throw $e;
         }
@@ -80,6 +83,8 @@ class SalesforceService
      *               'name' => string,
      *               'product_code' => string,
      *               'orientacion' => string,
+     *               'modelo_name' => string|null,
+     *               'modelo_programa' => string|null,
      *               'programa' => string,
      *               'programa2' => string,
      *               'piso' => string,
@@ -96,7 +101,7 @@ class SalesforceService
     public function findPlants(?int $cacheTtl = null): array
     {
         // SOQL para obtener plantas desde Product2
-        $soql = 'SELECT Id, Name, ProductCode, Orientacion2__c, Programa__c, Programa2__c, Piso__c, '
+        $soql = 'SELECT Id, Name, ProductCode, Orientacion2__c, Programa__c, Programa2__c, Modelo__r.Name, Modelo__r.Programa__c, Piso__c, '
             .'Precio_Base__c, Precio_Lista__c, '
             .'Superficie_Total_Producto_Principal__c, Superficie_Interior__c, Superficie_Util__c, '
             .'Opportunity__c, Superficie_Terraza__c, Superficie_Vendible__c, Proyecto__c '
@@ -119,6 +124,8 @@ class SalesforceService
                         'name' => $entry['Name'] ?? null,
                         'product_code' => $entry['ProductCode'] ?? null,
                         'orientacion' => $entry['Orientacion2__c'] ?? null,
+                        'modelo_name' => $entry['Modelo__r']['Name'] ?? null,
+                        'modelo_programa' => $entry['Modelo__r']['Programa__c'] ?? null,
                         'programa' => $entry['Programa__c'] ?? null,
                         'programa2' => $entry['Programa2__c'] ?? null,
                         'piso' => $entry['Piso__c'] ?? null,
@@ -146,6 +153,8 @@ class SalesforceService
                         'name' => $entry['Name'] ?? null,
                         'product_code' => $entry['ProductCode'] ?? null,
                         'orientacion' => $entry['Orientacion2__c'] ?? null,
+                        'modelo_name' => $entry['Modelo__r']['Name'] ?? null,
+                        'modelo_programa' => $entry['Modelo__r']['Programa__c'] ?? null,
                         'programa' => $entry['Programa__c'] ?? null,
                         'programa2' => $entry['Programa2__c'] ?? null,
                         'piso' => $entry['Piso__c'] ?? null,
@@ -219,7 +228,7 @@ class SalesforceService
         // Asegurar que Forrest esté autenticado
         try {
             Forrest::authenticate();
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             // Si falla, continuar - el query lo intentará
         }
 
@@ -228,6 +237,7 @@ class SalesforceService
         $soql = 'SELECT Id, Name, Descripci_n__c, Direccion__c, Comuna__c, Provincia__c, Region__c, '
             .'Email__c, Telefono__c, Pagina_Web_Proyecto__c, Razon_Social__c, RUT__c, '
             .'Fecha_Inicio_Ventas__c, Fecha_Recepcion_Municipal__c, Etapa__c, Horario_Atencion__c, '
+            .'Asesor_Responsable__c, '
             .'Dscto_M_x_Prod_Principal_Porc__c, Dscto_M_x_Prod_Principal_UF__c, '
             .'Dscto_M_x_Bodega_Porc__c, Dscto_M_x_Bodega_UF__c, '
             .'Dscto_M_x_Estac_Porc__c, Dscto_M_x_Estac_UF__c, '
@@ -267,6 +277,7 @@ class SalesforceService
                         'fecha_entrega' => $entry['Fecha_Recepcion_Municipal__c'] ?? null,
                         'etapa' => $entry['Etapa__c'] ?? null,
                         'horario_atencion' => $entry['Horario_Atencion__c'] ?? null,
+                        'asesor_responsable_ids' => $this->normalizeSalesforceIdList($entry['Asesor_Responsable__c'] ?? null),
                         'dscto_m_x_prod_principal_porc' => (float) ($entry['Dscto_M_x_Prod_Principal_Porc__c'] ?? 0),
                         'dscto_m_x_prod_principal_uf' => (float) ($entry['Dscto_M_x_Prod_Principal_UF__c'] ?? 0),
                         'dscto_m_x_bodega_porc' => (float) ($entry['Dscto_M_x_Bodega_Porc__c'] ?? 0),
@@ -309,6 +320,7 @@ class SalesforceService
                         'fecha_entrega' => $entry['Fecha_Recepcion_Municipal__c'] ?? null,
                         'etapa' => $entry['Etapa__c'] ?? null,
                         'horario_atencion' => $entry['Horario_Atencion__c'] ?? null,
+                        'asesor_responsable_ids' => $this->normalizeSalesforceIdList($entry['Asesor_Responsable__c'] ?? null),
                         'dscto_m_x_prod_principal_porc' => (float) ($entry['Dscto_M_x_Prod_Principal_Porc__c'] ?? 0),
                         'dscto_m_x_prod_principal_uf' => (float) ($entry['Dscto_M_x_Prod_Principal_UF__c'] ?? 0),
                         'dscto_m_x_bodega_porc' => (float) ($entry['Dscto_M_x_Bodega_Porc__c'] ?? 0),
@@ -338,5 +350,365 @@ class SalesforceService
     public function invalidateProjectsCache(): void
     {
         Cache::forget('salesforce:proyectos');
+    }
+
+    /**
+     * Obtener usuarios de Salesforce por IDs.
+     *
+     * @param  list<string>  $salesforceUserIds
+     * @return list<array{id: string|null, first_name: string|null, last_name: string|null, email: string|null, whatsapp_owner: string|null, avatar_url: string|null, is_active: bool}>
+     */
+    public function findSalesforceUsersByIds(array $salesforceUserIds, ?int $cacheTtl = null): array
+    {
+        $normalizedIds = array_values(array_unique(array_filter(array_map(
+            static fn (string $id): string => trim($id),
+            $salesforceUserIds
+        ), static fn (string $id): bool => $id !== '')));
+
+        if ($normalizedIds === []) {
+            return [];
+        }
+
+        $quotedIds = array_map(
+            static fn (string $id): string => "'".str_replace("'", "\\'", $id)."'",
+            $normalizedIds
+        );
+
+        $soql = 'SELECT Id, FirstName, LastName, Email, Whatsapp_owner__c, MediumPhotoUrl, IsActive '
+            .'FROM User '
+            .'WHERE Id IN ('.implode(',', $quotedIds).') '
+            .'LIMIT 2000';
+
+        $records = $this->query($soql, $cacheTtl ?? $this->defaultCacheTtl);
+
+        return array_map(static function (array $entry): array {
+            return [
+                'id' => $entry['Id'] ?? null,
+                'first_name' => $entry['FirstName'] ?? null,
+                'last_name' => $entry['LastName'] ?? null,
+                'email' => $entry['Email'] ?? null,
+                'whatsapp_owner' => $entry['Whatsapp_owner__c'] ?? null,
+                'avatar_url' => $entry['MediumPhotoUrl'] ?? null,
+                'is_active' => (bool) ($entry['IsActive'] ?? true),
+            ];
+        }, $records);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function normalizeSalesforceIdList(mixed $value): array
+    {
+        if ($value === null) {
+            return [];
+        }
+
+        if (is_array($value)) {
+            return array_values(array_unique(array_filter(array_map(
+                static fn (mixed $item): string => trim((string) $item),
+                $value
+            ), static fn (string $item): bool => $item !== '')));
+        }
+
+        $asString = trim((string) $value);
+        if ($asString === '') {
+            return [];
+        }
+
+        if (str_contains($asString, ';')) {
+            $parts = explode(';', $asString);
+
+            return array_values(array_unique(array_filter(array_map(
+                static fn (string $item): string => trim($item),
+                $parts
+            ), static fn (string $item): bool => $item !== '')));
+        }
+
+        if (str_contains($asString, ',')) {
+            $parts = explode(',', $asString);
+
+            return array_values(array_unique(array_filter(array_map(
+                static fn (string $item): string => trim($item),
+                $parts
+            ), static fn (string $item): bool => $item !== '')));
+        }
+
+        return [$asString];
+    }
+
+    /**
+     * Obtener documentos públicos de Salesforce para branding de cotizador (logo/portada).
+     *
+     * @param  list<string>  $documentNames
+     * @return list<array{
+     *   id: string|null,
+     *   name: string|null,
+     *   type: string|null,
+     *   body_length: int,
+     *   body_path: string|null,
+     *   download_url: string|null,
+     *   project_name: string|null,
+     *   asset_kind: string|null,
+     *   last_modified_at: string|null
+     * }>
+     */
+    public function findPublicProjectDocuments(array $documentNames, ?int $cacheTtl = null): array
+    {
+        $names = array_values(array_unique(array_filter(array_map(
+            static fn ($name): string => trim((string) $name),
+            $documentNames
+        ), static fn (string $name): bool => $name !== '')));
+
+        if ($names === []) {
+            return [];
+        }
+
+        $quotedNames = array_map(
+            static fn (string $name): string => "'".str_replace("'", "\\'", $name)."'",
+            $names
+        );
+
+        $soql = 'SELECT Id, Name, Type, BodyLength, Body, LastModifiedDate FROM Document '
+            .'WHERE IsPublic = true AND Name IN ('.implode(',', $quotedNames).') '
+            .'ORDER BY Name';
+
+        $ttl = $cacheTtl ?? $this->defaultCacheTtl;
+        $records = $this->query($soql, $ttl);
+
+        return $this->mapPublicProjectDocuments($records);
+    }
+
+    /**
+     * Obtener todos los documentos públicos de cotizador (logo/portada) sin lista fija de nombres.
+     *
+     * @return list<array{
+     *   id: string|null,
+     *   name: string|null,
+     *   type: string|null,
+     *   body_length: int,
+     *   body_path: string|null,
+     *   download_url: string|null,
+     *   project_name: string|null,
+     *   asset_kind: string|null,
+     *   last_modified_at: string|null
+     * }>
+     */
+    public function findPublicCotizadorDocuments(?int $cacheTtl = null): array
+    {
+        $soql = 'SELECT Id, Name, Type, BodyLength, Body, LastModifiedDate FROM Document '
+            ."WHERE IsPublic = true AND (Name LIKE '% - Cotizador Portada' OR Name LIKE '% - Cotizador Logo') "
+            .'ORDER BY Name';
+
+        $ttl = $cacheTtl ?? $this->defaultCacheTtl;
+        $records = $this->query($soql, $ttl);
+
+        return $this->mapPublicProjectDocuments($records);
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $records
+     * @return list<array{
+     *   id: string|null,
+     *   name: string|null,
+     *   type: string|null,
+     *   body_length: int,
+     *   body_path: string|null,
+     *   download_url: string|null,
+     *   project_name: string|null,
+     *   asset_kind: string|null,
+     *   last_modified_at: string|null
+     * }>
+     */
+    private function mapPublicProjectDocuments(array $records): array
+    {
+        return array_map(function (array $record): array {
+            $name = $record['Name'] ?? null;
+            $bodyPath = $record['Body'] ?? null;
+            $documentId = $record['Id'] ?? null;
+            $lastModifiedAt = $record['LastModifiedDate'] ?? null;
+
+            return [
+                'id' => $documentId,
+                'name' => $name,
+                'type' => $record['Type'] ?? null,
+                'body_length' => (int) ($record['BodyLength'] ?? 0),
+                'body_path' => $bodyPath,
+                'download_url' => $this->buildSalesforceDownloadUrl($bodyPath, $documentId, $lastModifiedAt),
+                'project_name' => $this->extractProjectNameFromDocumentName($name),
+                'asset_kind' => $this->extractAssetKindFromDocumentName($name),
+                'last_modified_at' => $lastModifiedAt,
+            ];
+        }, $records);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function getDefaultProjectDocumentNames(): array
+    {
+        return [
+            'Edificio Indi - Cotizador Portada',
+            'Edificio Indi - Cotizador Logo',
+            'Edificio Capitanes - Cotizador Portada',
+            'Edificio Capitanes - Cotizador Logo',
+        ];
+    }
+
+    private function buildSalesforceDownloadUrl(?string $bodyPath, ?string $documentId = null, ?string $lastModifiedAt = null): ?string
+    {
+        $publicSiteUrl = $this->resolvePublicSiteUrl();
+        $orgId = $this->resolveOrgId();
+
+        if ($documentId !== null && trim($documentId) !== '' && $publicSiteUrl !== null && $orgId !== null) {
+            $query = [
+                'id' => $documentId,
+                'oid' => $orgId,
+            ];
+
+            $lastMod = $this->toLastModMillis($lastModifiedAt);
+            if ($lastMod !== null) {
+                $query['lastMod'] = $lastMod;
+            }
+
+            return rtrim($publicSiteUrl, '/').'/servlet/servlet.ImageServer?'.http_build_query($query);
+        }
+
+        if ($bodyPath === null || trim($bodyPath) === '') {
+            return null;
+        }
+
+        $instanceUrl = (string) config('services.salesforce.instance_url', '');
+        if ($instanceUrl === '') {
+            return null;
+        }
+
+        return rtrim($instanceUrl, '/').'/'.ltrim($bodyPath, '/');
+    }
+
+    private function resolvePublicSiteUrl(): ?string
+    {
+        $configuredSiteUrl = trim((string) config('services.salesforce.public_site_url', ''));
+        if ($configuredSiteUrl !== '') {
+            return rtrim($configuredSiteUrl, '/');
+        }
+
+        $instanceUrl = trim((string) config('services.salesforce.instance_url', ''));
+        if ($instanceUrl === '') {
+            return null;
+        }
+
+        $parts = parse_url($instanceUrl);
+        $host = $parts['host'] ?? null;
+        if (! is_string($host) || $host === '') {
+            return null;
+        }
+
+        $siteHost = str_replace('salesforce.com', 'salesforce-sites.com', $host);
+        if ($siteHost === '' || $siteHost === $host) {
+            return null;
+        }
+
+        $scheme = $parts['scheme'] ?? 'https';
+
+        return sprintf('%s://%s', $scheme, $siteHost);
+    }
+
+    private function resolveOrgId(): ?string
+    {
+        $configuredOrgId = trim((string) config('services.salesforce.org_id', ''));
+        if ($configuredOrgId !== '') {
+            return $configuredOrgId;
+        }
+
+        $cacheKey = 'salesforce:org_id:auto';
+        $cachedOrgId = Cache::get($cacheKey);
+        if (is_string($cachedOrgId) && trim($cachedOrgId) !== '') {
+            return $cachedOrgId;
+        }
+
+        $resolvedOrgId = $this->resolveOrgIdFromIdentity() ?? $this->resolveOrgIdFromOrganizationQuery();
+        if ($resolvedOrgId !== null) {
+            Cache::put($cacheKey, $resolvedOrgId, now()->addDay());
+        }
+
+        return $resolvedOrgId;
+    }
+
+    private function resolveOrgIdFromIdentity(): ?string
+    {
+        try {
+            $identity = Forrest::identity();
+
+            $identityUrl = null;
+            if (is_array($identity)) {
+                $identityUrl = $identity['id'] ?? $identity['identity'] ?? null;
+            } elseif (is_string($identity)) {
+                $identityUrl = $identity;
+            }
+
+            if (! is_string($identityUrl) || $identityUrl === '') {
+                return null;
+            }
+
+            if (preg_match('/\/id\/([a-zA-Z0-9]{15,18})\//', $identityUrl, $matches) === 1) {
+                return $matches[1];
+            }
+        } catch (Throwable) {
+            return null;
+        }
+
+        return null;
+    }
+
+    private function resolveOrgIdFromOrganizationQuery(): ?string
+    {
+        try {
+            $result = Forrest::query('SELECT Id FROM Organization LIMIT 1');
+            $records = $result['records'] ?? [];
+            $orgId = $records[0]['Id'] ?? null;
+
+            return is_string($orgId) && trim($orgId) !== '' ? $orgId : null;
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    private function toLastModMillis(?string $lastModifiedAt): ?string
+    {
+        if ($lastModifiedAt === null || trim($lastModifiedAt) === '') {
+            return null;
+        }
+
+        try {
+            return (string) Carbon::parse($lastModifiedAt)->getTimestampMs();
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    private function extractProjectNameFromDocumentName(?string $documentName): ?string
+    {
+        if ($documentName === null || trim($documentName) === '') {
+            return null;
+        }
+
+        return preg_replace('/\s*-\s*Cotizador\s*(Logo|Portada)\s*$/i', '', $documentName) ?: $documentName;
+    }
+
+    private function extractAssetKindFromDocumentName(?string $documentName): ?string
+    {
+        if ($documentName === null) {
+            return null;
+        }
+
+        if (stripos($documentName, 'Cotizador Logo') !== false) {
+            return 'logo';
+        }
+
+        if (stripos($documentName, 'Cotizador Portada') !== false) {
+            return 'portada';
+        }
+
+        return null;
     }
 }

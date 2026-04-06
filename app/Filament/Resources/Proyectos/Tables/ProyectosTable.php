@@ -68,6 +68,13 @@ class ProyectosTable
                 ->label('Región')
                 ->searchable(),
 
+            TextColumn::make('asesores.full_name')
+                ->label('Asesores')
+                ->badge()
+                ->separator(',')
+                ->limitList(2)
+                ->expandableLimitedList(),
+
             // TextColumn::make('razon_social')
             //     ->label('Razón Social')
             //     ->searchable(),

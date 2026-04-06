@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Plants\Schemas;
 
 use App\Models\Proyecto;
 use Awcodes\Curator\Components\Forms\CuratorPicker;
+use Filament\Actions\Action;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -89,6 +90,16 @@ class PlantForm
                 CuratorPicker::make('interior_image_id')
                     ->label('Imagen Interior')
                     ->helperText('Imagen interior o de detalle de la planta.'),
+                TextInput::make('salesforce_interior_image_url')
+                    ->label('Imagen interior (Salesforce)')
+                    ->readOnly()
+                    ->dehydrated(false)
+                    ->suffixAction(
+                        Action::make('openSalesforceInteriorImage')
+                            ->icon('heroicon-o-arrow-top-right-on-square')
+                            ->url(fn (?string $state): ?string => filled($state) ? $state : null, shouldOpenInNewTab: true)
+                    )
+                    ->helperText('Sincronizada automáticamente desde Salesforce cuando existe un documento con nombre "Proyecto - Planta".'),
                 Toggle::make('is_active')
                     ->label('Activo')
                     ->required(),

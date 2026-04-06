@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ScrollSmoother } from 'gsap/ScrollSmoother';
@@ -19,11 +19,33 @@ function PlantsGrid({
   totalPlants,
   page,
   totalPages,
-  onPageChange
+  onPageChange,
+  selectedPlant,
+  onSelectPlant,
+  onClosePlantDetail,
 }) {
-  const [selectedPlant, setSelectedPlant] = useState(null);
+  const [internalSelectedPlant, setInternalSelectedPlant] = useState(null);
   const dialogRef = useRef(null);
   const gridContainerRef = useRef(null);
+  const activePlant = selectedPlant ?? internalSelectedPlant;
+
+  const setActivePlant = (plant) => {
+    if (typeof onSelectPlant === 'function') {
+      onSelectPlant(plant);
+      return;
+    }
+
+    setInternalSelectedPlant(plant);
+  };
+
+  const closeActivePlant = useCallback(() => {
+    if (typeof onClosePlantDetail === 'function') {
+      onClosePlantDetail();
+      return;
+    }
+
+    setInternalSelectedPlant(null);
+  }, [onClosePlantDetail]);
 
   // GSAP ScrollTrigger para animar cards cuando entran al viewport
   useEffect(() => {
@@ -126,21 +148,48 @@ function PlantsGrid({
   const showingTo = Math.min((page - 1) * 12 + plants.length, totalPlants || 0);
 
   const openPlantDetail = (plant) => {
-    setSelectedPlant(plant);
-    if (dialogRef.current) {
-      dialogRef.current.open = true;
-    }
+    setActivePlant(plant);
   };
 
   const handleCheckoutFromDialog = () => {
-    if (!selectedPlant) return;
+    if (!activePlant) return;
     // Cerrar el diálogopar
     if (dialogRef.current) {
       dialogRef.current.open = false;
     }
     // Llamar al checkout con la planta seleccionada
-    onQuickCheckout(selectedPlant);
+    onQuickCheckout(activePlant);
   };
+
+  useEffect(() => {
+    if (!dialogRef.current) {
+      return;
+    }
+
+    if (activePlant) {
+      dialogRef.current.open = true;
+    } else {
+      dialogRef.current.open = false;
+    }
+  }, [activePlant]);
+
+  useEffect(() => {
+    const dialogElement = dialogRef.current;
+
+    if (!dialogElement) {
+      return;
+    }
+
+    const handleAfterHide = () => {
+      closeActivePlant();
+    };
+
+    dialogElement.addEventListener('wa-after-hide', handleAfterHide);
+
+    return () => {
+      dialogElement.removeEventListener('wa-after-hide', handleAfterHide);
+    };
+  }, [closeActivePlant]);
 
   // Skeleton de carga
   if (loading) {
@@ -249,23 +298,23 @@ function PlantsGrid({
                 </div>
                 <div slot="header" className="plant-header-wrapper">
                     <div className="wa-cluster wa-gap-m wa-align-items-center plant-header wa-heading-l">
-                        <span>{plant.proyectoNombre}</span> -
+                        <span>{plant.proyectoNombre}</span>
                         <wa-badge appearance="filled-outlined" variant="neutral">Planta {plant.nombre}</wa-badge>
                     </div>
                 </div>
 
                 <div slot="header-actions" className="wa-cluster wa-gap-xs">
                   {plant.proyectoEtapa && (
-                  <wa-badge variant="success">Etapa: {plant.proyectoEtapa}</wa-badge>
+                  <wa-badge variant="success" style={{ fontSize: 'var(--wa-font-size-xs)' }}>{plant.proyectoEtapa}</wa-badge>
                   )}
                     {plant.proyectoComuna && (
-                    <wa-badge variant={plant.isPaid ? 'neutral' : 'brand'}>{plant.proyectoComuna}</wa-badge>
+                    <wa-badge variant={plant.isPaid ? 'neutral' : 'brand'}><wa-icon slot="start" name="map-location"></wa-icon>{plant.proyectoComuna}</wa-badge>
                     )}
                     {plant.isPaid && (
-                    <wa-badge variant="neutral">Pagada</wa-badge>
+                    <wa-badge variant="neutral"><wa-icon name="shop-slash" slot="start"></wa-icon>Pagada</wa-badge>
                     )}
                     {plant.isReserved && (
-                    <wa-badge variant="warning">Reservado</wa-badge>
+                    <wa-badge variant="warning"><wa-icon name="business-time" slot="start"></wa-icon>Reservado</wa-badge>
                     )}
                 </div>
 
@@ -285,7 +334,7 @@ function PlantsGrid({
                         )}
                         {plant.piso && (
                         <div className="wa-cluster wa-gap-xs">
-                            <wa-icon name="building" slot="header"></wa-icon>
+                            <wa-icon name="arrow-right-to-city" slot="header"></wa-icon>
                             <span>Piso {plant.piso}</span>
                         </div>
                         )}
@@ -314,9 +363,7 @@ function PlantsGrid({
                         {(0 < plant.precioBase) && (
                             <div className="price-final">
                             {plant.precioBase < plant.precioLista && (
-                            <span className="price-label-discount">
-                              Precio sale:
-                            </span>
+                            <span className="price-label-discount">Precio sale: </span>
                             )}
                             <span className="price-sale wa-font-weight-bold wa-heading-xl">
                                 UF {(plant.precioBase).toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
@@ -361,7 +408,7 @@ function PlantsGrid({
 
       {/* Diálogo - Detalles de Planta */}
       <PlantDetailDialog
-        plant={selectedPlant}
+        plant={activePlant}
         dialogRef={dialogRef}
         checkoutLoading={checkoutLoading}
         onCheckout={handleCheckoutFromDialog}

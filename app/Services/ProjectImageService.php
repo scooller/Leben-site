@@ -7,7 +7,7 @@ use App\Models\SiteSetting;
 
 /**
  * Servicio para obtener la imagen correcta de un proyecto
- * Sigue la prioridad: imagen del proyecto > logo principal > ícono por defecto
+ * Sigue la prioridad: imagen del proyecto > portada Salesforce > logo principal > ícono por defecto
  */
 class ProjectImageService
 {
@@ -23,18 +23,19 @@ class ProjectImageService
      */
     public static function getProjectImageUrl(Proyecto $project): string
     {
-        // 1. Si el proyecto tiene imagen personalizada, devolver su URL
         if ($project->project_image_id && $project->projectImage) {
             return $project->projectImage->getUrl();
         }
 
-        // 2. Si no, devolver logo principal desde site-settings
+        if (filled($project->salesforce_portada_url)) {
+            return (string) $project->salesforce_portada_url;
+        }
+
         $siteSettings = SiteSetting::first();
         if ($siteSettings && $siteSettings->logo_id && $siteSettings->logoMedia) {
             return $siteSettings->logoMedia->getUrl();
         }
 
-        // 3. Si no hay logo principal, devolver ícono por defecto
         return self::DEFAULT_ICON;
     }
 

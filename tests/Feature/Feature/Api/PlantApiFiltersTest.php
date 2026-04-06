@@ -345,6 +345,59 @@ class PlantApiFiltersTest extends TestCase
         $this->assertArrayNotHasKey('path', $interiorImageMedia);
     }
 
+    public function test_it_can_get_plant_by_project_slug_and_unit_name(): void
+    {
+        $project = Proyecto::factory()->create([
+            'name' => 'Edificio Inn',
+            'is_active' => true,
+        ]);
+
+        $plant = Plant::query()->create([
+            'salesforce_product_id' => (string) Str::uuid(),
+            'salesforce_proyecto_id' => $project->salesforce_id,
+            'name' => '202',
+            'product_code' => 'PLANT-202',
+            'programa' => '2 dormitorios',
+            'programa2' => '2 baños',
+            'precio_base' => 5000,
+            'precio_lista' => 5500,
+            'is_active' => true,
+            'last_synced_at' => now(),
+        ]);
+
+        $response = $this->getJson('/api/v1/plantas/proyecto/'.$project->slug.'/unidad/202');
+
+        $response->assertOk();
+        $response->assertJsonPath('id', $plant->id);
+        $response->assertJsonPath('proyecto.slug', $project->slug);
+    }
+
+    public function test_it_can_get_plant_by_project_slug_and_slugified_unit_name(): void
+    {
+        $project = Proyecto::factory()->create([
+            'name' => 'Condominio Sur',
+            'is_active' => true,
+        ]);
+
+        $plant = Plant::query()->create([
+            'salesforce_product_id' => (string) Str::uuid(),
+            'salesforce_proyecto_id' => $project->salesforce_id,
+            'name' => 'Depto 120 B',
+            'product_code' => 'PLANT-120B',
+            'programa' => '2 dormitorios',
+            'programa2' => '2 baños',
+            'precio_base' => 5000,
+            'precio_lista' => 5500,
+            'is_active' => true,
+            'last_synced_at' => now(),
+        ]);
+
+        $response = $this->getJson('/api/v1/plantas/proyecto/'.$project->slug.'/unidad/depto-120-b');
+
+        $response->assertOk();
+        $response->assertJsonPath('id', $plant->id);
+    }
+
     private function createPlant(string $salesforceProyectoId, bool $isActive): Plant
     {
         return Plant::query()->create([

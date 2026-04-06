@@ -125,6 +125,7 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'token.origin'])->group(functio
     // Plantas
     Route::get('/plantas', [App\Http\Controllers\Api\PlantController::class, 'index']);
     Route::get('/plantas/filtros-ubicacion', [App\Http\Controllers\Api\PlantController::class, 'locationFilters']);
+    Route::get('/plantas/proyecto/{projectSlug}/unidad/{unitName}', [App\Http\Controllers\Api\PlantController::class, 'showByProjectSlugAndUnitName']);
     Route::get('/plantas/{id}', [App\Http\Controllers\Api\PlantController::class, 'show']);
 
     // Pasarelas disponibles
