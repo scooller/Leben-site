@@ -21,16 +21,16 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Interceptor para manejar errores de autenticación
+// Interceptor para manejar errores de autenticación sin forzar navegación.
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Limpiar token y redirigir al login
+      // Limpiar credenciales locales y propagar el error para que la UI lo muestre.
       localStorage.removeItem('auth_token');
       localStorage.removeItem('user');
-      window.location.href = '/login';
     }
+
     return Promise.reject(error);
   }
 );

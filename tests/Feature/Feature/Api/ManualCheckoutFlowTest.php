@@ -110,6 +110,64 @@ class ManualCheckoutFlowTest extends TestCase
             ->assertJsonPath('gateways', []);
     }
 
+    public function test_it_does_not_offer_transbank_when_only_config_slug_mapping_exists(): void
+    {
+        config([
+            'payments.gateways.transbank.commerce_codes' => [
+                'proyecto-sin-codigo-db' => '597099999999',
+            ],
+        ]);
+
+        $project = Proyecto::factory()->create([
+            'name' => 'Proyecto Sin Codigo DB',
+            'slug' => 'proyecto-sin-codigo-db',
+            'transbank_commerce_code' => null,
+            'manual_payment_instructions' => null,
+            'manual_payment_bank_accounts' => null,
+            'manual_payment_link' => null,
+        ]);
+
+        $plant = Plant::factory()->create([
+            'salesforce_proyecto_id' => $project->salesforce_id,
+            'is_active' => true,
+        ]);
+
+        SiteSetting::current()->update([
+            'gateway_transbank_enabled' => true,
+            'gateway_mercadopago_enabled' => false,
+            'gateway_manual_enabled' => false,
+        ]);
+
+        $response = $this->getJson('/api/v1/payment-gateways?plant_id='.$plant->id);
+
+        $response->assertOk()
+            ->assertJsonPath('count', 0)
+            ->assertJsonMissing([
+                'id' => 'transbank',
+            ]);
+    }
+
+    public function test_it_does_not_offer_transbank_when_plant_project_cannot_be_resolved(): void
+    {
+        $plant = Plant::factory()->create([
+            'salesforce_proyecto_id' => 'SF-NO-EXISTE',
+            'is_active' => true,
+        ]);
+
+        SiteSetting::current()->update([
+            'gateway_transbank_enabled' => true,
+            'gateway_mercadopago_enabled' => false,
+            'gateway_manual_enabled' => false,
+        ]);
+
+        $response = $this->getJson('/api/v1/payment-gateways?plant_id='.$plant->id);
+
+        $response->assertOk()
+            ->assertJsonMissing([
+                'id' => 'transbank',
+            ]);
+    }
+
     public function test_it_creates_a_manual_payment_with_unique_reference_and_extended_reservation(): void
     {
         $project = Proyecto::factory()->create([
@@ -265,6 +323,95 @@ class ManualCheckoutFlowTest extends TestCase
         $payment = Payment::query()->findOrFail($paymentId);
 
         $this->assertSame('https://pagos.proyecto-a.cl/link', data_get($payment->metadata, 'manual_payment_link'));
+    }
+
+    public function test_it_returns_only_payment_link_when_manual_instructions_and_bank_accounts_are_empty(): void
+    {
+        $project = Proyecto::factory()->create([
+            'manual_payment_instructions' => null,
+            'manual_payment_bank_accounts' => null,
+            'manual_payment_link' => 'https://pagos.proyecto-link.cl/manual',
+        ]);
+
+        $plant = Plant::factory()->create([
+            'salesforce_proyecto_id' => $project->salesforce_id,
+            'is_active' => true,
+        ]);
+
+        SiteSetting::current()->update([
+            'gateway_manual_enabled' => true,
+            'gateway_manual_config' => [
+                'instructions' => null,
+                'bank_accounts' => [],
+                'payment_link' => 'https://pagos.global.cl/no-usar',
+            ],
+        ]);
+
+        $reservation = app(PlantReservationService::class)->reserve($plant->id, $this->user->id);
+
+        $response = $this->postJson('/api/v1/checkout', [
+            'plant_id' => $plant->id,
+            'quantity' => 1,
+            'gateway' => 'manual',
+            'name' => 'Usuario Demo',
+            'email' => 'usuario@example.com',
+            'phone' => '912345678',
+            'rut' => '12345678-5',
+            'session_token' => $reservation->session_token,
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('flow', 'manual')
+            ->assertJsonPath('payment_link', 'https://pagos.proyecto-link.cl/manual')
+            ->assertJsonPath('instructions', null)
+            ->assertJsonPath('bank_accounts', []);
+    }
+
+    public function test_it_does_not_inherit_manual_bank_accounts_from_default_config(): void
+    {
+        config([
+            'payments.gateways.manual.bank_accounts' => [
+                [
+                    'bank' => 'Banco Default',
+                    'account_number' => '00000000',
+                ],
+            ],
+            'payments.gateways.manual.instructions' => 'Instrucciones default',
+        ]);
+
+        $project = Proyecto::factory()->create([
+            'manual_payment_instructions' => 'Solo instrucciones del proyecto.',
+            'manual_payment_bank_accounts' => null,
+            'manual_payment_link' => 'https://pagos.proyecto.cl/link',
+        ]);
+
+        $plant = Plant::factory()->create([
+            'salesforce_proyecto_id' => $project->salesforce_id,
+            'is_active' => true,
+        ]);
+
+        SiteSetting::current()->update([
+            'gateway_manual_enabled' => true,
+            'gateway_manual_config' => [],
+        ]);
+
+        $reservation = app(PlantReservationService::class)->reserve($plant->id, $this->user->id);
+
+        $response = $this->postJson('/api/v1/checkout', [
+            'plant_id' => $plant->id,
+            'quantity' => 1,
+            'gateway' => 'manual',
+            'name' => 'Usuario Demo',
+            'email' => 'usuario@example.com',
+            'phone' => '912345678',
+            'rut' => '12345678-5',
+            'session_token' => $reservation->session_token,
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('instructions', 'Solo instrucciones del proyecto.')
+            ->assertJsonPath('payment_link', 'https://pagos.proyecto.cl/link')
+            ->assertJsonPath('bank_accounts', []);
     }
 
     public function test_it_rejects_manual_payment_proof_when_deadline_has_expired(): void

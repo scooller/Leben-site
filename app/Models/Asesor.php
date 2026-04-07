@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\LogsModelActivity;
 use Awcodes\Curator\Models\Media;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,6 +14,8 @@ class Asesor extends Model
 {
     /** @use HasFactory<\Database\Factories\AsesorFactory> */
     use HasFactory;
+
+    use LogsModelActivity;
 
     protected $table = 'asesores';
 

@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Support\LogsModelActivity;
 use Awcodes\Curator\Models\Media;
 use Illuminate\Database\Eloquent\Model;
 
 class SiteSetting extends Model
 {
+    use LogsModelActivity;
+
     protected $fillable = [
         'site_name',
         'site_description',

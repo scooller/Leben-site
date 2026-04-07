@@ -302,7 +302,9 @@ class CheckoutController extends Controller
         $hasTransbankCredentials = config('services.transbank.commerce_code') && config('services.transbank.api_key');
         $transbankEnabled = (bool) ($siteSettings->gateway_transbank_enabled ?? config('payments.gateways.transbank.enabled', true));
 
-        $transbankAvailableForProject = $project === null || $this->projectHasCommerceCode($project);
+        $transbankAvailableForProject = ! filled($plantId)
+            ? true
+            : $this->projectHasCommerceCode($project);
 
         if ($transbankEnabled && ($transbankEnv === 'integration' || $hasTransbankCredentials) && $transbankAvailableForProject) {
             $gateways[] = [
@@ -354,6 +356,14 @@ class CheckoutController extends Controller
     {
         $settings = SiteSetting::current();
         $defaultConfig = config('payments.gateways.manual', []);
+        $baseConfig = [
+            'name' => $defaultConfig['name'] ?? 'Pago Manual',
+            'requires_proof' => (bool) ($defaultConfig['requires_proof'] ?? true),
+            'auto_expire_hours' => $defaultConfig['auto_expire_hours'] ?? null,
+            'instructions' => null,
+            'bank_accounts' => [],
+            'payment_link' => null,
+        ];
         $settingsConfig = is_array($settings->gateway_manual_config) ? $settings->gateway_manual_config : [];
 
         $projectConfig = [];
@@ -372,7 +382,7 @@ class CheckoutController extends Controller
             }
         }
 
-        return array_replace_recursive($defaultConfig, $settingsConfig, $projectConfig, [
+        return array_replace_recursive($baseConfig, $settingsConfig, $projectConfig, [
             'enabled' => (bool) ($settings->gateway_manual_enabled ?? ($defaultConfig['enabled'] ?? false)),
         ]);
     }
@@ -392,6 +402,10 @@ class CheckoutController extends Controller
 
     private function projectHasCommerceCode(?Proyecto $project): bool
     {
-        return filled($project?->transbank_commerce_code);
+        if (! $project) {
+            return false;
+        }
+
+        return filled($project->getRawOriginal('transbank_commerce_code'));
     }
 }

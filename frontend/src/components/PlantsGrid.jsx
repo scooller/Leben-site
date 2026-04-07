@@ -3,6 +3,7 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ScrollSmoother } from 'gsap/ScrollSmoother';
 import PlantDetailDialog from './PlantDetailDialog';
+import PlantsService from '../services/plants';
 
 gsap.registerPlugin(ScrollTrigger, ScrollSmoother);
 
@@ -23,12 +24,19 @@ function PlantsGrid({
   selectedPlant,
   onSelectPlant,
   onClosePlantDetail,
+  onDetailBlocked,
 }) {
   const [internalSelectedPlant, setInternalSelectedPlant] = useState(null);
   const [detailLoadingId, setDetailLoadingId] = useState(null);
   const dialogRef = useRef(null);
   const gridContainerRef = useRef(null);
   const activePlant = selectedPlant ?? internalSelectedPlant;
+
+  const notifyDetailBlocked = useCallback(() => {
+    if (typeof onDetailBlocked === 'function') {
+      onDetailBlocked('Esta planta ya no esta disponible para ver detalle porque fue reservada o pagada.');
+    }
+  }, [onDetailBlocked]);
 
   const setActivePlant = (plant) => {
     if (typeof onSelectPlant === 'function') {
@@ -151,8 +159,34 @@ function PlantsGrid({
   const showingTo = Math.min((page - 1) * 12 + plants.length, totalPlants || 0);
 
   const openPlantDetail = (plant) => {
+    const localBlocked = plant?.isPaid || plant?.isReserved || plant?.isAvailable === false;
+
+    if (localBlocked) {
+      notifyDetailBlocked();
+      return;
+    }
+
     setDetailLoadingId(plant.id);
-    setActivePlant(plant);
+
+    PlantsService.getById(plant.id)
+      .then((latestPlant) => {
+        const isPaid = Boolean(latestPlant?.is_paid);
+        const isReserved = Boolean(latestPlant?.active_reservation);
+        const isAvailable = Boolean(latestPlant?.is_available);
+
+        if (isPaid || isReserved || !isAvailable) {
+          notifyDetailBlocked();
+          return;
+        }
+
+        setActivePlant(plant);
+      })
+      .catch(() => {
+        setActivePlant(plant);
+      })
+      .finally(() => {
+        setDetailLoadingId(null);
+      });
   };
 
   const handleCheckoutFromDialog = () => {
@@ -294,6 +328,10 @@ function PlantsGrid({
                     alt={plant.nombre}
                     onClick={() => openPlantDetail(plant)}
                     className="plant-image"
+                    style={{
+                      cursor: plant.isReserved || plant.isPaid || plant.isAvailable === false ? 'not-allowed' : 'pointer',
+                      opacity: plant.isReserved || plant.isPaid || plant.isAvailable === false ? 0.72 : 1,
+                    }}
                   />
                   {plant.discountPercentage > 0 && (
                     <wa-animation name="flash" play duration={5000} iterations={Infinity}>
@@ -390,6 +428,7 @@ function PlantsGrid({
                   <wa-button-group label="Alignment">
                     <wa-button
                       size="small"
+                      disabled={plant.isReserved || plant.isPaid || plant.isAvailable === false}
                       {...(detailLoadingId === plant.id && { loading: true })}
                       onClick={() => openPlantDetail(plant)}
                     >

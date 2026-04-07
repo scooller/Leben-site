@@ -114,6 +114,118 @@ frontend/
 - La API de plantas ahora marca indisponibilidad tanto por `plant_reservations` como por pagos completados/autorizados asociados a `plant_id`
 - Aislamiento del entorno de testing con SQLite y validación de suite completa
 
+## 🛠️ Comandos Útiles
+
+### Desarrollo y diagnóstico
+
+```bash
+# Estado general de la app
+php artisan about
+
+# Listar todos los comandos disponibles
+php artisan list
+
+# Limpiar caches (config, rutas, vistas, eventos, etc.)
+php artisan optimize:clear
+```
+
+### Base de datos
+
+```bash
+# Ejecutar migraciones
+php artisan migrate
+
+# Poblar datos semilla
+php artisan db:seed
+
+# Ver estado de migraciones
+php artisan migrate:status
+```
+
+### Sincronización Salesforce
+
+```bash
+# Sincronizar proyectos desde Salesforce
+php artisan test:sync-projects
+
+# Sincronizar plantas
+php artisan sync:plants
+
+# Probar autenticación Salesforce
+php artisan salesforce:test-auth
+```
+
+### Reservas y pagos
+
+```bash
+# Expirar reservas vencidas
+php artisan reservations:expire
+```
+
+### Fin Mail
+
+```bash
+# Instalar Fin Mail
+php artisan fin-mail:install
+
+# Actualizar estructura/datos del plugin
+php artisan fin-mail:upgrade
+
+# Limpiar historial de correos enviados
+php artisan fin-mail:cleanup
+```
+
+### Activity Log y Command Runner
+
+```bash
+# Limpiar registros antiguos de activity log
+php artisan activitylog:clean
+
+# Purgar historial de Command Runner (por defecto, 30 dias)
+php artisan command-runner:purge-history
+
+# Capturar estado de un proceso (uso interno del plugin)
+php artisan command-runner:capture-status <id> <code>
+```
+
+### Testing
+
+```bash
+# Ejecutar toda la suite de tests
+php artisan test --compact
+
+# Ejecutar un archivo de tests especifico
+php artisan test --compact tests/Feature/ActivityLogAdminToolsTest.php
+```
+
+### Comandos peligrosos (usar con cuidado)
+
+Estos comandos pueden borrar datos o dejar el entorno en un estado no recuperable si se ejecutan en una base de datos equivocada.
+
+```bash
+# Borra TODAS las tablas, vistas y tipos de la BD actual
+php artisan db:wipe
+
+# Borra todas las tablas y vuelve a ejecutar migraciones
+php artisan migrate:fresh
+
+# Igual que migrate:fresh, pero ademas ejecuta seeders
+php artisan migrate:fresh --seed
+
+# Revierte la ultima tanda de migraciones
+php artisan migrate:rollback
+
+# Revierte TODAS las migraciones
+php artisan migrate:reset
+```
+
+Recomendaciones de seguridad:
+
+- Verifica siempre APP_ENV y DB_CONNECTION antes de ejecutar comandos destructivos.
+- En local, prefiere usar base de datos de testing para pruebas de destruccion de datos.
+- En produccion, evita ejecutar comandos destructivos sin respaldo previo.
+- Si necesitas limpiar caches en produccion, usa optimize:clear en lugar de comandos de migracion destructivos.
+
 ## � API REST
 
 Base URL: `/api/v1`

@@ -3,6 +3,7 @@
 namespace App\Filament\Actions;
 
 use App\Models\Proyecto;
+use App\Support\BusinessActivityLogger;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
@@ -21,29 +22,41 @@ class EraseAllProjectsAction
             ->modalSubmitActionLabel('Sí, borrar todos')
             ->modalCancelActionLabel('Cancelar')
             ->action(function () {
-                try {
-                    $count = Proyecto::count();
+                $result = self::execute();
 
-                    // Deshabilitar FK checks para poder truncate
-                    DB::statement('SET FOREIGN_KEY_CHECKS=0;');
-                    Proyecto::truncate();
-                    DB::statement('SET FOREIGN_KEY_CHECKS=1;');
-
-                    Notification::make()
-                        ->title('✅ Éxito')
-                        ->body("Se eliminaron {$count} proyectos correctamente.")
-                        ->success()
-                        ->send();
-                } catch (\Exception $e) {
-                    // Asegurar que FK checks estén habilitadas en caso de error
-                    DB::statement('SET FOREIGN_KEY_CHECKS=1;');
-
-                    Notification::make()
-                        ->title('❌ Error')
-                        ->body('Error al borrar proyectos: '.$e->getMessage())
-                        ->danger()
-                        ->send();
-                }
+                Notification::make()
+                    ->title($result['success'] ? '✅ Éxito' : '❌ Error')
+                    ->body($result['message'])
+                    ->{$result['success'] ? 'success' : 'danger'}()
+                    ->send();
             });
+    }
+
+    /**
+     * @return array{success: bool, message: string, count: int}
+     */
+    public static function execute(): array
+    {
+        try {
+            $count = Proyecto::count();
+
+            DB::transaction(function (): void {
+                Proyecto::query()->delete();
+            });
+
+            BusinessActivityLogger::logMassDeletion('proyectos', $count);
+
+            return [
+                'success' => true,
+                'message' => "Se eliminaron {$count} proyectos correctamente.",
+                'count' => $count,
+            ];
+        } catch (\Throwable $throwable) {
+            return [
+                'success' => false,
+                'message' => 'Error al borrar proyectos: '.$throwable->getMessage(),
+                'count' => 0,
+            ];
+        }
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Filament\Actions;
 
 use App\Models\Plant;
+use App\Support\BusinessActivityLogger;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 
@@ -39,6 +40,8 @@ class EraseAllPlantsAction
             $count = Plant::count();
 
             Plant::query()->delete();
+
+            BusinessActivityLogger::logMassDeletion('plants', $count);
 
             return [
                 'success' => true,

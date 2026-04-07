@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Payments\Support;
 use App\Enums\PaymentStatus;
 use App\Models\Payment;
 use App\Services\PlantReservationService;
+use App\Support\BusinessActivityLogger;
 use Illuminate\Support\Facades\DB;
 
 class ManualPaymentActionSupport
@@ -74,6 +75,10 @@ class ManualPaymentActionSupport
                 app(PlantReservationService::class)->completeForPlant((int) $payment->plant_id);
             }
 
+            if ($updated) {
+                BusinessActivityLogger::logManualPaymentApproved($payment->fresh(), $approvedBy);
+            }
+
             return $updated;
         });
     }
@@ -98,6 +103,10 @@ class ManualPaymentActionSupport
 
             if ($updated && $payment->plant_id) {
                 app(PlantReservationService::class)->releaseForPlant((int) $payment->plant_id, 'manual_payment_rejected');
+            }
+
+            if ($updated) {
+                BusinessActivityLogger::logManualPaymentRejected($payment->fresh(), $reason, $rejectedBy);
             }
 
             return $updated;

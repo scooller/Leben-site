@@ -3,23 +3,31 @@
  * Usa Web Awesome design tokens y componentes
  * Minimalista: Deja que Web Awesome haga el trabajo, solo layout y spacing
  */
- html.wa-dark .app {
-    background-image: url(https://sale.ileben.cl/wp-content/uploads/2020/07/fondo-1.svg);
-    .video-home {
-        &::after {
-            background: linear-gradient(180deg,rgba(var(--wa-color-black-rgb), 1) 0%, rgba(var(--wa-color-black-rgb), 0.5) 50%, rgba(var(--wa-color-black-rgb), 0) 100%);
+html #root{
+    transition: background-color 0.8s ease;
+}
+html.wa-dark #root{
+    background-color: rgba(var(--wa-color-black-rgb), 1);
+    .app {
+        .video-home {
+            &::after {
+                background: linear-gradient(180deg,rgba(var(--wa-color-black-rgb), 1) 0%, rgba(var(--wa-color-black-rgb), 0.5) 50%, rgba(var(--wa-color-black-rgb), 0) 100%);
+            }
         }
     }
- }
- html.wa-light .app {
-    background-image: url(https://sale.ileben.cl/wp-content/uploads/2020/07/fondo.svg);
-    .video-home {
-        &::after {
-            background: linear-gradient(180deg,rgba(var(--wa-color-white-rgb), 1) 0%, rgba(var(--wa-color-white-rgb), 0.5) 50%, rgba(var(--wa-color-white-rgb), 0) 100%);
+}
+html.wa-light #root{
+    background-color: rgba(var(--wa-color-black-rgb), .6);
+    .app {
+        .video-home {
+            &::after {
+                background: linear-gradient(180deg,rgba(var(--wa-color-white-rgb), 1) 0%, rgba(var(--wa-color-white-rgb), 0.5) 50%, rgba(var(--wa-color-white-rgb), 0) 100%);
+            }
         }
     }
- }
+}
 .app{
+    background-image: url(https://sale.ileben.cl/wp-content/uploads/2020/07/fondo-1-1.svg);
     background-size: cover;
     background-position: center;
     background-attachment: fixed;
@@ -256,7 +264,7 @@
   display: block;
   height: 100%;
   max-height: none;
-  object-fit: cover;
+  object-fit: contain;
   width: 100%;
 }
 
@@ -363,6 +371,73 @@
   font-size: var(--wa-font-size-s);
 }
 
+.payment-gateway-dialog::part(panel) {
+  background:
+    radial-gradient(circle at top right, rgba(var(--wa-color-brand-fill-loud-rgb), 0.08), transparent 42%),
+    radial-gradient(circle at bottom left, rgba(var(--wa-color-success-fill-loud-rgb), 0.06), transparent 40%),
+    var(--wa-color-surface-default);
+}
+
+.payment-gateway-dialog .gateway-selection {
+  display: grid;
+  gap: var(--wa-space-s);
+}
+
+.checkout-section-title {
+  align-items: center;
+  display: inline-flex;
+  gap: var(--wa-space-2xs);
+}
+
+.checkout-section-title wa-icon {
+  color: var(--wa-color-brand-fill-loud);
+}
+
+.checkout-summary-card::part(base),
+.checkout-buyer-card::part(base) {
+  border-radius: var(--wa-border-radius-l);
+}
+
+.checkout-summary-content,
+.checkout-buyer-content {
+  padding: var(--wa-space-m);
+}
+
+.checkout-summary-content .wa-split span {
+  color: var(--wa-color-text-normal);
+  font-weight: var(--wa-font-weight-medium);
+}
+
+.gateway-radio-group {
+  border: 1px solid var(--wa-color-neutral-border-normal);
+  border-radius: var(--wa-border-radius-l);
+  padding: var(--wa-space-xs) var(--wa-space-s);
+}
+
+.gateway-option-content {
+  display: grid;
+  gap: 2px;
+  padding: var(--wa-space-3xs) 0;
+}
+
+.gateway-option-content small {
+  color: var(--wa-color-text-quiet);
+}
+
+.validation-hint {
+  display: block;
+  margin-top: 2px;
+}
+
+.validation-hint.info {
+  color: var(--wa-color-text-quiet);
+}
+
+.validation-hint.error {
+  color: var(--wa-color-danger-on-quiet);
+  font-weight: var(--wa-font-weight-medium);
+}
+
 .box-shadow-1{
     box-shadow: rgb(38, 57, 77) 0px 20px 30px -10px;
 }
@@ -377,8 +452,8 @@
   }
 
   .plant-detail-media {
-    min-height: 420px;
-    max-height: 530px;
+    min-height: 400px;
+    max-height: 460px;
   }
 
   .plant-detail-content wa-scroller {
@@ -417,6 +492,15 @@
 
   .project-logo-image {
     max-height: 30px;
+  }
+
+  .checkout-summary-content,
+  .checkout-buyer-content {
+    padding: var(--wa-space-s);
+  }
+
+  .gateway-radio-group {
+    padding: var(--wa-space-2xs) var(--wa-space-xs);
   }
 
   .discount-seal-value {

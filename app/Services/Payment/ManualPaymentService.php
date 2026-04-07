@@ -31,7 +31,9 @@ class ManualPaymentService implements PaymentGatewayInterface
         return [
             'reference' => $reference,
             'status' => PaymentStatus::PENDING_APPROVAL->value,
-            'instructions' => $this->config['instructions'] ?? 'Realizar pago y enviar comprobante',
+            'instructions' => filled($this->config['instructions'] ?? null)
+                ? (string) $this->config['instructions']
+                : null,
             'bank_accounts' => $this->config['bank_accounts'] ?? [],
             'expires_at' => $this->getExpirationDate(),
             'requires_proof' => $this->config['requires_proof'] ?? true,

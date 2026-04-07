@@ -336,6 +336,14 @@ function Home() {
       return;
     }
 
+    if (plant.isPaid || plant.isReserved || plant.isAvailable === false) {
+      setCheckoutError({
+        userMessage: 'Esta planta ya no esta disponible para abrir su detalle porque fue reservada o pagada.',
+      });
+
+      return;
+    }
+
     setSelectedPlantDetail(plant);
 
     const currentUrl = getCurrentBrowserUrl();
@@ -403,9 +411,40 @@ function Home() {
       ));
 
       if (plantInList) {
-        setRoutePlantLoading(false);
-        setSelectedPlantDetail(plantInList);
-        return;
+        try {
+          const latestPlant = await PlantsService.getById(plantInList.id);
+
+          if (!isMounted) {
+            return;
+          }
+
+          const mappedLatestPlant = mapPlant(latestPlant);
+
+          if (mappedLatestPlant.isPaid || mappedLatestPlant.isReserved || mappedLatestPlant.isAvailable === false) {
+            setCheckoutError({
+              userMessage: 'Esta planta ya no esta disponible para abrir su detalle porque fue reservada o pagada.',
+            });
+            setSelectedPlantDetail(null);
+            setRoutePlantLoading(false);
+
+            return;
+          }
+
+          setRoutePlantLoading(false);
+          setSelectedPlantDetail(mappedLatestPlant);
+
+          return;
+        } catch {
+          if (!isMounted) {
+            return;
+          }
+
+          setRoutePlantLoading(false);
+          setSelectedPlantDetail(plantInList);
+
+          return;
+        }
+
       }
 
       setRoutePlantLoading(true);
@@ -417,7 +456,18 @@ function Home() {
           return;
         }
 
-        setSelectedPlantDetail(mapPlant(plantFromApi));
+        const mappedPlant = mapPlant(plantFromApi);
+
+        if (mappedPlant.isPaid || mappedPlant.isReserved || mappedPlant.isAvailable === false) {
+          setCheckoutError({
+            userMessage: 'Esta planta ya no esta disponible para abrir su detalle porque fue reservada o pagada.',
+          });
+          setSelectedPlantDetail(null);
+
+          return;
+        }
+
+        setSelectedPlantDetail(mappedPlant);
       } catch {
         if (!isMounted) {
           return;
@@ -698,27 +748,27 @@ function Home() {
     return (
       <div className="home-container">
         <wa-card>
-          <div slot="header">
-            <h2>{error.title || 'Error'}</h2>
-          </div>
-          <wa-callout variant="danger">
-            <wa-icon slot="icon" name="circle-exclamation" variant="regular" animation="beat"></wa-icon>
-            <strong>No se pudieron cargar las plantas</strong>
-            <div style={{ marginTop: '8px' }}>
-              {error.userMessage || error.message}
+            <div slot="header">
+                <h2>{error.title || 'Error'}</h2>
             </div>
-          </wa-callout>
-          <div style={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
+            <wa-callout variant="danger">
+                <wa-icon slot="icon" name="circle-exclamation"></wa-icon>
+                <strong>No se pudieron cargar las plantas</strong>
+                <div style={{ marginTop: '8px' }}>
+                    {error.userMessage || error.message}
+                </div>
+            </wa-callout>
+            <div style={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
             <wa-button onClick={() => loadPlants()} variant="primary">
-              <wa-icon slot="start" name="arrow-rotate-right" animation="spin"></wa-icon>
-              Reintentar
+                <wa-icon slot="start" name="arrow-rotate-right" animation="spin"></wa-icon>
+                Reintentar
             </wa-button>
             {error.canRetry && (
-              <wa-button onClick={() => window.location.reload()} variant="default">
+            <wa-button onClick={() => window.location.reload()} variant="default">
                 Recargar página
-              </wa-button>
+            </wa-button>
             )}
-          </div>
+            </div>
         </wa-card>
       </div>
     );
@@ -943,6 +993,13 @@ function Home() {
         loading={loading}
         checkoutLoading={checkoutLoading}
         onQuickCheckout={handleQuickCheckout}
+        onDetailBlocked={(message) => {
+          setCheckoutError({
+            type: 'validation',
+            title: 'Planta no disponible',
+            userMessage: message,
+          });
+        }}
         selectedPlant={selectedPlantDetail}
         onSelectPlant={handleSelectPlantDetail}
         onClosePlantDetail={handleClosePlantDetail}

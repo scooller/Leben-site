@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\PlantReservationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
 
 class ManualPaymentActionSupportTest extends TestCase
@@ -60,6 +61,8 @@ class ManualPaymentActionSupportTest extends TestCase
         $payment = $fixture['payment'];
         $plant = $fixture['plant'];
 
+        Activity::query()->delete();
+
         $approved = ManualPaymentActionSupport::approve($payment, 777);
 
         $this->assertTrue($approved);
@@ -73,6 +76,25 @@ class ManualPaymentActionSupportTest extends TestCase
 
         $reservationStatus = $plant->reservations()->latest('id')->value('status');
         $this->assertSame(ReservationStatus::COMPLETED, $reservationStatus);
+
+        $paymentActivity = Activity::query()
+            ->where('log_name', 'payment_workflow')
+            ->where('subject_type', Payment::class)
+            ->where('subject_id', $payment->getKey())
+            ->where('description', 'Pago manual aprobado')
+            ->first();
+
+        $reservationActivity = Activity::query()
+            ->where('log_name', 'reservation_workflow')
+            ->where('description', 'Reserva completada')
+            ->first();
+
+        $this->assertNotNull($paymentActivity);
+        $this->assertSame(777, $paymentActivity->properties['approved_by']);
+        $this->assertSame('manual_payment_approved', $paymentActivity->properties['action']);
+
+        $this->assertNotNull($reservationActivity);
+        $this->assertSame('complete_for_plant', $reservationActivity->properties['context']);
     }
 
     public function test_it_rejects_manual_payment_and_releases_reservation(): void
@@ -80,6 +102,8 @@ class ManualPaymentActionSupportTest extends TestCase
         $fixture = $this->createPendingManualPaymentWithReservation();
         $payment = $fixture['payment'];
         $plant = $fixture['plant'];
+
+        Activity::query()->delete();
 
         $rejected = ManualPaymentActionSupport::reject($payment, 'Comprobante ilegible', 888);
 
@@ -97,6 +121,26 @@ class ManualPaymentActionSupportTest extends TestCase
         $this->assertNotNull($reservation);
         $this->assertSame(ReservationStatus::RELEASED, $reservation->status);
         $this->assertSame('manual_payment_rejected', $reservation->metadata['release_reason'] ?? null);
+
+        $paymentActivity = Activity::query()
+            ->where('log_name', 'payment_workflow')
+            ->where('subject_type', Payment::class)
+            ->where('subject_id', $payment->getKey())
+            ->where('description', 'Pago manual rechazado')
+            ->first();
+
+        $reservationActivity = Activity::query()
+            ->where('log_name', 'reservation_workflow')
+            ->where('description', 'Reserva liberada')
+            ->first();
+
+        $this->assertNotNull($paymentActivity);
+        $this->assertSame(888, $paymentActivity->properties['rejected_by']);
+        $this->assertSame('Comprobante ilegible', $paymentActivity->properties['reason']);
+
+        $this->assertNotNull($reservationActivity);
+        $this->assertSame('release_for_plant', $reservationActivity->properties['context']);
+        $this->assertSame('manual_payment_rejected', $reservationActivity->properties['reason']);
     }
 
     public function test_it_resolves_manual_proof_helpers_from_metadata(): void

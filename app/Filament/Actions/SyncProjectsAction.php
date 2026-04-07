@@ -5,8 +5,10 @@ namespace App\Filament\Actions;
 use App\Models\Asesor;
 use App\Models\Proyecto;
 use App\Services\Salesforce\SalesforceService;
+use App\Support\AsesorProyectoActivityLogger;
 use Exception;
 use Filament\Actions\Action;
+use Filament\Notifications\Notification;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -24,7 +26,23 @@ class SyncProjectsAction
             ->icon('heroicon-o-arrow-path')
             ->color('info')
             ->action(function () {
-                self::execute();
+                $result = self::execute();
+
+                if (($result['success'] ?? false) === true) {
+                    Notification::make()
+                        ->title('Sincronizacion de proyectos completada')
+                        ->body((string) ($result['message'] ?? 'Sincronizacion completada.'))
+                        ->success()
+                        ->send();
+
+                    return;
+                }
+
+                Notification::make()
+                    ->title('Error al sincronizar proyectos')
+                    ->body((string) ($result['message'] ?? 'Ocurrio un error durante la sincronizacion.'))
+                    ->danger()
+                    ->send();
             });
     }
 
@@ -328,6 +346,11 @@ class SyncProjectsAction
      */
     private static function syncProyectoAsesores(Proyecto $proyecto, array $proyectoData, array $asesoresBySalesforceId): void
     {
+        $currentAsesorIds = $proyecto->asesores()
+            ->pluck('asesores.id')
+            ->map(static fn ($id): int => (int) $id)
+            ->values();
+
         $salesforceAsesorIds = collect($proyectoData['asesor_responsable_ids'] ?? [])
             ->map(static fn ($value): string => trim((string) $value))
             ->filter(static fn (string $value): bool => $value !== '')
@@ -357,5 +380,19 @@ class SyncProjectsAction
             ->values();
 
         $proyecto->asesores()->sync($finalAsesorIds->all());
+
+        $attachedAsesorIds = $finalAsesorIds
+            ->diff($currentAsesorIds)
+            ->map(static fn ($id): int => (int) $id)
+            ->values()
+            ->all();
+
+        $detachedAsesorIds = $currentAsesorIds
+            ->diff($finalAsesorIds)
+            ->map(static fn ($id): int => (int) $id)
+            ->values()
+            ->all();
+
+        AsesorProyectoActivityLogger::logSynced($proyecto, $attachedAsesorIds, $detachedAsesorIds);
     }
 }

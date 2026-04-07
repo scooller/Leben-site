@@ -8,6 +8,7 @@ use App\Enums\ReservationStatus;
 use App\Models\Plant;
 use App\Models\PlantReservation;
 use App\Models\SiteSetting;
+use App\Support\BusinessActivityLogger;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -105,6 +106,8 @@ class PlantReservationService
 
         $reservation->release($releasedBy, $reason);
 
+        BusinessActivityLogger::logReservationReleased($reservation->fresh(), $releasedBy, $reason, 'release_by_token');
+
         Log::info('PlantReservation: Released by token', [
             'reservation_id' => $reservation->id,
             'plant_id' => $reservation->plant_id,
@@ -128,6 +131,8 @@ class PlantReservationService
         }
 
         $reservation->release($releasedBy, $reason);
+
+        BusinessActivityLogger::logReservationReleased($reservation->fresh(), $releasedBy, $reason, 'release_by_id');
 
         Log::info('PlantReservation: Released by ID', [
             'reservation_id' => $reservationId,
@@ -156,6 +161,8 @@ class PlantReservationService
 
         $reservation->markAsCompleted();
 
+        BusinessActivityLogger::logReservationCompleted($reservation->fresh(), 'complete_for_plant');
+
         Log::info('PlantReservation: Completed', [
             'reservation_id' => $reservation->id,
             'plant_id' => $plantId,
@@ -178,6 +185,8 @@ class PlantReservationService
         }
 
         $reservation->release('system', $reason);
+
+        BusinessActivityLogger::logReservationReleased($reservation->fresh(), 'system', $reason, 'release_for_plant');
 
         Log::info('PlantReservation: Released due to payment failure', [
             'reservation_id' => $reservation->id,

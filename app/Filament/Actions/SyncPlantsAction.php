@@ -7,6 +7,7 @@ use App\Models\Proyecto;
 use App\Services\Salesforce\SalesforceService;
 use Exception;
 use Filament\Actions\Action;
+use Filament\Notifications\Notification;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 
@@ -22,7 +23,23 @@ class SyncPlantsAction
             ->icon('heroicon-o-arrow-path')
             ->color('info')
             ->action(function () {
-                self::execute();
+                $result = self::execute();
+
+                if (($result['success'] ?? false) === true) {
+                    Notification::make()
+                        ->title('Sincronizacion de plantas completada')
+                        ->body((string) ($result['message'] ?? 'Sincronizacion completada.'))
+                        ->success()
+                        ->send();
+
+                    return;
+                }
+
+                Notification::make()
+                    ->title('Error al sincronizar plantas')
+                    ->body((string) ($result['message'] ?? 'Ocurrio un error durante la sincronizacion.'))
+                    ->danger()
+                    ->send();
             });
     }
 

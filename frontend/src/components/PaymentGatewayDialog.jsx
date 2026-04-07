@@ -19,6 +19,7 @@ function PaymentGatewayDialog({
   onSubmitManualProof
 }) {
   const dialogRef = useRef(null);
+  const validationToastRef = useRef(null);
   const [selectedGateway, setSelectedGateway] = useState('');
   const [checkoutName, setCheckoutName] = useState('');
   const [checkoutEmail, setCheckoutEmail] = useState('');
@@ -190,15 +191,17 @@ function PaymentGatewayDialog({
   }, [open]);
 
   useEffect(() => {
-    if (!validationToast) {
-      return undefined;
+    if (!validationToast || !validationToastRef.current || typeof validationToastRef.current.create !== 'function') {
+      return;
     }
 
-    const timer = setTimeout(() => {
-      setValidationToast(null);
-    }, 3200);
+    validationToastRef.current.create(validationToast.message, {
+      variant: validationToast.variant || 'warning',
+      icon: 'triangle-exclamation',
+      duration: 3200,
+    });
 
-    return () => clearTimeout(timer);
+    setValidationToast(null);
   }, [validationToast]);
 
   // Reserve plant when dialog opens
@@ -355,28 +358,36 @@ function PaymentGatewayDialog({
     });
   };
 
+  const manualInstructions = typeof manualPayment?.instructions === 'string'
+    ? manualPayment.instructions.trim()
+    : '';
+  const manualPaymentLink = typeof manualPayment?.payment_link === 'string'
+    ? manualPayment.payment_link.trim()
+    : '';
+  const manualBankAccounts = Array.isArray(manualPayment?.bank_accounts)
+    ? manualPayment.bank_accounts.filter((account) => {
+      if (!account || typeof account !== 'object') {
+        return false;
+      }
+
+      return ['bank', 'account_type', 'account_number', 'account_holder', 'rut']
+        .some((key) => {
+          const value = account[key];
+
+          return typeof value === 'string' ? value.trim().length > 0 : Boolean(value);
+        });
+    })
+    : [];
+
   return (
     <wa-dialog
       ref={dialogRef}
+      className="payment-gateway-dialog"
       label={manualPayment ? 'Pago Manual' : 'Seleccionar Pasarela de Pago'}
       style={{ '--width': '500px' }}
       light-dismiss
     >
-      {validationToast && (
-        <div style={{
-          position: 'fixed',
-          top: '24px',
-          right: '24px',
-          zIndex: 10000,
-          minWidth: '300px',
-          maxWidth: '420px',
-        }}>
-          <wa-callout variant={validationToast.variant}>
-            <wa-icon name="triangle-exclamation" slot="icon"></wa-icon>
-            {validationToast.message}
-          </wa-callout>
-        </div>
-      )}
+      <wa-toast ref={validationToastRef} placement="top-end"></wa-toast>
 
       <div className="gateway-selection">
         {manualPayment ? (
@@ -402,15 +413,26 @@ function PaymentGatewayDialog({
               </span>
             </div>
 
-            <div className="wa-stack wa-gap-2xs">
-              <strong>Instrucciones</strong>
-              <p>{manualPayment.instructions || 'Realiza tu pago y envia el comprobante antes del vencimiento.'}</p>
-            </div>
+            {manualInstructions && (
+              <div className="wa-stack wa-gap-2xs">
+                <strong>Instrucciones</strong>
+                <p>{manualInstructions}</p>
+              </div>
+            )}
 
-            {Array.isArray(manualPayment.bank_accounts) && manualPayment.bank_accounts.length > 0 && (
+            {manualPaymentLink && (
+              <div className="wa-stack wa-gap-2xs">
+                <strong>Link de pago</strong>
+                <a href={manualPaymentLink} target="_blank" rel="noreferrer noopener">
+                  {manualPaymentLink}
+                </a>
+              </div>
+            )}
+
+            {manualBankAccounts.length > 0 && (
               <div className="wa-stack wa-gap-s">
                 <strong>Datos bancarios</strong>
-                {manualPayment.bank_accounts.map((account, index) => (
+                {manualBankAccounts.map((account, index) => (
                   <wa-card key={`${account.bank || 'bank'}-${index}`} appearance="outlined">
                     <div className="wa-stack wa-gap-2xs" style={{ padding: '1rem' }}>
                       {account.bank && <span><strong>Banco:</strong> {account.bank}</span>}
@@ -455,7 +477,7 @@ function PaymentGatewayDialog({
           </div>
         ) : (
           <>
-            <div className="checkout-user-fields wa-stack wa-gap-s">
+            <div className="checkout-user-fields wa-stack wa-gap-m">
               {reservationLoading && (
                 <wa-callout variant="info">
                   <wa-spinner slot="icon"></wa-spinner>
@@ -484,21 +506,36 @@ function PaymentGatewayDialog({
                 </wa-callout>
               )}
 
-              <div className="wa-split wa-align-items-center">
-                <strong>Proyecto</strong>
-                <span>{plant?.proyecto?.name || plant?.proyectoNombre || 'Sin proyecto'}</span>
-              </div>
-              <div className="wa-split wa-align-items-center">
-                <strong>Planta</strong>
-                <span>{plant?.nombre || plant?.name || 'Sin nombre'}</span>
-              </div>
-              <div className="wa-split wa-align-items-center">
-                <strong>Precio Pie</strong>
-                <span>{formattedReserva}</span>
-              </div>
-              <wa-divider></wa-divider>
-                <wa-scroller orientation="vertical" style={{ maxHeight: '35dvh' }}>
-                    <p className="gateway-instructions">Datos del comprador:</p>
+              <wa-card appearance="outlined" className="checkout-summary-card">
+                <div className="wa-stack wa-gap-s checkout-summary-content">
+                  <div className="checkout-section-title">
+                    <wa-icon name="file-invoice-dollar"></wa-icon>
+                    <strong>Resumen de la reserva</strong>
+                  </div>
+
+                  <div className="wa-split wa-align-items-center">
+                    <strong>Proyecto</strong>
+                    <span>{plant?.proyecto?.name || plant?.proyectoNombre || 'Sin proyecto'}</span>
+                  </div>
+                  <div className="wa-split wa-align-items-center">
+                    <strong>Planta</strong>
+                    <span>{plant?.nombre || plant?.name || 'Sin nombre'}</span>
+                  </div>
+                  <div className="wa-split wa-align-items-center">
+                    <strong>Precio pie</strong>
+                    <wa-tag variant="success">{formattedReserva}</wa-tag>
+                  </div>
+                </div>
+              </wa-card>
+
+              <wa-card appearance="outlined" className="checkout-buyer-card">
+                <div className="wa-stack wa-gap-s checkout-buyer-content">
+                  <div className="checkout-section-title">
+                    <wa-icon name="id-card"></wa-icon>
+                    <strong>Datos del comprador</strong>
+                  </div>
+
+                  <wa-scroller orientation="vertical" style={{ maxHeight: '35dvh' }}>
                     <wa-input
                         label="Nombre completo"
                         value={checkoutName}
@@ -511,7 +548,7 @@ function PaymentGatewayDialog({
                         required
                     ></wa-input>
                     {touched.name && !isNameValid && (
-                        <small className="wa-caption-s">Debe tener al menos 3 caracteres.</small>
+                        <small className="wa-caption-s validation-hint error">Debe tener al menos 3 caracteres.</small>
                     )}
 
                     <wa-input
@@ -527,7 +564,7 @@ function PaymentGatewayDialog({
                         required
                     ></wa-input>
                     {touched.email && !isEmailValid && (
-                        <small className="wa-caption-s">Ingresa un correo valido (ejemplo@correo.com).</small>
+                        <small className="wa-caption-s validation-hint error">Ingresa un correo valido (ejemplo@correo.com).</small>
                     )}
 
                     <wa-input
@@ -546,7 +583,7 @@ function PaymentGatewayDialog({
                         <div slot="start" className="wa-input-prefix">+56</div>
                     </wa-input>
                     {touched.phone && !isPhoneValid && (
-                        <small className="wa-caption-s">Debe contener entre 8 y 15 digitos.</small>
+                      <small className="wa-caption-s validation-hint error">Debe contener entre 8 y 15 digitos.</small>
                     )}
 
                     <wa-input
@@ -559,19 +596,25 @@ function PaymentGatewayDialog({
                         maxlength="10"
                         required
                     ></wa-input>
-                    <small className="wa-caption-s">Formato: 12345678-9 (sin puntos).</small>
+                    <small className="wa-caption-s validation-hint info">Formato: 12345678-9 (sin puntos).</small>
                     {touched.rut && !isRutValid && (
-                        <small className="wa-caption-s">RUT invalido. Revisa digito verificador.</small>
+                        <small className="wa-caption-s validation-hint error">RUT invalido. Revisa digito verificador.</small>
                     )}
-                </wa-scroller>
+                  </wa-scroller>
+                </div>
+              </wa-card>
             </div>
 
             <wa-divider></wa-divider>
 
-            <p className="gateway-instructions">Selecciona cómo deseas realizar el pago:</p>
+            <div className="checkout-section-title wa-mb-xs">
+              <wa-icon name="credit-card"></wa-icon>
+              <strong>Selecciona como deseas realizar el pago</strong>
+            </div>
 
             {gateways.length > 0 ? (
               <wa-radio-group
+                className="gateway-radio-group"
                 value={selectedGateway}
                 onChange={(e) => setSelectedGateway(e.target.value)}
               >

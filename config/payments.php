@@ -101,6 +101,13 @@ return [
             'on_success' => true,
             'on_failure' => true,
         ],
+        'fin_mail' => [
+            'enabled' => (bool) env('PAYMENT_FIN_MAIL_ENABLED', true),
+            'on_statuses' => array_values(array_filter(array_map(
+                static fn (string $status): string => trim($status),
+                explode(',', (string) env('PAYMENT_FIN_MAIL_ON_STATUSES', 'authorized,completed,failed,cancelled,expired,refunded,partially_refunded'))
+            ))),
+        ],
         'admin_email' => env('PAYMENT_ADMIN_EMAIL', 'admin@example.com'),
     ],
 ];

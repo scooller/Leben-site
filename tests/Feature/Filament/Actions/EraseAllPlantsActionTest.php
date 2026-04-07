@@ -9,6 +9,7 @@ use App\Models\Proyecto;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
 
 class EraseAllPlantsActionTest extends TestCase
@@ -20,6 +21,8 @@ class EraseAllPlantsActionTest extends TestCase
         $project = Proyecto::factory()->create();
         Plant::factory()->count(5)->create(['salesforce_proyecto_id' => $project->salesforce_id]);
 
+        Activity::query()->delete();
+
         self::assertCount(5, Plant::all());
 
         $result = EraseAllPlantsAction::execute();
@@ -27,6 +30,15 @@ class EraseAllPlantsActionTest extends TestCase
         self::assertTrue($result['success']);
         self::assertEquals(5, $result['count']);
         self::assertCount(0, Plant::all());
+
+        $activity = Activity::query()
+            ->where('log_name', 'admin_actions')
+            ->where('description', 'Eliminacion masiva de plants')
+            ->first();
+
+        self::assertNotNull($activity);
+        self::assertSame(5, $activity->properties['deleted_count']);
+        self::assertSame('mass_delete', $activity->properties['action']);
     }
 
     public function test_erase_all_plants_with_related_reservations(): void

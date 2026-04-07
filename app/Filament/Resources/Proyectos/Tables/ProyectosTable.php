@@ -75,10 +75,6 @@ class ProyectosTable
                 ->limitList(2)
                 ->expandableLimitedList(),
 
-            // TextColumn::make('razon_social')
-            //     ->label('Razón Social')
-            //     ->searchable(),
-
             TextColumn::make('rut')
                 ->label('RUT'),
 
@@ -97,17 +93,12 @@ class ProyectosTable
                 ->sortable()
                 ->searchable(),
 
-            // TextColumn::make('dscto_m_x_prod_principal_porc')
-            //     ->label('Dscto Principal (%)')
-            //     ->numeric(decimalPlaces: 2),
-
-            // TextColumn::make('dscto_maximo_aporte_leben')
-            //     ->label('Dscto Max Leben (%)')
-            //     ->numeric(decimalPlaces: 2),
-
-            // TextColumn::make('tasa')
-            //     ->label('Tasa (%)')
-            //     ->numeric(decimalPlaces: 6),
+            // codigo comercio
+            TextColumn::make('codigo_comercio')
+                ->label('Código Comercio')
+                ->sortable()
+                ->searchable()
+                ->toggleable(isToggledHiddenByDefault: true),
 
             IconColumn::make('entrega_inmediata')
                 ->label('Entrega Inmediata')
