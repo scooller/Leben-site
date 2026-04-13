@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use FinityLabs\FinMail\Database\Seeders\EmailTemplateSeeder;
 use FinityLabs\FinMail\Models\EmailTemplate;
 use Illuminate\Database\Seeder;
 
@@ -12,6 +13,8 @@ class FinMailSpanishEmailTemplatesSeeder extends Seeder
      */
     public function run(): void
     {
+        $this->call(EmailTemplateSeeder::class);
+
         $this->seedSpanishForSystemTemplates();
         $this->upsertTransactionalTemplates();
     }
@@ -92,8 +95,8 @@ class FinMailSpanishEmailTemplatesSeeder extends Seeder
                     'en' => 'Your reservation is active for a limited time.',
                 ],
                 'body' => [
-                    'es' => '<p>Hola {{ user.name | "Cliente" }},</p><p>Tu reserva para la unidad {{ plant.name }} del proyecto {{ project.name | "-" }} fue creada correctamente.</p><p>Vigencia: {{ reservation.expires_at }}</p>',
-                    'en' => '<p>Hello {{ user.name | "Customer" }},</p><p>Your reservation for unit {{ plant.name }} in project {{ project.name | "-" }} was created successfully.</p><p>Valid until: {{ reservation.expires_at }}</p>',
+                    'es' => '<p>Hola {{ user.name | "Cliente" }},</p><p>Tu reserva para la unidad {{ plant.name }} del proyecto {{ project.name | "-" }} fue creada correctamente.</p><p><strong>Monto de reserva:</strong> {{ reservation_amount | "-" }} {{ reservation_currency | "CLP" }}</p><p>Vigencia: {{ reservation.expires_at }}</p>',
+                    'en' => '<p>Hello {{ user.name | "Customer" }},</p><p>Your reservation for unit {{ plant.name }} in project {{ project.name | "-" }} was created successfully.</p><p><strong>Reservation amount:</strong> {{ reservation_amount | "-" }} {{ reservation_currency | "CLP" }}</p><p>Valid until: {{ reservation.expires_at }}</p>',
                 ],
                 'category' => 'transactional',
                 'tags' => ['reservation', 'plant'],
@@ -102,6 +105,8 @@ class FinMailSpanishEmailTemplatesSeeder extends Seeder
                     'plant' => ['name'],
                     'project' => ['name'],
                     'reservation' => ['expires_at', 'session_token'],
+                    'reservation_amount' => 'string',
+                    'reservation_currency' => 'string',
                 ],
             ],
             [
@@ -119,8 +124,8 @@ class FinMailSpanishEmailTemplatesSeeder extends Seeder
                     'en' => 'Check your new payment status.',
                 ],
                 'body' => [
-                    'es' => '<p>Hola {{ user.name | "Cliente" }},</p><p>Tu pago para la unidad {{ plant.name | "-" }} cambio de estado.</p><p>Estado anterior: {{ previous_status }}</p><p>Estado actual: {{ current_status }}</p>',
-                    'en' => '<p>Hello {{ user.name | "Customer" }},</p><p>Your payment for unit {{ plant.name | "-" }} changed status.</p><p>Previous status: {{ previous_status }}</p><p>Current status: {{ current_status }}</p>',
+                    'es' => '<p>Hola {{ user.name | "Cliente" }},</p><p>Tu pago para la unidad {{ plant.name | "-" }} cambio de estado.</p><p><strong>Monto de reserva:</strong> {{ payment.amount | "-" }} {{ payment.currency | "CLP" }}</p><p>Estado anterior: {{ previous_status }}</p><p>Estado actual: {{ current_status }}</p>',
+                    'en' => '<p>Hello {{ user.name | "Customer" }},</p><p>Your payment for unit {{ plant.name | "-" }} changed status.</p><p><strong>Reservation amount:</strong> {{ payment.amount | "-" }} {{ payment.currency | "CLP" }}</p><p>Previous status: {{ previous_status }}</p><p>Current status: {{ current_status }}</p>',
                 ],
                 'category' => 'transactional',
                 'tags' => ['payment', 'status'],

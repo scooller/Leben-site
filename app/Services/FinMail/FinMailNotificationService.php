@@ -35,6 +35,8 @@ class FinMailNotificationService
                 'reservation' => $reservation,
                 'plant' => $reservation->plant,
                 'project' => $reservation->plant?->proyecto,
+                'reservation_amount' => new TokenValue($this->resolveReservationAmount($reservation) ?? '-'),
+                'reservation_currency' => new TokenValue($this->resolveReservationCurrency()),
             ],
             contextModel: $reservation,
             logContext: [
@@ -231,5 +233,25 @@ class FinMailNotificationService
         }
 
         return '-';
+    }
+
+    private function resolveReservationAmount(PlantReservation $reservation): ?string
+    {
+        $projectAmount = $reservation->plant?->proyecto?->valor_reserva_exigido_defecto_peso;
+        if (is_numeric($projectAmount)) {
+            return number_format((float) $projectAmount, 2, '.', '');
+        }
+
+        $plantBaseAmount = $reservation->plant?->precio_base;
+        if (is_numeric($plantBaseAmount)) {
+            return number_format((float) $plantBaseAmount, 2, '.', '');
+        }
+
+        return null;
+    }
+
+    private function resolveReservationCurrency(): string
+    {
+        return (string) config('payments.currency', 'CLP');
     }
 }

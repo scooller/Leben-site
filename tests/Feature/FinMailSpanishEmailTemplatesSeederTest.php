@@ -43,7 +43,13 @@ class FinMailSpanishEmailTemplatesSeederTest extends TestCase
         $this->assertSame(1, EmailTemplate::query()->where('key', 'manual-reservation-created')->count());
         $this->assertSame(1, EmailTemplate::query()->where('key', 'manual-payment-proof-submitted-admin')->count());
         $this->assertSame('Reserva de unidad confirmada', $reservationTemplate->getTranslation('name', 'es'));
+        $this->assertStringContainsString('{{ reservation_amount', $reservationTemplate->getTranslation('body', 'es'));
+        $this->assertStringContainsString('{{ reservation_currency', $reservationTemplate->getTranslation('body', 'es'));
+        $this->assertSame('string', data_get($reservationTemplate->token_schema, 'reservation_amount'));
+        $this->assertSame('string', data_get($reservationTemplate->token_schema, 'reservation_currency'));
         $this->assertSame('Actualizacion de estado de pago', $paymentTemplate->getTranslation('name', 'es'));
+        $this->assertStringContainsString('{{ payment.amount', $paymentTemplate->getTranslation('body', 'es'));
+        $this->assertStringContainsString('{{ payment.currency', $paymentTemplate->getTranslation('body', 'es'));
         $this->assertSame('Reserva manual creada', $manualReservationTemplate->getTranslation('name', 'es'));
         $this->assertSame('Comprobante manual recibido (admin)', $manualProofAdminTemplate->getTranslation('name', 'es'));
     }
