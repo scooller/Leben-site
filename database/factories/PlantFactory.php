@@ -21,6 +21,7 @@ class PlantFactory extends Factory
             'salesforce_proyecto_id' => fake()->uuid(),
             'name' => fake()->numberBetween(101, 999),
             'product_code' => 'PLANT-'.fake()->unique()->numberBetween(1000, 9999),
+            'tipo_producto' => fake()->randomElement(['DEPARTAMENTO', 'ESTACIONAMIENTO', 'BODEGA', 'LOCAL']),
             'orientacion' => fake()->randomElement(['Norte', 'Sur', 'Este', 'Oeste', 'Nor-Este', 'Nor-Oeste']),
             'programa' => fake()->numberBetween(1, 4).' dormitorios',
             'programa2' => fake()->numberBetween(1, 3).' baños',

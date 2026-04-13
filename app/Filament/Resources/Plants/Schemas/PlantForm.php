@@ -29,6 +29,9 @@ class PlantForm
                     ->label('Código de Producto')
                     // ->disabled()
                     ->required(),
+                TextInput::make('tipo_producto')
+                    ->label('Tipo de Planta')
+                    ->disabled(),
                 Select::make('salesforce_proyecto_id')
                     ->label('Proyecto')
                     ->options(Proyecto::pluck('name', 'salesforce_id'))

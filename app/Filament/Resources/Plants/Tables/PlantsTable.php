@@ -45,6 +45,18 @@ class PlantsTable
                     ->label('Programa')
                     ->searchable()
                     ->sortable(),
+                TextColumn::make('tipo_producto')
+                    ->label('Tipo')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'DEPARTAMENTO' => 'emerald',
+                        'ESTACIONAMIENTO' => 'orange',
+                        'BODEGA' => 'amber',
+                        'LOCAL' => 'sky',
+                        default => 'gray',
+                    })
+                    ->searchable()
+                    ->sortable(),
                 // TextColumn::make('programa2')
                 //     ->label('Programa 2')
                 //     ->searchable()
@@ -116,7 +128,7 @@ class PlantsTable
                         0 => 'Inactivo',
                     ])
                     ->default(null),
-                //unidades sale
+                // unidades sale
                 SelectFilter::make('unidad_sale')
                     ->label('Unidad Sale')
                     ->options([
@@ -168,7 +180,7 @@ class PlantsTable
                             ]);
                         })
                         ->successNotificationTitle('Plantas desactivadas'),
-                    //activateSelected Sale
+                    // activateSelected Sale
                     BulkAction::make('activateSelected')
                         ->label('Activar en sale')
                         ->icon('heroicon-o-check-circle')
