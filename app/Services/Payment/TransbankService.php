@@ -112,9 +112,9 @@ class TransbankService implements PaymentGatewayInterface
 
             // Crear instancia de Transaction configurada para el ambiente
             if ($this->environment === 'production') {
-                $transaction = Transaction::buildForProduction($commerceCode, $apiKey);
+                $transaction = Transaction::buildForProduction($apiKey, $commerceCode);
             } else {
-                $transaction = Transaction::buildForIntegration($commerceCode, $apiKey);
+                $transaction = Transaction::buildForIntegration($apiKey, $commerceCode);
             }
 
             // Crear transacción
@@ -162,9 +162,9 @@ class TransbankService implements PaymentGatewayInterface
 
             // Crear instancia de Transaction configurada para el ambiente
             if ($this->environment === 'production') {
-                $transaction = Transaction::buildForProduction($commerceCode, $apiKey);
+                $transaction = Transaction::buildForProduction($apiKey, $commerceCode);
             } else {
-                $transaction = Transaction::buildForIntegration($commerceCode, $apiKey);
+                $transaction = Transaction::buildForIntegration($apiKey, $commerceCode);
             }
 
             $response = $transaction->commit($token);
@@ -233,9 +233,9 @@ class TransbankService implements PaymentGatewayInterface
 
             // Crear instancia de Transaction configurada para el ambiente
             if ($this->environment === 'production') {
-                $transaction = Transaction::buildForProduction($commerceCode, $apiKey);
+                $transaction = Transaction::buildForProduction($apiKey, $commerceCode);
             } else {
-                $transaction = Transaction::buildForIntegration($commerceCode, $apiKey);
+                $transaction = Transaction::buildForIntegration($apiKey, $commerceCode);
             }
 
             $response = $transaction->status($transactionId);
@@ -278,9 +278,9 @@ class TransbankService implements PaymentGatewayInterface
 
             // Crear instancia de Transaction configurada para el ambiente
             if ($this->environment === 'production') {
-                $transaction = Transaction::buildForProduction($commerceCode, $apiKey);
+                $transaction = Transaction::buildForProduction($apiKey, $commerceCode);
             } else {
-                $transaction = Transaction::buildForIntegration($commerceCode, $apiKey);
+                $transaction = Transaction::buildForIntegration($apiKey, $commerceCode);
             }
 
             $response = $transaction->refund($transactionId, $amount ?? 0);

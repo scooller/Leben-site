@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { normalizeHttpError } from '../utils/errorHandler';
 
 const defaultAuthToken = import.meta.env.AUTH_TOKEN?.trim();
 
@@ -31,7 +32,7 @@ api.interceptors.response.use(
       localStorage.removeItem('user');
     }
 
-    return Promise.reject(error);
+    return Promise.reject(normalizeHttpError(error, 'api.interceptor'));
   }
 );
 

@@ -15,6 +15,17 @@ export const ErrorTypes = {
   UNKNOWN: 'unknown',
 };
 
+const IGNORED_ERROR_PATTERNS = [
+  'content security policy directive',
+  "identifier 'makeanobject' has already been declared",
+  'vm',
+  'content.js',
+  'installhook.js',
+];
+
+const recentErrorFingerprints = new Map();
+const DEDUP_WINDOW_MS = 2500;
+
 /**
  * Mensajes de error amigables por tipo
  */
@@ -34,6 +45,23 @@ const ERROR_MESSAGES = {
  * @returns {Object} - Información del error procesada
  */
 export function parseError(error) {
+  if (error?.isAppError) {
+    return error;
+  }
+
+  if (error?.type && error?.message && !error?.response) {
+    return {
+      type: error.type,
+      message: error.message,
+      details: error.details ?? null,
+      code: error.code ?? 'APP_ERROR',
+      status: error.status,
+      userMessage: error.userMessage,
+      context: error.context,
+      isAppError: true,
+    };
+  }
+
   // Error de red (sin respuesta del servidor)
   if (!error.response) {
     if (error.request) {
@@ -117,6 +145,66 @@ export function parseError(error) {
 }
 
 /**
+ * Normaliza errores HTTP (Axios) en un formato uniforme para toda la app
+ * @param {Error} error
+ * @param {string} context
+ * @returns {Object}
+ */
+export function normalizeHttpError(error, context = 'api') {
+  const parsed = parseError(error);
+  const method = error?.config?.method?.toUpperCase?.() ?? null;
+  const path = error?.config?.url ?? null;
+
+  return {
+    ...parsed,
+    context,
+    method,
+    path,
+    userMessage: parsed.userMessage || parsed.message,
+    isAppError: true,
+    originalError: error,
+  };
+}
+
+/**
+ * Detecta ruido de consola externo (extensiones/CSP report-only)
+ * @param {Error|Object|string} error
+ * @returns {boolean}
+ */
+export function shouldIgnoreConsoleNoise(error) {
+  const message = `${error?.message || error || ''}`.toLowerCase();
+  const stack = `${error?.stack || ''}`.toLowerCase();
+
+  return IGNORED_ERROR_PATTERNS.some((pattern) => message.includes(pattern) || stack.includes(pattern));
+}
+
+/**
+ * Evita spamear el mismo error en pocos segundos
+ * @param {string} context
+ * @param {Object} parsed
+ * @returns {boolean}
+ */
+function isDuplicatedLog(context, parsed) {
+  const now = Date.now();
+  const fingerprint = `${context}|${parsed.code}|${parsed.status}|${parsed.message}`;
+  const lastSeen = recentErrorFingerprints.get(fingerprint);
+
+  recentErrorFingerprints.forEach((timestamp, key) => {
+    if (now - timestamp > DEDUP_WINDOW_MS) {
+      recentErrorFingerprints.delete(key);
+    }
+  });
+
+  if (lastSeen && now - lastSeen <= DEDUP_WINDOW_MS) {
+    return true;
+  }
+
+  recentErrorFingerprints.set(fingerprint, now);
+
+  return false;
+}
+
+/**
  * Formatear errores de validación para mostrar al usuario
  * @param {Object} errors - Objeto con errores de validación
  * @returns {string} - Mensaje formateado
@@ -162,7 +250,16 @@ export function getErrorMessage(error) {
  * @param {Error} error - Error capturado
  */
 export function logError(context, error) {
+  if (shouldIgnoreConsoleNoise(error)) {
+    return;
+  }
+
   const parsed = parseError(error);
+
+  if (isDuplicatedLog(context, parsed)) {
+    return;
+  }
+
   console.error(`[${context}]`, {
     type: parsed.type,
     message: parsed.message,
@@ -189,6 +286,8 @@ export function isRetryableError(error) {
 export default {
   ErrorTypes,
   parseError,
+  normalizeHttpError,
+  shouldIgnoreConsoleNoise,
   formatValidationErrors,
   getErrorMessage,
   logError,

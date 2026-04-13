@@ -27,7 +27,10 @@ html.wa-light #root{
     }
 }
 .app{
-    background-image: url(https://sale.ileben.cl/wp-content/uploads/2020/07/fondo-1-1.svg);
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(var(--wa-color-brand-fill-normal-rgb), 0.12) 0%, transparent 42%),
+    radial-gradient(circle at 80% 0%, rgba(var(--wa-color-success-fill-normal-rgb), 0.09) 0%, transparent 40%),
+    linear-gradient(180deg, rgba(var(--wa-color-surface-raised-rgb), 1) 0%, rgba(var(--wa-color-surface-default-rgb), 1) 100%);
     background-size: cover;
     background-position: center;
     background-attachment: fixed;
