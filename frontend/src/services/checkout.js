@@ -190,7 +190,7 @@ class CheckoutService {
       return responseData;
     } catch (error) {
       // Si el error ya fue formateado (validaciones locales), lanzarlo directamente
-      if (error.type && error.userMessage) {
+      if (error.type && error.userMessage && error.status === undefined) {
         logError('CheckoutService.initiate', error);
         throw error;
       }

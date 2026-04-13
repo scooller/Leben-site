@@ -13,6 +13,11 @@ class TransbankService implements PaymentGatewayInterface
 {
     private const INTEGRATION_SIMPLE_COMMERCE_CODE = '597055555532';
 
+    private const INTEGRATION_MALL_CHILD_CODES = [
+        WebpayPlus::INTEGRATION_MALL_CHILD_COMMERCE_CODE_1,
+        WebpayPlus::INTEGRATION_MALL_CHILD_COMMERCE_CODE_2,
+    ];
+
     protected array $config;
 
     protected string $environment;
@@ -107,19 +112,36 @@ class TransbankService implements PaymentGatewayInterface
      */
     protected function resolveMallChildCommerceCode(array $data, ?Payment $payment = null): string
     {
+        $configuredChildCode = null;
+
         if (! empty($data['child_commerce_code'])) {
-            return (string) $data['child_commerce_code'];
+            $configuredChildCode = (string) $data['child_commerce_code'];
         }
 
-        if ($payment?->project) {
+        if ($configuredChildCode === null && $payment?->project) {
             $projectCode = $payment->project->getRawOriginal('transbank_commerce_code');
             if (! empty($projectCode)) {
-                return (string) $projectCode;
+                $configuredChildCode = (string) $projectCode;
             }
         }
 
         if ($this->environment === 'integration') {
+            if ($configuredChildCode !== null && in_array($configuredChildCode, self::INTEGRATION_MALL_CHILD_CODES, true)) {
+                return $configuredChildCode;
+            }
+
+            if ($configuredChildCode !== null) {
+                Log::warning('Transbank: child_commerce_code no válido para integración Mall. Se utilizará child de integración.', [
+                    'configured_child_commerce_code' => $configuredChildCode,
+                    'resolved_child_commerce_code' => WebpayPlus::INTEGRATION_MALL_CHILD_COMMERCE_CODE_1,
+                ]);
+            }
+
             return WebpayPlus::INTEGRATION_MALL_CHILD_COMMERCE_CODE_1;
+        }
+
+        if ($configuredChildCode !== null) {
+            return $configuredChildCode;
         }
 
         throw new \InvalidArgumentException('Transbank Mall requiere child_commerce_code para crear la transacción.');
