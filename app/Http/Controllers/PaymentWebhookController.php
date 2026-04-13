@@ -68,10 +68,36 @@ class PaymentWebhookController extends Controller
             $token = $request->input('token_ws');
 
             if (! $token) {
-                Log::warning('Transbank: Retorno sin token_ws');
+                $tbkToken = (string) ($request->input('TBK_TOKEN') ?? $request->input('tbk_token') ?? '');
+                $tbkBuyOrder = (string) ($request->input('TBK_ORDEN_COMPRA') ?? $request->input('tbk_orden_compra') ?? '');
+
+                Log::warning('Transbank: Retorno sin token_ws', [
+                    'tbk_token' => $tbkToken,
+                    'tbk_buy_order' => $tbkBuyOrder,
+                ]);
+
+                if ($tbkBuyOrder !== '') {
+                    $payment = Payment::where('gateway_tx_id', $tbkBuyOrder)->first();
+                    if ($payment) {
+                        $payment->update([
+                            'status' => \App\Enums\PaymentStatus::CANCELLED,
+                            'metadata' => array_merge($payment->metadata ?? [], [
+                                'transbank_abort_payload' => $request->all(),
+                                'cancelled_at' => now()->toISOString(),
+                            ]),
+                        ]);
+
+                        if ($payment->plant_id) {
+                            $this->reservationService->releaseForPlant((int) $payment->plant_id, 'payment_cancelled');
+                        }
+
+                        return redirect()->route('payment.failed', ['payment' => $payment->id])
+                            ->with('error', 'El pago fue cancelado o expiró en Transbank.');
+                    }
+                }
 
                 return redirect()->route('payment.failed')
-                    ->with('error', 'Token de transacción no proporcionado');
+                    ->with('error', 'Transacción cancelada o token no proporcionado por Transbank.');
             }
 
             Log::info('Transbank: Procesando retorno', ['token' => $token]);
@@ -111,9 +137,8 @@ class PaymentWebhookController extends Controller
                 ]);
 
                 // Completar la reserva de la planta
-                $plantId = $this->extractPlantIdFromBuyOrder($response['buy_order']);
-                if ($plantId) {
-                    $this->reservationService->completeForPlant($plantId);
+                if ($payment->plant_id) {
+                    $this->reservationService->completeForPlant((int) $payment->plant_id);
                 }
 
                 return redirect()->route('payment.success', ['payment' => $payment->id])
@@ -134,9 +159,8 @@ class PaymentWebhookController extends Controller
                 ]);
 
                 // Liberar la reserva de la planta
-                $plantId = $this->extractPlantIdFromBuyOrder($response['buy_order']);
-                if ($plantId) {
-                    $this->reservationService->releaseForPlant($plantId, 'payment_rejected');
+                if ($payment->plant_id) {
+                    $this->reservationService->releaseForPlant((int) $payment->plant_id, 'payment_rejected');
                 }
 
                 return redirect()->route('payment.failed', ['payment' => $payment->id])

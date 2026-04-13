@@ -80,22 +80,22 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
             </svg>
         </div>
-        
+
         <h1>¡Pago Exitoso!</h1>
         <p>Tu pago ha sido procesado correctamente. Recibirás un correo de confirmación en breve.</p>
-        
+
         @if(session('success'))
             <p style="color: #10b981; font-weight: 600;">{{ session('success') }}</p>
         @endif
-        
+
         @if($payment)
             <div class="payment-id">
                 ID de Pago: {{ $payment }}
             </div>
         @endif
-        
+
         <div style="margin-top: 30px;">
-            <a href="/" class="btn">Volver al inicio</a>
+            <a href="{{ config('app.frontend_url', '/') }}" class="btn">Volver al inicio</a>
         </div>
     </div>
 </body>

@@ -75,7 +75,7 @@ class CheckoutController extends Controller
 
             // Iniciar transacción según la pasarela
             if ($validated['gateway'] === 'transbank') {
-                return $this->initiateTransbank($plant, $amount, $description, $validated['quantity']);
+                return $this->initiateTransbank($user, $plant, $reservation, $amount, $description, $validated['quantity']);
             }
 
             return $this->initiateMercadoPago(
@@ -181,7 +181,7 @@ class CheckoutController extends Controller
     /**
      * Iniciar pago con Transbank
      */
-    private function initiateTransbank(Plant $plant, float $amount, string $description, int $quantity): JsonResponse
+    private function initiateTransbank(User $user, Plant $plant, ?PlantReservation $reservation, float $amount, string $description, int $quantity): JsonResponse
     {
         try {
             $config = config('payments.gateways.transbank', []);
@@ -231,7 +231,31 @@ class CheckoutController extends Controller
                 $requestPayload['child_buy_order'] = 'CH'.$plantReference.$timestampRef;
             }
 
+            $payment = $user->payments()->create([
+                'project_id' => $plant->proyecto?->id,
+                'plant_id' => $plant->id,
+                'gateway' => 'transbank',
+                'gateway_tx_id' => $buyOrder,
+                'amount' => $amount,
+                'currency' => config('payments.currency', 'CLP'),
+                'status' => \App\Enums\PaymentStatus::PENDING,
+                'metadata' => [
+                    'description' => $description,
+                    'session_id' => $requestPayload['session_id'],
+                    'reservation_session_token' => $reservation?->session_token,
+                    'transbank_child_buy_order' => $requestPayload['child_buy_order'] ?? null,
+                    'transbank_child_commerce_code' => $requestPayload['child_commerce_code'] ?? null,
+                ],
+            ]);
+
             $response = $service->createTransaction($requestPayload);
+
+            $payment->update([
+                'metadata' => array_merge($payment->metadata ?? [], [
+                    'transbank_token' => $response['token'] ?? null,
+                    'transbank_redirect_url' => $response['url'] ?? null,
+                ]),
+            ]);
 
             Log::info('Checkout: Transbank transaction response', [
                 'token' => $response['token'] ?? null,
@@ -246,6 +270,7 @@ class CheckoutController extends Controller
                 'gateway' => 'transbank',
                 'redirect_url' => $response['url'],
                 'token' => $response['token'],
+                'payment_id' => $payment->id,
                 'amount' => $amount,
                 'description' => $description,
                 'environment' => $transbankEnv,

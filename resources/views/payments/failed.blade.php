@@ -95,25 +95,25 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
         </div>
-        
+
         <h1>Pago Rechazado</h1>
         <p>Lo sentimos, tu pago no pudo ser procesado. Por favor, intenta nuevamente.</p>
-        
+
         @if(session('error'))
             <div class="error-message">
                 {{ session('error') }}
             </div>
         @endif
-        
+
         @if($payment)
             <div class="payment-id">
                 ID de Pago: {{ $payment }}
             </div>
         @endif
-        
+
         <div style="margin-top: 30px;">
             <a href="javascript:history.back()" class="btn">Intentar nuevamente</a>
-            <a href="/" class="btn btn-secondary">Volver al inicio</a>
+            <a href="{{ config('app.frontend_url', '/') }}" class="btn btn-secondary">Volver al inicio</a>
         </div>
     </div>
 </body>
