@@ -643,6 +643,38 @@ class SiteSettings extends Page implements HasForms
                                     ->columns(1),
                             ]),
 
+                        Tabs\Tab::make('Salesforce')
+                            ->icon('heroicon-o-arrow-path')
+                            ->schema([
+                                Section::make('Sincronización Automática de Plantas')
+                                    ->description('Configura cada cuánto se sincronizan automáticamente las plantas y qué tipos se incluirán.')
+                                    ->schema([
+                                        TextInput::make('salesforce_sync_interval_minutes')
+                                            ->label('Frecuencia de sincronización automática (minutos)')
+                                            ->helperText('Define cada cuántos minutos se debe ejecutar la sincronización automática de plantas desde Salesforce.')
+                                            ->numeric()
+                                            ->minValue(5)
+                                            ->step(5)
+                                            ->default(1440)
+                                            ->required(),
+
+                                        Select::make('salesforce_sync_plant_types')
+                                            ->label('Tipos de planta a sincronizar')
+                                            ->helperText('Selecciona los tipos de planta que se deben considerar en la sincronización automática.')
+                                            ->options([
+                                                'ESTACIONAMIENTO' => 'ESTACIONAMIENTO',
+                                                'DEPARTAMENTO' => 'DEPARTAMENTO',
+                                                'BODEGA' => 'BODEGA',
+                                                'LOCAL' => 'LOCAL',
+                                            ])
+                                            ->multiple()
+                                            ->searchable()
+                                            ->default(['ESTACIONAMIENTO', 'DEPARTAMENTO', 'BODEGA', 'LOCAL'])
+                                            ->required(),
+                                    ])
+                                    ->columns(1),
+                            ]),
+
                         Tabs\Tab::make('Mantenimiento')
                             ->icon('heroicon-o-wrench-screwdriver')
                             ->schema([

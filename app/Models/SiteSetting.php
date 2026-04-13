@@ -72,6 +72,8 @@ class SiteSetting extends Model
         'banner_image_id',
         'banner_link',
         'dashboard_widget_order',
+        'salesforce_sync_interval_minutes',
+        'salesforce_sync_plant_types',
     ];
 
     protected $casts = [
@@ -87,6 +89,8 @@ class SiteSetting extends Model
         'gateway_mercadopago_config' => 'array',
         'gateway_manual_config' => 'array',
         'dashboard_widget_order' => 'array',
+        'salesforce_sync_interval_minutes' => 'integer',
+        'salesforce_sync_plant_types' => 'array',
         'footer_menu' => 'array',
         'contact_form_fields' => 'array',
     ];
@@ -124,7 +128,7 @@ class SiteSetting extends Model
      */
     public static function current(): self
     {
-        return static::firstOrCreate(
+        $settings = static::firstOrCreate(
             ['id' => 1],
             [
                 'site_name' => 'iLeben',
@@ -152,6 +156,8 @@ class SiteSetting extends Model
                 'contact_page_title' => 'Contacto',
                 'contact_page_subtitle' => 'Estamos para ayudarte',
                 'contact_page_content' => '<p>Si tienes dudas sobre nuestras plantas o el proceso de compra, escríbenos y te responderemos a la brevedad.</p>',
+                'salesforce_sync_interval_minutes' => 1440,
+                'salesforce_sync_plant_types' => ['ESTACIONAMIENTO', 'DEPARTAMENTO', 'BODEGA', 'LOCAL'],
                 'contact_form_fields' => [
                     [
                         'key' => 'name',
@@ -191,6 +197,25 @@ class SiteSetting extends Model
                 ],
             ]
         );
+
+        $defaultSalesforcePlantTypes = ['ESTACIONAMIENTO', 'DEPARTAMENTO', 'BODEGA', 'LOCAL'];
+        $requiresUpdate = false;
+
+        if ($settings->salesforce_sync_interval_minutes === null) {
+            $settings->salesforce_sync_interval_minutes = 1440;
+            $requiresUpdate = true;
+        }
+
+        if ($settings->salesforce_sync_plant_types === null) {
+            $settings->salesforce_sync_plant_types = $defaultSalesforcePlantTypes;
+            $requiresUpdate = true;
+        }
+
+        if ($requiresUpdate) {
+            $settings->save();
+        }
+
+        return $settings;
     }
 
     /**
