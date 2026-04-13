@@ -2,6 +2,7 @@
 
 namespace App\Services\Salesforce;
 
+use App\Models\SiteSetting;
 use Exception;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -95,21 +96,41 @@ class SalesforceService
      *               'superficie_terraza' => float,
      *               ]
      */
-    public function findPlants(?int $cacheTtl = null): array
+    /**
+     * @param  list<string>|null  $projectSalesforceIds
+     */
+    public function findPlants(?int $cacheTtl = null, ?array $projectSalesforceIds = null): array
     {
+        $productTypes = $this->getConfiguredPlantProductTypes();
+        $productTypesInClause = implode(',', array_map(
+            static fn (string $type): string => "'".str_replace("'", "\\'", $type)."'",
+            $productTypes
+        ));
+        $projectIds = $this->normalizeSalesforceIdList($projectSalesforceIds ?? []);
+
+        if ($projectIds === []) {
+            return [];
+        }
+
+        $projectIdsInClause = implode(',', array_map(
+            static fn (string $id): string => "'".str_replace("'", "\\'", $id)."'",
+            $projectIds
+        ));
+
         // SOQL para obtener plantas desde Product2
         $soql = 'SELECT Id, Name, ProductCode, Orientacion2__c, Programa__c, Programa2__c, Modelo__r.Name, Modelo__r.Programa__c, Piso__c, '
             .'Precio_Base__c, Precio_Lista__c, Porcentaje_maximo_de_unidad__c, '
             .'Superficie_Total_Producto_Principal__c, Superficie_Interior__c, Superficie_Util__c, '
             .'Superficie_Terraza__c, Proyecto__c '
             .'FROM Product2 '
-            ."WHERE IsActive = true AND Estado__c = 'Disponible' AND Tipo_Producto__c = 'DEPARTAMENTO' "
+            ."WHERE IsActive = true AND Estado__c = 'Disponible' AND Tipo_Producto__c IN ({$productTypesInClause}) AND Proyecto__c IN ({$projectIdsInClause}) "
             .'ORDER BY Name '
             .'LIMIT 1000';
 
         $ttl = $cacheTtl ?? $this->defaultCacheTtl;
+        $cacheKey = $this->buildPlantsCacheKey($productTypes, $projectIds);
 
-        return Cache::remember('salesforce:plants', $ttl, function () use ($soql) {
+        return Cache::remember($cacheKey, $ttl, function () use ($soql) {
             try {
                 $result = Forrest::query($soql);
                 $entries = $result['records'] ?? [];
@@ -175,6 +196,34 @@ class SalesforceService
     {
         Cache::forget('salesforce:plants');
         // Limpiar también el caché de plantas por pricebook (usar tags sería ideal aquí)
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function getConfiguredPlantProductTypes(): array
+    {
+        $configuredTypes = SiteSetting::get('salesforce_sync_plant_types', ['DEPARTAMENTO']);
+
+        if (! is_array($configuredTypes)) {
+            return ['DEPARTAMENTO'];
+        }
+
+        $normalizedTypes = array_values(array_unique(array_filter(array_map(
+            static fn (mixed $type): string => strtoupper(trim((string) $type)),
+            $configuredTypes
+        ), static fn (string $type): bool => $type !== '')));
+
+        return $normalizedTypes === [] ? ['DEPARTAMENTO'] : $normalizedTypes;
+    }
+
+    /**
+     * @param  list<string>  $productTypes
+     * @param  list<string>  $projectSalesforceIds
+     */
+    private function buildPlantsCacheKey(array $productTypes, array $projectSalesforceIds): string
+    {
+        return 'salesforce:plants:'.md5(implode('|', $productTypes).'::'.implode('|', $projectSalesforceIds));
     }
 
     /**

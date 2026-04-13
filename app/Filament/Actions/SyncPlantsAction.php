@@ -51,11 +51,23 @@ class SyncPlantsAction
             Log::info('Iniciando sincronización de plantas desde Salesforce...');
 
             $salesforceService = app(SalesforceService::class);
-            $plants = $salesforceService->findPlants();
             $projectNamesBySalesforceId = Proyecto::query()
                 ->whereNotNull('salesforce_id')
                 ->pluck('name', 'salesforce_id')
                 ->toArray();
+            $projectSalesforceIds = array_values(array_keys($projectNamesBySalesforceId));
+
+            if ($projectSalesforceIds === []) {
+                Log::warning('No existen proyectos locales con salesforce_id para sincronizar plantas.');
+
+                return [
+                    'success' => false,
+                    'message' => 'No existen proyectos locales sincronizados para importar plantas.',
+                    'count' => 0,
+                ];
+            }
+
+            $plants = $salesforceService->findPlants(projectSalesforceIds: $projectSalesforceIds);
 
             $documentNames = self::buildPlantInteriorDocumentNames($plants, $projectNamesBySalesforceId);
             $interiorImageUrlsByDocumentName = self::buildInteriorImageUrlsByDocumentName($salesforceService, $documentNames);
@@ -78,16 +90,6 @@ class SyncPlantsAction
 
             foreach ($plants as $plantData) {
                 if (empty($plantData['proyecto_id'])) {
-                    $skipped++;
-
-                    continue;
-                }
-
-                $hasProject = Proyecto::query()
-                    ->where('salesforce_id', $plantData['proyecto_id'])
-                    ->exists();
-
-                if (! $hasProject) {
                     $skipped++;
 
                     continue;
