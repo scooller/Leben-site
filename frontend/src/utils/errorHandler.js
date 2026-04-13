@@ -15,6 +15,8 @@ export const ErrorTypes = {
   UNKNOWN: 'unknown',
 };
 
+export const APP_HTTP_ERROR_EVENT = 'app:http-error';
+
 const IGNORED_ERROR_PATTERNS = [
   'content security policy directive',
   "identifier 'makeanobject' has already been declared",
@@ -233,7 +235,7 @@ export function formatValidationErrors(errors) {
  */
 export function getErrorMessage(error) {
   const parsed = parseError(error);
-  
+
   if (parsed.type === ErrorTypes.VALIDATION && parsed.details) {
     const validationMsg = formatValidationErrors(parsed.details);
     if (validationMsg) {

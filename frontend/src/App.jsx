@@ -1,8 +1,10 @@
-import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { SiteConfigProvider, SiteConfigContext } from './contexts/SiteConfigContext';
 import MaintenanceMode from './components/MaintenanceMode';
+import ErrorNotification from './components/ErrorNotification';
 import Home from './pages/Home';
 import Contact from './pages/Contact';
+import { APP_HTTP_ERROR_EVENT } from './utils/errorHandler';
 import './App.scss';
 import './styles/maintenance.scss';
 
@@ -16,6 +18,8 @@ const normalizePathname = (value) => {
 function AppContent() {
   const { config } = useContext(SiteConfigContext) || {};
   const [pathname, setPathname] = useState(() => normalizePathname(window.location.hash.replace(/^#/, '') || '/'));
+  const [globalError, setGlobalError] = useState(null);
+  const lastGlobalErrorRef = useRef({ key: '', at: 0 });
 
   useEffect(() => {
     const handlePopState = () => {
@@ -26,6 +30,47 @@ function AppContent() {
 
     return () => {
       window.removeEventListener('hashchange', handlePopState);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleGlobalHttpError = (event) => {
+      const incomingError = event?.detail;
+
+      if (!incomingError) {
+        return;
+      }
+
+      const fingerprint = `${incomingError.code || 'HTTP_ERROR'}|${incomingError.status || 0}|${incomingError.path || ''}`;
+      const now = Date.now();
+
+      if (lastGlobalErrorRef.current.key === fingerprint && now - lastGlobalErrorRef.current.at < 3000) {
+        return;
+      }
+
+      lastGlobalErrorRef.current = { key: fingerprint, at: now };
+
+      let title = 'Error';
+      if (incomingError.type === 'network') {
+        title = 'Sin conexion';
+      } else if (incomingError.status === 401) {
+        title = 'Sesion expirada';
+      } else if (incomingError.status === 422) {
+        title = 'Datos invalidos';
+      } else if ((incomingError.status ?? 0) >= 500) {
+        title = 'Error del servidor';
+      }
+
+      setGlobalError({
+        ...incomingError,
+        title,
+      });
+    };
+
+    window.addEventListener(APP_HTTP_ERROR_EVENT, handleGlobalHttpError);
+
+    return () => {
+      window.removeEventListener(APP_HTTP_ERROR_EVENT, handleGlobalHttpError);
     };
   }, []);
 
@@ -48,6 +93,11 @@ function AppContent() {
       <MaintenanceMode
         maintenanceMode={config?.maintenance_mode}
         maintenanceMessage={config?.maintenance_message}
+      />
+      <ErrorNotification
+        error={globalError}
+        onClose={() => setGlobalError(null)}
+        duration={5500}
       />
       <main>
         {currentPath === '/contacto' ? (

@@ -283,7 +283,9 @@ class CheckoutService {
   /**
    * Redirigir a la pasarela de pago
    */
-  static redirect(redirectUrl) {
+  static redirect(redirectData) {
+    const redirectUrl = typeof redirectData === 'string' ? redirectData : redirectData?.redirect_url;
+
     if (!redirectUrl) {
       const error = {
         type: ErrorTypes.VALIDATION,
@@ -295,6 +297,27 @@ class CheckoutService {
     }
 
     try {
+      const isTransbankRedirect = typeof redirectData === 'object'
+        && redirectData?.gateway === 'transbank'
+        && redirectData?.token;
+
+      if (isTransbankRedirect) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = redirectUrl;
+
+        const tokenInput = document.createElement('input');
+        tokenInput.type = 'hidden';
+        tokenInput.name = 'token_ws';
+        tokenInput.value = redirectData.token;
+
+        form.appendChild(tokenInput);
+        document.body.appendChild(form);
+        form.submit();
+
+        return;
+      }
+
       window.location.href = redirectUrl;
     } catch (error) {
       logError('CheckoutService.redirect', error);

@@ -6,6 +6,7 @@ use App\Contracts\PaymentGatewayInterface;
 use App\Models\Payment;
 use Illuminate\Support\Facades\Log;
 use Transbank\Webpay\WebpayPlus;
+use Transbank\Webpay\WebpayPlus\MallTransaction;
 use Transbank\Webpay\WebpayPlus\Transaction;
 
 class TransbankService implements PaymentGatewayInterface
@@ -54,6 +55,10 @@ class TransbankService implements PaymentGatewayInterface
     {
         // Si no estamos en mall mode o no hay payment, usar código default
         if (! $this->mallMode || ! $payment) {
+            if ($this->mallMode && $this->environment === 'integration') {
+                return $this->commerceCode ?: WebpayPlus::INTEGRATION_MALL_COMMERCE_CODE;
+            }
+
             return $this->commerceCode ?: WebpayPlus::INTEGRATION_COMMERCE_CODE;
         }
 
@@ -77,7 +82,53 @@ class TransbankService implements PaymentGatewayInterface
             'payment_id' => $payment?->id,
         ]);
 
+        if ($this->mallMode && $this->environment === 'integration') {
+            return $this->commerceCode ?: WebpayPlus::INTEGRATION_MALL_COMMERCE_CODE;
+        }
+
         return $this->commerceCode ?: WebpayPlus::INTEGRATION_COMMERCE_CODE;
+    }
+
+    /**
+     * Obtener código de comercio hijo para Webpay Plus Mall.
+     */
+    protected function resolveMallChildCommerceCode(array $data, ?Payment $payment = null): string
+    {
+        if (! empty($data['child_commerce_code'])) {
+            return (string) $data['child_commerce_code'];
+        }
+
+        if ($payment?->project) {
+            $projectCode = $payment->project->getRawOriginal('transbank_commerce_code');
+            if (! empty($projectCode)) {
+                return (string) $projectCode;
+            }
+        }
+
+        if ($this->environment === 'integration') {
+            return WebpayPlus::INTEGRATION_MALL_CHILD_COMMERCE_CODE_1;
+        }
+
+        throw new \InvalidArgumentException('Transbank Mall requiere child_commerce_code para crear la transacción.');
+    }
+
+    protected function buildTransactionClient(string $commerceCode): Transaction|MallTransaction
+    {
+        $apiKey = $this->apiKey ?: WebpayPlus::INTEGRATION_API_KEY;
+
+        if ($this->mallMode) {
+            if ($this->environment === 'production') {
+                return MallTransaction::buildForProduction($apiKey, $commerceCode);
+            }
+
+            return MallTransaction::buildForIntegration($apiKey, $commerceCode);
+        }
+
+        if ($this->environment === 'production') {
+            return Transaction::buildForProduction($apiKey, $commerceCode);
+        }
+
+        return Transaction::buildForIntegration($apiKey, $commerceCode);
     }
 
     /**     * Crear una transacción Webpay Plus
@@ -99,7 +150,6 @@ class TransbankService implements PaymentGatewayInterface
 
             // Resolver código de comercio (mall o default)
             $commerceCode = $this->resolveCommerceCode($payment);
-            $apiKey = $this->apiKey ?: WebpayPlus::INTEGRATION_API_KEY;
 
             Log::info('Transbank: Creando transacción', [
                 'amount' => $amount,
@@ -110,15 +160,25 @@ class TransbankService implements PaymentGatewayInterface
                 'mall_mode' => $this->mallMode,
             ]);
 
-            // Crear instancia de Transaction configurada para el ambiente
-            if ($this->environment === 'production') {
-                $transaction = Transaction::buildForProduction($apiKey, $commerceCode);
-            } else {
-                $transaction = Transaction::buildForIntegration($apiKey, $commerceCode);
-            }
+            $transaction = $this->buildTransactionClient($commerceCode);
 
-            // Crear transacción
-            $response = $transaction->create($buyOrder, $sessionId, $amount, $returnUrl);
+            if ($this->mallMode) {
+                $childCommerceCode = $this->resolveMallChildCommerceCode($data, $payment);
+                $childBuyOrder = (string) ($data['child_buy_order'] ?? ('CHILD-'.$buyOrder));
+                $details = [
+                    [
+                        'amount' => (int) $amount,
+                        'commerce_code' => $childCommerceCode,
+                        'buy_order' => $childBuyOrder,
+                    ],
+                ];
+
+                /** @var MallTransaction $transaction */
+                $response = $transaction->create($buyOrder, $sessionId, $returnUrl, $details);
+            } else {
+                /** @var Transaction $transaction */
+                $response = $transaction->create($buyOrder, $sessionId, $amount, $returnUrl);
+            }
 
             Log::info('Transbank: Transacción creada exitosamente', [
                 'token' => $response->getToken(),
@@ -152,7 +212,6 @@ class TransbankService implements PaymentGatewayInterface
         try {
             // Resolver código de comercio (mall o default)
             $commerceCode = $this->resolveCommerceCode($payment);
-            $apiKey = $this->apiKey ?: WebpayPlus::INTEGRATION_API_KEY;
 
             Log::info('Transbank: Confirmando transacción', [
                 'token' => $token,
@@ -160,29 +219,66 @@ class TransbankService implements PaymentGatewayInterface
                 'mall_mode' => $this->mallMode,
             ]);
 
-            // Crear instancia de Transaction configurada para el ambiente
-            if ($this->environment === 'production') {
-                $transaction = Transaction::buildForProduction($apiKey, $commerceCode);
-            } else {
-                $transaction = Transaction::buildForIntegration($apiKey, $commerceCode);
-            }
+            $transaction = $this->buildTransactionClient($commerceCode);
 
             $response = $transaction->commit($token);
 
+            $firstDetail = null;
+            if ($this->mallMode && method_exists($response, 'getDetails')) {
+                $details = $response->getDetails() ?? [];
+                $firstDetail = $details[0] ?? null;
+            }
+
+            $amountValue = $this->mallMode
+                ? $firstDetail?->getAmount()
+                : $response->getAmount();
+            $statusValue = $this->mallMode
+                ? $firstDetail?->getStatus()
+                : $response->getStatus();
+            $authorizationCode = $this->mallMode
+                ? $firstDetail?->getAuthorizationCode()
+                : $response->getAuthorizationCode();
+            $paymentTypeCode = $this->mallMode
+                ? $firstDetail?->getPaymentTypeCode()
+                : $response->getPaymentTypeCode();
+            $responseCode = $this->mallMode
+                ? $firstDetail?->getResponseCode()
+                : $response->getResponseCode();
+            $installmentsAmount = $this->mallMode
+                ? $firstDetail?->getInstallmentsAmount()
+                : ($response->getInstallmentsAmount() ?? null);
+            $installmentsNumber = $this->mallMode
+                ? $firstDetail?->getInstallmentsNumber()
+                : ($response->getInstallmentsNumber() ?? null);
+
             $result = [
                 'vci' => $response->getVci(),
-                'amount' => $response->getAmount(),
-                'status' => $response->getStatus(),
+                'amount' => $amountValue,
+                'status' => $statusValue,
                 'buy_order' => $response->getBuyOrder(),
                 'session_id' => $response->getSessionId(),
-                'card_number' => $response->getCardDetail()?->getCardNumber() ?? null,
+                'card_number' => $this->mallMode
+                    ? ($response->getCardNumber() ?? null)
+                    : ($response->getCardDetail()?->getCardNumber() ?? null),
                 'accounting_date' => $response->getAccountingDate(),
                 'transaction_date' => $response->getTransactionDate(),
-                'authorization_code' => $response->getAuthorizationCode(),
-                'payment_type_code' => $response->getPaymentTypeCode(),
-                'response_code' => $response->getResponseCode(),
-                'installments_amount' => $response->getInstallmentsAmount() ?? null,
-                'installments_number' => $response->getInstallmentsNumber() ?? null,
+                'authorization_code' => $authorizationCode,
+                'payment_type_code' => $paymentTypeCode,
+                'response_code' => $responseCode,
+                'installments_amount' => $installmentsAmount,
+                'installments_number' => $installmentsNumber,
+                'details' => $this->mallMode && method_exists($response, 'getDetails') ? collect($response->getDetails() ?? [])->map(static fn ($detail): array => [
+                    'amount' => $detail->getAmount(),
+                    'status' => $detail->getStatus(),
+                    'authorization_code' => $detail->getAuthorizationCode(),
+                    'payment_type_code' => $detail->getPaymentTypeCode(),
+                    'response_code' => $detail->getResponseCode(),
+                    'installments_amount' => $detail->getInstallmentsAmount(),
+                    'installments_number' => $detail->getInstallmentsNumber(),
+                    'commerce_code' => $detail->getCommerceCode(),
+                    'buy_order' => $detail->getBuyOrder(),
+                    'balance' => $detail->getBalance(),
+                ])->all() : null,
                 'commerce_code' => $commerceCode,
             ];
 
@@ -228,25 +324,38 @@ class TransbankService implements PaymentGatewayInterface
             Log::info('Transbank: Consultando estado', ['token' => $transactionId]);
 
             // Obtener credenciales (usar defaults de integración si están vacías)
-            $commerceCode = $this->commerceCode ?: WebpayPlus::INTEGRATION_COMMERCE_CODE;
-            $apiKey = $this->apiKey ?: WebpayPlus::INTEGRATION_API_KEY;
+            $commerceCode = $this->resolveCommerceCode();
 
-            // Crear instancia de Transaction configurada para el ambiente
-            if ($this->environment === 'production') {
-                $transaction = Transaction::buildForProduction($apiKey, $commerceCode);
-            } else {
-                $transaction = Transaction::buildForIntegration($apiKey, $commerceCode);
-            }
+            $transaction = $this->buildTransactionClient($commerceCode);
 
             $response = $transaction->status($transactionId);
 
+            $firstDetail = null;
+            if ($this->mallMode && method_exists($response, 'getDetails')) {
+                $details = $response->getDetails() ?? [];
+                $firstDetail = $details[0] ?? null;
+            }
+
+            $statusValue = $this->mallMode
+                ? $firstDetail?->getStatus()
+                : $response->getStatus();
+            $amountValue = $this->mallMode
+                ? $firstDetail?->getAmount()
+                : $response->getAmount();
+            $authorizationCode = $this->mallMode
+                ? $firstDetail?->getAuthorizationCode()
+                : $response->getAuthorizationCode();
+            $responseCode = $this->mallMode
+                ? $firstDetail?->getResponseCode()
+                : $response->getResponseCode();
+
             return [
-                'status' => $response->getStatus(),
-                'amount' => $response->getAmount(),
+                'status' => $statusValue,
+                'amount' => $amountValue,
                 'buy_order' => $response->getBuyOrder(),
                 'session_id' => $response->getSessionId(),
-                'authorization_code' => $response->getAuthorizationCode(),
-                'response_code' => $response->getResponseCode(),
+                'authorization_code' => $authorizationCode,
+                'response_code' => $responseCode,
             ];
         } catch (\Exception $e) {
             Log::error('Transbank: Error al consultar estado', [
@@ -272,18 +381,28 @@ class TransbankService implements PaymentGatewayInterface
                 'amount' => $amount,
             ]);
 
-            // Obtener credenciales (usar defaults de integración si están vacías)
-            $commerceCode = $this->commerceCode ?: WebpayPlus::INTEGRATION_COMMERCE_CODE;
-            $apiKey = $this->apiKey ?: WebpayPlus::INTEGRATION_API_KEY;
+            $commerceCode = $this->resolveCommerceCode();
+            $transaction = $this->buildTransactionClient($commerceCode);
 
-            // Crear instancia de Transaction configurada para el ambiente
-            if ($this->environment === 'production') {
-                $transaction = Transaction::buildForProduction($apiKey, $commerceCode);
+            if ($this->mallMode) {
+                $statusResponse = $transaction->status($transactionId);
+                $details = $statusResponse->getDetails() ?? [];
+                $firstDetail = $details[0] ?? null;
+
+                if (! $firstDetail) {
+                    throw new \RuntimeException('No se encontraron detalles de transacción Mall para procesar el reembolso.');
+                }
+
+                $refundAmount = $amount ?? (float) ($firstDetail->getAmount() ?? 0);
+                $response = $transaction->refund(
+                    $transactionId,
+                    (string) $firstDetail->getBuyOrder(),
+                    (string) $firstDetail->getCommerceCode(),
+                    $refundAmount,
+                );
             } else {
-                $transaction = Transaction::buildForIntegration($apiKey, $commerceCode);
+                $response = $transaction->refund($transactionId, $amount ?? 0);
             }
-
-            $response = $transaction->refund($transactionId, $amount ?? 0);
 
             Log::info('Transbank: Reembolso procesado', [
                 'type' => $response->getType(),

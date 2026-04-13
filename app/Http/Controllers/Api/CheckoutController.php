@@ -11,6 +11,7 @@ use App\Models\SiteSetting;
 use App\Models\User;
 use App\Services\FinMail\FinMailNotificationService;
 use App\Services\Payment\ManualPaymentService;
+use App\Services\Payment\TransbankService;
 use App\Services\PlantReservationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -181,19 +182,14 @@ class CheckoutController extends Controller
     private function initiateTransbank(Plant $plant, float $amount, string $description, int $quantity): JsonResponse
     {
         try {
-            $transbankEnv = config('services.transbank.environment', 'integration');
-            $hasCredentials = config('services.transbank.commerce_code') && config('services.transbank.api_key');
+            $config = config('payments.gateways.transbank', []);
+            $transbankEnv = $config['environment'] ?? 'integration';
+            $hasCredentials = ! empty($config['commerce_code']) && ! empty($config['api_key']);
+            $mallMode = (bool) ($config['mall_mode'] ?? false);
 
-            // En modo integration, usar credenciales de prueba de Transbank
             if ($transbankEnv === 'integration' && ! $hasCredentials) {
-                // Credenciales de integración por defecto de Transbank
-                $config = [
-                    'environment' => 'integration',
-                    'commerce_code' => '597055555532',  // Código de comercio de prueba
-                    'api_key' => '579B532A7440BB0C9079DED94D31EA1615BACEB56610332264630D42D0A36B1C',  // API Key de prueba
-                ];
-            } else {
-                $config = config('services.transbank');
+                $config['commerce_code'] = $mallMode ? '597055555535' : '597055555532';
+                $config['api_key'] = '579B532A7440BB0C9079DED94D31EA1615BACEB56610332264630D42D0A36B1C';
             }
 
             // Si no hay configuración válida, simular
@@ -201,14 +197,29 @@ class CheckoutController extends Controller
                 return $this->simulateCheckout('transbank', $plant, $amount, $description);
             }
 
-            $service = new \App\Services\Payment\TransbankService($config);
+            $service = new TransbankService($config);
 
-            $response = $service->createTransaction([
+            $requestPayload = [
                 'amount' => (int) $amount,
                 'buy_order' => 'ORDER-PLANT-'.$plant->id.'-'.now()->timestamp,
                 'session_id' => 'SESSION-'.uniqid(),
                 'return_url' => route('payment.transbank.return'),
-            ]);
+            ];
+
+            if ($mallMode) {
+                $childCommerceCode = $plant->proyecto?->getRawOriginal('transbank_commerce_code');
+
+                if (! filled($childCommerceCode)) {
+                    return response()->json([
+                        'message' => 'Este proyecto no tiene código de comercio hijo para Webpay Plus Mall.',
+                    ], Response::HTTP_UNPROCESSABLE_ENTITY);
+                }
+
+                $requestPayload['child_commerce_code'] = (string) $childCommerceCode;
+                $requestPayload['child_buy_order'] = 'CH-'.$plant->id.'-'.now()->timestamp;
+            }
+
+            $response = $service->createTransaction($requestPayload);
 
             return response()->json([
                 'gateway' => 'transbank',
@@ -304,8 +315,8 @@ class CheckoutController extends Controller
         }
 
         // Verificar Transbank (en modo integration siempre está disponible)
-        $transbankEnv = config('services.transbank.environment', 'integration');
-        $hasTransbankCredentials = config('services.transbank.commerce_code') && config('services.transbank.api_key');
+        $transbankEnv = config('payments.gateways.transbank.environment', 'integration');
+        $hasTransbankCredentials = config('payments.gateways.transbank.commerce_code') && config('payments.gateways.transbank.api_key');
         $transbankEnabled = (bool) ($siteSettings->gateway_transbank_enabled ?? config('payments.gateways.transbank.enabled', true));
 
         $transbankAvailableForProject = ! filled($plantId)

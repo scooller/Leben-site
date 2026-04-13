@@ -773,7 +773,7 @@ function Home({ onNavigate, currentPath }) {
       setManualPayment(null);
 
       // Redirigir a la pasarela
-      CheckoutService.redirect(response.redirect_url);
+      CheckoutService.redirect(response);
     } catch (err) {
       setCheckoutError({
         type: err.type || 'unknown',
