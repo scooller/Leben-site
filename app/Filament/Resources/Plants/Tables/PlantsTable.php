@@ -116,6 +116,14 @@ class PlantsTable
                         0 => 'Inactivo',
                     ])
                     ->default(null),
+                //unidades sale
+                SelectFilter::make('unidad_sale')
+                    ->label('Unidad Sale')
+                    ->options([
+                        1 => 'Sí',
+                        0 => 'No',
+                    ])
+                    ->default(null),
                 SelectFilter::make('proyecto')
                     ->label('Proyecto')
                     ->relationship('proyecto', 'name')
@@ -160,6 +168,18 @@ class PlantsTable
                             ]);
                         })
                         ->successNotificationTitle('Plantas desactivadas'),
+                    //activateSelected Sale
+                    BulkAction::make('activateSelected')
+                        ->label('Activar en sale')
+                        ->icon('heroicon-o-check-circle')
+                        ->color('success')
+                        ->requiresConfirmation()
+                        ->action(function (Collection $records): void {
+                            $records->each->update([
+                                'unidad_sale' => true,
+                            ]);
+                        })
+                        ->successNotificationTitle('Plantas Sale'),
                     DeleteBulkAction::make(),
                 ]),
             ]);
