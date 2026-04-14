@@ -30,6 +30,7 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Exceptions\Halt;
 use Filament\Support\Icons\Heroicon;
@@ -167,18 +168,58 @@ class SiteSettings extends Page implements HasForms
                         Tabs\Tab::make('Banner')
                             ->icon('heroicon-m-photo')
                             ->schema([
-                                Section::make('Banner Promocional')
-                                    ->description('Configura un banner que se mostrará antes del hero section en el frontend')
+                                Section::make('Hero del Home')
+                                    ->description('Define el banner principal del home. Puede ser imagen o video, con versión desktop y mobile.')
                                     ->schema([
-                                        CuratorPicker::make('banner_image_id')
-                                            ->label('Imagen del Banner')
-                                            ->helperText('Tamaño recomendado: 1920x400px o proporcional. Formatos: JPG, PNG'),
+                                        Select::make('extra_settings.home_hero_type')
+                                            ->label('Tipo de banner del Home')
+                                            ->options([
+                                                'video' => 'Video',
+                                                'image' => 'Imagen',
+                                            ])
+                                            ->default('video')
+                                            ->required()
+                                            ->live(),
 
-                                        TextInput::make('banner_link')
-                                            ->label('URL del Banner')
+                                        CuratorPicker::make('extra_settings.home_hero_image_desktop_id')
+                                            ->label('Imagen Desktop Hero Home')
+                                            ->helperText('Se usará en pantallas grandes cuando el tipo sea Imagen.')
+                                            ->visible(fn (Get $get): bool => ($get('extra_settings.home_hero_type') ?? 'video') === 'image'),
+
+                                        CuratorPicker::make('extra_settings.home_hero_image_mobile_id')
+                                            ->label('Imagen Mobile Hero Home')
+                                            ->helperText('Se usará en pantallas pequeñas cuando el tipo sea Imagen.')
+                                            ->visible(fn (Get $get): bool => ($get('extra_settings.home_hero_type') ?? 'video') === 'image'),
+
+                                        TextInput::make('extra_settings.home_hero_video_desktop_url')
+                                            ->label('URL Video Desktop')
                                             ->url()
-                                            ->placeholder('https://ileben.cl')
-                                            ->helperText('El link al que dirigirá al hacer click en el banner. Dejar vacío para no tener link.'),
+                                            ->placeholder('https://.../banner-desktop.mp4')
+                                            ->visible(fn (Get $get): bool => ($get('extra_settings.home_hero_type') ?? 'video') === 'video'),
+
+                                        TextInput::make('extra_settings.home_hero_video_mobile_url')
+                                            ->label('URL Video Mobile')
+                                            ->url()
+                                            ->placeholder('https://.../banner-mobile.mp4')
+                                            ->visible(fn (Get $get): bool => ($get('extra_settings.home_hero_type') ?? 'video') === 'video'),
+                                    ])
+                                    ->columns(1),
+
+                                Section::make('Hero de Contacto')
+                                    ->description('Configura las imágenes del hero en la página de contacto para desktop y mobile.')
+                                    ->schema([
+                                        CuratorPicker::make('extra_settings.contact_hero_image_desktop_id')
+                                            ->label('Imagen Desktop Hero Contacto')
+                                            ->helperText('Tamaño recomendado: 1920x600px o proporcional.'),
+
+                                        CuratorPicker::make('extra_settings.contact_hero_image_mobile_id')
+                                            ->label('Imagen Mobile Hero Contacto')
+                                            ->helperText('Tamaño recomendado: 1080x1350px o proporcional.'),
+
+                                        TextInput::make('extra_settings.contact_hero_alt')
+                                            ->label('Texto alternativo')
+                                            ->placeholder('Contacto')
+                                            ->maxLength(255),
                                     ])
                                     ->columns(1),
                             ]),
@@ -433,6 +474,12 @@ class SiteSettings extends Page implements HasForms
                                         TextInput::make('meta_author')
                                             ->label('Autor'),
 
+                                        TextInput::make('tag_manager_id')
+                                            ->label('Google Tag Manager ID')
+                                            ->placeholder('GTM-XXXXXXX')
+                                            ->maxLength(50)
+                                            ->helperText('ID del contenedor de Google Tag Manager para cargar el script y eventos del frontend.'),
+
                                         FileUpload::make('og_image')
                                             ->label('Imagen Open Graph')
                                             ->image()
@@ -506,12 +553,18 @@ class SiteSettings extends Page implements HasForms
                                                     ->label('Clave interna')
                                                     ->required()
                                                     ->maxLength(50)
-                                                    ->helperText('Ej: name, rut, email, message'),
+                                                    ->helperText('Ej: name, rut, email, reason, message'),
 
                                                 TextInput::make('label')
                                                     ->label('Etiqueta')
                                                     ->required()
                                                     ->maxLength(100),
+
+                                                TextInput::make('icon')
+                                                    ->label('Ícono')
+                                                    ->maxLength(100)
+                                                    ->placeholder('Ej: envelope, phone, map-location')
+                                                    ->helperText('Nombre del ícono de Web Awesome que se mostrará en el campo.'),
 
                                                 Select::make('type')
                                                     ->label('Tipo')
@@ -521,13 +574,37 @@ class SiteSettings extends Page implements HasForms
                                                         'tel' => 'Teléfono',
                                                         'number' => 'Número',
                                                         'textarea' => 'Área de texto',
+                                                        'rut' => 'RUT',
+                                                        'select' => 'Selector',
                                                     ])
                                                     ->required()
-                                                    ->default('text'),
+                                                    ->default('text')
+                                                    ->live(),
 
                                                 TextInput::make('placeholder')
                                                     ->label('Placeholder')
                                                     ->maxLength(255),
+
+                                                Repeater::make('options')
+                                                    ->label('Opciones del selector')
+                                                    ->schema([
+                                                        TextInput::make('label')
+                                                            ->label('Etiqueta')
+                                                            ->required()
+                                                            ->maxLength(100),
+
+                                                        TextInput::make('value')
+                                                            ->label('Valor')
+                                                            ->required()
+                                                            ->maxLength(100),
+                                                    ])
+                                                    ->visible(fn (Get $get): bool => $get('type') === 'select')
+                                                    ->defaultItems(0)
+                                                    ->reorderable()
+                                                    ->collapsible()
+                                                    ->columns(2)
+                                                    ->columnSpanFull()
+                                                    ->helperText('Estas opciones estarán disponibles en el frontend cuando el tipo sea Selector.'),
 
                                                 Toggle::make('required')
                                                     ->label('Obligatorio')
@@ -537,7 +614,7 @@ class SiteSettings extends Page implements HasForms
                                             ->reorderable()
                                             ->collapsible()
                                             ->columns(2)
-                                            ->helperText('Puedes definir cuántos campos deseas mostrar y validar en el formulario.'),
+                                            ->helperText('Puedes definir cuántos campos deseas mostrar y validar en el formulario, incluyendo RUT y selectores.'),
                                     ])
                                     ->columns(1),
                             ]),

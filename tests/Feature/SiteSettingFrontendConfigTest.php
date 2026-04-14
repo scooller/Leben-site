@@ -23,13 +23,25 @@ class SiteSettingFrontendConfigTest extends TestCase
             'contact_page_content' => '<p>Contenido administrable de contacto</p>',
             'contact_form_fields' => [
                 [
-                    'key' => 'name',
-                    'label' => 'Nombre',
-                    'type' => 'text',
+                    'key' => 'reason',
+                    'label' => 'Motivo',
+                    'icon' => 'circle-question',
+                    'type' => 'select',
                     'required' => true,
+                    'options' => [
+                        ['value' => 'cotizacion', 'label' => 'Cotización'],
+                        ['value' => 'visita', 'label' => 'Agendar visita'],
+                    ],
                 ],
             ],
             'contact_notification_email' => 'ventas@ileben.cl',
+            'tag_manager_id' => 'GTM-TEST123',
+            'extra_settings' => [
+                'home_hero_type' => 'video',
+                'home_hero_video_desktop_url' => 'https://cdn.example.com/home-desktop.mp4',
+                'home_hero_video_mobile_url' => 'https://cdn.example.com/home-mobile.mp4',
+                'contact_hero_alt' => 'Hero contacto',
+            ],
             'footer_menu' => [
                 [
                     'label' => 'Bases Legales',
@@ -57,6 +69,19 @@ class SiteSettingFrontendConfigTest extends TestCase
         $this->assertSame('Te ayudamos a elegir tu próxima planta', $payload['contact_page']['subtitle']);
         $this->assertSame('<p>Contenido administrable de contacto</p>', $payload['contact_page']['content']);
         $this->assertArrayHasKey('form_fields', $payload['contact_page']);
-        $this->assertSame('name', $payload['contact_page']['form_fields'][0]['key']);
+        $this->assertSame('reason', $payload['contact_page']['form_fields'][0]['key']);
+        $this->assertSame('select', $payload['contact_page']['form_fields'][0]['type']);
+        $this->assertSame('circle-question', $payload['contact_page']['form_fields'][0]['icon']);
+        $this->assertSame('cotizacion', $payload['contact_page']['form_fields'][0]['options'][0]['value']);
+        $this->assertArrayHasKey('seo', $payload);
+        $this->assertSame('GTM-TEST123', $payload['seo']['tag_manager_id']);
+        $this->assertArrayHasKey('hero', $payload);
+        $this->assertSame('video', $payload['hero']['home']['type']);
+        $this->assertArrayHasKey('image_desktop', $payload['hero']['home']);
+        $this->assertArrayHasKey('image_mobile', $payload['hero']['home']);
+        $this->assertSame('https://cdn.example.com/home-desktop.mp4', $payload['hero']['home']['video_desktop_url']);
+        $this->assertArrayHasKey('image_desktop', $payload['hero']['contact']);
+        $this->assertArrayHasKey('image_mobile', $payload['hero']['contact']);
+        $this->assertSame('Hero contacto', $payload['hero']['contact']['alt']);
     }
 }

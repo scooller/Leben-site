@@ -35,27 +35,6 @@ html.wa-light #root{
     background-position: center;
     background-attachment: fixed;
 }
-/* Banner Promocional */
-.banner-promo {
-  width: 100%;
-  margin-bottom: 2rem;
-  overflow: hidden;
-  border-radius: 0.5rem;
-
-  .banner-promo-image {
-    width: 100%;
-    height: auto;
-    display: block;
-    object-fit: cover;
-    max-height: 400px;
-    transition: transform 0.3s ease;
-
-    &:hover {
-      transform: scale(1.02);
-    }
-  }
-}
-
 /* header */
 .site-header{
     background: var(--wa-color-surface-raised);
@@ -65,8 +44,12 @@ html.wa-light #root{
     width: 100%;
     z-index: 30;
     .site-logo{
-        height: 30px;
+        height: 45px;
     }
+}
+
+.site-header-nav {
+  align-items: center;
 }
 
 .home-container {
@@ -78,6 +61,7 @@ html.wa-light #root{
 #menu-section {
   scroll-margin-top: 6.5rem;
 }
+
 
 /* Video */
 .video-home {

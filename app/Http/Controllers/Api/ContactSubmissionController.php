@@ -4,11 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreContactSubmissionRequest;
-use App\Mail\ContactSubmissionReceivedMail;
 use App\Models\ContactSubmission;
 use App\Models\SiteSetting;
+use App\Services\FinMail\FinMailNotificationService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 class ContactSubmissionController extends Controller
@@ -38,7 +37,7 @@ class ContactSubmissionController extends Controller
         ]);
 
         if (filled($recipientEmail)) {
-            Mail::to($recipientEmail)->send(new ContactSubmissionReceivedMail($submission, $settings->site_name));
+            app(FinMailNotificationService::class)->sendContactSubmissionReceivedToAdmin($submission);
         }
 
         return response()->json([

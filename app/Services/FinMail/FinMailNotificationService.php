@@ -3,8 +3,10 @@
 namespace App\Services\FinMail;
 
 use App\Enums\PaymentStatus;
+use App\Models\ContactSubmission;
 use App\Models\Payment;
 use App\Models\PlantReservation;
+use App\Models\SiteSetting;
 use App\Models\User;
 use FinityLabs\FinMail\Enums\EmailStatus;
 use FinityLabs\FinMail\Helpers\TokenValue;
@@ -149,6 +151,85 @@ class FinMailNotificationService
         }
     }
 
+    public function sendContactSubmissionReceivedToAdmin(ContactSubmission $submission): void
+    {
+        $recipient = $submission->recipient_email;
+
+        if (! is_string($recipient) || $recipient === '') {
+            return;
+        }
+
+        $fields = is_array($submission->fields) ? $submission->fields : [];
+        [$firstName, $lastName] = $this->resolveContactNameParts($submission, $fields);
+
+        $this->sendTemplate(
+            templateKey: 'contact-submission-received-admin',
+            recipient: $recipient,
+            models: [
+                'nombre' => new TokenValue($firstName ?: '-'),
+                'apellido' => new TokenValue($lastName ?: '-'),
+                'rut' => new TokenValue($submission->rut ?: $this->extractFieldValue($fields, ['rut']) ?: '-'),
+                'telefono' => new TokenValue($submission->phone ?: $this->extractFieldValue($fields, ['telefono', 'phone', 'celular', 'whatsapp']) ?: '-'),
+                'email' => new TokenValue($submission->email ?: $this->extractFieldValue($fields, ['email', 'correo']) ?: '-'),
+                'comuna' => new TokenValue($this->extractFieldValue($fields, ['comuna']) ?: '-'),
+                'proyecto' => new TokenValue($this->extractFieldValue($fields, ['proyecto']) ?: '-'),
+                'medio' => new TokenValue($this->extractFieldValue($fields, ['medio', 'origen', 'lead_source', 'utm_source']) ?: 'Black'),
+                'rango' => new TokenValue($this->extractFieldValue($fields, ['rango', 'renta', 'renta_liquida', 'income_range']) ?: '-'),
+                'codeudor' => new TokenValue($this->extractFieldValue($fields, ['codeudor', 'coudedor', 'co_deudor']) ?: '-'),
+                'buscas' => new TokenValue($this->extractFieldValue($fields, ['buscas', 'objetivo', 'buying_for']) ?: '-'),
+                'elaboral' => new TokenValue($this->extractFieldValue($fields, ['elaboral', 'estado_laboral', 'laboral']) ?: '-'),
+                'mensaje' => new TokenValue($this->extractFieldValue($fields, ['mensaje', 'message']) ?: '-'),
+                'site_name' => new TokenValue((string) (SiteSetting::current()->site_name ?: config('app.name', 'iLeben'))),
+                'site_url' => new TokenValue((string) config('app.url', 'https://sale.ileben.cl')),
+            ],
+            contextModel: $submission,
+            logContext: [
+                'contact_submission_id' => $submission->id,
+                'recipient' => $recipient,
+            ],
+            errorLogMessage: 'FinMail: no se pudo enviar correo de contacto',
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $fields
+     * @return array{0:string,1:string}
+     */
+    private function resolveContactNameParts(ContactSubmission $submission, array $fields): array
+    {
+        $firstName = $this->extractFieldValue($fields, ['nombre', 'name']) ?? '';
+        $lastName = $this->extractFieldValue($fields, ['apellido', 'apellidos', 'last_name', 'lastname']) ?? '';
+        $fullName = trim((string) ($submission->name ?? ''));
+
+        if ($firstName === '' && $fullName !== '') {
+            $parts = preg_split('/\s+/', $fullName) ?: [];
+            $firstName = trim((string) ($parts[0] ?? ''));
+            $lastName = $lastName !== '' ? $lastName : trim(implode(' ', array_slice($parts, 1)));
+        }
+
+        return [$firstName, $lastName];
+    }
+
+    /**
+     * @param  array<string, mixed>  $fields
+     */
+    private function extractFieldValue(array $fields, array $aliases): ?string
+    {
+        foreach ($aliases as $alias) {
+            if (! array_key_exists($alias, $fields)) {
+                continue;
+            }
+
+            $value = trim((string) $fields[$alias]);
+
+            if ($value !== '') {
+                return $value;
+            }
+        }
+
+        return null;
+    }
+
     /**
      * @param  array<string, mixed>  $models
      * @param  array<string, mixed>  $logContext
@@ -175,7 +256,8 @@ class FinMailNotificationService
                 return;
             }
 
-            $sentEmailLog = $this->createSentEmailLog($template, $recipient, $contextModel);
+            $ccRecipients = $this->resolveTemplateCcRecipients($templateKey);
+            $sentEmailLog = $this->createSentEmailLog($template, $recipient, $ccRecipients, $contextModel);
 
             $mail = TemplateMail::make($templateKey, app()->getLocale())
                 ->models($models)
@@ -183,7 +265,11 @@ class FinMailNotificationService
 
             $pendingMail = Mail::to($recipient);
 
-            if (method_exists($pendingMail, 'sendNow')) {
+            if ($ccRecipients !== []) {
+                $pendingMail->cc($ccRecipients);
+            }
+
+            if (\method_exists($pendingMail, 'sendNow')) {
                 $pendingMail->sendNow($mail);
             } else {
                 $pendingMail->send($mail);
@@ -198,7 +284,7 @@ class FinMailNotificationService
         }
     }
 
-    private function createSentEmailLog(EmailTemplate $template, string $recipient, ?Model $contextModel): ?SentEmail
+    private function createSentEmailLog(EmailTemplate $template, string $recipient, array $ccRecipients, ?Model $contextModel): ?SentEmail
     {
         $sentTable = config('fin-mail.table_names.sent', 'sent_emails');
 
@@ -210,16 +296,37 @@ class FinMailNotificationService
             'email_template_id' => $template->id,
             'sender' => (string) config('mail.from.address', 'noreply@example.com'),
             'to' => [$recipient],
-            'cc' => [],
+            'cc' => $ccRecipients,
             'bcc' => [],
             'subject' => (string) $template->subject,
             'rendered_body' => null,
             'attachments' => [],
             'status' => EmailStatus::Queued,
-            'sent_by' => auth()->id(),
+            'sent_by' => auth()->user()?->getAuthIdentifier(),
             'sendable_type' => $contextModel?->getMorphClass(),
             'sendable_id' => $contextModel?->getKey(),
         ]);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function resolveTemplateCcRecipients(string $templateKey): array
+    {
+        $configuredRecipients = config("mail.template_cc.{$templateKey}", []);
+
+        if (is_string($configuredRecipients)) {
+            $configuredRecipients = explode(',', $configuredRecipients);
+        }
+
+        if (! is_array($configuredRecipients)) {
+            return [];
+        }
+
+        return array_values(array_filter(array_unique(array_map(
+            static fn (mixed $email): string => trim((string) $email),
+            $configuredRecipients,
+        )), static fn (string $email): bool => $email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL) !== false));
     }
 
     private function resolveStatusLabel(string|PaymentStatus|null $status): string

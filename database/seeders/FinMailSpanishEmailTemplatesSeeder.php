@@ -193,6 +193,44 @@ class FinMailSpanishEmailTemplatesSeeder extends Seeder
                     'payment' => ['gateway_tx_id', 'amount', 'currency', 'status'],
                 ],
             ],
+            [
+                'key' => 'contact-submission-received-admin',
+                'name' => [
+                    'es' => 'Contacto recibido (admin)',
+                    'en' => 'Contact received (admin)',
+                ],
+                'subject' => [
+                    'es' => 'Nuevo lead de contacto: {{ nombre | "-" }} {{ apellido | "" }}',
+                    'en' => 'New contact lead: {{ nombre | "-" }} {{ apellido | "" }}',
+                ],
+                'preheader' => [
+                    'es' => 'Se recibio una nueva consulta desde el formulario de contacto.',
+                    'en' => 'A new inquiry was received from the contact form.',
+                ],
+                'body' => [
+                    'es' => '<ul><li><b>Nombre:</b> <span class="nombre">{{ nombre | "-" }}</span></li><li><b>Apellido:</b> <span class="apellido">{{ apellido | "-" }}</span></li><li><b>RUT:</b> <span class="rut">{{ rut | "-" }}</span></li><li><b>Telefono:</b> <a href="tel:{{ telefono | "-" }}"><span class="telefono">{{ telefono | "-" }}</span></a></li><li><b>Email:</b> <a href="mailto:{{ email | "-" }}"><span class="email">{{ email | "-" }}</span></a></li><li><b>Comuna:</b> <span class="comuna">{{ comuna | "-" }}</span></li><li><b>Proyecto:</b> <span class="proyecto">{{ proyecto | "-" }}</span></li><li><b>Medio de llegada:</b> <span class="medio">{{ medio | "Black" }}</span></li><li><b>¿En que rango se encuentra tu renta liquida?:</b> <span class="rango">{{ rango | "-" }}</span></li><li><b>¿Cuentas con posibilidad de codeudor?:</b> <span class="codeudor">{{ codeudor | "-" }}</span></li><li><b>¿Buscas tu nuevo depto para...?:</b> <span class="buscas">{{ buscas | "-" }}</span></li><li><b>¿Cual es tu estado laboral?:</b> <span class="elaboral">{{ elaboral | "-" }}</span></li></ul><p>{{ mensaje | "" }}</p><p>--<br>This e-mail was sent from a contact form on {{ site_name | "iLeben" }} ({{ site_url | "https://sale.ileben.cl" }})</p>',
+                    'en' => '<ul><li><b>Name:</b> <span class="nombre">{{ nombre | "-" }}</span></li><li><b>Last name:</b> <span class="apellido">{{ apellido | "-" }}</span></li><li><b>RUT:</b> <span class="rut">{{ rut | "-" }}</span></li><li><b>Phone:</b> <a href="tel:{{ telefono | "-" }}"><span class="telefono">{{ telefono | "-" }}</span></a></li><li><b>Email:</b> <a href="mailto:{{ email | "-" }}"><span class="email">{{ email | "-" }}</span></a></li><li><b>District:</b> <span class="comuna">{{ comuna | "-" }}</span></li><li><b>Project:</b> <span class="proyecto">{{ proyecto | "-" }}</span></li><li><b>Lead source:</b> <span class="medio">{{ medio | "Black" }}</span></li><li><b>Income range:</b> <span class="rango">{{ rango | "-" }}</span></li><li><b>Co-signer available?:</b> <span class="codeudor">{{ codeudor | "-" }}</span></li><li><b>Looking for a new apartment for...?:</b> <span class="buscas">{{ buscas | "-" }}</span></li><li><b>Employment status:</b> <span class="elaboral">{{ elaboral | "-" }}</span></li></ul><p>{{ mensaje | "" }}</p><p>--<br>This e-mail was sent from a contact form on {{ site_name | "iLeben" }} ({{ site_url | "https://sale.ileben.cl" }})</p>',
+                ],
+                'category' => 'transactional',
+                'tags' => ['contact', 'lead', 'admin'],
+                'token_schema' => [
+                    'nombre' => 'string',
+                    'apellido' => 'string',
+                    'rut' => 'string',
+                    'telefono' => 'string',
+                    'email' => 'string',
+                    'comuna' => 'string',
+                    'proyecto' => 'string',
+                    'medio' => 'string',
+                    'rango' => 'string',
+                    'codeudor' => 'string',
+                    'buscas' => 'string',
+                    'elaboral' => 'string',
+                    'mensaje' => 'string',
+                    'site_name' => 'string',
+                    'site_url' => 'string',
+                ],
+            ],
         ];
 
         foreach ($templates as $template) {

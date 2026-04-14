@@ -6,6 +6,18 @@
   margin-top: 1.25rem;
 }
 
+.contact-hero-picture {
+  display: block;
+}
+
+.contact-hero-image {
+  aspect-ratio: 16 / 6;
+  border-radius: 1rem;
+  display: block;
+  object-fit: cover;
+  width: 100%;
+}
+
 .contact-hero-card::part(base) {
   border-radius: 1rem;
 }

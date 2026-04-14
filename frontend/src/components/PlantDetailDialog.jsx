@@ -1,5 +1,6 @@
 import { Fancybox } from '@fancyapps/ui';
 import '@fancyapps/ui/dist/fancybox/fancybox.css';
+import { trackEvent } from '../utils/tagManager';
 
 function PlantDetailDialog({ plant, isSaleEventActive = false, dialogRef, checkoutLoading, onCheckout }) {
     const sanitizePhone = (value) => `${value ?? ''}`.replace(/\D+/g, '');
@@ -99,6 +100,10 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, dialogRef, checko
                 },
             }
         );
+    };
+    const goToContact = () => {
+        onNavigate?.('/contacto');
+        window.requestAnimationFrame(closeMobileMenu);
     };
 
   return (
@@ -296,6 +301,16 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, dialogRef, checko
                                                             href={whatsappUrl}
                                                             target="_blank"
                                                             rel="noreferrer noopener"
+                                                            onClick={() => {
+                                                                trackEvent('wa_link', {
+                                                                    advisor_name: advisorName,
+                                                                    advisor_email: advisor.email || null,
+                                                                    plant_id: plant?.id || null,
+                                                                    plant_name: plant?.nombre || null,
+                                                                    project_name: plant?.proyectoNombre || null,
+                                                                    destination: whatsappUrl,
+                                                                });
+                                                            }}
                                                         >
                                                             <wa-icon name="whatsapp" family="brands" slot="start"></wa-icon>
                                                             Contactar por WhatsApp
@@ -338,7 +353,7 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, dialogRef, checko
                 </div>
                 </>
                 )}
-                <div className="wa-cluster wa-gap-s wa-order-1 wa-order-mobile-0">
+                <wa-button-group className="wa-order-1 wa-order-mobile-0">
                     <wa-button
                         variant="neutral"
                         data-dialog="close"
@@ -346,9 +361,16 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, dialogRef, checko
                         <wa-icon name="xmark" slot="start"></wa-icon>
                         Cerrar
                     </wa-button>
+                    <wa-button
+                        variant="success"
+                        onClick={goToContact}
+                    >
+                        <wa-icon name="envelope" slot="start"></wa-icon>
+                        Asesorate aquí
+                    </wa-button>
                 {(plant.isPaid || plant.isReserved || plant.isAvailable === false) ? (
                     <wa-button
-                        variant="neutral"
+                        variant="warning"
                         disabled
                     >
                         <wa-icon name="house-circle-xmark" slot="start"></wa-icon>
@@ -371,7 +393,7 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, dialogRef, checko
                         </>}
                     </wa-button>
                 )}
-                </div>
+                </wa-button-group>
             </div>
         </>
       )}

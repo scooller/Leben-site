@@ -39,6 +39,7 @@ class SiteSetting extends Model
         'google_fonts_stylesheet',
         'meta_keywords',
         'meta_author',
+        'tag_manager_id',
         'og_image',
         'contact_email',
         'contact_phone',
@@ -169,8 +170,8 @@ class SiteSetting extends Model
                     [
                         'key' => 'rut',
                         'label' => 'RUT',
-                        'type' => 'text',
-                        'placeholder' => '12.345.678-9',
+                        'type' => 'rut',
+                        'placeholder' => '12.345.678-5',
                         'required' => false,
                     ],
                     [
@@ -249,7 +250,13 @@ class SiteSetting extends Model
     public static function forFrontend(): array
     {
         $settings = static::current();
-        $settings->load(['logoMedia', 'logoDarkMedia', 'faviconMedia', 'iconMedia', 'bannerImageMedia']);
+        $settings->load(['logoMedia', 'logoDarkMedia', 'faviconMedia', 'iconMedia']);
+
+        $extraSettings = is_array($settings->extra_settings) ? $settings->extra_settings : [];
+        $homeHeroDesktopImage = Media::query()->find($extraSettings['home_hero_image_desktop_id'] ?? $extraSettings['home_hero_image_id'] ?? null)?->url;
+        $homeHeroMobileImage = Media::query()->find($extraSettings['home_hero_image_mobile_id'] ?? $extraSettings['home_hero_image_id'] ?? null)?->url;
+        $contactHeroDesktopImage = Media::query()->find($extraSettings['contact_hero_image_desktop_id'] ?? $extraSettings['contact_hero_image_id'] ?? null)?->url;
+        $contactHeroMobileImage = Media::query()->find($extraSettings['contact_hero_image_mobile_id'] ?? $extraSettings['contact_hero_image_id'] ?? null)?->url;
 
         return [
             'site_name' => $settings->site_name,
@@ -277,6 +284,7 @@ class SiteSetting extends Model
             'seo' => [
                 'meta_keywords' => $settings->meta_keywords,
                 'meta_author' => $settings->meta_author,
+                'tag_manager_id' => $settings->tag_manager_id,
                 'og_image' => $settings->og_image ? url($settings->og_image) : null,
             ],
             'contact' => [
@@ -300,9 +308,21 @@ class SiteSetting extends Model
             'custom_css' => $settings->custom_css,
             'maintenance_mode' => $settings->maintenance_mode,
             'maintenance_message' => $settings->maintenance_message,
-            'banner' => [
-                'image' => $settings->bannerImageMedia?->url ?? null,
-                'link' => $settings->banner_link,
+            'hero' => [
+                'home' => [
+                    'type' => $extraSettings['home_hero_type'] ?? 'video',
+                    'image' => $homeHeroDesktopImage,
+                    'image_desktop' => $homeHeroDesktopImage,
+                    'image_mobile' => $homeHeroMobileImage,
+                    'video_desktop_url' => $extraSettings['home_hero_video_desktop_url'] ?? null,
+                    'video_mobile_url' => $extraSettings['home_hero_video_mobile_url'] ?? null,
+                ],
+                'contact' => [
+                    'image' => $contactHeroDesktopImage,
+                    'image_desktop' => $contactHeroDesktopImage,
+                    'image_mobile' => $contactHeroMobileImage,
+                    'alt' => $extraSettings['contact_hero_alt'] ?? 'Contacto',
+                ],
             ],
             'payment_gateways' => [
                 'transbank' => [

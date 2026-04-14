@@ -5,10 +5,11 @@ import CheckoutService from '../services/checkout';
 import { authService } from '../services/auth';
 import ErrorNotification from '../components/ErrorNotification';
 import PlantsGrid from '../components/PlantsGrid';
-import BannerPromo from '../components/BannerPromo';
 import PaymentGatewayDialog from '../components/PaymentGatewayDialog';
 import SiteHeader from '../components/SiteHeader';
+import SiteFooter from '../components/SiteFooter';
 import { isRetryableError } from '../utils/errorHandler';
+import { trackEvent, trackPageView } from '../utils/tagManager';
 import gsap from 'gsap';
 import '../styles/home.scss' with { type: 'css' };
 
@@ -49,21 +50,6 @@ const normalizeBrowserUrl = (url) => {
   } catch {
     return '/';
   }
-};
-
-const normalizeFooterMenu = (menuItems) => {
-  if (!Array.isArray(menuItems)) {
-    return [];
-  }
-
-  return menuItems
-    .filter((item) => item && typeof item === 'object')
-    .map((item) => ({
-      label: `${item.label ?? ''}`.trim(),
-      url: `${item.url ?? ''}`.trim(),
-      newTab: Boolean(item.new_tab),
-    }))
-    .filter((item) => item.label !== '' && item.url !== '');
 };
 
 /**
@@ -135,6 +121,18 @@ function Home({ onNavigate, currentPath }) {
     menuSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, []);
 
+  useEffect(() => {
+    if (currentPath !== '/plantas') {
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      handleMenuNavigation();
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [currentPath, handleMenuNavigation]);
+
   const normalizeMultiValue = (value) => {
     if (Array.isArray(value)) {
       return value.filter((item) => item !== null && item !== undefined && `${item}`.trim() !== '');
@@ -180,45 +178,6 @@ function Home({ onNavigate, currentPath }) {
     + (selectedRegion ? 1 : 0)
     + (selectedPrecioMin ? 1 : 0)
     + (selectedPrecioMax ? 1 : 0);
-
-  const footerMenuItems = useMemo(() => normalizeFooterMenu(config?.footer_menu), [config?.footer_menu]);
-  const hasLegalText = Boolean(config?.footer_legal_text && config.footer_legal_text.trim() !== '');
-  const socialLinks = useMemo(() => {
-    const social = config?.social || {};
-
-    return [
-      {
-        key: 'facebook',
-        label: 'Facebook',
-        icon: 'facebook',
-        url: social.facebook,
-      },
-      {
-        key: 'instagram',
-        label: 'Instagram',
-        icon: 'instagram',
-        url: social.instagram,
-      },
-      {
-        key: 'linkedin',
-        label: 'LinkedIn',
-        icon: 'linkedin-in',
-        url: social.linkedin,
-      },
-      {
-        key: 'youtube',
-        label: 'YouTube',
-        icon: 'youtube',
-        url: social.youtube,
-      },
-      {
-        key: 'twitter',
-        label: 'X',
-        icon: 'x-twitter',
-        url: social.twitter,
-      },
-    ].filter((item) => Boolean(item.url));
-  }, [config?.social]);
 
   const mapPlant = useCallback((plant) => {
     const precioBase = Number(plant.precio_base) || 0;
@@ -440,6 +399,14 @@ function Home({ onNavigate, currentPath }) {
       return;
     }
 
+    trackEvent('plant_click', {
+      plant_id: plant.id,
+      plant_name: plant.nombre || plant.name || null,
+      project_name: plant.proyectoNombre || plant.proyecto?.name || null,
+      product_type: plant.tipoProducto || null,
+      price: plant.precioFinal || plant.precioBase || null,
+    });
+
     setSelectedPlantDetail(plant);
 
     const currentUrl = getCurrentBrowserUrl();
@@ -451,8 +418,13 @@ function Home({ onNavigate, currentPath }) {
         : currentUrl;
 
       window.history.pushState({ plantDetail: true, previousUrl }, '', nextPath);
+
+      trackPageView({
+        path: nextPath,
+        title: `${config?.site_name || 'iLeben'} | Planta ${plant.nombre || plant.name || ''}`,
+      });
     }
-  }, [buildPlantDetailPath]);
+  }, [buildPlantDetailPath, config?.site_name]);
 
   const handleClosePlantDetail = useCallback(() => {
     setSelectedPlantDetail(null);
@@ -709,6 +681,13 @@ function Home({ onNavigate, currentPath }) {
   // Manejar compra directo desde la tarjeta
   const handleQuickCheckout = async (plant) => {
     try {
+      trackEvent('reserve_click', {
+        plant_id: plant?.id || null,
+        plant_name: plant?.nombre || plant?.name || null,
+        project_name: plant?.proyectoNombre || plant?.proyecto?.name || null,
+        product_type: plant?.tipoProducto || null,
+      });
+
       setCheckoutLoading(true);
       setCheckoutError(null);
       setManualPayment(null);
@@ -733,6 +712,12 @@ function Home({ onNavigate, currentPath }) {
   // Confirmar checkout con pasarela seleccionada
   const handleConfirmCheckout = async ({ plantId, gateway, sessionToken, turnstileToken, userData }) => {
     if (!isAuthenticated) {
+      trackEvent('checkout_error', {
+        plant_id: plantId,
+        gateway,
+        reason: 'unauthenticated_user',
+      });
+
       setCheckoutError({
         type: 'auth',
         message: 'Usuario no autenticado',
@@ -762,6 +747,12 @@ function Home({ onNavigate, currentPath }) {
         }));
       }
 
+      trackEvent('checkout_start', {
+        plant_id: plantId,
+        gateway,
+        flow: response.flow === 'manual' ? 'manual' : 'redirect',
+      });
+
       if (response.flow === 'manual') {
         setManualPayment(response);
         setCheckoutLoading(false);
@@ -772,6 +763,13 @@ function Home({ onNavigate, currentPath }) {
       // Si se cierra dispara release() de la reserva justo antes de salir a Transbank.
       CheckoutService.redirect(response);
     } catch (err) {
+      trackEvent('checkout_error', {
+        plant_id: plantId,
+        gateway,
+        reason: err?.type || 'unknown',
+        error_message: err?.userMessage || err?.message || 'Error al iniciar checkout',
+      });
+
       setCheckoutError({
         type: err.type || 'unknown',
         message: err.message || 'Error en checkout',
@@ -923,6 +921,13 @@ function Home({ onNavigate, currentPath }) {
     );
   }
 
+  const homeHero = config?.hero?.home || {};
+  const homeHeroDesktopImage = homeHero?.image_desktop || homeHero?.image || null;
+  const homeHeroMobileImage = homeHero?.image_mobile || homeHeroDesktopImage;
+  const homeHeroType = homeHero?.type === 'image' && homeHeroDesktopImage ? 'image' : 'video';
+  const homeHeroDesktopVideo = homeHero?.video_desktop_url || 'https://viveelsur.ileben.cl/wp-content/uploads/2025/12/Banner-Hero-Desktop.mp4';
+  const homeHeroMobileVideo = homeHero?.video_mobile_url || 'https://viveelsur.ileben.cl/wp-content/uploads/2025/12/Banner-Hero-MobileV2.mp4';
+
   return (
     <>
     <SiteHeader
@@ -932,36 +937,37 @@ function Home({ onNavigate, currentPath }) {
       onMenuClick={handleMenuNavigation}
     />
 
-    {/* Banner Promocional */}
-    <BannerPromo banner={config?.banner} />
-
     {/* Hero Section */}
     <div className='video-home wa-position-relative wa-overflow-hidden wa-justify-content-center box-shadow-1'>
-        <div className="hero-section wa-position-absolute wa-z-index-1">
-            {/* {config?.logo && (
-            <img src={config.logo} alt={config?.site_name} className="hero-logo" />
-            )} */}
+        {/* <div className="hero-section wa-position-absolute wa-z-index-1">
             <h1>{config?.site_name}</h1>
             <p>{config?.site_description}</p>
-        </div>
-        <video autoPlay muted loop playsInline className="hero-video">
-            <source src="https://viveelsur.ileben.cl/wp-content/uploads/2025/12/Banner-Hero-MobileV2.mp4" type="video/mp4" media="(max-width: 768px)" />
-            <source src="https://viveelsur.ileben.cl/wp-content/uploads/2025/12/Banner-Hero-Desktop.mp4" type="video/mp4" media="(min-width: 769px)" />
-            Tu navegador no soporta el video.
-        </video>
+        </div> */}
+        {homeHeroType === 'image' ? (
+          <picture>
+            <source media="(max-width: 768px)" srcSet={homeHeroMobileImage || homeHeroDesktopImage} />
+            <img src={homeHeroDesktopImage} alt={config?.site_name || 'Hero'} className="hero-video" />
+          </picture>
+        ) : (
+          <video autoPlay muted loop playsInline className="hero-video">
+              <source src={homeHeroMobileVideo} type="video/mp4" media="(max-width: 768px)" />
+              <source src={homeHeroDesktopVideo} type="video/mp4" media="(min-width: 769px)" />
+              Tu navegador no soporta el video.
+          </video>
+        )}
     </div>
     <div className="home-container" ref={heroRef} id="menu-section">
         {/* Header de Plantas */}
         <div className="plants-header">
             <div className="wa-cluster wa-gap-s wa-align-items-center plants-header-main">
-                <h2>Nuestras Plantas</h2>
+                <h2>{config?.site_name}</h2>
                 {activeFilterCount > 0 && (
                 <wa-badge variant="brand" pill>
                     {activeFilterCount} {activeFilterCount === 1 ? 'filtro' : 'filtros'} activo{activeFilterCount === 1 ? '' : 's'}
                 </wa-badge>
                 )}
             </div>
-            <p>Descubre nuestra colección disponible</p>
+            <p>{config?.site_description}</p>
         </div>
 
         {/* Filtros */}
@@ -1249,73 +1255,7 @@ function Home({ onNavigate, currentPath }) {
       />
     </div>
 
-    <footer className="wa-stack wa-gap-l wa-mt-3xl">
-      {hasLegalText && (
-        <wa-card appearance="filled">
-          <div className="wa-stack wa-gap-s wa-align-items-center wa-text-align-center wa-font-size-3xs" style={{ padding: 'var(--wa-space-l)' }}>
-            <div dangerouslySetInnerHTML={{ __html: config.footer_legal_text }} />
-          </div>
-        </wa-card>
-      )}
-
-      <wa-card appearance="filled">
-        <section className="wa-stack wa-gap-l" style={{ padding: 'var(--wa-space-l)' }}>
-          <div className="wa-split wa-gap-m wa-align-items-center" style={{ flexWrap: 'wrap' }}>
-            <div className="wa-stack wa-gap-s">
-              {config?.logo && (
-                <img
-                  src={config.logo}
-                  alt={config?.site_name || 'Logo'}
-                  style={{ maxWidth: '190px', width: '100%', height: 'auto', objectFit: 'contain' }}
-                />
-              )}
-
-              <small className="wa-color-text-quiet">
-                Todos los derechos reservados {new Date().getFullYear()} {config?.site_name || 'iLeben'}
-              </small>
-            </div>
-
-            {socialLinks.length > 0 && (
-              <div className="wa-stack wa-gap-2xs wa-align-items-end" style={{ marginLeft: 'auto' }}>
-                <span>Síguenos en:</span>
-                <div className="wa-cluster wa-gap-xs">
-                  {socialLinks.map((socialItem) => (
-                    <wa-button
-                      variant="neutral"
-                      key={socialItem.key}
-                      href={socialItem.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={socialItem.label}
-                      pill
-                    >
-                      <wa-icon name={socialItem.icon} family="brands"></wa-icon>
-                    </wa-button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {footerMenuItems.length > 0 && (
-            <nav className="wa-cluster wa-gap-m wa-justify-content-center wa-text-align-center" aria-label="Menú legal del sitio">
-              {footerMenuItems.map((menuItem, index) => (
-                <wa-button
-                  key={`${menuItem.label}-${index}`}
-                  href={menuItem.url}
-                  target={menuItem.newTab ? '_blank' : undefined}
-                  rel={menuItem.newTab ? 'noopener noreferrer' : undefined}
-                  appearance="plain"
-                  className="wa-color-text-normal"
-                >
-                  {menuItem.label}
-                </wa-button>
-              ))}
-            </nav>
-          )}
-        </section>
-      </wa-card>
-    </footer>
+    <SiteFooter config={config} onNavigate={onNavigate} />
 
     {routePlantLoading && (
       <wa-dialog open className="route-plant-loading-dialog">

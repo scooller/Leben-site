@@ -5,6 +5,8 @@ import ErrorNotification from './components/ErrorNotification';
 import Home from './pages/Home';
 import Contact from './pages/Contact';
 import { APP_HTTP_ERROR_EVENT } from './utils/errorHandler';
+import { trackPageView } from './utils/tagManager';
+import { captureUtmParamsFromUrl } from './utils/utmSession';
 import './App.scss';
 import './styles/maintenance.scss';
 
@@ -15,21 +17,46 @@ const normalizePathname = (value) => {
   return normalized === '' ? '/' : normalized;
 };
 
+const getInitialPathname = () => {
+  const browserPath = normalizePathname(window.location.pathname || '/');
+  const hashPath = normalizePathname(window.location.hash.replace(/^#/, '') || '/');
+
+  if (window.location.hash && hashPath !== '/' && hashPath !== browserPath) {
+    window.history.replaceState({}, '', `${hashPath}${window.location.search}`);
+
+    return hashPath;
+  }
+
+  return browserPath;
+};
+
+const resolvePageTitle = (pathname, siteName = 'iLeben') => {
+  if (pathname === '/contacto') {
+    return `${siteName} | Contacto`;
+  }
+
+  if (pathname.startsWith('/p/')) {
+    return `${siteName} | Planta`;
+  }
+
+  return `${siteName} | Inicio`;
+};
+
 function AppContent() {
   const { config } = useContext(SiteConfigContext) || {};
-  const [pathname, setPathname] = useState(() => normalizePathname(window.location.hash.replace(/^#/, '') || '/'));
+  const [pathname, setPathname] = useState(getInitialPathname);
   const [globalError, setGlobalError] = useState(null);
   const lastGlobalErrorRef = useRef({ key: '', at: 0 });
 
   useEffect(() => {
     const handlePopState = () => {
-      setPathname(normalizePathname(window.location.hash.replace(/^#/, '') || '/'));
+      setPathname(normalizePathname(window.location.pathname || '/'));
     };
 
-    window.addEventListener('hashchange', handlePopState);
+    window.addEventListener('popstate', handlePopState);
 
     return () => {
-      window.removeEventListener('hashchange', handlePopState);
+      window.removeEventListener('popstate', handlePopState);
     };
   }, []);
 
@@ -77,16 +104,33 @@ function AppContent() {
   const navigate = useCallback((nextPath) => {
     const targetPath = normalizePathname(nextPath);
 
-    if (targetPath === pathname) {
-      return;
+    if (targetPath !== pathname) {
+      window.history.pushState({}, '', targetPath);
+      setPathname(targetPath);
     }
 
-    window.location.hash = targetPath;
-    setPathname(targetPath);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [pathname]);
 
   const currentPath = useMemo(() => normalizePathname(pathname), [pathname]);
+
+  useEffect(() => {
+    captureUtmParamsFromUrl(window.location.search || '');
+  }, [pathname]);
+
+  useEffect(() => {
+    const pageTitle = resolvePageTitle(currentPath, config?.site_name || 'iLeben');
+    document.title = pageTitle;
+
+    if (!config?.seo?.tag_manager_id) {
+      return;
+    }
+
+    trackPageView({
+      path: currentPath,
+      title: pageTitle,
+    });
+  }, [config?.seo?.tag_manager_id, config?.site_name, currentPath]);
 
   return (
     <div className="app">

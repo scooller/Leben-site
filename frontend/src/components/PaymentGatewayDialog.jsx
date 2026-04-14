@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { authService } from '../services/auth';
 import ReservationService from '../services/reservation';
+import { trackEvent } from '../utils/tagManager';
 
 /**
  * Diálogo para seleccionar pasarela de pago y completar datos del comprador
@@ -316,15 +317,36 @@ function PaymentGatewayDialog({
     const doReserve = async () => {
       setReservationLoading(true);
       setReservationError(null);
+
+      trackEvent('reservation_attempt', {
+        plant_id: plant.id,
+        plant_name: plant.nombre || plant.name || null,
+        project_name: plant.proyectoNombre || plant.proyecto?.name || null,
+      });
+
       try {
         const reservation = await ReservationService.reserve(plant.id);
         if (!cancelled) {
           setReservationToken(reservation.session_token);
           setRemainingSeconds(reservation.remaining_seconds);
+
+          trackEvent('reservation_success', {
+            plant_id: plant.id,
+            plant_name: plant.nombre || plant.name || null,
+            project_name: plant.proyectoNombre || plant.proyecto?.name || null,
+            remaining_seconds: reservation.remaining_seconds || 0,
+          });
         }
       } catch (err) {
         if (!cancelled) {
           setReservationError(err.userMessage || 'No se pudo reservar esta planta.');
+
+          trackEvent('reservation_error', {
+            plant_id: plant.id,
+            plant_name: plant.nombre || plant.name || null,
+            project_name: plant.proyectoNombre || plant.proyecto?.name || null,
+            error_message: err?.userMessage || err?.message || 'No se pudo reservar esta planta.',
+          });
         }
       } finally {
         if (!cancelled) {

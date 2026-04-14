@@ -1,7 +1,6 @@
 import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import siteConfigService from '../services/siteConfig';
-import WebAwesomeService from '../services/webAwesome';
-
+import WebAwesomeService from '../services/webAwesome';import { initializeTagManager } from '../utils/tagManager';
 export const SiteConfigContext = createContext(null);
 
 const COLOR_MODE_STORAGE_KEY = 'ileben-color-mode';
@@ -134,6 +133,10 @@ export const SiteConfigProvider = ({ children }) => {
           site_description: data.site_description,
           ...data.seo,
         });
+      }
+
+      if (data?.seo?.tag_manager_id) {
+        initializeTagManager(data.seo.tag_manager_id);
       }
 
       setError(null);
