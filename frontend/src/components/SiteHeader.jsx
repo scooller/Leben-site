@@ -12,7 +12,7 @@ function SiteHeader({ config, currentPath = '/', onNavigate, onMenuClick }) {
 
     return window.matchMedia('(max-width: 768px)').matches;
   });
-  const isPlantsActive = currentPath === '/plantas' || currentPath.startsWith('/p/');
+  const isPlantsActive = currentPath === '/plantas' || currentPath.startsWith('/p/') || currentPath === '/f' || currentPath.startsWith('/f/');
 
   useEffect(() => {
     if (typeof window === 'undefined') {

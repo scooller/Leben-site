@@ -120,6 +120,36 @@ class PlantApiFiltersTest extends TestCase
         $this->assertNotContains($plantInProvidencia->id, $responsePlantIds);
     }
 
+    public function test_it_filters_plants_by_multiple_project_slugs_and_comuna_slug(): void
+    {
+        $projectInLaFlorida = Proyecto::factory()->create([
+            'name' => 'Edificio Argomedo',
+            'slug' => 'edificio-argomedo',
+            'comuna' => 'La Florida',
+        ]);
+        $projectInProvidencia = Proyecto::factory()->create([
+            'name' => 'Parque Central',
+            'slug' => 'parque-central',
+            'comuna' => 'Providencia',
+        ]);
+        $otherProjectInLaFlorida = Proyecto::factory()->create([
+            'name' => 'Condominio Sur',
+            'slug' => 'condominio-sur',
+            'comuna' => 'La Florida',
+        ]);
+
+        $matchingPlant = $this->createPlant($projectInLaFlorida->salesforce_id, true);
+        $this->createPlant($projectInProvidencia->salesforce_id, true);
+        $this->createPlant($otherProjectInLaFlorida->salesforce_id, true);
+
+        $response = $this->getJson('/api/v1/plantas?project_slug=edificio-argomedo,parque-central&comuna_slug=la-florida');
+
+        $response->assertOk();
+        $responsePlantIds = collect($response->json('data'))->pluck('id')->all();
+
+        $this->assertSame([$matchingPlant->id], $responsePlantIds);
+    }
+
     public function test_it_filters_plants_by_availability(): void
     {
         $project = Proyecto::factory()->create();

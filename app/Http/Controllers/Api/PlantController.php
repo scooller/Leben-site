@@ -29,6 +29,7 @@ class PlantController extends Controller
         $projectValues = $this->normalizeInputValues($request->input('salesforce_proyecto_id'));
         $projectIdValues = $this->normalizeInputValues($request->input('proyecto_id', $request->input('project_id')));
         $projectSlugValues = $this->normalizeInputValues($request->input('project_slug', $request->input('slug')));
+        $comunaSlugValues = $this->normalizeInputValues($request->input('comuna_slug'));
         $catalogSlugValues = $this->normalizeInputValues($request->input('catalog_slug'));
         $dormValues = $this->normalizeInputValues($request->input('programa'));
         $banosValues = $this->normalizeInputValues($request->input('programa2'));
@@ -59,13 +60,23 @@ class PlantController extends Controller
             });
         }
 
-        if (count($catalogSlugValues) > 0) {
+        if (count($comunaSlugValues) > 0 || count($catalogSlugValues) > 0) {
             $activeProjects = Proyecto::query()
                 ->where('is_active', true)
                 ->get(['slug', 'comuna']);
 
             $matchedProjectSlugs = [];
             $matchedComunas = [];
+
+            foreach ($comunaSlugValues as $comunaSlugValue) {
+                $normalizedComunaSlug = Str::slug($comunaSlugValue);
+
+                foreach ($activeProjects as $project) {
+                    if ($project->comuna && Str::slug($project->comuna) === $normalizedComunaSlug) {
+                        $matchedComunas[] = $project->comuna;
+                    }
+                }
+            }
 
             foreach ($catalogSlugValues as $catalogSlugValue) {
                 $normalizedCatalogSlug = Str::slug($catalogSlugValue);
@@ -76,8 +87,6 @@ class PlantController extends Controller
 
                 if ($projectSlugMatchExists) {
                     $matchedProjectSlugs[] = $normalizedCatalogSlug;
-
-                    continue;
                 }
 
                 foreach ($activeProjects as $project) {
@@ -91,7 +100,9 @@ class PlantController extends Controller
                 $query->whereHas('proyecto', function ($projectQuery) use ($matchedProjectSlugs) {
                     $projectQuery->whereIn('slug', array_values(array_unique($matchedProjectSlugs)));
                 });
-            } elseif (count($matchedComunas) > 0) {
+            }
+
+            if (count($matchedComunas) > 0) {
                 $comunaValues = array_values(array_unique([...$comunaValues, ...$matchedComunas]));
             }
         }

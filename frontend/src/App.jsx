@@ -39,6 +39,10 @@ const resolvePageTitle = (pathname, siteName = 'iLeben') => {
     return `${siteName} | Planta`;
   }
 
+  if (pathname === '/f' || pathname.startsWith('/f/')) {
+    return `${siteName} | Filtros`;
+  }
+
   return `${siteName} | Inicio`;
 };
 

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSiteConfig } from '../contexts/SiteConfigContext';
 import PlantsService from '../services/plants';
+import { proyectosService } from '../services/proyectos';
 import CheckoutService from '../services/checkout';
 import { authService } from '../services/auth';
 import ErrorNotification from '../components/ErrorNotification';
@@ -14,6 +15,7 @@ import gsap from 'gsap';
 import '../styles/home.scss' with { type: 'css' };
 
 const PLANT_DETAIL_BASE_PATH = '/p';
+const FILTER_BASE_PATH = '/f';
 
 const slugifySegment = (value) => (
   `${value ?? ''}`
@@ -40,7 +42,49 @@ const parsePlantDetailPath = (pathname) => {
   };
 };
 
-const parseProjectCatalogPath = (pathname) => {
+const parseFilterPath = (pathname) => {
+  const normalizedPath = `${pathname || '/'}`.replace(/\/+$/, '') || '/';
+
+  if (normalizedPath !== FILTER_BASE_PATH && !normalizedPath.startsWith(`${FILTER_BASE_PATH}/`)) {
+    return null;
+  }
+
+  const segments = normalizedPath.slice(FILTER_BASE_PATH.length).split('/').filter(Boolean);
+  const filters = {
+    projectSlugs: [],
+    comunaSlugs: [],
+  };
+
+  for (let index = 0; index < segments.length; index += 2) {
+    const key = decodeURIComponent(segments[index] || '');
+    const rawValues = decodeURIComponent(segments[index + 1] || '');
+
+    if (!key || !rawValues) {
+      continue;
+    }
+
+    const values = rawValues
+      .split(',')
+      .map((value) => slugifySegment(value))
+      .filter(Boolean);
+
+    if (key === 'proyectos') {
+      filters.projectSlugs = values;
+    }
+
+    if (key === 'comunas') {
+      filters.comunaSlugs = values;
+    }
+  }
+
+  return filters;
+};
+
+const parseLegacyCatalogPath = (pathname) => {
+  if (parsePlantDetailPath(pathname)) {
+    return null;
+  }
+
   const matcher = new RegExp(`^${PLANT_DETAIL_BASE_PATH}/([^/]+)/?$`);
   const matches = pathname.match(matcher);
 
@@ -49,7 +93,7 @@ const parseProjectCatalogPath = (pathname) => {
   }
 
   return {
-    projectSlug: decodeURIComponent(matches[1]),
+    slug: decodeURIComponent(matches[1]),
   };
 };
 
@@ -72,16 +116,24 @@ const normalizeBrowserUrl = (url) => {
 function Home({ onNavigate, currentPath }) {
   const { config, loading: configLoading, colorMode, toggleColorMode } = useSiteConfig();
   const isSaleEventActive = Boolean(config?.evento_sale);
-  const routeCatalogSlug = useMemo(() => {
-    const detailRoute = parsePlantDetailPath(currentPath || '/');
+  const routeFilters = useMemo(() => {
+    const explicitFilters = parseFilterPath(currentPath || '/');
 
-    if (detailRoute?.projectSlug) {
-      return detailRoute.projectSlug;
+    if (explicitFilters) {
+      return {
+        ...explicitFilters,
+        legacySlug: null,
+      };
     }
 
-    return parseProjectCatalogPath(currentPath || '/')?.projectSlug || null;
+    return {
+      projectSlugs: [],
+      comunaSlugs: [],
+      legacySlug: parseLegacyCatalogPath(currentPath || '/')?.slug || null,
+    };
   }, [currentPath]);
   const [plants, setPlants] = useState([]);
+  const [proyectos, setProyectos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [checkoutError, setCheckoutError] = useState(null);
@@ -113,7 +165,7 @@ function Home({ onNavigate, currentPath }) {
   const [selectedOrientacion, setSelectedOrientacion] = useState('');
   const [selectedTipoProducto, setSelectedTipoProducto] = useState('');
   const [selectedEntrega, setSelectedEntrega] = useState('');
-  const [selectedComuna, setSelectedComuna] = useState('');
+  const [selectedComuna, setSelectedComuna] = useState([]);
   const [selectedRegion, setSelectedRegion] = useState('');
   const [selectedPrecioMin, setSelectedPrecioMin] = useState('');
   const [selectedPrecioMax, setSelectedPrecioMax] = useState('');
@@ -126,12 +178,13 @@ function Home({ onNavigate, currentPath }) {
   const [tempOrientacion, setTempOrientacion] = useState('');
   const [tempTipoProducto, setTempTipoProducto] = useState('');
   const [tempEntrega, setTempEntrega] = useState('');
-  const [tempComuna, setTempComuna] = useState('');
+  const [tempComuna, setTempComuna] = useState([]);
   const [tempRegion, setTempRegion] = useState('');
   const [tempPrecioMin, setTempPrecioMin] = useState('');
   const [tempPrecioMax, setTempPrecioMax] = useState('');
 
   const heroRef = useRef(null);
+  const latestPlantsRequestRef = useRef(0);
 
   const handleMenuNavigation = useCallback(() => {
     const menuSection = document.getElementById('menu-section');
@@ -144,7 +197,7 @@ function Home({ onNavigate, currentPath }) {
   }, []);
 
   useEffect(() => {
-    if (currentPath !== '/plantas' && !currentPath.startsWith('/p/')) {
+    if (currentPath !== '/plantas' && !currentPath.startsWith('/p/') && currentPath !== '/f' && !currentPath.startsWith('/f/')) {
       return;
     }
 
@@ -185,15 +238,56 @@ function Home({ onNavigate, currentPath }) {
 
   const filteredComunaOptions = useMemo(() => comunaOptions, [comunaOptions]);
 
-  const activeFilterCount = (routeCatalogSlug ? 1 : 0)
-    + selectedProyecto.length
+  const routeProjectSlugs = useMemo(() => {
+    if (routeFilters.projectSlugs.length > 0) {
+      return routeFilters.projectSlugs;
+    }
+
+    if (!routeFilters.legacySlug) {
+      return [];
+    }
+
+    const projectExists = proyectos.some((proyecto) => {
+      const projectSlug = slugifySegment(proyecto.slug || proyecto.name || '');
+
+      return projectSlug === routeFilters.legacySlug;
+    });
+
+    return projectExists ? [routeFilters.legacySlug] : [];
+  }, [proyectos, routeFilters]);
+
+  const routeProjectValues = useMemo(() => routeProjectSlugs
+    .map((slug) => {
+      const matchedProject = proyectos.find((proyecto) => slugifySegment(proyecto.slug || proyecto.name || '') === slug);
+
+      return matchedProject?.salesforce_id ? `${matchedProject.salesforce_id}` : null;
+    })
+    .filter(Boolean), [proyectos, routeProjectSlugs]);
+
+  const routeComunaSlugs = useMemo(() => {
+    if (routeFilters.comunaSlugs.length > 0) {
+      return routeFilters.comunaSlugs;
+    }
+
+    if (!routeFilters.legacySlug || routeProjectSlugs.length > 0) {
+      return [];
+    }
+
+    return [routeFilters.legacySlug];
+  }, [routeFilters, routeProjectSlugs]);
+
+  const routeComunaValues = useMemo(() => routeComunaSlugs
+    .map((slug) => filteredComunaOptions.find((comuna) => slugifySegment(comuna) === slug) || null)
+    .filter(Boolean), [filteredComunaOptions, routeComunaSlugs]);
+
+  const activeFilterCount = selectedProyecto.length
     + selectedDormitorios.length
     + selectedBanos.length
     + (selectedPiso ? 1 : 0)
     + (selectedOrientacion ? 1 : 0)
     + (selectedTipoProducto ? 1 : 0)
     + (selectedEntrega ? 1 : 0)
-    + (selectedComuna ? 1 : 0)
+    + selectedComuna.length
     + (selectedRegion ? 1 : 0)
     + (selectedPrecioMin ? 1 : 0)
     + (selectedPrecioMax ? 1 : 0);
@@ -284,13 +378,45 @@ function Home({ onNavigate, currentPath }) {
   }, []);
 
   useEffect(() => {
-    if (tempComuna && !filteredComunaOptions.includes(tempComuna)) {
-      setTempComuna('');
+    const fetchProjects = async () => {
+      try {
+        const data = await proyectosService.getProyectos({
+          perPage: 100,
+          fields: 'id,salesforce_id,name,slug,comuna',
+        });
+
+        setProyectos(data.data || []);
+      } catch {
+        setProyectos([]);
+      }
+    };
+
+    fetchProjects();
+  }, []);
+
+  useEffect(() => {
+    const validComunas = tempComuna.filter((comuna) => filteredComunaOptions.includes(comuna));
+
+    if (validComunas.length !== tempComuna.length) {
+      setTempComuna(validComunas);
     }
   }, [tempComuna, filteredComunaOptions]);
 
+  useEffect(() => {
+    if (!routeFilters.legacySlug && routeProjectSlugs.length === 0 && routeComunaSlugs.length === 0) {
+      return;
+    }
+
+    setTempProyecto(routeProjectValues);
+    setSelectedProyecto(routeProjectValues);
+    setTempComuna(routeComunaValues);
+    setSelectedComuna(routeComunaValues);
+    setPage(1);
+  }, [routeComunaSlugs.length, routeComunaValues, routeFilters.legacySlug, routeProjectSlugs.length, routeProjectValues]);
 
   const loadPlants = useCallback(async () => {
+    const requestId = ++latestPlantsRequestRef.current;
+
     try {
       setLoading(true);
       setError(null);
@@ -301,11 +427,13 @@ function Home({ onNavigate, currentPath }) {
         // available: true,
       };
 
-      if (routeCatalogSlug) {
-        filters.catalog_slug = routeCatalogSlug;
+      if (routeFilters.legacySlug) {
+        filters.catalog_slug = routeFilters.legacySlug;
       }
 
-      if (selectedProyecto.length > 0) {
+      if (routeProjectSlugs.length > 0) {
+        filters.project_slug = routeProjectSlugs;
+      } else if (selectedProyecto.length > 0) {
         filters.salesforce_proyecto_id = selectedProyecto;
       }
 
@@ -333,8 +461,12 @@ function Home({ onNavigate, currentPath }) {
         filters.entrega = selectedEntrega;
       }
 
-      if (selectedComuna) {
-        filters.comuna = selectedComuna;
+      if (routeComunaSlugs.length > 0) {
+        filters.comuna_slug = routeComunaSlugs;
+      }
+
+      if (routeComunaValues.length > 0 || selectedComuna.length > 0) {
+        filters.comuna = routeComunaValues.length > 0 ? routeComunaValues : selectedComuna;
       }
 
       if (selectedRegion) {
@@ -355,6 +487,10 @@ function Home({ onNavigate, currentPath }) {
 
       const data = await PlantsService.getAll(filters);
 
+      if (requestId !== latestPlantsRequestRef.current) {
+        return;
+      }
+
       const totalCount = data.total ?? data.data?.length ?? 0;
 
       const mappedPlants = (data.data || []).map((plant) => mapPlant(plant));
@@ -366,6 +502,10 @@ function Home({ onNavigate, currentPath }) {
       setTotalPages(data.last_page || 1);
       setTotalPlants(isSaleEventActive ? (data.total ?? visiblePlants.length) : totalCount);
     } catch (err) {
+      if (requestId !== latestPlantsRequestRef.current) {
+        return;
+      }
+
       const errorInfo = {
         type: err.type || 'unknown',
         message: err.message || 'Error al cargar las plantas',
@@ -375,11 +515,16 @@ function Home({ onNavigate, currentPath }) {
       };
       setError(errorInfo);
     } finally {
-      setLoading(false);
+      if (requestId === latestPlantsRequestRef.current) {
+        setLoading(false);
+      }
     }
   }, [
     page,
-    routeCatalogSlug,
+    routeComunaSlugs,
+    routeComunaValues,
+    routeFilters,
+    routeProjectSlugs,
     selectedProyecto,
     selectedDormitorios,
     selectedBanos,
@@ -453,22 +598,10 @@ function Home({ onNavigate, currentPath }) {
 
   const handleClosePlantDetail = useCallback(() => {
     setSelectedPlantDetail(null);
-
-    const parsedPath = parsePlantDetailPath(window.location.pathname);
-
-    if (!parsedPath) {
-      return;
-    }
-
-    if (window.history.state?.plantDetail && window.history.length > 1) {
-      window.history.back();
-      return;
-    }
-
-    const fallbackUrl = normalizeBrowserUrl(window.history.state?.previousUrl || '/');
-
-    window.history.replaceState({}, '', fallbackUrl);
-    setRoutePlantParams(parsePlantDetailPath(window.location.pathname));
+    setRoutePlantLoading(false);
+    window.history.replaceState({}, '', '/');
+    setRoutePlantParams(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
   useEffect(() => {
@@ -660,6 +793,37 @@ function Home({ onNavigate, currentPath }) {
     return () => ctx.revert();
   }, [configLoading]);
 
+  const syncCatalogUrl = useCallback((projectValues, comunaValues) => {
+    const projectSlugs = (Array.isArray(projectValues) ? projectValues : [projectValues])
+      .map((value) => proyectos.find((proyecto) => `${proyecto.salesforce_id}` === `${value}`))
+      .map((proyecto) => slugifySegment(proyecto?.slug || proyecto?.name || ''))
+      .filter(Boolean);
+
+    const comunaSlugs = (Array.isArray(comunaValues) ? comunaValues : [comunaValues])
+      .map((value) => slugifySegment(value))
+      .filter(Boolean);
+
+    const segments = [];
+
+    if (projectSlugs.length > 0) {
+      segments.push('proyectos', projectSlugs.join(','));
+    }
+
+    if (comunaSlugs.length > 0) {
+      segments.push('comunas', comunaSlugs.join(','));
+    }
+
+    if (segments.length === 0) {
+      if (currentPath.startsWith('/p/') || currentPath === '/f' || currentPath.startsWith('/f/')) {
+        onNavigate?.('/');
+      }
+
+      return;
+    }
+
+    onNavigate?.(`${FILTER_BASE_PATH}/${segments.join('/')}`);
+  }, [currentPath, onNavigate, proyectos]);
+
   // Aplicar filtros
   const handleApplyFilters = () => {
     setSelectedProyecto(tempProyecto);
@@ -674,6 +838,7 @@ function Home({ onNavigate, currentPath }) {
     setSelectedPrecioMin(tempPrecioMin);
     setSelectedPrecioMax(tempPrecioMax);
     setPage(1); // Volver a la primera página al aplicar filtros
+    syncCatalogUrl(tempProyecto, tempComuna);
   };
 
   // Limpiar filtros
@@ -685,7 +850,7 @@ function Home({ onNavigate, currentPath }) {
     setTempOrientacion('');
     setTempTipoProducto('');
     setTempEntrega('');
-    setTempComuna('');
+    setTempComuna([]);
     setTempRegion('');
     setTempPrecioMin('');
     setTempPrecioMax('');
@@ -696,11 +861,15 @@ function Home({ onNavigate, currentPath }) {
     setSelectedOrientacion('');
     setSelectedTipoProducto('');
     setSelectedEntrega('');
-    setSelectedComuna('');
+    setSelectedComuna([]);
     setSelectedRegion('');
     setSelectedPrecioMin('');
     setSelectedPrecioMax('');
     setPage(1);
+
+    if (currentPath.startsWith('/p/') || currentPath === '/f' || currentPath.startsWith('/f/')) {
+      onNavigate?.('/');
+    }
   };
 
   // Manejar compra directo desde la tarjeta
@@ -1005,7 +1174,7 @@ function Home({ onNavigate, currentPath }) {
                 style={{ '--spacing': 'var(--wa-space-xs)', backgroundColor: 'var(--wa-color-surface-lowered)' }}
                 >
                     <div className="wa-grid wa-gap-m filters-inputs" style={{ '--min-column-size': '14rem' }}>
-                        {/* <wa-select
+                        <wa-select
                             placeholder="Todos los proyectos"
                             size="small"
                             value={tempProyecto}
@@ -1022,7 +1191,7 @@ function Home({ onNavigate, currentPath }) {
                                 <wa-icon name="building" slot="start"></wa-icon>{proyecto.name}
                             </wa-option>
                             ))}
-                        </wa-select> */}
+                        </wa-select>
 
                         <wa-select
                             placeholder="Todos"
@@ -1062,7 +1231,7 @@ function Home({ onNavigate, currentPath }) {
                             <wa-option value="3B"><wa-icon name="bath" slot="start"></wa-icon>3 Baños</wa-option>
                         </wa-select> */}
 
-                        <wa-select
+                        {/* <wa-select
                             with-clear
                             placeholder="Todos"
                             size="small"
@@ -1080,9 +1249,9 @@ function Home({ onNavigate, currentPath }) {
                                 <wa-icon name="arrow-right-to-city" slot="start"></wa-icon>Piso {piso}
                             </wa-option>
                             ))}
-                        </wa-select>
+                        </wa-select> */}
 
-                          <wa-select
+                        <wa-select
                             with-clear
                             placeholder="Todos"
                             size="small"
@@ -1098,7 +1267,7 @@ function Home({ onNavigate, currentPath }) {
                             <wa-option value="ESTACIONAMIENTO"><wa-icon name="square-parking" slot="start"></wa-icon>Estacionamiento</wa-option>
                             <wa-option value="BODEGA"><wa-icon name="box-archive" slot="start"></wa-icon>Bodega</wa-option>
                             <wa-option value="LOCAL"><wa-icon name="store" slot="start"></wa-icon>Local</wa-option>
-                          </wa-select>
+                        </wa-select>
 
                           <wa-select
                             with-clear
@@ -1144,9 +1313,10 @@ function Home({ onNavigate, currentPath }) {
                             placeholder="Todas"
                             value={tempComuna}
                             onChange={(e) => {
-                            const value = getSingleSelectValue(e);
+                            const value = getMultiSelectValue(e);
                             setTempComuna(value);
                             }}
+                            multiple
                             clearable
                         >
                             <span slot='label'><wa-icon name="map-location"></wa-icon> Comuna</span>
