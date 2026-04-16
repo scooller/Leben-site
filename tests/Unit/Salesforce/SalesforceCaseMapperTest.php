@@ -35,10 +35,12 @@ class SalesforceCaseMapperTest extends TestCase
             'name' => 'Alejandro',
             'email' => 'alejandro@example.com',
             'phone' => '992285134',
+            'rut' => '11.455.798-6',
             'fields' => [
                 'name' => 'Alejandro',
                 'lastname' => 'Reveco',
                 'project_name' => 'Edificio Indigo',
+                'comuna' => 'Puerto Varas',
                 'arrival_channel' => 'BlackInmobiliario',
                 'utm_source' => 'direct',
                 'utm_campaign' => 'BlackFriday',
@@ -51,12 +53,17 @@ class SalesforceCaseMapperTest extends TestCase
         $this->assertSame('iLeben', $payload['SuppliedName'] ?? null);
         $this->assertSame('inscripciones@ileben.cl', $payload['SuppliedEmail'] ?? null);
         $this->assertSame('992285134', $payload['SuppliedPhone'] ?? null);
+        $this->assertSame('992285134', $payload['ContactPhone'] ?? null);
+        $this->assertSame('alejandro@example.com', $payload['ContactEmail'] ?? null);
+        $this->assertSame('11.455.798-6', $payload['RUT__c'] ?? null);
         $this->assertSame('BlackFriday', $payload['Subject'] ?? null);
         $this->assertSame('Email', $payload['Origin'] ?? null);
         $this->assertSame('Media', $payload['Priority'] ?? null);
         $this->assertSame('0128c000002wPrTAAU', $payload['RecordTypeId'] ?? null);
         $this->assertSame('02sU100000aMcxzIAC', $payload['SourceId'] ?? null);
+        $this->assertSame('Edificio Indigo', $payload['Nombre_Proyecto__c'] ?? null);
         $this->assertSame('Edificio Indigo', $payload['Proyecto_Formulario__c'] ?? null);
+        $this->assertSame('Puerto Varas', $payload['En_que_lugar__c'] ?? null);
         $this->assertStringContainsString('Nombre: Alejandro', $payload['Description'] ?? '');
         $this->assertStringContainsString('Proyecto: Edificio Indigo', $payload['Description'] ?? '');
         $this->assertStringContainsString('UTM Source: direct', $payload['Description'] ?? '');

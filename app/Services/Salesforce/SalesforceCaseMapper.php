@@ -24,6 +24,9 @@ class SalesforceCaseMapper
             'SuppliedName' => (string) ($settings->site_name ?: config('app.name')),
             'SuppliedEmail' => $settings->contact_notification_email ?: $settings->contact_email ?: $submission->email,
             'SuppliedPhone' => $submission->phone,
+            'ContactPhone' => $submission->phone ?: $this->fieldValue($fields, ['phone', 'telefono', 'fono', 'celular', 'whatsapp']),
+            'ContactEmail' => $submission->email ?: $this->fieldValue($fields, ['email', 'correo']),
+            'RUT__c' => $submission->rut ?: $this->fieldValue($fields, ['rut']),
             'RecordTypeId' => config('services.salesforce.case_record_type_id'),
             'Status' => (string) config('services.salesforce.case_status', 'Nuevo'),
             'Origin' => (string) config('services.salesforce.case_origin', 'Web'),
@@ -32,7 +35,9 @@ class SalesforceCaseMapper
             'Description' => $this->buildDescription($fields, $fieldLabels),
             'OwnerId' => config('services.salesforce.case_owner_id'),
             'SourceId' => config('services.salesforce.case_source_id'),
+            'Nombre_Proyecto__c' => $this->fieldValue($fields, ['nombre_proyecto', 'proyecto', 'project_name', 'proyecto_formulario']),
             'Proyecto_Formulario__c' => $this->fieldValue($fields, ['proyecto_formulario', 'proyecto', 'project_name']),
+            'En_que_lugar__c' => $this->fieldValue($fields, ['comuna', 'commune']),
         ];
 
         return array_filter($payload, static fn (mixed $value): bool => $value !== null && $value !== '');
