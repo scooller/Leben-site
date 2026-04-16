@@ -21,8 +21,15 @@ class SiteConfigService {
 
     this.loading = true;
     try {
+      const previewToken = this.getPreviewToken();
+      const params = forceRefresh ? { _t: Date.now() } : {};
+
+      if (previewToken) {
+        params.preview_token = previewToken;
+      }
+
       const response = await api.get('/site-config', {
-        params: forceRefresh ? { _t: Date.now() } : undefined,
+        params: Object.keys(params).length > 0 ? params : undefined,
         headers: forceRefresh
           ? {
             'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -139,6 +146,16 @@ class SiteConfigService {
       document.head.appendChild(meta);
     }
     meta.setAttribute('content', content);
+  }
+
+  getPreviewToken() {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+
+    const token = new URLSearchParams(window.location.search).get('preview_token');
+
+    return token ? token.trim() : null;
   }
 }
 

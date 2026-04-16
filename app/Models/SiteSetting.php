@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Support\LogsModelActivity;
 use Awcodes\Curator\Models\Media;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Request;
 
 class SiteSetting extends Model
 {
@@ -256,10 +257,16 @@ class SiteSetting extends Model
     /**
      * Obtener configuraciones públicas para el frontend
      */
-    public static function forFrontend(): array
+    public static function forFrontend(?Request $request = null): array
     {
         $settings = static::current();
         $settings->load(['logoMedia', 'logoDarkMedia', 'faviconMedia', 'iconMedia', 'logoSaleMedia']);
+
+        $mostrarPlantas = (bool) ($settings->mostrar_plantas ?? true);
+
+        if (! $mostrarPlantas && $request instanceof Request) {
+            $mostrarPlantas = FrontendPreviewLink::isAuthorizedForRequest($request);
+        }
 
         $extraSettings = is_array($settings->extra_settings) ? $settings->extra_settings : [];
         $homeHeroDesktopImage = Media::query()->find($extraSettings['home_hero_image_desktop_id'] ?? $extraSettings['home_hero_image_id'] ?? null)?->url;
@@ -274,7 +281,7 @@ class SiteSetting extends Model
             'footer_menu' => is_array($settings->footer_menu) ? $settings->footer_menu : [],
             'footer_legal_text' => $settings->footer_legal_text,
             'evento_sale' => (bool) $settings->evento_sale,
-            'mostrar_plantas' => (bool) ($settings->mostrar_plantas ?? true),
+            'mostrar_plantas' => $mostrarPlantas,
             'catalogo_no_disponible_titulo' => $extraSettings['catalogo_no_disponible_titulo'] ?? 'Próximamente',
             'catalogo_no_disponible_mensaje' => $extraSettings['catalogo_no_disponible_mensaje'] ?? 'El catálogo de plantas no está disponible por el momento.',
             'logo_sale' => $settings->logoSaleMedia?->url ?? null,

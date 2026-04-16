@@ -97,8 +97,8 @@ Route::prefix('v1')->group(function () {
     });
 
     // Configuración del sitio
-    Route::get('/site-config', function () {
-        return response()->json(App\Models\SiteSetting::forFrontend());
+    Route::get('/site-config', function (Request $request) {
+        return response()->json(App\Models\SiteSetting::forFrontend($request));
     });
 
     // Contacto público
