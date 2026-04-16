@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Proyecto;
 use App\Models\SiteSetting;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -11,6 +12,11 @@ use Illuminate\Validation\Rule;
 
 class StoreContactSubmissionRequest extends FormRequest
 {
+    /**
+     * @var array<int, string>|null
+     */
+    private ?array $selectedProjectTypes = null;
+
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -34,6 +40,10 @@ class StoreContactSubmissionRequest extends FormRequest
             $key = Str::of((string) ($field['key'] ?? ''))->trim()->toString();
 
             if ($key === '') {
+                continue;
+            }
+
+            if (! $this->isFieldEnabledForSelectedProject($field)) {
                 continue;
             }
 
@@ -268,5 +278,111 @@ class StoreContactSubmissionRequest extends FormRequest
         };
 
         return $dv === $expectedDv;
+    }
+
+    /**
+     * @param  array<string, mixed>  $field
+     */
+    private function isFieldEnabledForSelectedProject(array $field): bool
+    {
+        $fieldProjectTypes = $this->normalizeProjectTypes($field['project_types'] ?? []);
+
+        if ($fieldProjectTypes === []) {
+            return true;
+        }
+
+        $selectedProjectTypes = $this->resolveSelectedProjectTypes();
+
+        if ($selectedProjectTypes === []) {
+            return false;
+        }
+
+        return count(array_intersect($fieldProjectTypes, $selectedProjectTypes)) > 0;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function resolveSelectedProjectTypes(): array
+    {
+        if ($this->selectedProjectTypes !== null) {
+            return $this->selectedProjectTypes;
+        }
+
+        $fields = $this->input('fields', []);
+
+        if (! is_array($fields)) {
+            $this->selectedProjectTypes = [];
+
+            return $this->selectedProjectTypes;
+        }
+
+        $projectName = trim((string) (
+            $fields['proyecto']
+            ?? $fields['project']
+            ?? $fields['project_name']
+            ?? $fields['nombre_proyecto']
+            ?? ''
+        ));
+
+        if ($projectName === '') {
+            $this->selectedProjectTypes = [];
+
+            return $this->selectedProjectTypes;
+        }
+
+        $projectCommune = trim((string) (
+            $fields['comuna']
+            ?? $fields['commune']
+            ?? $fields['district']
+            ?? $fields['project_commune']
+            ?? ''
+        ));
+
+        $query = Proyecto::query()
+            ->where('is_active', true)
+            ->where('name', $projectName);
+
+        if ($projectCommune !== '') {
+            $query->where('comuna', $projectCommune);
+        }
+
+        $project = $query->first();
+
+        if (! $project instanceof Proyecto) {
+            $project = Proyecto::query()
+                ->where('is_active', true)
+                ->where('name', $projectName)
+                ->first();
+        }
+
+        if (! $project instanceof Proyecto) {
+            $this->selectedProjectTypes = [];
+
+            return $this->selectedProjectTypes;
+        }
+
+        $this->selectedProjectTypes = $this->normalizeProjectTypes($project->tipo);
+
+        return $this->selectedProjectTypes;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function normalizeProjectTypes(mixed $types): array
+    {
+        if (is_string($types)) {
+            $types = str_contains($types, ',') ? explode(',', $types) : [$types];
+        }
+
+        if (! is_array($types)) {
+            return [];
+        }
+
+        return array_values(array_unique(array_filter(array_map(
+            static fn (mixed $type): string => Str::of((string) $type)->trim()->lower()->toString(),
+            $types
+        ), static fn (string $type): bool => $type !== '')));
     }
 }

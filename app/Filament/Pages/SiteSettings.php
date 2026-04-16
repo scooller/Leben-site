@@ -40,6 +40,20 @@ class SiteSettings extends Page implements HasForms
 {
     use InteractsWithForms;
 
+    /**
+     * @return array<string, string>
+     */
+    protected static function projectTypeOptions(): array
+    {
+        return [
+            'best' => 'Best',
+            'broker' => 'Broker',
+            'home' => 'Home',
+            'icon' => 'Icon',
+            'invest' => 'Invest',
+        ];
+    }
+
     protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedCog6Tooth;
 
     protected static ?string $navigationLabel = 'Configuración del Sitio';
@@ -616,6 +630,14 @@ class SiteSettings extends Page implements HasForms
                                                     ->required()
                                                     ->default('text')
                                                     ->live(),
+
+                                                Select::make('project_types')
+                                                    ->label('Mostrar para tipo de proyecto')
+                                                    ->options(self::projectTypeOptions())
+                                                    ->multiple()
+                                                    ->searchable()
+                                                    ->preload()
+                                                    ->helperText('Opcional. Si seleccionas tipos, este campo solo se mostrará cuando el proyecto elegido pertenezca a alguno de ellos.'),
 
                                                 TextInput::make('placeholder')
                                                     ->label('Placeholder')

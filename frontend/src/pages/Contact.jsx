@@ -96,6 +96,20 @@ const normalizeFieldOptions = (options = []) => {
     .filter((option) => option.value !== '');
 };
 
+const normalizeProjectTypes = (types) => {
+  if (Array.isArray(types)) {
+    return [...new Set(types
+      .map((type) => `${type ?? ''}`.trim().toLowerCase())
+      .filter((type) => type !== ''))];
+  }
+
+  if (typeof types === 'string') {
+    return normalizeProjectTypes(types.includes(',') ? types.split(',') : [types]);
+  }
+
+  return [];
+};
+
 function Contact({ onNavigate, currentPath }) {
   const { config, loading: configLoading } = useSiteConfig();
   const [values, setValues] = useState({});
@@ -159,7 +173,8 @@ function Contact({ onNavigate, currentPath }) {
 
     return configuredFields
       .filter((field) => field && field.key)
-      .map((field) => ({
+      .map((field, index) => ({
+        renderKey: `${`${field.key}`.trim()}-${index}`,
         key: `${field.key}`.trim(),
         icon: field.icon ? `${field.icon}`.trim() : undefined,
         label: `${field.label || field.key}`.trim(),
@@ -167,6 +182,7 @@ function Contact({ onNavigate, currentPath }) {
         placeholder: `${field.placeholder || ''}`,
         required: Boolean(field.required),
         options: normalizeFieldOptions(field.options),
+        projectTypes: normalizeProjectTypes(field.project_types),
       }))
       .filter((field) => field.key !== '');
   }, [config?.contact_page?.form_fields]);
@@ -212,6 +228,49 @@ function Contact({ onNavigate, currentPath }) {
     ).values()].sort((left, right) => left.label.localeCompare(right.label, 'es', { sensitivity: 'base' }));
   }, [projectCatalog, values.comuna]);
 
+  const selectedProjectTypes = useMemo(() => {
+    const selectedProjectName = `${values.proyecto ?? ''}`.trim().toLowerCase();
+    const selectedComuna = `${values.comuna ?? ''}`.trim().toLowerCase();
+
+    if (selectedProjectName === '') {
+      return [];
+    }
+
+    const selectedProject = projectCatalog.find((project) => {
+      const matchesName = `${project.name ?? ''}`.trim().toLowerCase() === selectedProjectName;
+
+      if (!matchesName) {
+        return false;
+      }
+
+      if (selectedComuna === '') {
+        return true;
+      }
+
+      return `${project.comuna ?? ''}`.trim().toLowerCase() === selectedComuna;
+    });
+
+    return normalizeProjectTypes(selectedProject?.tipo);
+  }, [projectCatalog, values.comuna, values.proyecto]);
+
+  const visibleFormFields = useMemo(() => {
+    return formFields.filter((field) => {
+      if (field.key === CONTACT_COMUNA_FIELD.key || field.key === CONTACT_PROJECT_FIELD.key) {
+        return true;
+      }
+
+      if (!Array.isArray(field.projectTypes) || field.projectTypes.length === 0) {
+        return true;
+      }
+
+      if (selectedProjectTypes.length === 0) {
+        return false;
+      }
+
+      return field.projectTypes.some((type) => selectedProjectTypes.includes(type));
+    });
+  }, [formFields, selectedProjectTypes]);
+
   useEffect(() => {
     const nextValues = {
       [CONTACT_COMUNA_FIELD.key]: '',
@@ -233,7 +292,7 @@ function Contact({ onNavigate, currentPath }) {
 
         const response = await proyectosService.getProyectos({
           perPage: 100,
-          fields: 'id,name,comuna',
+          fields: 'id,name,comuna,tipo',
         });
 
         const items = Array.isArray(response?.data)
@@ -248,6 +307,7 @@ function Contact({ onNavigate, currentPath }) {
               id: project?.id ?? '',
               name: `${project?.name ?? ''}`.trim(),
               comuna: `${project?.comuna ?? ''}`.trim(),
+              tipo: normalizeProjectTypes(project?.tipo),
             }))
             .filter((project) => project.name !== '')
         );
@@ -311,7 +371,7 @@ function Contact({ onNavigate, currentPath }) {
 
     const nextFieldErrors = {};
 
-    formFields.forEach((field) => {
+    visibleFormFields.forEach((field) => {
       const validationMessage = validateField(field, values[field.key] || '');
 
       if (validationMessage) {
@@ -433,7 +493,7 @@ function Contact({ onNavigate, currentPath }) {
 
     if (field.type === 'textarea') {
       return (
-        <div key={field.key} className="wa-stack wa-gap-3xs">
+        <div key={field.renderKey || field.key} className="wa-stack wa-gap-3xs">
           <wa-textarea
             value={value}
             rows="5"
@@ -451,7 +511,7 @@ function Contact({ onNavigate, currentPath }) {
 
     if (field.type === 'select') {
       return (
-        <div key={field.key} className="wa-stack wa-gap-3xs">
+        <div key={field.renderKey || field.key} className="wa-stack wa-gap-3xs">
           <wa-select
             value={value}
             placeholder={field.placeholder || 'Selecciona una opción'}
@@ -462,7 +522,7 @@ function Contact({ onNavigate, currentPath }) {
           >
             {renderFieldLabel(field)}
             {field.options.map((option) => (
-              <wa-option key={`${field.key}-${option.value}`} value={option.value}>
+              <wa-option key={`${field.renderKey || field.key}-${option.value}`} value={option.value}>
                 {fieldIcon && <wa-icon name={fieldIcon} slot="start"></wa-icon>}
                 {option.label}
               </wa-option>
@@ -477,7 +537,7 @@ function Contact({ onNavigate, currentPath }) {
     const inputType = field.type === 'email' ? 'email' : field.type === 'number' ? 'number' : field.type === 'tel' ? 'tel' : 'text';
 
     return (
-      <div key={field.key} className="wa-stack wa-gap-3xs">
+      <div key={field.renderKey || field.key} className="wa-stack wa-gap-3xs">
         <wa-input
           type={inputType}
           value={value}
@@ -595,7 +655,7 @@ function Contact({ onNavigate, currentPath }) {
                 <input key={key} type="hidden" name={key} value={value || ''} readOnly />
               ))}
 
-              {formFields.map((field) => {
+              {visibleFormFields.map((field) => {
                 if (field.key === CONTACT_COMUNA_FIELD.key) {
                   return renderField({
                     ...field,

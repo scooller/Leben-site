@@ -4,6 +4,7 @@ namespace Tests\Feature\Feature\Api;
 
 use App\Filament\Resources\ContactSubmissions\ContactSubmissions\ContactSubmissionResource;
 use App\Models\ContactSubmission;
+use App\Models\Proyecto;
 use App\Models\SiteSetting;
 use App\Models\User;
 use Database\Seeders\FinMailSpanishEmailTemplatesSeeder;
@@ -284,5 +285,92 @@ class ContactSubmissionApiTest extends TestCase
             ->assertSee('Proyecto')
             ->assertSee('Parque Central')
             ->assertDontSee('Teléfono');
+    }
+
+    public function test_it_ignores_required_conditional_field_when_selected_project_type_does_not_match(): void
+    {
+        Proyecto::factory()->create([
+            'name' => 'Proyecto Icon',
+            'comuna' => 'Providencia',
+            'tipo' => ['icon'],
+            'is_active' => true,
+        ]);
+
+        SiteSetting::current()->update([
+            'contact_form_fields' => [
+                ['key' => 'name', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
+                [
+                    'key' => 'rango',
+                    'label' => 'Rango de renta',
+                    'type' => 'select',
+                    'required' => true,
+                    'project_types' => ['best'],
+                    'options' => [
+                        ['value' => '1', 'label' => 'Menor a $1.000.000'],
+                    ],
+                ],
+            ],
+        ]);
+
+        $response = $this->postJson('/api/v1/contact-submissions', [
+            'fields' => [
+                'proyecto' => 'Proyecto Icon',
+                'comuna' => 'Providencia',
+            ],
+        ]);
+
+        $response
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['fields.name'])
+            ->assertJsonMissingValidationErrors(['fields.rango']);
+    }
+
+    public function test_it_uses_matching_conditional_select_when_same_key_is_reused(): void
+    {
+        Proyecto::factory()->create([
+            'name' => 'Proyecto Best',
+            'comuna' => 'Santiago',
+            'tipo' => ['best'],
+            'is_active' => true,
+        ]);
+
+        SiteSetting::current()->update([
+            'contact_form_fields' => [
+                ['key' => 'name', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
+                [
+                    'key' => 'rango',
+                    'label' => 'Rango Best',
+                    'type' => 'select',
+                    'required' => true,
+                    'project_types' => ['best'],
+                    'options' => [
+                        ['value' => 'best_1', 'label' => 'Best 1'],
+                    ],
+                ],
+                [
+                    'key' => 'rango',
+                    'label' => 'Rango Icon',
+                    'type' => 'select',
+                    'required' => true,
+                    'project_types' => ['icon'],
+                    'options' => [
+                        ['value' => 'icon_1', 'label' => 'Icon 1'],
+                    ],
+                ],
+            ],
+        ]);
+
+        $response = $this->postJson('/api/v1/contact-submissions', [
+            'fields' => [
+                'name' => 'Juan',
+                'proyecto' => 'Proyecto Best',
+                'comuna' => 'Santiago',
+                'rango' => 'icon_1',
+            ],
+        ]);
+
+        $response
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['fields.rango']);
     }
 }
