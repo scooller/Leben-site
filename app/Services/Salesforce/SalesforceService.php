@@ -140,13 +140,12 @@ class SalesforceService
 
             return $response;
         } catch (\Throwable $firstException) {
-            $invalidField = $this->extractInvalidLeadField($firstException);
+            $sanitized = $this->removeUnavailableLeadFields($currentPayload, $firstException);
+            $currentPayload = $sanitized['payload'];
 
-            if ($invalidField !== null && array_key_exists($invalidField, $currentPayload)) {
-                unset($currentPayload[$invalidField]);
-
-                Log::warning('Salesforce: Campo inválido removido del payload de Lead, reintentando', [
-                    'invalid_field' => $invalidField,
+            if ($sanitized['removed_fields'] !== []) {
+                Log::warning('Salesforce: Campos removidos del payload de Lead, reintentando', [
+                    'removed_fields' => $sanitized['removed_fields'],
                     'email' => $payload['Email'] ?? null,
                     'payload_keys' => array_keys($currentPayload),
                 ]);
@@ -163,7 +162,7 @@ class SalesforceService
                     'success' => $response['success'] ?? null,
                     'errors' => $response['errors'] ?? null,
                     'response' => $response,
-                    'removed_field' => $invalidField,
+                    'removed_fields' => $sanitized['removed_fields'],
                 ]);
 
                 return $response;
@@ -193,13 +192,12 @@ class SalesforceService
 
                 return $response;
             } catch (\Throwable $secondException) {
-                $invalidField = $this->extractInvalidLeadField($secondException);
+                $sanitized = $this->removeUnavailableLeadFields($currentPayload, $secondException);
+                $currentPayload = $sanitized['payload'];
 
-                if ($invalidField !== null && array_key_exists($invalidField, $currentPayload)) {
-                    unset($currentPayload[$invalidField]);
-
-                    Log::warning('Salesforce: Campo inválido removido tras re-auth, reintentando Lead', [
-                        'invalid_field' => $invalidField,
+                if ($sanitized['removed_fields'] !== []) {
+                    Log::warning('Salesforce: Campos removidos tras re-auth, reintentando Lead', [
+                        'removed_fields' => $sanitized['removed_fields'],
                         'email' => $payload['Email'] ?? null,
                         'payload_keys' => array_keys($currentPayload),
                     ]);
@@ -216,7 +214,7 @@ class SalesforceService
                         'success' => $response['success'] ?? null,
                         'errors' => $response['errors'] ?? null,
                         'response' => $response,
-                        'removed_field' => $invalidField,
+                        'removed_fields' => $sanitized['removed_fields'],
                     ]);
 
                     return $response;
@@ -243,6 +241,88 @@ class SalesforceService
         $field = trim((string) ($matches[1] ?? ''));
 
         return $field !== '' ? $field : null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array{payload: array<string, mixed>, removed_fields: list<string>}
+     */
+    private function removeUnavailableLeadFields(array $payload, \Throwable $exception): array
+    {
+        $candidateFields = [];
+
+        $invalidField = $this->extractInvalidLeadField($exception);
+        if ($invalidField !== null) {
+            $candidateFields[] = $invalidField;
+        }
+
+        $candidateFields = array_merge($candidateFields, $this->extractNonWritableLeadFields($exception));
+        $candidateFields = array_values(array_unique(array_filter(array_map(
+            static fn (string $field): string => trim($field),
+            $candidateFields
+        ), static fn (string $field): bool => $field !== '')));
+
+        $removedFields = [];
+
+        foreach ($candidateFields as $field) {
+            if (! array_key_exists($field, $payload)) {
+                continue;
+            }
+
+            unset($payload[$field]);
+            $removedFields[] = $field;
+        }
+
+        return [
+            'payload' => $payload,
+            'removed_fields' => $removedFields,
+        ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function extractNonWritableLeadFields(\Throwable $exception): array
+    {
+        if (! method_exists($exception, 'getResponse')) {
+            return [];
+        }
+
+        $response = $exception->getResponse();
+
+        if (! $response) {
+            return [];
+        }
+
+        $decodedBody = json_decode((string) $response->getBody(), true);
+
+        if (! is_array($decodedBody)) {
+            return [];
+        }
+
+        $fields = [];
+
+        foreach ($decodedBody as $errorItem) {
+            if (! is_array($errorItem)) {
+                continue;
+            }
+
+            if (($errorItem['errorCode'] ?? null) !== 'INVALID_FIELD_FOR_INSERT_UPDATE') {
+                continue;
+            }
+
+            $errorFields = $errorItem['fields'] ?? [];
+
+            if (! is_array($errorFields)) {
+                continue;
+            }
+
+            foreach ($errorFields as $errorField) {
+                $fields[] = trim((string) $errorField);
+            }
+        }
+
+        return array_values(array_unique(array_filter($fields, static fn (string $field): bool => $field !== '')));
     }
 
     /**
