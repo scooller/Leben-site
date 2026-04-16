@@ -120,6 +120,11 @@ class SiteSettings extends Page implements HasForms
                                             ->live()
                                             ->helperText('Cuando está activo, el frontend solo mostrará plantas con Porcentaje Máximo de Unidad y usará la etiqueta "Precio Sale".'),
 
+                                        Toggle::make('mostrar_plantas')
+                                            ->label('Mostrar plantas')
+                                            ->default(true)
+                                            ->helperText('Cuando está desactivado, el frontend mostrará un mensaje de "Próximamente" en lugar del catálogo.'),
+
                                         CuratorPicker::make('logo_sale_id')
                                             ->label('Logo Sale')
                                             ->helperText('Logo usado en el grid y en el detalle de planta cuando Evento Sale está activo.')

@@ -116,6 +116,7 @@ const normalizeBrowserUrl = (url) => {
 function Home({ onNavigate, currentPath }) {
   const { config, loading: configLoading, colorMode, toggleColorMode } = useSiteConfig();
   const isSaleEventActive = Boolean(config?.evento_sale);
+  const showPlants = Boolean(config?.mostrar_plantas ?? true);
   const routeFilters = useMemo(() => {
     const explicitFilters = parseFilterPath(currentPath || '/');
 
@@ -345,6 +346,10 @@ function Home({ onNavigate, currentPath }) {
   }, []);
 
   useEffect(() => {
+    if (!showPlants) {
+      return;
+    }
+
     const fetchLocationFilters = async () => {
       try {
         const data = await PlantsService.getLocationFilters();
@@ -359,9 +364,13 @@ function Home({ onNavigate, currentPath }) {
     };
 
     fetchLocationFilters();
-  }, []);
+  }, [showPlants]);
 
   useEffect(() => {
+    if (!showPlants) {
+      return;
+    }
+
     const fetchPisoOptions = async () => {
       try {
         const data = await PlantsService.getAll({ perPage: 500 });
@@ -375,9 +384,13 @@ function Home({ onNavigate, currentPath }) {
     };
 
     fetchPisoOptions();
-  }, []);
+  }, [showPlants]);
 
   useEffect(() => {
+    if (!showPlants) {
+      return;
+    }
+
     const fetchProjects = async () => {
       try {
         const data = await proyectosService.getProyectos({
@@ -392,7 +405,7 @@ function Home({ onNavigate, currentPath }) {
     };
 
     fetchProjects();
-  }, []);
+  }, [showPlants]);
 
   useEffect(() => {
     const validComunas = tempComuna.filter((comuna) => filteredComunaOptions.includes(comuna));
@@ -415,6 +428,16 @@ function Home({ onNavigate, currentPath }) {
   }, [routeComunaSlugs.length, routeComunaValues, routeFilters.legacySlug, routeProjectSlugs.length, routeProjectValues]);
 
   const loadPlants = useCallback(async () => {
+    if (!showPlants) {
+      setPlants([]);
+      setTotalPages(1);
+      setTotalPlants(0);
+      setError(null);
+      setLoading(false);
+
+      return;
+    }
+
     const requestId = ++latestPlantsRequestRef.current;
 
     try {
@@ -537,6 +560,7 @@ function Home({ onNavigate, currentPath }) {
     selectedPrecioMin,
     selectedPrecioMax,
     isSaleEventActive,
+    showPlants,
     mapPlant,
   ]);
 
@@ -643,6 +667,13 @@ function Home({ onNavigate, currentPath }) {
     let isMounted = true;
 
     const loadPlantFromRoute = async () => {
+      if (!showPlants) {
+        setRoutePlantLoading(false);
+        setSelectedPlantDetail(null);
+
+        return;
+      }
+
       if (!routePlantParams) {
         setRoutePlantLoading(false);
         return;
@@ -741,7 +772,7 @@ function Home({ onNavigate, currentPath }) {
     return () => {
       isMounted = false;
     };
-  }, [routePlantParams, plants, loading, mapPlant]);
+  }, [routePlantParams, plants, loading, mapPlant, showPlants]);
 
   // Animaciones del Hero con GSAP
   useEffect(() => {
@@ -1182,6 +1213,8 @@ function Home({ onNavigate, currentPath }) {
         </div>
 
         {/* Filtros */}
+        {showPlants ? (
+        <>
         <wa-details className="filters-details wa-mb-m">
             <span slot="summary">
                 <wa-icon name="filter-circle-dollar"></wa-icon> Filtros
@@ -1446,6 +1479,18 @@ function Home({ onNavigate, currentPath }) {
         onClose={() => setCheckoutError(null)}
         duration={6000}
       />
+        </>
+        ) : (
+        <wa-card className="wa-mb-l">
+          <wa-callout variant="brand">
+            <wa-icon slot="icon" name="clock"></wa-icon>
+            <strong>Próximamente</strong>
+            <div style={{ marginTop: '8px' }}>
+              El catálogo de plantas no está disponible por el momento.
+            </div>
+          </wa-callout>
+        </wa-card>
+        )}
     </div>
 
     <SiteFooter config={config} onNavigate={onNavigate} />

@@ -415,8 +415,8 @@ function Contact({ onNavigate, currentPath }) {
     return 'book';
   };
 
-  const renderFieldLabel = (field) => {
-    const fieldIcon = resolveFieldIcon(field);
+  const renderFieldLabel = (field, includeIcon = true) => {
+    const fieldIcon = includeIcon ? resolveFieldIcon(field) : null;
 
     return (
       <span slot="label" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
@@ -483,6 +483,7 @@ function Contact({ onNavigate, currentPath }) {
           value={value}
           placeholder={field.placeholder || undefined}
           required={field.required}
+          input-icon={field.type !== 'tel' && fieldIcon ? fieldIcon : undefined}
           pattern={field.type === 'rut' ? '^[0-9]{7,8}-[0-9Kk]$' : undefined}
           maxlength={field.type === 'rut' ? '10' : field.type === 'tel' ? '9' : undefined}
           onInput={(event) => handleFieldChange(field, event.target.value || '')}
@@ -491,9 +492,7 @@ function Contact({ onNavigate, currentPath }) {
               <div slot="start">
                 <span>+56</span>
               </div>
-            ) : (
-              fieldIcon && <wa-icon name={fieldIcon} slot="start"></wa-icon>
-            )}
+            ) : null}
             {renderFieldLabel(field)}
         </wa-input>
 

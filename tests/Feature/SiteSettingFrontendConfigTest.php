@@ -18,6 +18,7 @@ class SiteSettingFrontendConfigTest extends TestCase
         SiteSetting::current()->update([
             'brand_color' => '#112233',
             'evento_sale' => true,
+            'mostrar_plantas' => false,
             'contact_page_title' => 'Conversemos',
             'contact_page_subtitle' => 'Te ayudamos a elegir tu próxima planta',
             'contact_page_content' => '<p>Contenido administrable de contacto</p>',
@@ -58,6 +59,8 @@ class SiteSettingFrontendConfigTest extends TestCase
         $this->assertSame('#112233', $payload['brand_color']);
         $this->assertArrayHasKey('evento_sale', $payload);
         $this->assertTrue($payload['evento_sale']);
+        $this->assertArrayHasKey('mostrar_plantas', $payload);
+        $this->assertFalse($payload['mostrar_plantas']);
         $this->assertArrayHasKey('logo_sale', $payload);
         $this->assertNull($payload['logo_sale']);
         $this->assertArrayHasKey('footer_menu', $payload);
