@@ -253,6 +253,11 @@ function Contact({ onNavigate, currentPath }) {
     return normalizeProjectTypes(selectedProject?.tipo);
   }, [projectCatalog, values.comuna, values.proyecto]);
 
+  const hasSelectedProject = useMemo(
+    () => `${values.proyecto ?? ''}`.trim() !== '',
+    [values.proyecto]
+  );
+
   const visibleFormFields = useMemo(() => {
     return formFields.filter((field) => {
       if (field.key === CONTACT_COMUNA_FIELD.key || field.key === CONTACT_PROJECT_FIELD.key) {
@@ -270,6 +275,37 @@ function Contact({ onNavigate, currentPath }) {
       return field.projectTypes.some((type) => selectedProjectTypes.includes(type));
     });
   }, [formFields, selectedProjectTypes]);
+
+  const displayFormFields = useMemo(() => {
+    let rangoMockupRendered = false;
+
+    return formFields.flatMap((field) => {
+      const isConditionalField = Array.isArray(field.projectTypes) && field.projectTypes.length > 0;
+
+      if (!isConditionalField) {
+        return [field];
+      }
+
+      if (selectedProjectTypes.length > 0 && field.projectTypes.some((type) => selectedProjectTypes.includes(type))) {
+        return [field];
+      }
+
+      if (!hasSelectedProject && field.key === 'rango' && !rangoMockupRendered) {
+        rangoMockupRendered = true;
+
+        return [{
+          ...field,
+          renderKey: `${field.renderKey}-mock`,
+          disabled: true,
+          required: false,
+          options: [],
+          placeholder: 'Selecciona primero un proyecto',
+        }];
+      }
+
+      return [];
+    });
+  }, [formFields, hasSelectedProject, selectedProjectTypes]);
 
   useEffect(() => {
     const nextValues = {
@@ -499,6 +535,7 @@ function Contact({ onNavigate, currentPath }) {
             rows="5"
             placeholder={field.placeholder || undefined}
             required={field.required}
+            disabled={field.disabled}
             onInput={(event) => handleFieldChange(field, event.target.value || '')}
           >
             {renderFieldLabel(field)}
@@ -543,6 +580,7 @@ function Contact({ onNavigate, currentPath }) {
           value={value}
           placeholder={field.placeholder || undefined}
           required={field.required}
+          disabled={field.disabled}
           input-icon={field.type !== 'tel' && fieldIcon ? fieldIcon : undefined}
           pattern={field.type === 'rut' ? '^[0-9]{7,8}-[0-9Kk]$' : undefined}
           maxlength={field.type === 'rut' ? '10' : field.type === 'tel' ? '9' : undefined}
@@ -655,7 +693,7 @@ function Contact({ onNavigate, currentPath }) {
                 <input key={key} type="hidden" name={key} value={value || ''} readOnly />
               ))}
 
-              {visibleFormFields.map((field) => {
+              {displayFormFields.map((field) => {
                 if (field.key === CONTACT_COMUNA_FIELD.key) {
                   return renderField({
                     ...field,

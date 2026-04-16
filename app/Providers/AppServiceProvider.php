@@ -11,6 +11,7 @@ use App\Observers\PlantReservationObserver;
 use App\Services\FinMail\FinMailNotificationService;
 use App\Services\Payment\PaymentGatewayManager;
 use App\Services\PlantReservationService;
+use Awcodes\Curator\Facades\Curator;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Sanctum\Sanctum;
 
@@ -41,6 +42,15 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Curator::configure()
+            ->acceptedFileTypes([
+                'image/*',
+                'video/*',
+                'application/pdf',
+            ])
+            ->disk((string) config('curator.default_disk', 'curator'))
+            ->visibility('public');
+
         Payment::observe(PaymentObserver::class);
         PlantReservation::observe(PlantReservationObserver::class);
 

@@ -13,6 +13,7 @@ function SiteHeader({ config, currentPath = '/', onNavigate, onMenuClick }) {
     return window.matchMedia('(max-width: 768px)').matches;
   });
   const isPlantsActive = currentPath === '/plantas' || currentPath.startsWith('/p/') || currentPath === '/f' || currentPath.startsWith('/f/');
+  const isCatalogEnabled = Boolean(config?.mostrar_plantas ?? true);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -61,6 +62,11 @@ function SiteHeader({ config, currentPath = '/', onNavigate, onMenuClick }) {
     : (config?.logo || config?.logo_dark);
 
   const goToPlants = () => {
+    if (!isCatalogEnabled) {
+      window.requestAnimationFrame(closeMobileMenu);
+      return;
+    }
+
     if (currentPath === '/plantas') {
       onMenuClick?.();
       window.requestAnimationFrame(closeMobileMenu);
@@ -99,14 +105,19 @@ function SiteHeader({ config, currentPath = '/', onNavigate, onMenuClick }) {
             </wa-button>
           ) : (
             <nav className="site-header-nav wa-cluster wa-gap-2xs" aria-label="Navegación principal">
-              <wa-button appearance={currentPath === '/' ? 'filled-outlined' : 'plain'} onClick={goToHome}>
-                <wa-icon name="house" slot="start"></wa-icon>
-                Home
-              </wa-button>
-              <wa-button appearance={isPlantsActive ? 'filled-outlined' : 'plain'} onClick={goToPlants}>
-                <wa-icon name="city" slot="start"></wa-icon>
-                Plantas
-              </wa-button>
+                {isCatalogEnabled && (
+                <>
+                <wa-button appearance={currentPath === '/' ? 'filled-outlined' : 'plain'} onClick={goToHome}>
+                    <wa-icon name="house" slot="start"></wa-icon>
+                    Home
+                </wa-button>
+
+                <wa-button appearance={isPlantsActive ? 'filled-outlined' : 'plain'} onClick={goToPlants}>
+                  <wa-icon name="city" slot="start"></wa-icon>
+                  Plantas
+                </wa-button>
+                </>
+              )}
               <wa-button appearance={currentPath === '/contacto' ? 'filled-outlined' : 'plain'} onClick={goToContact} variant="danger">
                 <wa-icon name="envelope" slot="start"></wa-icon>
                 Asesorate aquí
@@ -135,10 +146,12 @@ function SiteHeader({ config, currentPath = '/', onNavigate, onMenuClick }) {
                     <wa-icon name="house" slot="start"></wa-icon>
                     Home
                 </wa-button>
-                <wa-button appearance={isPlantsActive ? 'filled-outlined' : 'plain'} onClick={goToPlants}>
+                {isCatalogEnabled && (
+                  <wa-button appearance={isPlantsActive ? 'filled-outlined' : 'plain'} onClick={goToPlants}>
                     <wa-icon name="city" slot="start"></wa-icon>
                     Plantas
-                </wa-button>
+                  </wa-button>
+                )}
                 <wa-button appearance={currentPath === '/contacto' ? 'filled-outlined' : 'plain'} onClick={goToContact}>
                     <wa-icon name="envelope" slot="start"></wa-icon>
                     Asesorate aquí

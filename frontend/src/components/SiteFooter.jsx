@@ -19,6 +19,7 @@ const normalizeFooterMenu = (menuItems) => {
 function SiteFooter({ config, onNavigate }) {
   const { colorMode } = useSiteConfig();
   const footerMenuItems = useMemo(() => normalizeFooterMenu(config?.footer_menu), [config?.footer_menu]);
+  const isCatalogEnabled = Boolean(config?.mostrar_plantas ?? true);
   const hasLegalText = Boolean(config?.footer_legal_text && config.footer_legal_text.trim() !== '');
   const socialLinks = useMemo(() => {
     const social = config?.social || {};
@@ -134,7 +135,7 @@ function SiteFooter({ config, onNavigate }) {
             )}
           </div>
 
-          {footerMenuItems.length > 0 && (
+          {isCatalogEnabled && footerMenuItems.length > 0 && (
             <nav className="wa-cluster wa-gap-m wa-justify-content-center wa-text-align-center" aria-label="Menú legal del sitio">
               {footerMenuItems.map((menuItem, index) => (
                 <wa-button
