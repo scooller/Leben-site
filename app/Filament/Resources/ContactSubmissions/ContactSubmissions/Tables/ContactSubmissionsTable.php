@@ -2,9 +2,11 @@
 
 namespace App\Filament\Resources\ContactSubmissions\ContactSubmissions\Tables;
 
+use App\Filament\Exports\ContactSubmissionExporter;
 use App\Models\SiteSetting;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\ExportAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -25,6 +27,10 @@ class ContactSubmissionsTable
                 ViewAction::make(),
             ])
             ->toolbarActions([
+                ExportAction::make()
+                    ->label('Exportar Contactos')
+                    ->icon('heroicon-o-document-arrow-up')
+                    ->exporter(ContactSubmissionExporter::class),
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
                 ]),
