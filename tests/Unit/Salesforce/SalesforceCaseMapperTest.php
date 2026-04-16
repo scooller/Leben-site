@@ -3,6 +3,7 @@
 namespace Tests\Unit\Salesforce;
 
 use App\Models\ContactSubmission;
+use App\Models\Proyecto;
 use App\Models\SiteSetting;
 use App\Services\Salesforce\SalesforceCaseMapper;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -25,6 +26,13 @@ class SalesforceCaseMapperTest extends TestCase
                 ['key' => 'project_name', 'label' => 'Proyecto', 'type' => 'text', 'required' => false],
                 ['key' => 'arrival_channel', 'label' => 'Medio de llegada', 'type' => 'text', 'required' => false],
             ],
+        ]);
+
+        Proyecto::query()->create([
+            'salesforce_id' => 'a0J8c00000sdxCXEAY',
+            'name' => 'Edificio Indigo',
+            'slug' => 'edificio-indigo',
+            'is_active' => true,
         ]);
 
         $submission = ContactSubmission::query()->create([
@@ -58,11 +66,12 @@ class SalesforceCaseMapperTest extends TestCase
         $this->assertSame('alejandro@example.com', $payload['Email'] ?? null);
         $this->assertSame('alejandro@example.com', $payload['Email__c'] ?? null);
         $this->assertSame('11.455.798-6', $payload['RUT__c'] ?? null);
-        $this->assertSame('meta', $payload['LeadSource'] ?? null);
+        $this->assertSame('Meta', $payload['LeadSource'] ?? null);
         $this->assertSame('En Contacto', $payload['Status'] ?? null);
         $this->assertSame('005U100000CAG4bIAH', $payload['OwnerId'] ?? null);
         $this->assertSame('Online', $payload['Tipo_Ingreso__c'] ?? null);
-        $this->assertSame(null, $payload['Proyecto__c'] ?? null);
+        $this->assertSame('a0J8c00000sdxCXEAY', $payload['Proyecto__c'] ?? null);
+        $this->assertSame('a0J8c00000sdxCXEAY', $payload['ID_Proyecto__c'] ?? null);
         $this->assertSame('Edificio Indigo', $payload['Informacion_Cotizacion__c'] ?? null);
         $this->assertSame('Edificio Indigo', $payload['Proyect_ID__c'] ?? null);
         $this->assertSame('Puerto Varas', $payload['Comuna__c'] ?? null);

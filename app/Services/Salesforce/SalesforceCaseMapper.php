@@ -3,6 +3,7 @@
 namespace App\Services\Salesforce;
 
 use App\Models\ContactSubmission;
+use App\Models\Proyecto;
 use App\Models\SiteSetting;
 use Illuminate\Support\Str;
 
@@ -41,8 +42,10 @@ class SalesforceCaseMapper
         $leadSource = $this->fieldValue($fields, ['medio', 'medio_de_llegada', 'lead_source', 'origen']) ?: $utmSource;
         $email = $submission->email ?: $this->fieldValue($fields, ['email', 'correo']) ?: null;
         $phone = $submission->phone ?: $this->fieldValue($fields, ['phone', 'telefono', 'fono', 'celular', 'whatsapp']);
-        $rut = $submission->rut ?: $this->fieldValue($fields, ['rut']);
         $commune = $this->fieldValue($fields, ['comuna', 'commune']);
+        $projectSalesforceId = $this->resolveProjectSalesforceId($fields, $projectName);
+        $normalizedLeadSource = $this->normalizeLeadSource($leadSource);
+        $ownerId = $this->normalizeSalesforceId(config('services.salesforce.lead_owner_id') ?: config('services.salesforce.case_owner_id'));
 
         $payload = [
             'FirstName' => $firstName,
@@ -54,15 +57,16 @@ class SalesforceCaseMapper
             'Email__c' => $email,
             'RUT__c' => $submission->rut ?: $this->fieldValue($fields, ['rut']),
             'Status' => (string) config('services.salesforce.lead_status', 'En Contacto'),
-            'OwnerId' => config('services.salesforce.lead_owner_id') ?: config('services.salesforce.case_owner_id'),
-            'LeadSource' => $leadSource,
+            'OwnerId' => $ownerId,
+            'LeadSource' => $normalizedLeadSource,
             'Description' => $this->buildDescription($fields, $fieldLabels),
             'Tipo_Ingreso__c' => 'Online',
-            'Proyecto__c' => $this->fieldValue($fields, ['proyecto_id', 'id_proyecto', 'project_id']),
+            'Proyecto__c' => $projectSalesforceId,
+            'ID_Proyecto__c' => $projectSalesforceId,
             'Informacion_Cotizacion__c' => $projectName,
             'Proyect_ID__c' => $projectName,
             'Comuna__c' => $commune,
-            'Medio_de_Llegada__c' => $leadSource ? ucfirst(strtolower($leadSource)) : null,
+            'Medio_de_Llegada__c' => $normalizedLeadSource,
             'Nombre_de_la_Campa_a__c' => $utmCampaign,
             'Audiencia__c' => $utmMedium,
             'Pieza_Grafica__c' => $utmContent,
@@ -225,5 +229,56 @@ class SalesforceCaseMapper
         }
 
         return implode(' ', array_slice($parts, 1));
+    }
+
+    /**
+     * @param  array<string, mixed>  $fields
+     */
+    private function resolveProjectSalesforceId(array $fields, ?string $projectName): ?string
+    {
+        $rawProjectId = $this->fieldValue($fields, ['proyecto_id', 'id_proyecto', 'project_id', 'proyecto_salesforce_id']);
+
+        $normalizedProjectId = $this->normalizeSalesforceId($rawProjectId);
+
+        if ($normalizedProjectId !== null) {
+            return $normalizedProjectId;
+        }
+
+        if ($projectName === null || trim($projectName) === '') {
+            return null;
+        }
+
+        $project = Proyecto::query()
+            ->select(['salesforce_id'])
+            ->where('name', $projectName)
+            ->first();
+
+        return $this->normalizeSalesforceId($project?->salesforce_id);
+    }
+
+    private function normalizeLeadSource(?string $value): ?string
+    {
+        $normalized = trim((string) $value);
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        return ucfirst(strtolower($normalized));
+    }
+
+    private function normalizeSalesforceId(mixed $value): ?string
+    {
+        $normalized = trim((string) $value);
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        if (preg_match('/^[a-zA-Z0-9]{15,18}$/', $normalized) !== 1) {
+            return null;
+        }
+
+        return $normalized;
     }
 }
