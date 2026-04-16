@@ -16,6 +16,8 @@ class ContactSubmission extends Model
         'ip_address',
         'user_agent',
         'submitted_at',
+        'salesforce_case_id',
+        'salesforce_case_error',
     ];
 
     protected $casts = [

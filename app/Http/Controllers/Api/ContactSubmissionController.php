@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreContactSubmissionRequest;
+use App\Jobs\CreateSalesforceCaseJob;
 use App\Models\ContactSubmission;
 use App\Models\SiteSetting;
 use App\Services\FinMail\FinMailNotificationService;
@@ -38,6 +39,10 @@ class ContactSubmissionController extends Controller
 
         if (filled($recipientEmail)) {
             app(FinMailNotificationService::class)->sendContactSubmissionReceivedToAdmin($submission);
+        }
+
+        if ((bool) config('services.salesforce.case_enabled', false)) {
+            CreateSalesforceCaseJob::dispatch($submission);
         }
 
         return response()->json([

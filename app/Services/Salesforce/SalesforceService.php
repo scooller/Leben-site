@@ -3,12 +3,10 @@
 namespace App\Services\Salesforce;
 
 use App\Models\SiteSetting;
-use Exception;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Omniphx\Forrest\Providers\Laravel\Facades\Forrest;
-use Throwable;
 
 class SalesforceService
 {
@@ -30,7 +28,7 @@ class SalesforceService
                 $result = Forrest::query($soql);
 
                 return $result['records'] ?? [];
-            } catch (Throwable $e) {
+            } catch (\Throwable $e) {
                 // Re-autenticar si el token expiró o no hay recursos disponibles
                 Log::info('Salesforce: Re-autenticando debido a: '.$e->getMessage());
                 $this->authenticate();
@@ -42,6 +40,44 @@ class SalesforceService
     }
 
     /**
+     * Crear un Case en Salesforce.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    public function createCase(array $payload): array
+    {
+        try {
+            $result = Forrest::sobjects('Case', [
+                'method' => 'post',
+                'body' => $payload,
+            ]);
+
+            Log::info('Salesforce: Case creado', [
+                'case_id' => $result['id'] ?? $result['Id'] ?? null,
+                'subject' => $payload['Subject'] ?? null,
+            ]);
+
+            return is_array($result) ? $result : [];
+        } catch (\Throwable $e) {
+            Log::info('Salesforce: Re-autenticando Case debido a: '.$e->getMessage());
+            $this->authenticate();
+
+            $result = Forrest::sobjects('Case', [
+                'method' => 'post',
+                'body' => $payload,
+            ]);
+
+            Log::info('Salesforce: Case creado tras re-autenticación', [
+                'case_id' => $result['id'] ?? $result['Id'] ?? null,
+                'subject' => $payload['Subject'] ?? null,
+            ]);
+
+            return is_array($result) ? $result : [];
+        }
+    }
+
+    /**
      * Autenticar con Salesforce (útil para forzar refresh)
      */
     public function authenticate(): void
@@ -50,7 +86,7 @@ class SalesforceService
         try {
             Forrest::authenticate();
             Log::info('Salesforce: Autenticación exitosa');
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             Log::error('Salesforce: Error en autenticación - '.$e->getMessage());
             throw $e;
         }
@@ -158,7 +194,7 @@ class SalesforceService
                         'proyecto_id' => $entry['Proyecto__c'] ?? null,
                     ];
                 }, $entries);
-            } catch (Throwable $e) {
+            } catch (\Throwable $e) {
                 // Re-autenticar si el token expiró o no hay recursos disponibles
                 Log::info('Salesforce: Re-autenticando plantas debido a: '.$e->getMessage());
                 $this->authenticate();
@@ -260,7 +296,7 @@ class SalesforceService
         // Asegurar que Forrest esté autenticado
         try {
             Forrest::authenticate();
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             // Si falla, continuar - el query lo intentará
         }
 
@@ -309,7 +345,7 @@ class SalesforceService
                         'entrega_inmediata' => (bool) ($entry['Entrega_Inmediata__c'] ?? false),
                     ];
                 }, $entries);
-            } catch (Throwable $e) {
+            } catch (\Throwable $e) {
                 $this->authenticate();
                 $result = Forrest::query($soql);
                 $entries = $result['records'] ?? [];
@@ -651,7 +687,7 @@ class SalesforceService
             if (preg_match('/\/id\/([a-zA-Z0-9]{15,18})\//', $identityUrl, $matches) === 1) {
                 return $matches[1];
             }
-        } catch (Throwable) {
+        } catch (\Throwable) {
             return null;
         }
 
@@ -666,7 +702,7 @@ class SalesforceService
             $orgId = $records[0]['Id'] ?? null;
 
             return is_string($orgId) && trim($orgId) !== '' ? $orgId : null;
-        } catch (Throwable) {
+        } catch (\Throwable) {
             return null;
         }
     }
@@ -679,7 +715,7 @@ class SalesforceService
 
         try {
             return (string) Carbon::parse($lastModifiedAt)->getTimestampMs();
-        } catch (Throwable) {
+        } catch (\Throwable) {
             return null;
         }
     }

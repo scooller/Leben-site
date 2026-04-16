@@ -54,6 +54,13 @@ return [
         'org_id' => env('SF_ORG_ID'),
         'http_verify' => env('SF_HTTP_VERIFY', false),
         'locale' => env('SF_LOCALE', 'en_US'),
+        'case_enabled' => env('SF_CASE_ENABLED', false),
+        'case_record_type_id' => env('SF_CASE_RECORD_TYPE_ID'),
+        'case_owner_id' => env('SF_CASE_OWNER_ID'),
+        'case_source_id' => env('SF_CASE_SOURCE_ID'),
+        'case_status' => env('SF_CASE_STATUS', 'Nuevo'),
+        'case_priority' => env('SF_CASE_PRIORITY', 'Media'),
+        'case_origin' => env('SF_CASE_ORIGIN', 'Web'),
     ],
 
     'slack' => [

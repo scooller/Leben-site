@@ -3,6 +3,7 @@
 namespace Tests\Feature\Feature\Api;
 
 use App\Filament\Resources\ContactSubmissions\ContactSubmissions\ContactSubmissionResource;
+use App\Jobs\CreateSalesforceCaseJob;
 use App\Models\ContactSubmission;
 use App\Models\Proyecto;
 use App\Models\SiteSetting;
@@ -12,6 +13,7 @@ use FinityLabs\FinMail\Mail\TemplateMail;
 use FinityLabs\FinMail\Models\EmailTemplate;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class ContactSubmissionApiTest extends TestCase
@@ -372,5 +374,64 @@ class ContactSubmissionApiTest extends TestCase
         $response
             ->assertStatus(422)
             ->assertJsonValidationErrors(['fields.rango']);
+    }
+
+    public function test_it_dispatches_salesforce_case_job_when_enabled(): void
+    {
+        Queue::fake();
+
+        config()->set('services.salesforce.case_enabled', true);
+
+        SiteSetting::current()->update([
+            'contact_email' => null,
+            'contact_notification_email' => null,
+            'contact_form_fields' => [
+                ['key' => 'name', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
+                ['key' => 'email', 'label' => 'Email', 'type' => 'email', 'required' => true],
+                ['key' => 'message', 'label' => 'Mensaje', 'type' => 'textarea', 'required' => true],
+            ],
+        ]);
+
+        $response = $this->postJson('/api/v1/contact-submissions', [
+            'fields' => [
+                'name' => 'Alejandro',
+                'email' => 'alejandro@example.com',
+                'message' => 'Quiero información.',
+                'utm_campaign' => 'BlackFriday',
+            ],
+        ]);
+
+        $response->assertCreated();
+
+        Queue::assertPushed(CreateSalesforceCaseJob::class);
+    }
+
+    public function test_it_does_not_dispatch_salesforce_case_job_when_disabled(): void
+    {
+        Queue::fake();
+
+        config()->set('services.salesforce.case_enabled', false);
+
+        SiteSetting::current()->update([
+            'contact_email' => null,
+            'contact_notification_email' => null,
+            'contact_form_fields' => [
+                ['key' => 'name', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
+                ['key' => 'email', 'label' => 'Email', 'type' => 'email', 'required' => true],
+                ['key' => 'message', 'label' => 'Mensaje', 'type' => 'textarea', 'required' => true],
+            ],
+        ]);
+
+        $response = $this->postJson('/api/v1/contact-submissions', [
+            'fields' => [
+                'name' => 'Alejandro',
+                'email' => 'alejandro@example.com',
+                'message' => 'Quiero información.',
+            ],
+        ]);
+
+        $response->assertCreated();
+
+        Queue::assertNotPushed(CreateSalesforceCaseJob::class);
     }
 }
