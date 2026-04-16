@@ -4,7 +4,6 @@ namespace App\Filament\Resources\FrontendPreviewLinks\Pages;
 
 use App\Filament\Resources\FrontendPreviewLinks\FrontendPreviewLinkResource;
 use App\Models\FrontendPreviewLink;
-use App\Models\SiteSetting;
 use App\Models\User;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DateTimePicker;
@@ -55,16 +54,6 @@ class ListFrontendPreviewLinks extends ListRecords
                 ])
                 ->action(function (array $data): void {
                     $plainToken = Str::random(64);
-
-                    FrontendPreviewLink::query()->create([
-                        'name' => $data['name'],
-                        'token' => $plainToken,
-                        'allowed_ip' => filled($data['allowed_ip'] ?? null) ? trim((string) $data['allowed_ip']) : null,
-                        'expires_at' => Carbon::parse($data['expires_at']),
-                        'created_by' => Auth::id(),
-                    ]);
-
-                    $baseUrl = rtrim((string) (SiteSetting::current()->site_url ?: config('app.url')), '/');
                     $previewPath = trim((string) ($data['preview_path'] ?? '/'));
                     $previewPath = $previewPath === '' ? '/' : $previewPath;
 
@@ -72,12 +61,18 @@ class ListFrontendPreviewLinks extends ListRecords
                         $previewPath = '/'.$previewPath;
                     }
 
-                    $separator = str_contains($previewPath, '?') ? '&' : '?';
-                    $previewUrl = $baseUrl.$previewPath.$separator.'preview_token='.$plainToken;
+                    $previewLink = FrontendPreviewLink::query()->create([
+                        'name' => $data['name'],
+                        'token' => $plainToken,
+                        'preview_path' => $previewPath,
+                        'allowed_ip' => filled($data['allowed_ip'] ?? null) ? trim((string) $data['allowed_ip']) : null,
+                        'expires_at' => Carbon::parse($data['expires_at']),
+                        'created_by' => Auth::id(),
+                    ]);
 
                     Notification::make()
                         ->title('Link preview creado')
-                        ->body("Comparte esta URL temporal ahora, no volverá a mostrarse:\n{$previewUrl}")
+                        ->body("URL temporal creada:\n{$previewLink->previewUrl()}\n\nPuedes volver a copiarla desde la tabla de Links Preview.")
                         ->persistent()
                         ->success()
                         ->send();

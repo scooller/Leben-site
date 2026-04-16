@@ -13,6 +13,7 @@ class FrontendPreviewLink extends Model
     protected $fillable = [
         'name',
         'token',
+        'preview_path',
         'allowed_ip',
         'expires_at',
         'created_by',
@@ -80,5 +81,26 @@ class FrontendPreviewLink extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function normalizedPreviewPath(): string
+    {
+        $previewPath = trim((string) ($this->preview_path ?: '/'));
+        $previewPath = $previewPath === '' ? '/' : $previewPath;
+
+        if (! str_starts_with($previewPath, '/')) {
+            $previewPath = '/'.$previewPath;
+        }
+
+        return $previewPath;
+    }
+
+    public function previewUrl(): string
+    {
+        $baseUrl = rtrim((string) (config('app.frontend_url') ?: config('app.url')), '/');
+        $previewPath = $this->normalizedPreviewPath();
+        $separator = str_contains($previewPath, '?') ? '&' : '?';
+
+        return $baseUrl.$previewPath.$separator.'preview_token='.$this->token;
     }
 }

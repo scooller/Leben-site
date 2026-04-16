@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\FrontendPreviewLinks\Tables;
 
+use App\Models\FrontendPreviewLink;
 use Filament\Actions\DeleteAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -21,6 +22,13 @@ class FrontendPreviewLinksTable
                 TextColumn::make('allowed_ip')
                     ->label('IP permitida')
                     ->placeholder('Cualquier IP')
+                    ->toggleable(),
+
+                TextColumn::make('preview_url')
+                    ->label('URL Preview')
+                    ->state(fn (FrontendPreviewLink $record): string => $record->previewUrl())
+                    ->copyable()
+                    ->wrap()
                     ->toggleable(),
 
                 IconColumn::make('expires_at')

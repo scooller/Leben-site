@@ -114,4 +114,22 @@ class FrontendPreviewLinkSiteConfigTest extends TestCase
             ->assertOk()
             ->assertJsonPath('mostrar_plantas', true);
     }
+
+    public function test_preview_url_uses_frontend_url_from_config(): void
+    {
+        config()->set('app.frontend_url', 'http://localhost:5173');
+        config()->set('app.url', 'http://127.0.0.1:8000');
+
+        $previewLink = FrontendPreviewLink::query()->create([
+            'name' => 'preview-front',
+            'token' => 'token-123',
+            'preview_path' => '/plantas',
+            'expires_at' => Carbon::now()->addHour(),
+        ]);
+
+        $this->assertSame(
+            'http://localhost:5173/plantas?preview_token=token-123',
+            $previewLink->previewUrl()
+        );
+    }
 }
