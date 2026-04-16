@@ -131,12 +131,24 @@ class SiteSettings extends Page implements HasForms
                                             ->maxLength(120)
                                             ->helperText('Título que verá el usuario cuando "Mostrar plantas" esté desactivado.'),
 
-                                        Textarea::make('extra_settings.catalogo_no_disponible_mensaje')
+                                        RichEditor::make('extra_settings.catalogo_no_disponible_mensaje')
                                             ->label('Mensaje cuando no se muestran plantas')
-                                            ->default('El catálogo de plantas no está disponible por el momento.')
-                                            ->rows(3)
-                                            ->maxLength(500)
-                                            ->helperText('Texto visible en el frontend cuando "Mostrar plantas" esté desactivado.'),
+                                            ->default('<p>El catálogo de plantas no está disponible por el momento.</p>')
+                                            ->toolbarButtons([
+                                                'bold',
+                                                'italic',
+                                                'underline',
+                                                'strike',
+                                                'blockquote',
+                                                'h2',
+                                                'h3',
+                                                'bulletList',
+                                                'orderedList',
+                                                'link',
+                                                'redo',
+                                                'undo',
+                                            ])
+                                            ->helperText('Texto visible en el frontend cuando "Mostrar plantas" esté desactivado (acepta formato).'),
 
                                         CuratorPicker::make('logo_sale_id')
                                             ->label('Logo Sale')

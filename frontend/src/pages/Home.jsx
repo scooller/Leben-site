@@ -119,7 +119,7 @@ function Home({ onNavigate, currentPath }) {
   const showPlants = Boolean(config?.mostrar_plantas ?? false);
   const canRenderPlantsCatalog = showPlants;
   const catalogUnavailableTitle = config?.catalogo_no_disponible_titulo || 'Próximamente';
-  const catalogUnavailableMessage = config?.catalogo_no_disponible_mensaje || 'El catálogo de plantas no está disponible por el momento.';
+  const catalogUnavailableMessage = config?.catalogo_no_disponible_mensaje || '<p>El catálogo de plantas no está disponible por el momento.</p>';
   const routeFilters = useMemo(() => {
     const explicitFilters = parseFilterPath(currentPath || '/');
 
@@ -1488,9 +1488,10 @@ function Home({ onNavigate, currentPath }) {
           <wa-callout variant="brand">
             <wa-icon slot="icon" name="clock"></wa-icon>
             <strong>{catalogUnavailableTitle}</strong>
-            <div style={{ marginTop: '8px' }}>
-              {catalogUnavailableMessage}
-            </div>
+            <div
+              style={{ marginTop: '8px' }}
+              dangerouslySetInnerHTML={{ __html: catalogUnavailableMessage }}
+            />
           </wa-callout>
         </wa-card>
         )}
