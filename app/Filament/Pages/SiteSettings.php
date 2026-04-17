@@ -542,6 +542,12 @@ class SiteSettings extends Page implements HasForms
                                             ->maxLength(50)
                                             ->helperText('ID del contenedor de Google Tag Manager para cargar el script y eventos del frontend.'),
 
+                                        TextInput::make('extra_settings.utm_campaign_default')
+                                            ->label('UTM Campaign por defecto')
+                                            ->default('campaign')
+                                            ->maxLength(100)
+                                            ->helperText('Valor por defecto para utm_campaign cuando no llega en la URL (ej: campaign).'),
+
                                         FileUpload::make('og_image')
                                             ->label('Imagen Open Graph')
                                             ->image()

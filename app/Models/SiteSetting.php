@@ -306,6 +306,9 @@ class SiteSetting extends Model
                 'meta_author' => $settings->meta_author,
                 'tag_manager_id' => $settings->tag_manager_id,
                 'og_image' => $settings->og_image ? url($settings->og_image) : null,
+                'utm_campaign_default' => is_string($extraSettings['utm_campaign_default'] ?? null)
+                    ? trim((string) $extraSettings['utm_campaign_default'])
+                    : 'campaign',
             ],
             'contact' => [
                 'email' => $settings->contact_email,

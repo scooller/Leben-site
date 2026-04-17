@@ -44,6 +44,7 @@ class SiteSettingFrontendConfigTest extends TestCase
                 'contact_hero_alt' => 'Hero contacto',
                 'catalogo_no_disponible_titulo' => 'Volvemos pronto',
                 'catalogo_no_disponible_mensaje' => 'Estamos actualizando nuestras plantas. Vuelve en breve.',
+                'utm_campaign_default' => 'campaign',
             ],
             'footer_menu' => [
                 [
@@ -86,6 +87,7 @@ class SiteSettingFrontendConfigTest extends TestCase
         $this->assertSame('cotizacion', $payload['contact_page']['form_fields'][0]['options'][0]['value']);
         $this->assertArrayHasKey('seo', $payload);
         $this->assertSame('GTM-TEST123', $payload['seo']['tag_manager_id']);
+        $this->assertSame('campaign', $payload['seo']['utm_campaign_default']);
         $this->assertArrayHasKey('hero', $payload);
         $this->assertSame('video', $payload['hero']['home']['type']);
         $this->assertArrayHasKey('image_desktop', $payload['hero']['home']);

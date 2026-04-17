@@ -17,6 +17,11 @@ class SalesforceCaseMapperTest extends TestCase
     {
         config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');
         config()->set('services.salesforce.lead_status', 'En Contacto');
+        config()->set('services.salesforce.lead_owner_wsp_phone', '+56984286977');
+        config()->set('services.salesforce.lead_owner_telefono_phone', '+56966666666');
+        config()->set('services.salesforce.lead_owner_phone', '+56984286977');
+        config()->set('services.salesforce.whatsapp_phone', '56989011686');
+        config()->set('services.salesforce.whatsapp_owner_name', 'ANDREA');
 
         SiteSetting::current()->update([
             'site_name' => 'iLeben',
@@ -54,10 +59,10 @@ class SalesforceCaseMapperTest extends TestCase
                 'arrival_channel' => 'BlackInmobiliario',
                 'medio' => 'meta',
                 'rango' => 'Entre $2.500.000 y $3.500.000',
-                'codeudor' => 'Si',
-                'validacion_renta' => 'Aprobada',
-                'buscas' => 'Inversión',
-                'elaboral' => 'Dependiente',
+                'codeudor' => 'no, no puedo complementarla.',
+                'validacion_renta' => 'Aprobada con observaciones',
+                'buscas' => 'Inversión para arriendo',
+                'elaboral' => 'Dependiente con antigüedad',
                 'comuna_inversion' => 'Ñuñoa',
                 'utm_source' => 'direct',
                 'utm_medium' => 'organic',
@@ -78,25 +83,31 @@ class SalesforceCaseMapperTest extends TestCase
         $this->assertSame('alejandro@example.com', $payload['Email'] ?? null);
         $this->assertSame('alejandro@example.com', $payload['Email__c'] ?? null);
         $this->assertSame('11.455.798-6', $payload['RUT__c'] ?? null);
-        $this->assertSame('Meta', $payload['LeadSource'] ?? null);
+        $this->assertSame('Direct', $payload['LeadSource'] ?? null);
         $this->assertSame('En Contacto', $payload['Status'] ?? null);
         $this->assertSame('005U100000CAG4bIAH', $payload['OwnerId'] ?? null);
         $this->assertSame('Online', $payload['Tipo_Ingreso__c'] ?? null);
         $this->assertSame('a0J8c00000sdxCXEAY', $payload['Proyecto__c'] ?? null);
         $this->assertSame('a0J8c00000sdxCXEAY', $payload['ID_Proyecto__c'] ?? null);
-        $this->assertSame('Edificio Indigo', $payload['Informacion_Cotizacion__c'] ?? null);
-        $this->assertSame('Edificio Indigo', $payload['Proyect_ID__c'] ?? null);
-        $this->assertSame('Puerto Varas', $payload['Comuna__c'] ?? null);
-        $this->assertSame('Entre $2.500.000 y $3.500.000', $payload['Rango_de_renta_liquida__c'] ?? null);
-        $this->assertSame('Si', $payload['complementaRenta__c'] ?? null);
-        $this->assertSame('Aprobada', $payload['Validaci_n_Renta__c'] ?? null);
-        $this->assertSame('Inversión', $payload['usoDepartamento__c'] ?? null);
-        $this->assertSame('Dependiente', $payload['estadoLaboral__c'] ?? null);
+        $this->assertSame('Edificio_Indigo', $payload['Informacion_Cotizacion__c'] ?? null);
+        $this->assertSame('Edificio_Indigo', $payload['Proyect_ID__c'] ?? null);
+        $this->assertSame('Puerto_Varas', $payload['Comuna__c'] ?? null);
+        $this->assertSame('Entre_$2.500.000_y_$3.500.000', $payload['Rango_de_renta_liquida__c'] ?? null);
+        $this->assertSame('no,_no_puedo_complementarla.', $payload['complementaRenta__c'] ?? null);
+        $this->assertSame('Aprobada_con_observaciones', $payload['Validaci_n_Renta__c'] ?? null);
+        $this->assertSame('Inversión_para_arriendo', $payload['usoDepartamento__c'] ?? null);
+        $this->assertSame('Dependiente_con_antigüedad', $payload['estadoLaboral__c'] ?? null);
         $this->assertSame('Ñuñoa', $payload['comunaInversion__c'] ?? null);
-        $this->assertSame('Meta', $payload['Medio_de_Llegada__c'] ?? null);
+        $this->assertSame('Direct', $payload['Medio_de_Llegada__c'] ?? null);
         $this->assertSame('BlackFriday', $payload['Nombre_de_la_Campa_a__c'] ?? null);
         $this->assertSame('organic', $payload['Audiencia__c'] ?? null);
         $this->assertSame('AON_Mood_anuncio_5', $payload['Pieza_Grafica__c'] ?? null);
+        $this->assertSame('+56984286977', $payload['wsp_owner__c'] ?? null);
+        $this->assertSame('+56966666666', $payload['Telefono_owner__c'] ?? null);
+        $this->assertSame('+56984286977', $payload['owner_phone__c'] ?? null);
+        $this->assertSame('56989011686', $payload['whatsapp_phone__c'] ?? null);
+        $this->assertSame('https://wa.me/56989011686?text=Hola%20ANDREA%2C%20te%20contacto%20desde%20Leben.%20%C2%BFTienes%20un%20minuto%3F', $payload['Whatsapp_Link__c'] ?? null);
+        $this->assertSame('<a href="https://wa.me/56989011686?text=Hola%20ANDREA%2C%20te%20contacto%20desde%20Leben.%20%C2%BFTienes%20un%20minuto%3F" target="_blank">Link</a>', $payload['Whatsapp_Link_URL__c'] ?? null);
         $this->assertSame('direct', $payload['utm_source__c'] ?? null);
         $this->assertSame('organic', $payload['utm_medium__c'] ?? null);
         $this->assertSame('BlackFriday', $payload['utm_campaign__c'] ?? null);

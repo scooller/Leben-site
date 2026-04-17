@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useRef, useCallback } f
 import siteConfigService from '../services/siteConfig';
 import WebAwesomeService from '../services/webAwesome';
 import { initializeFacebookPixel, initializeTagManager } from '../utils/tagManager';
+import { setUtmDefaultOverrides } from '../utils/utmSession';
 
 export const SiteConfigContext = createContext(null);
 
@@ -125,6 +126,10 @@ export const SiteConfigProvider = ({ children }) => {
           ...data.seo,
         });
       }
+
+      setUtmDefaultOverrides({
+        utm_campaign: data?.seo?.utm_campaign_default,
+      });
 
       if (data?.seo?.tag_manager_id) {
         initializeTagManager(data.seo.tag_manager_id);

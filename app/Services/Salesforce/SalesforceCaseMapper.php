@@ -39,7 +39,7 @@ class SalesforceCaseMapper
         $utmCampaign = $this->fieldValue($fields, ['utm_campaign']);
         $utmContent = $this->fieldValue($fields, ['utm_content']);
         $utmTerm = $this->fieldValue($fields, ['utm_term']);
-        $leadSource = $this->fieldValue($fields, ['medio', 'medio_de_llegada', 'lead_source', 'origen']) ?: $utmSource;
+        $leadSource = $utmSource ?: $this->fieldValue($fields, ['lead_source', 'medio_de_llegada', 'medio', 'origen']);
         $email = $submission->email ?: $this->fieldValue($fields, ['email', 'correo']) ?: null;
         $phone = $submission->phone ?: $this->fieldValue($fields, ['phone', 'telefono', 'fono', 'celular', 'whatsapp']);
         $commune = $this->fieldValue($fields, ['comuna', 'commune']);
@@ -52,6 +52,13 @@ class SalesforceCaseMapper
         $projectSalesforceId = $this->resolveProjectSalesforceId($fields, $projectName);
         $normalizedLeadSource = $this->normalizeLeadSource($leadSource);
         $ownerId = $this->normalizeSalesforceId(config('services.salesforce.lead_owner_id') ?: config('services.salesforce.case_owner_id'));
+        $wspOwnerPhone = $this->normalizePhone(config('services.salesforce.lead_owner_wsp_phone'));
+        $telefonoOwnerPhone = $this->normalizePhone(config('services.salesforce.lead_owner_telefono_phone'));
+        $ownerPhone = $this->normalizePhone(config('services.salesforce.lead_owner_phone'));
+        $whatsappPhone = $this->normalizePhone(config('services.salesforce.whatsapp_phone'));
+        $whatsappOwnerName = trim((string) config('services.salesforce.whatsapp_owner_name', 'ANDREA'));
+        $whatsappLink = $this->buildWhatsappLink($whatsappPhone, $whatsappOwnerName);
+        $whatsappLinkUrl = $whatsappLink !== null ? sprintf('<a href="%s" target="_blank">Link</a>', $whatsappLink) : null;
 
         $payload = [
             'FirstName' => $firstName,
@@ -72,22 +79,30 @@ class SalesforceCaseMapper
             'Informacion_Cotizacion__c' => $projectName,
             'Proyect_ID__c' => $projectName,
             'Comuna__c' => $commune,
-            'Rango_de_renta_liquida__c' => $incomeRange,
-            'complementaRenta__c' => $complementIncome,
-            'Validaci_n_Renta__c' => $incomeValidation,
-            'usoDepartamento__c' => $apartmentUsage,
-            'estadoLaboral__c' => $employmentStatus,
-            'comunaInversion__c' => $investmentCommune,
+            'Rango_de_renta_liquida__c' => $this->normalizeLegacyFieldValue($incomeRange),
+            'complementaRenta__c' => $this->normalizeLegacyFieldValue($complementIncome),
+            'Validaci_n_Renta__c' => $this->normalizeLegacyFieldValue($incomeValidation),
+            'usoDepartamento__c' => $this->normalizeLegacyFieldValue($apartmentUsage),
+            'estadoLaboral__c' => $this->normalizeLegacyFieldValue($employmentStatus),
+            'comunaInversion__c' => $this->normalizeLegacyFieldValue($investmentCommune),
             'Medio_de_Llegada__c' => $normalizedLeadSource,
             'Nombre_de_la_Campa_a__c' => $utmCampaign,
             'Audiencia__c' => $utmMedium,
             'Pieza_Grafica__c' => $utmContent,
+            'wsp_owner__c' => $wspOwnerPhone,
+            'Telefono_owner__c' => $telefonoOwnerPhone,
+            'owner_phone__c' => $ownerPhone,
+            'whatsapp_phone__c' => $whatsappPhone,
+            'Whatsapp_Link__c' => $whatsappLink,
+            'Whatsapp_Link_URL__c' => $whatsappLinkUrl,
             'utm_source__c' => $utmSource,
             'utm_medium__c' => $utmMedium,
             'utm_campaign__c' => $utmCampaign,
             'utm_content__c' => $utmContent,
             'utm_term__c' => $utmTerm,
         ];
+
+        $payload = $this->normalizeLegacyCustomFieldsInPayload($payload);
 
         return array_filter($payload, static fn (mixed $value): bool => $value !== null && $value !== '');
     }
@@ -292,5 +307,97 @@ class SalesforceCaseMapper
         }
 
         return $normalized;
+    }
+
+    private function normalizePhone(mixed $value): ?string
+    {
+        $normalized = trim((string) $value);
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        return preg_replace('/\s+/', '', $normalized) ?: null;
+    }
+
+    private function buildWhatsappLink(?string $phone, string $ownerName): ?string
+    {
+        if ($phone === null || $phone === '') {
+            return null;
+        }
+
+        $digitsOnlyPhone = preg_replace('/\D+/', '', $phone);
+
+        if ($digitsOnlyPhone === null || $digitsOnlyPhone === '') {
+            return null;
+        }
+
+        $normalizedOwnerName = trim($ownerName);
+
+        if ($normalizedOwnerName === '') {
+            $normalizedOwnerName = 'ASESOR';
+        }
+
+        $message = sprintf('Hola %s, te contacto desde Leben. ¿Tienes un minuto?', Str::upper($normalizedOwnerName));
+
+        return sprintf('https://wa.me/%s?text=%s', $digitsOnlyPhone, rawurlencode($message));
+    }
+
+    private function normalizeLegacyFieldValue(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $normalized = trim($value);
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        return str_replace(' ', '_', $normalized);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function normalizeLegacyCustomFieldsInPayload(array $payload): array
+    {
+        $excludedCustomFields = [
+            'Email__c',
+            'RUT__c',
+            'Proyecto__c',
+            'ID_Proyecto__c',
+            'wsp_owner__c',
+            'Telefono_owner__c',
+            'owner_phone__c',
+            'whatsapp_phone__c',
+            'Whatsapp_Link__c',
+            'Whatsapp_Link_URL__c',
+            'utm_source__c',
+            'utm_medium__c',
+            'utm_campaign__c',
+            'utm_content__c',
+            'utm_term__c',
+        ];
+
+        foreach ($payload as $field => $value) {
+            if (! is_string($value)) {
+                continue;
+            }
+
+            if (! str_ends_with($field, '__c')) {
+                continue;
+            }
+
+            if (in_array($field, $excludedCustomFields, true)) {
+                continue;
+            }
+
+            $payload[$field] = $this->normalizeLegacyFieldValue($value);
+        }
+
+        return $payload;
     }
 }
