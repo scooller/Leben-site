@@ -54,12 +54,20 @@ export const setUtmDefaultOverrides = (overrides = {}) => {
   const storedValues = readStoredUtms();
   const nextValues = { ...storedValues };
 
+  const legacyDefaultValuesByKey = {
+    utm_campaign: ['auto-tagging'],
+    utm_content: ['none'],
+    utm_term: ['none'],
+  };
+
   UTM_PARAM_CONFIG.forEach((config) => {
-    if (normalizeUtmValue(nextValues[config.key]) !== '') {
+    const fallbackValue = resolveDefaultValue(config);
+    const currentValue = normalizeUtmValue(nextValues[config.key]);
+    const isLegacyValue = (legacyDefaultValuesByKey[config.key] || []).includes(currentValue.toLowerCase());
+
+    if (currentValue !== '' && !isLegacyValue) {
       return;
     }
-
-    const fallbackValue = resolveDefaultValue(config);
 
     if (fallbackValue !== '') {
       nextValues[config.key] = fallbackValue;

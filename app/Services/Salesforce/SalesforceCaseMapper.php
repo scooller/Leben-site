@@ -52,10 +52,15 @@ class SalesforceCaseMapper
         $projectSalesforceId = $this->resolveProjectSalesforceId($fields, $projectName);
         $normalizedLeadSource = $this->normalizeLeadSource($leadSource);
         $ownerId = $this->normalizeSalesforceId(config('services.salesforce.lead_owner_id') ?: config('services.salesforce.case_owner_id'));
-        $wspOwnerPhone = $this->normalizePhone(config('services.salesforce.lead_owner_wsp_phone'));
-        $telefonoOwnerPhone = $this->normalizePhone(config('services.salesforce.lead_owner_telefono_phone'));
-        $ownerPhone = $this->normalizePhone(config('services.salesforce.lead_owner_phone'));
-        $whatsappPhone = $this->normalizePhone($phone) ?: $this->normalizePhone(config('services.salesforce.whatsapp_phone'));
+        $ownerPhone = $this->normalizePhone(config('services.salesforce.lead_owner_phone'))
+            ?: $this->normalizePhone($phone);
+        $wspOwnerPhone = $this->normalizePhone(config('services.salesforce.lead_owner_wsp_phone'))
+            ?: $ownerPhone;
+        $telefonoOwnerPhone = $this->normalizePhone(config('services.salesforce.lead_owner_telefono_phone'))
+            ?: $ownerPhone;
+        $whatsappPhone = $this->normalizePhone($phone)
+            ?: $this->normalizePhone(config('services.salesforce.whatsapp_phone'))
+            ?: $ownerPhone;
         $whatsappContactName = trim((string) ($firstName ?: config('services.salesforce.whatsapp_owner_name', 'ASESOR')));
         $whatsappLink = $this->buildWhatsappLink($whatsappPhone, $whatsappContactName);
         $whatsappLinkUrl = $whatsappLink !== null ? sprintf('<a href="%s" target="_blank">Link</a>', $whatsappLink) : null;
