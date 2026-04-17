@@ -55,9 +55,9 @@ class SalesforceCaseMapper
         $wspOwnerPhone = $this->normalizePhone(config('services.salesforce.lead_owner_wsp_phone'));
         $telefonoOwnerPhone = $this->normalizePhone(config('services.salesforce.lead_owner_telefono_phone'));
         $ownerPhone = $this->normalizePhone(config('services.salesforce.lead_owner_phone'));
-        $whatsappPhone = $this->normalizePhone(config('services.salesforce.whatsapp_phone'));
-        $whatsappOwnerName = trim((string) config('services.salesforce.whatsapp_owner_name', 'ANDREA'));
-        $whatsappLink = $this->buildWhatsappLink($whatsappPhone, $whatsappOwnerName);
+        $whatsappPhone = $this->normalizePhone($phone) ?: $this->normalizePhone(config('services.salesforce.whatsapp_phone'));
+        $whatsappContactName = trim((string) ($firstName ?: config('services.salesforce.whatsapp_owner_name', 'ASESOR')));
+        $whatsappLink = $this->buildWhatsappLink($whatsappPhone, $whatsappContactName);
         $whatsappLinkUrl = $whatsappLink !== null ? sprintf('<a href="%s" target="_blank">Link</a>', $whatsappLink) : null;
 
         $payload = [
@@ -79,12 +79,12 @@ class SalesforceCaseMapper
             'Informacion_Cotizacion__c' => $projectName,
             'Proyect_ID__c' => $projectName,
             'Comuna__c' => $commune,
-            'Rango_de_renta_liquida__c' => $this->normalizeLegacyFieldValue($incomeRange),
-            'complementaRenta__c' => $this->normalizeLegacyFieldValue($complementIncome),
-            'Validaci_n_Renta__c' => $this->normalizeLegacyFieldValue($incomeValidation),
-            'usoDepartamento__c' => $this->normalizeLegacyFieldValue($apartmentUsage),
-            'estadoLaboral__c' => $this->normalizeLegacyFieldValue($employmentStatus),
-            'comunaInversion__c' => $this->normalizeLegacyFieldValue($investmentCommune),
+            'Rango_de_renta_liquida__c' => $incomeRange,
+            'complementaRenta__c' => $complementIncome,
+            'Validaci_n_Renta__c' => $incomeValidation,
+            'usoDepartamento__c' => $apartmentUsage,
+            'estadoLaboral__c' => $employmentStatus,
+            'comunaInversion__c' => $investmentCommune,
             'Medio_de_Llegada__c' => $normalizedLeadSource,
             'Nombre_de_la_Campa_a__c' => $utmCampaign,
             'Audiencia__c' => $utmMedium,
@@ -380,6 +380,12 @@ class SalesforceCaseMapper
             'utm_campaign__c',
             'utm_content__c',
             'utm_term__c',
+            'Rango_de_renta_liquida__c',
+            'complementaRenta__c',
+            'Validaci_n_Renta__c',
+            'usoDepartamento__c',
+            'estadoLaboral__c',
+            'comunaInversion__c',
         ];
 
         foreach ($payload as $field => $value) {
