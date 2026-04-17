@@ -637,7 +637,7 @@ class SiteSettings extends Page implements HasForms
                                                     ->multiple()
                                                     ->searchable()
                                                     ->preload()
-                                                    ->helperText('Opcional. Si seleccionas tipos, este campo solo se mostrará cuando el proyecto elegido pertenezca a alguno de ellos.'),
+                                                    ->helperText('Opcional. Si seleccionas tipos, este campo solo se mostrará cuando el tramo o proyecto seleccionado pertenezca a alguno de ellos.'),
 
                                                 TextInput::make('placeholder')
                                                     ->label('Placeholder')

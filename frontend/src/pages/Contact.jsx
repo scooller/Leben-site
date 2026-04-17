@@ -8,12 +8,12 @@ import SiteHeader from '../components/SiteHeader';
 import SiteFooter from '../components/SiteFooter';
 import '../styles/contact.scss' with { type: 'css' };
 
-const CONTACT_COMUNA_FIELD = {
-  key: 'comuna',
-  label: 'Comuna',
-  icon: 'map-location',
+const CONTACT_RANGE_FIELD = {
+  key: 'rango',
+  label: 'Rango de renta',
+  icon: 'coins',
   type: 'select',
-  placeholder: 'Selecciona una comuna',
+  placeholder: 'Selecciona un rango de renta',
   required: false,
   options: [],
 };
@@ -187,8 +187,8 @@ function Contact({ onNavigate, currentPath }) {
       .filter((field) => field.key !== '');
   }, [config?.contact_page?.form_fields]);
 
-  const hasConfiguredComunaField = useMemo(
-    () => formFields.some((field) => field.key === CONTACT_COMUNA_FIELD.key),
+  const hasConfiguredRangeField = useMemo(
+    () => formFields.some((field) => field.key === CONTACT_RANGE_FIELD.key),
     [formFields]
   );
 
@@ -197,28 +197,79 @@ function Contact({ onNavigate, currentPath }) {
     [formFields]
   );
 
-  const comunaFieldOptions = useMemo(() => {
-    const comunas = [...new Set(
-      projectCatalog
-        .map((project) => `${project.comuna ?? ''}`.trim())
-        .filter((comuna) => comuna !== '')
-    )];
+  const configuredRangeField = useMemo(
+    () => formFields.find((field) => field.key === CONTACT_RANGE_FIELD.key) || CONTACT_RANGE_FIELD,
+    [formFields]
+  );
 
-    return comunas
-      .sort((left, right) => left.localeCompare(right, 'es', { sensitivity: 'base' }))
-      .map((comuna) => ({ value: comuna, label: comuna }));
-  }, [projectCatalog]);
+  const configuredProjectField = useMemo(
+    () => formFields.find((field) => field.key === CONTACT_PROJECT_FIELD.key) || CONTACT_PROJECT_FIELD,
+    [formFields]
+  );
 
-  const projectFieldOptions = useMemo(() => {
-    const selectedComuna = `${values.comuna ?? ''}`.trim().toLowerCase();
+  const rangeFieldOptions = useMemo(() => {
+    const optionMap = new Map();
 
-    if (selectedComuna === '') {
+    formFields
+      .filter((field) => field.key === CONTACT_RANGE_FIELD.key && field.type === 'select')
+      .forEach((field) => {
+        field.options.forEach((option) => {
+          const normalizedValue = `${option.value ?? ''}`.trim();
+
+          if (normalizedValue === '') {
+            return;
+          }
+
+          const existingOption = optionMap.get(normalizedValue);
+
+          optionMap.set(normalizedValue, {
+            value: normalizedValue,
+            label: `${option.label ?? normalizedValue}`.trim() || normalizedValue,
+            projectTypes: [...new Set([...(existingOption?.projectTypes ?? []), ...field.projectTypes])],
+          });
+        });
+      });
+
+    return [...optionMap.values()];
+  }, [formFields]);
+
+  const hasRangeProjectTypeMapping = useMemo(
+    () => rangeFieldOptions.some((option) => option.projectTypes.length > 0),
+    [rangeFieldOptions]
+  );
+
+  const selectedProjectTypes = useMemo(() => {
+    const selectedRange = `${values.rango ?? ''}`.trim();
+
+    if (selectedRange !== '') {
+      const selectedRangeOption = rangeFieldOptions.find((option) => option.value === selectedRange);
+
+      if ((selectedRangeOption?.projectTypes?.length ?? 0) > 0) {
+        return selectedRangeOption.projectTypes;
+      }
+    }
+
+    const selectedProjectName = `${values.proyecto ?? ''}`.trim().toLowerCase();
+
+    if (selectedProjectName === '') {
       return [];
     }
 
-    const filteredProjects = projectCatalog.filter(
-      (project) => `${project.comuna ?? ''}`.trim().toLowerCase() === selectedComuna
+    const selectedProject = projectCatalog.find(
+      (project) => `${project.name ?? ''}`.trim().toLowerCase() === selectedProjectName
     );
+
+    return normalizeProjectTypes(selectedProject?.tipo);
+  }, [projectCatalog, rangeFieldOptions, values.proyecto, values.rango]);
+
+  const projectFieldOptions = useMemo(() => {
+    if (hasRangeProjectTypeMapping && selectedProjectTypes.length === 0) {
+      return [];
+    }
+
+    const filteredProjects = hasRangeProjectTypeMapping
+      ? projectCatalog.filter((project) => project.tipo.some((type) => selectedProjectTypes.includes(type)))
+      : projectCatalog;
 
     return [...new Map(
       filteredProjects
@@ -226,45 +277,26 @@ function Contact({ onNavigate, currentPath }) {
         .filter((name) => name !== '')
         .map((name) => [name.toLowerCase(), { value: name, label: name }])
     ).values()].sort((left, right) => left.label.localeCompare(right.label, 'es', { sensitivity: 'base' }));
-  }, [projectCatalog, values.comuna]);
+  }, [hasRangeProjectTypeMapping, projectCatalog, selectedProjectTypes]);
 
-  const selectedProjectTypes = useMemo(() => {
-    const selectedProjectName = `${values.proyecto ?? ''}`.trim().toLowerCase();
-    const selectedComuna = `${values.comuna ?? ''}`.trim().toLowerCase();
+  const activeFormFields = useMemo(() => {
+    const renderedSpecialKeys = new Set();
+    const renderedConditionalKeys = new Set();
 
-    if (selectedProjectName === '') {
-      return [];
-    }
-
-    const selectedProject = projectCatalog.find((project) => {
-      const matchesName = `${project.name ?? ''}`.trim().toLowerCase() === selectedProjectName;
-
-      if (!matchesName) {
-        return false;
-      }
-
-      if (selectedComuna === '') {
-        return true;
-      }
-
-      return `${project.comuna ?? ''}`.trim().toLowerCase() === selectedComuna;
-    });
-
-    return normalizeProjectTypes(selectedProject?.tipo);
-  }, [projectCatalog, values.comuna, values.proyecto]);
-
-  const hasSelectedProject = useMemo(
-    () => `${values.proyecto ?? ''}`.trim() !== '',
-    [values.proyecto]
-  );
-
-  const visibleFormFields = useMemo(() => {
     return formFields.filter((field) => {
-      if (field.key === CONTACT_COMUNA_FIELD.key || field.key === CONTACT_PROJECT_FIELD.key) {
+      if (field.key === CONTACT_RANGE_FIELD.key || field.key === CONTACT_PROJECT_FIELD.key) {
+        if (renderedSpecialKeys.has(field.key)) {
+          return false;
+        }
+
+        renderedSpecialKeys.add(field.key);
+
         return true;
       }
 
-      if (!Array.isArray(field.projectTypes) || field.projectTypes.length === 0) {
+      const isConditionalField = Array.isArray(field.projectTypes) && field.projectTypes.length > 0;
+
+      if (!isConditionalField) {
         return true;
       }
 
@@ -272,44 +304,25 @@ function Contact({ onNavigate, currentPath }) {
         return false;
       }
 
-      return field.projectTypes.some((type) => selectedProjectTypes.includes(type));
+      const matchesSelectedProjectType = field.projectTypes.some((type) => selectedProjectTypes.includes(type));
+
+      if (!matchesSelectedProjectType) {
+        return false;
+      }
+
+      if (renderedConditionalKeys.has(field.key)) {
+        return false;
+      }
+
+      renderedConditionalKeys.add(field.key);
+
+      return true;
     });
   }, [formFields, selectedProjectTypes]);
 
-  const displayFormFields = useMemo(() => {
-    let rangoMockupRendered = false;
-
-    return formFields.flatMap((field) => {
-      const isConditionalField = Array.isArray(field.projectTypes) && field.projectTypes.length > 0;
-
-      if (!isConditionalField) {
-        return [field];
-      }
-
-      if (selectedProjectTypes.length > 0 && field.projectTypes.some((type) => selectedProjectTypes.includes(type))) {
-        return [field];
-      }
-
-      if (!hasSelectedProject && field.key === 'rango' && !rangoMockupRendered) {
-        rangoMockupRendered = true;
-
-        return [{
-          ...field,
-          renderKey: `${field.renderKey}-mock`,
-          disabled: true,
-          required: false,
-          options: [],
-          placeholder: 'Selecciona primero un proyecto',
-        }];
-      }
-
-      return [];
-    });
-  }, [formFields, hasSelectedProject, selectedProjectTypes]);
-
   useEffect(() => {
     const nextValues = {
-      [CONTACT_COMUNA_FIELD.key]: '',
+      [CONTACT_RANGE_FIELD.key]: '',
       [CONTACT_PROJECT_FIELD.key]: '',
     };
 
@@ -328,7 +341,7 @@ function Contact({ onNavigate, currentPath }) {
 
         const response = await proyectosService.getProyectos({
           perPage: 100,
-          fields: 'id,name,comuna,tipo',
+          fields: 'id,name,tipo',
         });
 
         const items = Array.isArray(response?.data)
@@ -342,7 +355,6 @@ function Contact({ onNavigate, currentPath }) {
             .map((project) => ({
               id: project?.id ?? '',
               name: `${project?.name ?? ''}`.trim(),
-              comuna: `${project?.comuna ?? ''}`.trim(),
               tipo: normalizeProjectTypes(project?.tipo),
             }))
             .filter((project) => project.name !== '')
@@ -382,6 +394,7 @@ function Contact({ onNavigate, currentPath }) {
     setValues((current) => ({
       ...current,
       [field.key]: nextValue,
+      ...(field.key === CONTACT_RANGE_FIELD.key ? { [CONTACT_PROJECT_FIELD.key]: '' } : {}),
     }));
 
     setFieldErrors((current) => {
@@ -407,7 +420,7 @@ function Contact({ onNavigate, currentPath }) {
 
     const nextFieldErrors = {};
 
-    visibleFormFields.forEach((field) => {
+    activeFormFields.forEach((field) => {
       const validationMessage = validateField(field, values[field.key] || '');
 
       if (validationMessage) {
@@ -436,7 +449,7 @@ function Contact({ onNavigate, currentPath }) {
 
       trackEvent('form_submit', {
         form_name: 'contact',
-        commune: values.comuna || null,
+        income_range: values.rango || null,
         project: values.proyecto || null,
       });
 
@@ -444,7 +457,7 @@ function Contact({ onNavigate, currentPath }) {
       setFieldErrors({});
 
       const resetValues = {
-        [CONTACT_COMUNA_FIELD.key]: '',
+        [CONTACT_RANGE_FIELD.key]: '',
         [CONTACT_PROJECT_FIELD.key]: '',
       };
 
@@ -693,13 +706,13 @@ function Contact({ onNavigate, currentPath }) {
                 <input key={key} type="hidden" name={key} value={value || ''} readOnly />
               ))}
 
-              {displayFormFields.map((field) => {
-                if (field.key === CONTACT_COMUNA_FIELD.key) {
+              {activeFormFields.map((field) => {
+                if (field.key === CONTACT_RANGE_FIELD.key) {
                   return renderField({
                     ...field,
-                    options: comunaFieldOptions,
-                    icon: 'map-location',
-                    placeholder: field.placeholder || CONTACT_COMUNA_FIELD.placeholder,
+                    options: rangeFieldOptions.map((option) => ({ value: option.value, label: option.label })),
+                    icon: configuredRangeField.icon || CONTACT_RANGE_FIELD.icon,
+                    placeholder: field.placeholder || CONTACT_RANGE_FIELD.placeholder,
                   });
                 }
 
@@ -707,29 +720,29 @@ function Contact({ onNavigate, currentPath }) {
                   return renderField({
                     ...field,
                     options: projectFieldOptions,
-                    icon: 'building',
+                    icon: configuredProjectField.icon || CONTACT_PROJECT_FIELD.icon,
                     disabled: projectFieldOptions.length === 0,
-                    placeholder: values.comuna
+                    placeholder: values.rango || !hasRangeProjectTypeMapping
                       ? (field.placeholder || CONTACT_PROJECT_FIELD.placeholder)
-                      : 'Selecciona primero una comuna',
+                      : 'Selecciona primero un rango de renta',
                   });
                 }
 
                 return renderField(field);
               })}
 
-              {!hasConfiguredComunaField && renderField({
-                ...CONTACT_COMUNA_FIELD,
-                options: comunaFieldOptions,
+              {!hasConfiguredRangeField && renderField({
+                ...CONTACT_RANGE_FIELD,
+                options: rangeFieldOptions.map((option) => ({ value: option.value, label: option.label })),
               })}
 
               {!hasConfiguredProjectField && renderField({
                 ...CONTACT_PROJECT_FIELD,
                 options: projectFieldOptions,
                 disabled: projectFieldOptions.length === 0,
-                placeholder: values.comuna
+                placeholder: values.rango || !hasRangeProjectTypeMapping
                   ? CONTACT_PROJECT_FIELD.placeholder
-                  : 'Selecciona primero una comuna',
+                  : 'Selecciona primero un rango de renta',
               })}
 
               {submitSuccess && (

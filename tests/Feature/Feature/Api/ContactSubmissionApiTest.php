@@ -327,7 +327,108 @@ class ContactSubmissionApiTest extends TestCase
             ->assertJsonMissingValidationErrors(['fields.rango']);
     }
 
-    public function test_it_uses_matching_conditional_select_when_same_key_is_reused(): void
+    public function test_it_ignores_required_conditional_field_when_selected_range_type_does_not_match(): void
+    {
+        SiteSetting::current()->update([
+            'contact_form_fields' => [
+                ['key' => 'name', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
+                [
+                    'key' => 'rango',
+                    'label' => 'Rango Best',
+                    'type' => 'select',
+                    'required' => true,
+                    'project_types' => ['best'],
+                    'options' => [
+                        ['value' => 'best_1', 'label' => 'Best 1'],
+                    ],
+                ],
+                [
+                    'key' => 'rango',
+                    'label' => 'Rango Icon',
+                    'type' => 'select',
+                    'required' => true,
+                    'project_types' => ['icon'],
+                    'options' => [
+                        ['value' => 'icon_1', 'label' => 'Icon 1'],
+                    ],
+                ],
+                [
+                    'key' => 'codeudor',
+                    'label' => 'Codeudor',
+                    'type' => 'select',
+                    'required' => true,
+                    'project_types' => ['best'],
+                    'options' => [
+                        ['value' => 'si', 'label' => 'Si'],
+                    ],
+                ],
+            ],
+        ]);
+
+        $response = $this->postJson('/api/v1/contact-submissions', [
+            'fields' => [
+                'rango' => 'icon_1',
+            ],
+        ]);
+
+        $response
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['fields.name'])
+            ->assertJsonMissingValidationErrors(['fields.codeudor', 'fields.rango']);
+    }
+
+    public function test_it_requires_matching_conditional_field_when_selected_range_type_matches(): void
+    {
+        SiteSetting::current()->update([
+            'contact_form_fields' => [
+                ['key' => 'name', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
+                [
+                    'key' => 'rango',
+                    'label' => 'Rango Best',
+                    'type' => 'select',
+                    'required' => true,
+                    'project_types' => ['best'],
+                    'options' => [
+                        ['value' => 'best_1', 'label' => 'Best 1'],
+                    ],
+                ],
+                [
+                    'key' => 'rango',
+                    'label' => 'Rango Icon',
+                    'type' => 'select',
+                    'required' => true,
+                    'project_types' => ['icon'],
+                    'options' => [
+                        ['value' => 'icon_1', 'label' => 'Icon 1'],
+                    ],
+                ],
+                [
+                    'key' => 'codeudor',
+                    'label' => 'Codeudor',
+                    'type' => 'select',
+                    'required' => true,
+                    'project_types' => ['best'],
+                    'options' => [
+                        ['value' => 'si', 'label' => 'Si'],
+                    ],
+                ],
+            ],
+        ]);
+
+        $response = $this->postJson('/api/v1/contact-submissions', [
+            'fields' => [
+                'name' => 'Juan',
+                'rango' => 'best_1',
+            ],
+        ]);
+
+        $response
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['fields.codeudor'])
+            ->assertJsonMissingValidationErrors(['fields.rango']);
+    }
+
+    public function test_it_uses_selected_range_when_same_key_is_reused(): void
     {
         Proyecto::factory()->create([
             'name' => 'Proyecto Best',
@@ -364,7 +465,6 @@ class ContactSubmissionApiTest extends TestCase
 
         $response = $this->postJson('/api/v1/contact-submissions', [
             'fields' => [
-                'name' => 'Juan',
                 'proyecto' => 'Proyecto Best',
                 'comuna' => 'Santiago',
                 'rango' => 'icon_1',
@@ -373,7 +473,8 @@ class ContactSubmissionApiTest extends TestCase
 
         $response
             ->assertStatus(422)
-            ->assertJsonValidationErrors(['fields.rango']);
+            ->assertJsonValidationErrors(['fields.name'])
+            ->assertJsonMissingValidationErrors(['fields.rango']);
     }
 
     public function test_it_dispatches_salesforce_case_job_when_enabled(): void

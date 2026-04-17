@@ -317,6 +317,14 @@ class StoreContactSubmissionRequest extends FormRequest
             return $this->selectedProjectTypes;
         }
 
+        $selectedRangeProjectTypes = $this->resolveSelectedRangeProjectTypes($fields);
+
+        if ($selectedRangeProjectTypes !== []) {
+            $this->selectedProjectTypes = $selectedRangeProjectTypes;
+
+            return $this->selectedProjectTypes;
+        }
+
         $projectName = trim((string) (
             $fields['proyecto']
             ?? $fields['project']
@@ -365,6 +373,44 @@ class StoreContactSubmissionRequest extends FormRequest
         $this->selectedProjectTypes = $this->normalizeProjectTypes($project->tipo);
 
         return $this->selectedProjectTypes;
+    }
+
+    /**
+     * @param  array<string, mixed>  $fields
+     * @return array<int, string>
+     */
+    private function resolveSelectedRangeProjectTypes(array $fields): array
+    {
+        $selectedRange = trim((string) (
+            $fields['rango']
+            ?? $fields['renta']
+            ?? $fields['renta_liquida']
+            ?? $fields['income_range']
+            ?? ''
+        ));
+
+        if ($selectedRange === '') {
+            return [];
+        }
+
+        $projectTypes = [];
+
+        foreach ($this->configuredFields() as $field) {
+            $key = Str::of((string) ($field['key'] ?? ''))->trim()->toString();
+            $type = (string) ($field['type'] ?? 'text');
+
+            if (! in_array($key, ['rango', 'renta', 'renta_liquida', 'income_range'], true) || $type !== 'select') {
+                continue;
+            }
+
+            if (! array_key_exists($selectedRange, $this->normalizedOptions($field))) {
+                continue;
+            }
+
+            $projectTypes = array_merge($projectTypes, $this->normalizeProjectTypes($field['project_types'] ?? []));
+        }
+
+        return array_values(array_unique($projectTypes));
     }
 
     /**
