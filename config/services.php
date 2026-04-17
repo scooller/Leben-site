@@ -64,10 +64,6 @@ return [
         'lead_enabled' => env('SF_LEAD_ENABLED', false),
         'lead_owner_id' => env('SF_LEAD_OWNER_ID'),
         'lead_status' => env('SF_LEAD_STATUS', 'En Contacto'),
-        'lead_owner_wsp_phone' => env('SF_LEAD_OWNER_WSP_PHONE', '+56984286977'),
-        'lead_owner_telefono_phone' => env('SF_LEAD_OWNER_TELEFONO_PHONE', '+56966666666'),
-        'lead_owner_phone' => env('SF_LEAD_OWNER_PHONE', '+56984286977'),
-        'whatsapp_phone' => env('SF_WHATSAPP_PHONE', '56989011686'),
         'whatsapp_owner_name' => env('SF_WHATSAPP_OWNER_NAME', 'ANDREA'),
     ],
 

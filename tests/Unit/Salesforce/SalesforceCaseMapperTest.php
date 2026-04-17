@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Salesforce;
 
+use App\Models\Asesor;
 use App\Models\ContactSubmission;
 use App\Models\Proyecto;
 use App\Models\SiteSetting;
@@ -17,9 +18,6 @@ class SalesforceCaseMapperTest extends TestCase
     {
         config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');
         config()->set('services.salesforce.lead_status', 'En Contacto');
-        config()->set('services.salesforce.lead_owner_wsp_phone', '+56984286977');
-        config()->set('services.salesforce.lead_owner_telefono_phone', '+56966666666');
-        config()->set('services.salesforce.lead_owner_phone', '+56984286977');
         config()->set('services.salesforce.whatsapp_phone', '56989011686');
         config()->set('services.salesforce.whatsapp_owner_name', 'ANDREA');
 
@@ -39,12 +37,22 @@ class SalesforceCaseMapperTest extends TestCase
             ],
         ]);
 
-        Proyecto::query()->create([
+        $project = Proyecto::query()->create([
             'salesforce_id' => 'a0J8c00000sdxCXEAY',
             'name' => 'Edificio Indigo',
             'slug' => 'edificio-indigo',
             'is_active' => true,
         ]);
+
+        $advisor = Asesor::query()->create([
+            'first_name' => 'Andrea',
+            'last_name' => 'Leben',
+            'email' => 'andrea@example.com',
+            'whatsapp_owner' => '+56942221542',
+            'is_active' => true,
+        ]);
+
+        $project->asesores()->attach($advisor->id);
 
         $submission = ContactSubmission::query()->create([
             'name' => 'Alejandro',
@@ -102,9 +110,9 @@ class SalesforceCaseMapperTest extends TestCase
         $this->assertSame('BlackFriday', $payload['Nombre_de_la_Campa_a__c'] ?? null);
         $this->assertSame('organic', $payload['Audiencia__c'] ?? null);
         $this->assertSame('AON_Mood_anuncio_5', $payload['Pieza_Grafica__c'] ?? null);
-        $this->assertSame('+56984286977', $payload['wsp_owner__c'] ?? null);
-        $this->assertSame('+56966666666', $payload['Telefono_owner__c'] ?? null);
-        $this->assertSame('+56984286977', $payload['owner_phone__c'] ?? null);
+        $this->assertSame('+56942221542', $payload['wsp_owner__c'] ?? null);
+        $this->assertSame('+56942221542', $payload['Telefono_owner__c'] ?? null);
+        $this->assertSame('+56942221542', $payload['owner_phone__c'] ?? null);
         $this->assertSame('992285134', $payload['whatsapp_phone__c'] ?? null);
         $this->assertSame('https://wa.me/992285134?text=Hola%20ALEJANDRO%2C%20te%20contacto%20desde%20Leben.%20%C2%BFTienes%20un%20minuto%3F', $payload['Whatsapp_Link__c'] ?? null);
         $this->assertSame('<a href="https://wa.me/992285134?text=Hola%20ALEJANDRO%2C%20te%20contacto%20desde%20Leben.%20%C2%BFTienes%20un%20minuto%3F" target="_blank">Link</a>', $payload['Whatsapp_Link_URL__c'] ?? null);
@@ -116,5 +124,89 @@ class SalesforceCaseMapperTest extends TestCase
         $this->assertStringContainsString('Nombre: Alejandro', $payload['Description'] ?? '');
         $this->assertStringContainsString('Proyecto: Edificio Indigo', $payload['Description'] ?? '');
         $this->assertStringContainsString('UTM Source: direct', $payload['Description'] ?? '');
+    }
+
+    public function test_it_falls_back_to_main_commune_when_investment_commune_is_missing(): void
+    {
+        config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');
+        config()->set('services.salesforce.lead_status', 'En Contacto');
+
+        SiteSetting::current()->update([
+            'site_name' => 'iLeben',
+            'contact_form_fields' => [
+                ['key' => 'name', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
+                ['key' => 'project_name', 'label' => 'Proyecto', 'type' => 'text', 'required' => false],
+                ['key' => 'comuna', 'label' => 'Comuna', 'type' => 'text', 'required' => false],
+            ],
+        ]);
+
+        Proyecto::query()->create([
+            'salesforce_id' => 'a0J8c00000sdxDDEAY',
+            'name' => 'Edificio Fallback',
+            'slug' => 'edificio-fallback',
+            'is_active' => true,
+        ]);
+
+        $submission = ContactSubmission::query()->create([
+            'name' => 'Cesar',
+            'email' => 'cesar@example.com',
+            'phone' => '321654987',
+            'rut' => '11.111.111-1',
+            'fields' => [
+                'name' => 'Cesar',
+                'lastname' => 'Test',
+                'project_name' => 'Edificio Fallback',
+                'comuna' => 'Ñuñoa',
+            ],
+            'submitted_at' => now(),
+        ]);
+
+        $payload = app(SalesforceCaseMapper::class)->mapLead($submission);
+
+        $this->assertSame('Ñuñoa', $payload['comunaInversion__c'] ?? null);
+    }
+
+    public function test_it_uses_site_setting_default_for_campaign_when_utm_campaign_is_missing(): void
+    {
+        config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');
+        config()->set('services.salesforce.lead_status', 'En Contacto');
+
+        SiteSetting::current()->update([
+            'site_name' => 'iLeben',
+            'extra_settings' => [
+                'utm_campaign_default' => 'campaign',
+            ],
+            'contact_form_fields' => [
+                ['key' => 'name', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
+                ['key' => 'project_name', 'label' => 'Proyecto', 'type' => 'text', 'required' => false],
+            ],
+        ]);
+
+        Proyecto::query()->create([
+            'salesforce_id' => 'a0J8c00000sdxEEEAY',
+            'name' => 'Edificio Campaign',
+            'slug' => 'edificio-campaign',
+            'is_active' => true,
+        ]);
+
+        $submission = ContactSubmission::query()->create([
+            'name' => 'Cesar',
+            'email' => 'cesar@example.com',
+            'phone' => '321654987',
+            'rut' => '11.111.111-1',
+            'fields' => [
+                'name' => 'Cesar',
+                'lastname' => 'Test',
+                'project_name' => 'Edificio Campaign',
+                'utm_source' => 'direct',
+                'utm_medium' => 'organic',
+            ],
+            'submitted_at' => now(),
+        ]);
+
+        $payload = app(SalesforceCaseMapper::class)->mapLead($submission);
+
+        $this->assertSame('campaign', $payload['Nombre_de_la_Campa_a__c'] ?? null);
+        $this->assertSame('campaign', $payload['utm_campaign__c'] ?? null);
     }
 }

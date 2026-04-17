@@ -5,6 +5,7 @@ namespace App\Services\Salesforce;
 use App\Models\ContactSubmission;
 use App\Models\Proyecto;
 use App\Models\SiteSetting;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Str;
 
 class SalesforceCaseMapper
@@ -36,7 +37,8 @@ class SalesforceCaseMapper
         $projectName = $this->fieldValue($fields, ['nombre_proyecto', 'proyecto', 'project_name', 'proyecto_formulario']);
         $utmSource = $this->fieldValue($fields, ['utm_source']);
         $utmMedium = $this->fieldValue($fields, ['utm_medium']);
-        $utmCampaign = $this->fieldValue($fields, ['utm_campaign']);
+        $utmCampaignDefault = $this->normalizeFieldValue(data_get($settings->extra_settings, 'utm_campaign_default')) ?: 'direct';
+        $utmCampaign = $this->fieldValue($fields, ['utm_campaign']) ?: $utmCampaignDefault;
         $utmContent = $this->fieldValue($fields, ['utm_content']);
         $utmTerm = $this->fieldValue($fields, ['utm_term']);
         $leadSource = $utmSource ?: $this->fieldValue($fields, ['lead_source', 'medio_de_llegada', 'medio', 'origen']);
@@ -48,18 +50,16 @@ class SalesforceCaseMapper
         $incomeValidation = $this->fieldValue($fields, ['validacion_renta', 'validacion_de_renta', 'validacionrenta', 'validaci_n_renta']);
         $apartmentUsage = $this->fieldValue($fields, ['uso_departamento', 'usodepartamento', 'uso_departamento_inversion', 'buscas']);
         $employmentStatus = $this->fieldValue($fields, ['estado_laboral', 'estadolaboral', 'elaboral']);
-        $investmentCommune = $this->fieldValue($fields, ['comuna_inversion', 'comunainversion', 'commune_investment']);
+        $investmentCommune = $this->fieldValue($fields, ['comuna_inversion', 'comunainversion', 'commune_investment'])
+            ?: $commune;
         $projectSalesforceId = $this->resolveProjectSalesforceId($fields, $projectName);
+        $projectAdvisorPhone = $this->resolveProjectAdvisorPhone($fields, $projectName);
         $normalizedLeadSource = $this->normalizeLeadSource($leadSource);
         $ownerId = $this->normalizeSalesforceId(config('services.salesforce.lead_owner_id') ?: config('services.salesforce.case_owner_id'));
-        $ownerPhone = $this->normalizePhone(config('services.salesforce.lead_owner_phone'))
-            ?: $this->normalizePhone($phone);
-        $wspOwnerPhone = $this->normalizePhone(config('services.salesforce.lead_owner_wsp_phone'))
-            ?: $ownerPhone;
-        $telefonoOwnerPhone = $this->normalizePhone(config('services.salesforce.lead_owner_telefono_phone'))
-            ?: $ownerPhone;
+        $ownerPhone = $projectAdvisorPhone;
+        $wspOwnerPhone = $projectAdvisorPhone;
+        $telefonoOwnerPhone = $projectAdvisorPhone;
         $whatsappPhone = $this->normalizePhone($phone)
-            ?: $this->normalizePhone(config('services.salesforce.whatsapp_phone'))
             ?: $ownerPhone;
         $whatsappContactName = trim((string) ($firstName ?: config('services.salesforce.whatsapp_owner_name', 'ASESOR')));
         $whatsappLink = $this->buildWhatsappLink($whatsappPhone, $whatsappContactName);
@@ -286,6 +286,55 @@ class SalesforceCaseMapper
             ->first();
 
         return $this->normalizeSalesforceId($project?->salesforce_id);
+    }
+
+    /**
+     * @param  array<string, mixed>  $fields
+     */
+    private function resolveProjectAdvisorPhone(array $fields, ?string $projectName): ?string
+    {
+        $project = $this->resolveProject($fields, $projectName);
+
+        if ($project === null) {
+            return null;
+        }
+
+        /** @var Collection<int, \App\Models\Asesor> $asesores */
+        $asesores = $project->asesores;
+
+        $advisor = $asesores
+            ->sortByDesc(static fn ($asesor): int => $asesor->is_active ? 1 : 0)
+            ->first();
+
+        return $this->normalizePhone($advisor?->whatsapp_owner);
+    }
+
+    /**
+     * @param  array<string, mixed>  $fields
+     */
+    private function resolveProject(array $fields, ?string $projectName): ?Proyecto
+    {
+        $rawProjectId = $this->fieldValue($fields, ['proyecto_id', 'id_proyecto', 'project_id', 'proyecto_salesforce_id']);
+        $normalizedProjectId = $this->normalizeSalesforceId($rawProjectId);
+
+        $query = Proyecto::query()
+            ->with(['asesores' => static function ($query): void {
+                $query->select(['asesores.id', 'asesores.whatsapp_owner', 'asesores.is_active']);
+            }]);
+
+        if ($normalizedProjectId !== null) {
+            return $query
+                ->where('salesforce_id', $normalizedProjectId)
+                ->first();
+        }
+
+        if ($projectName === null || trim($projectName) === '') {
+            return null;
+        }
+
+        return $query
+            ->where('name', $projectName)
+            ->first();
     }
 
     private function normalizeLeadSource(?string $value): ?string
