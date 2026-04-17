@@ -37,8 +37,8 @@ class SalesforceCaseMapper
         $projectName = $this->fieldValue($fields, ['nombre_proyecto', 'proyecto', 'project_name', 'proyecto_formulario']);
         $utmSource = $this->fieldValue($fields, ['utm_source']);
         $utmMedium = $this->fieldValue($fields, ['utm_medium']);
-        $utmCampaignDefault = $this->normalizeFieldValue(data_get($settings->extra_settings, 'utm_campaign_default')) ?: 'direct';
-        $utmCampaign = $this->fieldValue($fields, ['utm_campaign']) ?: $utmCampaignDefault;
+        $utmCampaignDefault = $this->normalizeFieldValue(data_get($settings->extra_settings, 'utm_campaign_default')) ?: 'auto-tagging';
+        $utmCampaign = $this->resolveUtmCampaign($fields, $utmCampaignDefault);
         $utmContent = $this->fieldValue($fields, ['utm_content']);
         $utmTerm = $this->fieldValue($fields, ['utm_term']);
         $leadSource = $utmSource ?: $this->fieldValue($fields, ['lead_source', 'medio_de_llegada', 'medio', 'origen']);
@@ -372,6 +372,24 @@ class SalesforceCaseMapper
         }
 
         return preg_replace('/\s+/', '', $normalized) ?: null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $fields
+     */
+    private function resolveUtmCampaign(array $fields, string $defaultValue): string
+    {
+        $campaign = $this->fieldValue($fields, ['utm_campaign']);
+
+        if ($campaign === null) {
+            return $defaultValue;
+        }
+
+        if (strtolower(trim($campaign)) === 'auto-tagging') {
+            return $defaultValue;
+        }
+
+        return $campaign;
     }
 
     private function buildWhatsappLink(?string $phone, string $ownerName): ?string

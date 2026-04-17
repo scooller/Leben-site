@@ -209,4 +209,49 @@ class SalesforceCaseMapperTest extends TestCase
         $this->assertSame('campaign', $payload['Nombre_de_la_Campa_a__c'] ?? null);
         $this->assertSame('campaign', $payload['utm_campaign__c'] ?? null);
     }
+
+    public function test_it_replaces_legacy_auto_tagging_campaign_with_site_setting_default(): void
+    {
+        config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');
+        config()->set('services.salesforce.lead_status', 'En Contacto');
+
+        SiteSetting::current()->update([
+            'site_name' => 'iLeben',
+            'extra_settings' => [
+                'utm_campaign_default' => 'BlackInmobiliario',
+            ],
+            'contact_form_fields' => [
+                ['key' => 'name', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
+                ['key' => 'project_name', 'label' => 'Proyecto', 'type' => 'text', 'required' => false],
+            ],
+        ]);
+
+        Proyecto::query()->create([
+            'salesforce_id' => 'a0J8c00000sdxFFEAY',
+            'name' => 'Edificio Auto Tagging',
+            'slug' => 'edificio-auto-tagging',
+            'is_active' => true,
+        ]);
+
+        $submission = ContactSubmission::query()->create([
+            'name' => 'Test',
+            'email' => 'test@example.com',
+            'phone' => '123456789',
+            'rut' => '11.111.111-1',
+            'fields' => [
+                'name' => 'Test',
+                'lastname' => 'Nuevo',
+                'project_name' => 'Edificio Auto Tagging',
+                'utm_source' => 'direct',
+                'utm_medium' => 'organic',
+                'utm_campaign' => 'auto-tagging',
+            ],
+            'submitted_at' => now(),
+        ]);
+
+        $payload = app(SalesforceCaseMapper::class)->mapLead($submission);
+
+        $this->assertSame('BlackInmobiliario', $payload['Nombre_de_la_Campa_a__c'] ?? null);
+        $this->assertSame('BlackInmobiliario', $payload['utm_campaign__c'] ?? null);
+    }
 }
