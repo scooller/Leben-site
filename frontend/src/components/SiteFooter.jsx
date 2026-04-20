@@ -84,7 +84,7 @@ function SiteFooter({ config, onNavigate }) {
     <footer className="site-footer wa-stack wa-gap-l wa-mt-3xl">
       {hasLegalText && (
         <wa-card appearance="filled">
-          <div className="wa-stack wa-gap-s wa-align-items-center wa-text-align-center wa-font-size-3xs" style={{ padding: 'var(--wa-space-l)' }}>
+          <div className="wa-stack wa-gap-s wa-align-items-center wa-text-align-center wa-font-size-xs" style={{ padding: 'var(--wa-space-l)' }}>
             <div dangerouslySetInnerHTML={{ __html: config.footer_legal_text }} />
           </div>
         </wa-card>
@@ -104,15 +104,16 @@ function SiteFooter({ config, onNavigate }) {
                 <strong>{config?.site_name || 'iLeben'}</strong>
               )}
 
-              {config?.site_description && (
+              {/* {config?.site_description && (
                 <span className="wa-color-text-quiet wa-font-size-sm">{config.site_description}</span>
-              )}
+              )} */}
 
-              <small className="wa-color-text-quiet">
-                Todos los derechos reservados {new Date().getFullYear()} {config?.site_name || 'iLeben'}
+              <small className="wa-color-text-quiet wa-font-size-2xs">
+                Todos los derechos reservados {new Date().getFullYear()}&reg;
               </small>
             </div>
 
+            <div className="wa-stack wa-gap-s wa-align-items-center wa-justify-content-center">
             {socialLinks.length > 0 && (
               <div className="wa-stack wa-gap-2xs wa-align-items-end" style={{ marginLeft: 'auto' }}>
                 <span>Síguenos en:</span>
@@ -122,6 +123,7 @@ function SiteFooter({ config, onNavigate }) {
                       appearance="plain"
                       key={socialItem.key}
                       href={socialItem.url}
+                      style={{ fontSize: 'var(--wa-font-size-l)' }}
                       target="_blank"
                       rel="noopener noreferrer"
                       aria-label={socialItem.label}
@@ -133,24 +135,28 @@ function SiteFooter({ config, onNavigate }) {
                 </div>
               </div>
             )}
+            {footerMenuItems.length > 0 && (
+                <nav className="wa-cluster wa-gap-m wa-justify-content-center wa-text-align-center" aria-label="Menú legal del sitio">
+                {footerMenuItems.map((menuItem, index) => (
+                    <wa-button
+                    key={`${menuItem.label}-${index}`}
+                    appearance="plain"
+                    variant="neutral"
+                    style={{ fontSize: 'var(--wa-font-size-sm)' }}
+                    href={menuItem.url}
+                    target={menuItem.newTab ? '_blank' : undefined}
+                    rel={menuItem.newTab ? 'noopener noreferrer' : undefined}
+                    onClick={(event) => handleFooterNavigation(event, menuItem.url, menuItem.newTab)}
+                    >
+                    {menuItem.label}
+                    </wa-button>
+                ))}
+                </nav>
+            )}
+            </div>
           </div>
 
-          {isCatalogEnabled && footerMenuItems.length > 0 && (
-            <nav className="wa-cluster wa-gap-m wa-justify-content-center wa-text-align-center" aria-label="Menú legal del sitio">
-              {footerMenuItems.map((menuItem, index) => (
-                <wa-button
-                  key={`${menuItem.label}-${index}`}
-                  appearance="plain"
-                  href={menuItem.url}
-                  target={menuItem.newTab ? '_blank' : undefined}
-                  rel={menuItem.newTab ? 'noopener noreferrer' : undefined}
-                  onClick={(event) => handleFooterNavigation(event, menuItem.url, menuItem.newTab)}
-                >
-                  {menuItem.label}
-                </wa-button>
-              ))}
-            </nav>
-          )}
+
         </section>
       </wa-card>
     </footer>

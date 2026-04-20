@@ -9,6 +9,7 @@ import PlantsGrid from '../components/PlantsGrid';
 import PaymentGatewayDialog from '../components/PaymentGatewayDialog';
 import SiteHeader from '../components/SiteHeader';
 import SiteFooter from '../components/SiteFooter';
+import siteConfigService from '../services/siteConfig';
 import { isRetryableError } from '../utils/errorHandler';
 import { trackEvent, trackPageView } from '../utils/tagManager';
 import gsap from 'gsap';
@@ -107,6 +108,20 @@ const normalizeBrowserUrl = (url) => {
   } catch {
     return '/';
   }
+};
+
+const formatSeoPrice = (amount) => {
+  const value = Number(amount || 0);
+
+  if (!Number.isFinite(value) || value <= 0) {
+    return '';
+  }
+
+  return new Intl.NumberFormat('es-CL', {
+    style: 'currency',
+    currency: 'CLP',
+    maximumFractionDigits: 0,
+  }).format(value);
 };
 
 /**
@@ -295,6 +310,84 @@ function Home({ onNavigate, currentPath }) {
     + (selectedRegion ? 1 : 0)
     + (selectedPrecioMin ? 1 : 0)
     + (selectedPrecioMax ? 1 : 0);
+
+  useEffect(() => {
+    const seoConfig = config?.seo || {};
+    const siteName = config?.site_name || 'iLeben';
+    const siteDescription = config?.site_description || 'Descubre departamentos inmobiliarios disponibles para compra en Chile.';
+    const siteUrl = (config?.site_url || window.location.origin || '').replace(/\/+$/, '');
+
+    const isListingPage = currentPath === '/plantas' || currentPath === '/f' || currentPath.startsWith('/f/');
+    const isDetailPage = currentPath.startsWith('/p/') && Boolean(selectedPlantDetail);
+
+    let title = seoConfig.default_meta_title || `${siteName} | Inicio`;
+    let description = siteDescription;
+    let canonical = `${siteUrl || window.location.origin}/`;
+    let ogType = 'website';
+
+    if (isDetailPage) {
+      const plantName = `${selectedPlantDetail?.nombre || selectedPlantDetail?.name || 'Planta'}`.trim();
+      const projectName = `${selectedPlantDetail?.proyectoNombre || selectedPlantDetail?.proyecto?.name || ''}`.trim();
+      const comunaName = `${selectedPlantDetail?.proyectoComuna || selectedPlantDetail?.proyecto?.comuna || ''}`.trim();
+      const price = formatSeoPrice(selectedPlantDetail?.precioFinal || selectedPlantDetail?.precioBase);
+      const detailPath = buildPlantDetailPath(selectedPlantDetail);
+
+      title = `${siteName} | ${plantName}${comunaName ? ` en ${comunaName}` : ''}`;
+      description = [
+        'Conoce esta unidad inmobiliaria',
+        projectName ? `del proyecto ${projectName}` : '',
+        comunaName ? `en ${comunaName}` : '',
+        price ? `con valor referencial ${price}` : '',
+      ].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+      canonical = `${siteUrl || window.location.origin}${detailPath}`;
+      ogType = 'product';
+    } else if (isListingPage) {
+      const projectLabels = selectedProyecto
+        .map((value) => proyectos.find((proyecto) => `${proyecto.salesforce_id}` === `${value}`)?.name)
+        .filter(Boolean)
+        .slice(0, 2);
+      const comunaLabels = selectedComuna.slice(0, 2);
+      const listingSuffix = [
+        projectLabels.length > 0 ? `Proyectos: ${projectLabels.join(', ')}` : '',
+        comunaLabels.length > 0 ? `Comunas: ${comunaLabels.join(', ')}` : '',
+      ].filter(Boolean).join(' | ');
+
+      title = listingSuffix
+        ? `${siteName} | Departamentos - ${listingSuffix}`
+        : `${siteName} | Departamentos en venta`;
+      description = totalPlants > 0
+        ? `Explora ${totalPlants} unidades disponibles en venta. Filtra por proyecto, comuna y características para encontrar tu próximo departamento.`
+        : 'Explora departamentos en venta y filtra por proyecto, comuna y características.';
+      canonical = `${siteUrl || window.location.origin}${currentPath === '/plantas' ? '/f' : currentPath}`;
+    }
+
+    siteConfigService.applySeo({
+      title,
+      description,
+      keywords: seoConfig.meta_keywords,
+      author: seoConfig.meta_author,
+      canonical,
+      robots: seoConfig.robots_default || 'index,follow',
+      ogImage: seoConfig.og_image,
+      ogType,
+      ogSiteName: siteName,
+      ogLocale: seoConfig.site_locale || 'es-CL',
+      twitterCard: 'summary_large_image',
+      twitterSite: seoConfig.twitter_site,
+    });
+  }, [
+    buildPlantDetailPath,
+    config?.seo,
+    config?.site_description,
+    config?.site_name,
+    config?.site_url,
+    currentPath,
+    proyectos,
+    selectedComuna,
+    selectedPlantDetail,
+    selectedProyecto,
+    totalPlants,
+  ]);
 
   const mapPlant = useCallback((plant) => {
     const precioBase = Number(plant.precio_base) || 0;

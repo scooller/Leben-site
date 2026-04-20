@@ -46,6 +46,12 @@ class SiteSettingFrontendConfigTest extends TestCase
                 'contact_hero_alt' => 'Hero contacto',
                 'catalogo_no_disponible_titulo' => 'Volvemos pronto',
                 'catalogo_no_disponible_mensaje' => 'Estamos actualizando nuestras plantas. Vuelve en breve.',
+                'default_meta_title' => 'iLeben | Departamentos en venta',
+                'default_og_title' => 'iLeben Inmobiliaria',
+                'default_og_description' => 'Encuentra departamentos en venta en Chile.',
+                'twitter_site' => '@ileben',
+                'robots_default' => 'index,follow',
+                'site_locale' => 'es-CL',
                 'utm_campaign_default' => 'campaign',
             ],
             'footer_menu' => [
@@ -89,6 +95,12 @@ class SiteSettingFrontendConfigTest extends TestCase
         $this->assertSame('cotizacion', $payload['contact_page']['form_fields'][0]['options'][0]['value']);
         $this->assertArrayHasKey('seo', $payload);
         $this->assertSame('GTM-TEST123', $payload['seo']['tag_manager_id']);
+        $this->assertSame('iLeben | Departamentos en venta', $payload['seo']['default_meta_title']);
+        $this->assertSame('iLeben Inmobiliaria', $payload['seo']['default_og_title']);
+        $this->assertSame('Encuentra departamentos en venta en Chile.', $payload['seo']['default_og_description']);
+        $this->assertSame('@ileben', $payload['seo']['twitter_site']);
+        $this->assertSame('index,follow', $payload['seo']['robots_default']);
+        $this->assertSame('es-CL', $payload['seo']['site_locale']);
         $this->assertSame('campaign', $payload['seo']['utm_campaign_default']);
         $this->assertArrayHasKey('header_scripts', $payload);
         $this->assertSame('<script>window.headerTracking = true;</script>', $payload['header_scripts']);

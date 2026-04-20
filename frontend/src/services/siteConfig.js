@@ -178,6 +178,19 @@ class SiteConfigService {
     }
   }
 
+  setCanonical(canonicalUrl) {
+    if (!canonicalUrl) return;
+
+    let link = document.querySelector("link[rel='canonical']");
+    if (!link) {
+      link = document.createElement('link');
+      link.setAttribute('rel', 'canonical');
+      document.head.appendChild(link);
+    }
+
+    link.setAttribute('href', canonicalUrl);
+  }
+
   /**
    * Establecer meta tags
    * @param {Object} seo - Objeto con información SEO
@@ -222,6 +235,82 @@ class SiteConfigService {
       document.head.appendChild(meta);
     }
     meta.setAttribute('content', content);
+  }
+
+  normalizeAbsoluteUrl(value) {
+    if (!value) {
+      return null;
+    }
+
+    try {
+      const url = new URL(value, window.location.origin);
+
+      return url.toString();
+    } catch {
+      return null;
+    }
+  }
+
+  applySeo(payload = {}) {
+    const seo = payload || {};
+
+    if (seo.title) {
+      this.setTitle(seo.title);
+      this.setMetaTag('og:title', seo.title, 'property');
+      this.setMetaTag('twitter:title', seo.title);
+    }
+
+    if (seo.description) {
+      this.setMetaTag('description', seo.description);
+      this.setMetaTag('og:description', seo.description, 'property');
+      this.setMetaTag('twitter:description', seo.description);
+    }
+
+    if (seo.keywords) {
+      this.setMetaTag('keywords', seo.keywords);
+    }
+
+    if (seo.author) {
+      this.setMetaTag('author', seo.author);
+    }
+
+    if (seo.robots) {
+      this.setMetaTag('robots', seo.robots);
+    }
+
+    const canonical = this.normalizeAbsoluteUrl(seo.canonical);
+
+    if (canonical) {
+      this.setCanonical(canonical);
+      this.setMetaTag('og:url', canonical, 'property');
+    }
+
+    const ogImage = this.normalizeAbsoluteUrl(seo.ogImage || seo.image);
+    if (ogImage) {
+      this.setMetaTag('og:image', ogImage, 'property');
+      this.setMetaTag('twitter:image', ogImage);
+    }
+
+    if (seo.ogType) {
+      this.setMetaTag('og:type', seo.ogType, 'property');
+    }
+
+    if (seo.ogSiteName) {
+      this.setMetaTag('og:site_name', seo.ogSiteName, 'property');
+    }
+
+    if (seo.ogLocale) {
+      this.setMetaTag('og:locale', seo.ogLocale, 'property');
+      document.documentElement.setAttribute('lang', seo.ogLocale);
+    }
+
+    if (seo.twitterCard) {
+      this.setMetaTag('twitter:card', seo.twitterCard);
+    }
+
+    if (seo.twitterSite) {
+      this.setMetaTag('twitter:site', seo.twitterSite);
+    }
   }
 
   getPreviewToken() {

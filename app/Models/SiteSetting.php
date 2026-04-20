@@ -305,6 +305,24 @@ class SiteSetting extends Model
                 'meta_keywords' => $settings->meta_keywords,
                 'meta_author' => $settings->meta_author,
                 'tag_manager_id' => $settings->tag_manager_id,
+                'default_meta_title' => is_string($extraSettings['default_meta_title'] ?? null)
+                    ? trim((string) $extraSettings['default_meta_title'])
+                    : null,
+                'default_og_title' => is_string($extraSettings['default_og_title'] ?? null)
+                    ? trim((string) $extraSettings['default_og_title'])
+                    : null,
+                'default_og_description' => is_string($extraSettings['default_og_description'] ?? null)
+                    ? trim((string) $extraSettings['default_og_description'])
+                    : null,
+                'twitter_site' => is_string($extraSettings['twitter_site'] ?? null)
+                    ? trim((string) $extraSettings['twitter_site'])
+                    : null,
+                'robots_default' => is_string($extraSettings['robots_default'] ?? null)
+                    ? trim((string) $extraSettings['robots_default'])
+                    : 'index,follow',
+                'site_locale' => is_string($extraSettings['site_locale'] ?? null)
+                    ? trim((string) $extraSettings['site_locale'])
+                    : 'es-CL',
                 'og_image' => $settings->og_image ? url($settings->og_image) : null,
                 'utm_campaign_default' => is_string($extraSettings['utm_campaign_default'] ?? null)
                     ? trim((string) $extraSettings['utm_campaign_default'])

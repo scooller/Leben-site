@@ -877,12 +877,7 @@ function Contact({ onNavigate, currentPath }) {
         <SiteHeader config={config} currentPath={currentPath} onNavigate={onNavigate} />
 
         <section className="contact-hero home-container">
-          <wa-card appearance="filled" className="contact-hero-card">
-            <div className="wa-stack wa-gap-s">
-              <wa-skeleton effect="pulse" style={{ height: '2.5rem', width: '16rem' }}></wa-skeleton>
-              <wa-skeleton effect="pulse" style={{ height: '1rem', width: '24rem', maxWidth: '100%' }}></wa-skeleton>
-            </div>
-          </wa-card>
+          <wa-skeleton effect="pulse" style={{ height: '22rem', width: '100%', borderRadius: '1rem', display: 'block' }}></wa-skeleton>
         </section>
 
         <section className="home-container contact-grid">
@@ -893,13 +888,15 @@ function Contact({ onNavigate, currentPath }) {
               <wa-skeleton effect="pulse" style={{ height: '1rem', width: '82%' }}></wa-skeleton>
 
               <div className="wa-stack wa-gap-s contact-form">
-                {[...Array(5)].map((_, index) => (
+                {[...Array(11)].map((_, index) => (
                   <wa-skeleton
                     key={`contact-skeleton-${index}`}
                     effect="pulse"
-                    style={{ height: index === 4 ? '6rem' : '3rem', width: '100%' }}
+                    style={{ height: '3rem', width: '100%' }}
                   ></wa-skeleton>
                 ))}
+
+                <wa-skeleton effect="pulse" style={{ height: '3.25rem', width: '100%' }}></wa-skeleton>
 
                 <wa-skeleton effect="pulse" style={{ height: '2.75rem', width: '10rem' }}></wa-skeleton>
               </div>

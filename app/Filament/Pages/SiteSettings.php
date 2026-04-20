@@ -542,6 +542,48 @@ class SiteSettings extends Page implements HasForms
                                             ->maxLength(50)
                                             ->helperText('ID del contenedor de Google Tag Manager para cargar el script y eventos del frontend.'),
 
+                                        TextInput::make('extra_settings.default_meta_title')
+                                            ->label('Título SEO por defecto')
+                                            ->maxLength(120)
+                                            ->helperText('Fallback para el <title> cuando una página no define título propio.'),
+
+                                        TextInput::make('extra_settings.default_og_title')
+                                            ->label('Open Graph título por defecto')
+                                            ->maxLength(120)
+                                            ->helperText('Título base para compartir en redes sociales.'),
+
+                                        Textarea::make('extra_settings.default_og_description')
+                                            ->label('Open Graph descripción por defecto')
+                                            ->rows(2)
+                                            ->maxLength(300)
+                                            ->helperText('Descripción base para compartir en redes sociales.'),
+
+                                        TextInput::make('extra_settings.twitter_site')
+                                            ->label('Twitter / X @usuario del sitio')
+                                            ->maxLength(50)
+                                            ->placeholder('@ileben')
+                                            ->helperText('Cuenta oficial del sitio para Twitter Cards (opcional).'),
+
+                                        Select::make('extra_settings.robots_default')
+                                            ->label('Meta robots por defecto')
+                                            ->options([
+                                                'index,follow' => 'index,follow',
+                                                'noindex,follow' => 'noindex,follow',
+                                                'noindex,nofollow' => 'noindex,nofollow',
+                                            ])
+                                            ->default('index,follow')
+                                            ->helperText('Directiva robots por defecto para páginas públicas.'),
+
+                                        Select::make('extra_settings.site_locale')
+                                            ->label('Locale del sitio para Open Graph')
+                                            ->options([
+                                                'es-CL' => 'es-CL (Chile)',
+                                                'es-419' => 'es-419 (LatAm)',
+                                                'es-ES' => 'es-ES (España)',
+                                            ])
+                                            ->default('es-CL')
+                                            ->helperText('Se usa como locale base en metadatos sociales.'),
+
                                         TextInput::make('extra_settings.utm_campaign_default')
                                             ->label('UTM Campaign por defecto')
                                             ->default('campaign')

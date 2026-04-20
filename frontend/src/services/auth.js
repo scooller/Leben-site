@@ -1,6 +1,6 @@
 import api from '../lib/api';
 
-const defaultAuthToken = import.meta.env.AUTH_TOKEN?.trim();
+const defaultAuthToken = import.meta.env.VITE_API_AUTH_TOKEN?.trim();
 
 export const authService = {
   /**

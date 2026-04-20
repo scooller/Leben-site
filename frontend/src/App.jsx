@@ -8,6 +8,7 @@ import Payment from './pages/Payment';
 import { APP_HTTP_ERROR_EVENT } from './utils/errorHandler';
 import { trackPageView } from './utils/tagManager';
 import { captureUtmParamsFromUrl } from './utils/utmSession';
+import siteConfigService from './services/siteConfig';
 import './App.scss';
 import './styles/maintenance.scss';
 
@@ -49,6 +50,22 @@ const resolvePageTitle = (pathname, siteName = 'iLeben') => {
   }
 
   return `${siteName} | Inicio`;
+};
+
+const resolvePageDescription = (pathname, siteDescription = '') => {
+  if (pathname === '/contacto') {
+    return siteDescription || 'Contacto comercial para asesorarte en la compra de departamentos y unidades inmobiliarias.';
+  }
+
+  if (pathname === '/pago') {
+    return 'Estado y resumen de pago de tu reserva inmobiliaria.';
+  }
+
+  if (pathname === '/f' || pathname.startsWith('/f/') || pathname === '/plantas') {
+    return siteDescription || 'Explora departamentos disponibles filtrando por proyecto y comuna.';
+  }
+
+  return siteDescription || 'Descubre departamentos inmobiliarios disponibles para compra en Chile.';
 };
 
 function AppContent() {
@@ -129,7 +146,23 @@ function AppContent() {
 
   useEffect(() => {
     const pageTitle = resolvePageTitle(currentPath, config?.site_name || 'iLeben');
-    document.title = pageTitle;
+    const description = resolvePageDescription(currentPath, config?.site_description || '');
+    const seoConfig = config?.seo || {};
+
+    siteConfigService.applySeo({
+      title: pageTitle,
+      description,
+      keywords: seoConfig.meta_keywords,
+      author: seoConfig.meta_author,
+      canonical: `${window.location.origin}${currentPath}`,
+      robots: seoConfig.robots_default || 'index,follow',
+      ogImage: seoConfig.og_image,
+      ogType: currentPath === '/pago' ? 'website' : 'website',
+      ogSiteName: config?.site_name || 'iLeben',
+      ogLocale: seoConfig.site_locale || 'es-CL',
+      twitterCard: 'summary_large_image',
+      twitterSite: seoConfig.twitter_site,
+    });
 
     if (!config?.seo?.tag_manager_id) {
       return;
@@ -139,7 +172,13 @@ function AppContent() {
       path: currentPath,
       title: pageTitle,
     });
-  }, [config?.seo?.tag_manager_id, config?.site_name, currentPath]);
+  }, [
+    config?.seo,
+    config?.seo?.tag_manager_id,
+    config?.site_description,
+    config?.site_name,
+    currentPath,
+  ]);
 
   return (
     <div className="app">

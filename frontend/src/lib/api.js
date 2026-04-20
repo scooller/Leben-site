@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { APP_HTTP_ERROR_EVENT, normalizeHttpError } from '../utils/errorHandler';
 
-const defaultAuthToken = import.meta.env.AUTH_TOKEN?.trim();
+const defaultAuthToken = import.meta.env.VITE_API_AUTH_TOKEN?.trim();
 
 const resolvePreviewToken = () => {
   if (typeof window === 'undefined') {
