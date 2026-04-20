@@ -26,7 +26,7 @@ class PaymentWebhookController extends Controller
         $token = (string) $request->query('token_ws', '');
         $redirectUrl = (string) $request->query('tbk_url', '');
 
-        Log::info('Transbank: Bridge redirect request received', [
+        Log::debug('Transbank: Bridge redirect request received', [
             'token' => $token,
             'token_is_empty' => $token === '',
             'redirect_url' => $redirectUrl,
@@ -133,7 +133,7 @@ class PaymentWebhookController extends Controller
                 ]);
             }
 
-            Log::info('Transbank: Procesando retorno', ['token' => $token]);
+            Log::debug('Transbank: Procesando retorno', ['token' => $token]);
 
             // Confirmar la transacción con Transbank
             $response = PaymentGateway::driver('transbank')->confirmTransaction($token);
@@ -165,7 +165,7 @@ class PaymentWebhookController extends Controller
                     ]),
                 ]);
 
-                Log::info('Transbank: Pago completado exitosamente', [
+                Log::debug('Transbank: Pago completado exitosamente', [
                     'payment_id' => $payment->id,
                     'buy_order' => $response['buy_order'],
                 ]);
@@ -239,7 +239,7 @@ class PaymentWebhookController extends Controller
 
             $data = $request->all();
 
-            Log::info('MercadoPago: Webhook recibido', $data);
+            Log::debug('MercadoPago: Webhook recibido', $data);
 
             // Verificar el tipo de notificación
             $type = $request->input('type');
@@ -283,7 +283,7 @@ class PaymentWebhookController extends Controller
                     ]),
                 ]);
 
-                Log::info('MercadoPago: Pago actualizado', [
+                Log::debug('MercadoPago: Pago actualizado', [
                     'payment_id' => $payment->id,
                     'mp_payment_id' => $paymentId,
                     'status' => $newStatus->value,
@@ -303,7 +303,7 @@ class PaymentWebhookController extends Controller
             }
 
             // Otro tipo de notificación
-            Log::info('MercadoPago: Tipo de webhook no procesado', ['type' => $type]);
+            Log::debug('MercadoPago: Tipo de webhook no procesado', ['type' => $type]);
 
             return response()->json(['success' => true]);
         } catch (Exception $e) {
@@ -326,7 +326,7 @@ class PaymentWebhookController extends Controller
             $status = $request->input('status');
             $externalReference = $request->input('external_reference');
 
-            Log::info('MercadoPago: Retorno del usuario', [
+            Log::debug('MercadoPago: Retorno del usuario', [
                 'payment_id' => $paymentId,
                 'status' => $status,
                 'external_reference' => $externalReference,

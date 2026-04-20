@@ -23,7 +23,7 @@ class SyncPlantsJob implements ShouldQueue
         $result = SyncPlantsAction::execute();
 
         if ($result['success']) {
-            Log::info('SyncPlantsJob: '.$result['message']);
+            Log::debug('SyncPlantsJob: '.$result['message']);
         } else {
             Log::error('SyncPlantsJob: '.$result['message']);
         }

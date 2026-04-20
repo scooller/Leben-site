@@ -84,7 +84,7 @@ class TransbankService implements PaymentGatewayInterface
         if ($payment->project) {
             $projectCode = $payment->project->transbank_commerce_code;
             if ($projectCode) {
-                Log::info('Transbank: Resolviendo código para proyecto', [
+                Log::debug('Transbank: Resolviendo código para proyecto', [
                     'project_id' => $payment->project_id,
                     'project_slug' => $payment->project->slug,
                     'commerce_code' => $projectCode,
@@ -186,7 +186,7 @@ class TransbankService implements PaymentGatewayInterface
             // Resolver código de comercio (mall o default)
             $commerceCode = $this->resolveCommerceCode($payment);
 
-            Log::info('Transbank: Creando transacción', [
+            Log::debug('Transbank: Creando transacción', [
                 'amount' => $amount,
                 'buy_order' => $buyOrder,
                 'session_id' => $sessionId,
@@ -220,7 +220,7 @@ class TransbankService implements PaymentGatewayInterface
             $token = $response->getToken();
             $url = $response->getUrl();
 
-            Log::info('Transbank: Transacción creada exitosamente', [
+            Log::debug('Transbank: Transacción creada exitosamente', [
                 'token' => $token,
                 'token_is_null' => $token === null,
                 'token_is_empty' => $token === '',
@@ -269,7 +269,7 @@ class TransbankService implements PaymentGatewayInterface
             // Resolver código de comercio (mall o default)
             $commerceCode = $this->resolveCommerceCode($payment);
 
-            Log::info('Transbank: Confirmando transacción', [
+            Log::debug('Transbank: Confirmando transacción', [
                 'token' => $token,
                 'commerce_code' => $commerceCode,
                 'mall_mode' => $this->mallMode,
@@ -338,7 +338,7 @@ class TransbankService implements PaymentGatewayInterface
                 'commerce_code' => $commerceCode,
             ];
 
-            Log::info('Transbank: Transacción confirmada', [
+            Log::debug('Transbank: Transacción confirmada', [
                 'buy_order' => $result['buy_order'],
                 'status' => $result['status'],
                 'response_code' => $result['response_code'],
@@ -363,7 +363,7 @@ class TransbankService implements PaymentGatewayInterface
      */
     public function processWebhook(array $payload): bool
     {
-        Log::info('Transbank: Webhook recibido (no implementado en Webpay Plus)', $payload);
+        Log::debug('Transbank: Webhook recibido (no implementado en Webpay Plus)', $payload);
 
         // Webpay Plus no usa webhooks, solo retorno POST
         return false;
@@ -377,7 +377,7 @@ class TransbankService implements PaymentGatewayInterface
     public function getTransactionStatus(string $transactionId): array
     {
         try {
-            Log::info('Transbank: Consultando estado', ['token' => $transactionId]);
+            Log::debug('Transbank: Consultando estado', ['token' => $transactionId]);
 
             // Obtener credenciales (usar defaults de integración si están vacías)
             $commerceCode = $this->resolveCommerceCode();
@@ -432,7 +432,7 @@ class TransbankService implements PaymentGatewayInterface
     public function refundTransaction(string $transactionId, ?float $amount = null): array
     {
         try {
-            Log::info('Transbank: Solicitando reembolso', [
+            Log::debug('Transbank: Solicitando reembolso', [
                 'token' => $transactionId,
                 'amount' => $amount,
             ]);
@@ -460,7 +460,7 @@ class TransbankService implements PaymentGatewayInterface
                 $response = $transaction->refund($transactionId, $amount ?? 0);
             }
 
-            Log::info('Transbank: Reembolso procesado', [
+            Log::debug('Transbank: Reembolso procesado', [
                 'type' => $response->getType(),
                 'authorization_code' => $response->getAuthorizationCode(),
                 'response_code' => $response->getResponseCode(),

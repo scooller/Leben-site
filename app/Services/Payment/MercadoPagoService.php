@@ -81,11 +81,11 @@ class MercadoPagoService implements PaymentGatewayInterface
                 }
             }
 
-            Log::info('MercadoPago: Creando preferencia de pago', $preference);
+            Log::debug('MercadoPago: Creando preferencia de pago', $preference);
 
             $response = $client->create($preference);
 
-            Log::info('MercadoPago: Preferencia creada exitosamente', [
+            Log::debug('MercadoPago: Preferencia creada exitosamente', [
                 'id' => $response->id,
                 'init_point' => $response->init_point,
             ]);
@@ -136,7 +136,7 @@ class MercadoPagoService implements PaymentGatewayInterface
             $client = new PaymentClient;
             $payment = $client->get((int) $paymentId);
 
-            Log::info('MercadoPago: Pago obtenido', [
+            Log::debug('MercadoPago: Pago obtenido', [
                 'id' => $payment->id,
                 'status' => $payment->status,
             ]);
@@ -177,7 +177,7 @@ class MercadoPagoService implements PaymentGatewayInterface
     public function refundTransaction(string $transactionId, ?float $amount = null): array
     {
         try {
-            Log::info('MercadoPago: Procesando reembolso', [
+            Log::debug('MercadoPago: Procesando reembolso', [
                 'payment_id' => $transactionId,
                 'amount' => $amount,
             ]);
@@ -195,7 +195,7 @@ class MercadoPagoService implements PaymentGatewayInterface
 
             $refund = $response->json();
 
-            Log::info('MercadoPago: Reembolso procesado', [
+            Log::debug('MercadoPago: Reembolso procesado', [
                 'refund_id' => $refund['id'] ?? null,
                 'status' => $refund['status'] ?? null,
             ]);
@@ -223,7 +223,7 @@ class MercadoPagoService implements PaymentGatewayInterface
      */
     public function processWebhook(array $payload): bool
     {
-        Log::info('MercadoPago: Webhook recibido', $payload);
+        Log::debug('MercadoPago: Webhook recibido', $payload);
 
         // Procesar según el tipo de evento
         if (isset($payload['type'])) {
@@ -241,7 +241,7 @@ class MercadoPagoService implements PaymentGatewayInterface
         $type = $payload['type'] ?? null;
         $action = $payload['action'] ?? null;
 
-        Log::info('MercadoPago: Procesando evento', [
+        Log::debug('MercadoPago: Procesando evento', [
             'type' => $type,
             'action' => $action,
         ]);
@@ -269,7 +269,7 @@ class MercadoPagoService implements PaymentGatewayInterface
         try {
             $payment = $this->getPayment($paymentId);
 
-            Log::info('MercadoPago: Pago obtenido', [
+            Log::debug('MercadoPago: Pago obtenido', [
                 'id' => $paymentId,
                 'status' => $payment['status'] ?? 'unknown',
             ]);

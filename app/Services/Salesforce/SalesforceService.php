@@ -30,7 +30,7 @@ class SalesforceService
                 return $result['records'] ?? [];
             } catch (\Throwable $e) {
                 // Re-autenticar si el token expiró o no hay recursos disponibles
-                Log::info('Salesforce: Re-autenticando debido a: '.$e->getMessage());
+                Log::debug('Salesforce: Re-autenticando debido a: '.$e->getMessage());
                 $this->authenticate();
                 $result = Forrest::query($soql);
 
@@ -47,7 +47,7 @@ class SalesforceService
      */
     public function createCase(array $payload): array
     {
-        Log::info('Salesforce: Enviando solicitud de creación de Case', [
+        Log::debug('Salesforce: Enviando solicitud de creación de Case', [
             'subject' => $payload['Subject'] ?? null,
             'record_type_id' => $payload['RecordTypeId'] ?? null,
             'origin' => $payload['Origin'] ?? null,
@@ -62,7 +62,7 @@ class SalesforceService
 
             $response = is_array($result) ? $result : [];
 
-            Log::info('Salesforce: Respuesta creación de Case', [
+            Log::debug('Salesforce: Respuesta creación de Case', [
                 'case_id' => $response['id'] ?? $response['Id'] ?? null,
                 'success' => $response['success'] ?? null,
                 'errors' => $response['errors'] ?? null,
@@ -87,7 +87,7 @@ class SalesforceService
 
                 $response = is_array($result) ? $result : [];
 
-                Log::info('Salesforce: Respuesta creación de Case tras re-autenticación', [
+                Log::debug('Salesforce: Respuesta creación de Case tras re-autenticación', [
                     'case_id' => $response['id'] ?? $response['Id'] ?? null,
                     'success' => $response['success'] ?? null,
                     'errors' => $response['errors'] ?? null,
@@ -117,7 +117,7 @@ class SalesforceService
     {
         $currentPayload = $payload;
 
-        Log::info('Salesforce: Enviando solicitud de creación de Lead', [
+        Log::debug('Salesforce: Enviando solicitud de creación de Lead', [
             'email' => $currentPayload['Email'] ?? null,
             'lead_source' => $currentPayload['LeadSource'] ?? null,
             'payload_keys' => array_keys($currentPayload),
@@ -131,7 +131,7 @@ class SalesforceService
 
             $response = is_array($result) ? $result : [];
 
-            Log::info('Salesforce: Respuesta creación de Lead', [
+            Log::debug('Salesforce: Respuesta creación de Lead', [
                 'lead_id' => $response['id'] ?? $response['Id'] ?? null,
                 'success' => $response['success'] ?? null,
                 'errors' => $response['errors'] ?? null,
@@ -157,7 +157,7 @@ class SalesforceService
 
                 $response = is_array($result) ? $result : [];
 
-                Log::info('Salesforce: Respuesta creación de Lead tras remover campo inválido', [
+                Log::debug('Salesforce: Respuesta creación de Lead tras remover campo inválido', [
                     'lead_id' => $response['id'] ?? $response['Id'] ?? null,
                     'success' => $response['success'] ?? null,
                     'errors' => $response['errors'] ?? null,
@@ -185,7 +185,7 @@ class SalesforceService
 
                 $response = is_array($result) ? $result : [];
 
-                Log::info('Salesforce: Respuesta creación de Lead tras forzar OwnerId', [
+                Log::debug('Salesforce: Respuesta creación de Lead tras forzar OwnerId', [
                     'lead_id' => $response['id'] ?? $response['Id'] ?? null,
                     'success' => $response['success'] ?? null,
                     'errors' => $response['errors'] ?? null,
@@ -211,7 +211,7 @@ class SalesforceService
 
                 $response = is_array($result) ? $result : [];
 
-                Log::info('Salesforce: Respuesta creación de Lead tras re-autenticación', [
+                Log::debug('Salesforce: Respuesta creación de Lead tras re-autenticación', [
                     'lead_id' => $response['id'] ?? $response['Id'] ?? null,
                     'success' => $response['success'] ?? null,
                     'errors' => $response['errors'] ?? null,
@@ -237,7 +237,7 @@ class SalesforceService
 
                     $response = is_array($result) ? $result : [];
 
-                    Log::info('Salesforce: Respuesta creación de Lead tras re-auth y remover campo inválido', [
+                    Log::debug('Salesforce: Respuesta creación de Lead tras re-auth y remover campo inválido', [
                         'lead_id' => $response['id'] ?? $response['Id'] ?? null,
                         'success' => $response['success'] ?? null,
                         'errors' => $response['errors'] ?? null,
@@ -265,7 +265,7 @@ class SalesforceService
 
                     $response = is_array($result) ? $result : [];
 
-                    Log::info('Salesforce: Respuesta creación de Lead tras re-auth y OwnerId forzado', [
+                    Log::debug('Salesforce: Respuesta creación de Lead tras re-auth y OwnerId forzado', [
                         'lead_id' => $response['id'] ?? $response['Id'] ?? null,
                         'success' => $response['success'] ?? null,
                         'errors' => $response['errors'] ?? null,
@@ -508,10 +508,10 @@ class SalesforceService
      */
     public function authenticate(): void
     {
-        Log::info('Salesforce: Iniciando autenticación...');
+        Log::debug('Salesforce: Iniciando autenticación...');
         try {
             Forrest::authenticate();
-            Log::info('Salesforce: Autenticación exitosa');
+            Log::debug('Salesforce: Autenticación exitosa');
         } catch (\Exception $e) {
             Log::error('Salesforce: Error en autenticación - '.$e->getMessage());
             throw $e;
@@ -622,7 +622,7 @@ class SalesforceService
                 }, $entries);
             } catch (\Throwable $e) {
                 // Re-autenticar si el token expiró o no hay recursos disponibles
-                Log::info('Salesforce: Re-autenticando plantas debido a: '.$e->getMessage());
+                Log::debug('Salesforce: Re-autenticando plantas debido a: '.$e->getMessage());
                 $this->authenticate();
                 $result = Forrest::query($soql);
                 $entries = $result['records'] ?? [];

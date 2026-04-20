@@ -24,7 +24,7 @@ class ManualPaymentService implements PaymentGatewayInterface
      */
     public function createTransaction(array $data): array
     {
-        Log::info('ManualPayment: Creando transacción manual', $data);
+        Log::debug('ManualPayment: Creando transacción manual', $data);
 
         $reference = 'MAN-'.Str::upper(Str::ulid()->toBase32());
 
@@ -47,7 +47,7 @@ class ManualPaymentService implements PaymentGatewayInterface
      */
     public function confirmTransaction(string $token): array
     {
-        Log::info('ManualPayment: Confirmando transacción manual', ['reference' => $token]);
+        Log::debug('ManualPayment: Confirmando transacción manual', ['reference' => $token]);
 
         return [
             'reference' => $token,
@@ -62,7 +62,7 @@ class ManualPaymentService implements PaymentGatewayInterface
      */
     public function getTransactionStatus(string $transactionId): array
     {
-        Log::info('ManualPayment: Consultando estado', ['transaction_id' => $transactionId]);
+        Log::debug('ManualPayment: Consultando estado', ['transaction_id' => $transactionId]);
 
         // Para pagos manuales, el estado se maneja en la base de datos
         return [
@@ -79,7 +79,7 @@ class ManualPaymentService implements PaymentGatewayInterface
      */
     public function refundTransaction(string $transactionId, ?float $amount = null): array
     {
-        Log::info('ManualPayment: Registrando reembolso manual', [
+        Log::debug('ManualPayment: Registrando reembolso manual', [
             'transaction_id' => $transactionId,
             'amount' => $amount,
         ]);
@@ -150,7 +150,7 @@ class ManualPaymentService implements PaymentGatewayInterface
      */
     public function approvePayment(string $transactionId, array $metadata = []): array
     {
-        Log::info('ManualPayment: Aprobando pago manualmente', [
+        Log::debug('ManualPayment: Aprobando pago manualmente', [
             'transaction_id' => $transactionId,
             'metadata' => $metadata,
         ]);
@@ -169,7 +169,7 @@ class ManualPaymentService implements PaymentGatewayInterface
      */
     public function rejectPayment(string $transactionId, string $reason = ''): array
     {
-        Log::info('ManualPayment: Rechazando pago', [
+        Log::debug('ManualPayment: Rechazando pago', [
             'transaction_id' => $transactionId,
             'reason' => $reason,
         ]);

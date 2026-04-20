@@ -26,7 +26,7 @@ class CreateSalesforceCaseJob implements ShouldQueue
     {
         $leadEnabled = (bool) config('services.salesforce.lead_enabled', config('services.salesforce.case_enabled', false));
 
-        Log::info('CreateSalesforceCaseJob: Inicio de ejecución', [
+        Log::debug('CreateSalesforceCaseJob: Inicio de ejecución', [
             'contact_submission_id' => $this->submission->id,
             'lead_enabled' => $leadEnabled,
         ]);
@@ -61,7 +61,7 @@ class CreateSalesforceCaseJob implements ShouldQueue
                 'salesforce_case_error' => null,
             ]);
 
-            Log::info('CreateSalesforceCaseJob: Lead creado correctamente', [
+            Log::debug('CreateSalesforceCaseJob: Lead creado correctamente', [
                 'contact_submission_id' => $submission->id,
                 'salesforce_lead_id' => $leadId !== '' ? $leadId : null,
                 'salesforce_success' => $response['success'] ?? null,
