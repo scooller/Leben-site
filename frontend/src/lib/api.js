@@ -3,6 +3,16 @@ import { APP_HTTP_ERROR_EVENT, normalizeHttpError } from '../utils/errorHandler'
 
 const defaultAuthToken = import.meta.env.AUTH_TOKEN?.trim();
 
+const resolvePreviewToken = () => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const token = new URLSearchParams(window.location.search).get('preview_token');
+
+  return token ? token.trim() : null;
+};
+
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
   headers: {
@@ -13,10 +23,24 @@ const api = axios.create({
 
 // Interceptor para agregar token de autenticación
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('auth_token') || defaultAuthToken;
+  const previewToken = resolvePreviewToken();
+  const userToken = localStorage.getItem('auth_token');
+  const token = userToken || (previewToken ? null : defaultAuthToken);
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+
+  if (previewToken) {
+    config.headers['X-Preview-Token'] = previewToken;
+
+    const method = (config.method || 'get').toLowerCase();
+    if (['get', 'delete', 'head', 'options'].includes(method)) {
+      config.params = {
+        ...(config.params || {}),
+        preview_token: config.params?.preview_token ?? previewToken,
+      };
+    }
   }
 
   return config;

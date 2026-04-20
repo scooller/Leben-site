@@ -55,7 +55,7 @@ class SalesforceCaseMapper
         $projectSalesforceId = $this->resolveProjectSalesforceId($fields, $projectName);
         $projectAdvisorPhone = $this->resolveProjectAdvisorPhone($fields, $projectName);
         $normalizedLeadSource = $this->normalizeLeadSource($leadSource);
-        $ownerId = $this->normalizeSalesforceId(config('services.salesforce.lead_owner_id') ?: config('services.salesforce.case_owner_id'));
+        $ownerId = $this->resolveLeadOwnerId();
         $ownerPhone = $projectAdvisorPhone;
         $wspOwnerPhone = $projectAdvisorPhone;
         $telefonoOwnerPhone = $projectAdvisorPhone;
@@ -361,6 +361,17 @@ class SalesforceCaseMapper
         }
 
         return $normalized;
+    }
+
+    private function resolveLeadOwnerId(): ?string
+    {
+        $leadOwnerId = $this->normalizeSalesforceId(config('services.salesforce.lead_owner_id'));
+
+        if ($leadOwnerId !== null) {
+            return $leadOwnerId;
+        }
+
+        return $this->normalizeSalesforceId(config('services.salesforce.case_owner_id'));
     }
 
     private function normalizePhone(mixed $value): ?string

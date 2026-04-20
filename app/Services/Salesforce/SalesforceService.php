@@ -168,6 +168,34 @@ class SalesforceService
                 return $response;
             }
 
+            $ownerFallback = $this->applyLeadOwnerFallbackOnFlowError($currentPayload, $firstException);
+            $currentPayload = $ownerFallback['payload'];
+
+            if ($ownerFallback['applied']) {
+                Log::warning('Salesforce: Reintentando Lead por error de flujo con OwnerId forzado', [
+                    'email' => $payload['Email'] ?? null,
+                    'owner_id' => $ownerFallback['owner_id'],
+                    'payload_keys' => array_keys($currentPayload),
+                ]);
+
+                $result = Forrest::sobjects('Lead', [
+                    'method' => 'post',
+                    'body' => $currentPayload,
+                ]);
+
+                $response = is_array($result) ? $result : [];
+
+                Log::info('Salesforce: Respuesta creación de Lead tras forzar OwnerId', [
+                    'lead_id' => $response['id'] ?? $response['Id'] ?? null,
+                    'success' => $response['success'] ?? null,
+                    'errors' => $response['errors'] ?? null,
+                    'response' => $response,
+                    'owner_id' => $ownerFallback['owner_id'],
+                ]);
+
+                return $response;
+            }
+
             Log::warning('Salesforce: Error creando Lead, se intentará re-autenticación', [
                 'error' => $firstException->getMessage(),
                 'email' => $payload['Email'] ?? null,
@@ -215,6 +243,34 @@ class SalesforceService
                         'errors' => $response['errors'] ?? null,
                         'response' => $response,
                         'removed_fields' => $sanitized['removed_fields'],
+                    ]);
+
+                    return $response;
+                }
+
+                $ownerFallback = $this->applyLeadOwnerFallbackOnFlowError($currentPayload, $secondException);
+                $currentPayload = $ownerFallback['payload'];
+
+                if ($ownerFallback['applied']) {
+                    Log::warning('Salesforce: Reintentando Lead tras re-auth por error de flujo con OwnerId forzado', [
+                        'email' => $payload['Email'] ?? null,
+                        'owner_id' => $ownerFallback['owner_id'],
+                        'payload_keys' => array_keys($currentPayload),
+                    ]);
+
+                    $result = Forrest::sobjects('Lead', [
+                        'method' => 'post',
+                        'body' => $currentPayload,
+                    ]);
+
+                    $response = is_array($result) ? $result : [];
+
+                    Log::info('Salesforce: Respuesta creación de Lead tras re-auth y OwnerId forzado', [
+                        'lead_id' => $response['id'] ?? $response['Id'] ?? null,
+                        'success' => $response['success'] ?? null,
+                        'errors' => $response['errors'] ?? null,
+                        'response' => $response,
+                        'owner_id' => $ownerFallback['owner_id'],
                     ]);
 
                     return $response;
@@ -323,6 +379,128 @@ class SalesforceService
         }
 
         return array_values(array_unique(array_filter($fields, static fn (string $field): bool => $field !== '')));
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array{payload: array<string, mixed>, applied: bool, owner_id: string|null}
+     */
+    private function applyLeadOwnerFallbackOnFlowError(array $payload, \Throwable $exception): array
+    {
+        if (! $this->isLeadFlowOwnerBlankError($exception)) {
+            return [
+                'payload' => $payload,
+                'applied' => false,
+                'owner_id' => null,
+            ];
+        }
+
+        $currentOwnerId = $this->normalizeSalesforceId($payload['OwnerId'] ?? null);
+
+        if ($currentOwnerId !== null) {
+            return [
+                'payload' => $payload,
+                'applied' => false,
+                'owner_id' => $currentOwnerId,
+            ];
+        }
+
+        $configuredOwnerId = $this->configuredLeadOwnerId();
+
+        if ($configuredOwnerId === null) {
+            return [
+                'payload' => $payload,
+                'applied' => false,
+                'owner_id' => null,
+            ];
+        }
+
+        $payload['OwnerId'] = $configuredOwnerId;
+
+        return [
+            'payload' => $payload,
+            'applied' => true,
+            'owner_id' => $configuredOwnerId,
+        ];
+    }
+
+    private function configuredLeadOwnerId(): ?string
+    {
+        $leadOwnerId = $this->normalizeSalesforceId(config('services.salesforce.lead_owner_id'));
+
+        if ($leadOwnerId !== null) {
+            return $leadOwnerId;
+        }
+
+        return $this->normalizeSalesforceId(config('services.salesforce.case_owner_id'));
+    }
+
+    private function normalizeSalesforceId(mixed $value): ?string
+    {
+        $normalized = trim((string) $value);
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        if (preg_match('/^[a-zA-Z0-9]{15,18}$/', $normalized) !== 1) {
+            return null;
+        }
+
+        return $normalized;
+    }
+
+    private function isLeadFlowOwnerBlankError(\Throwable $exception): bool
+    {
+        foreach ($this->extractSalesforceErrorItems($exception) as $errorItem) {
+            $errorCode = (string) ($errorItem['errorCode'] ?? '');
+
+            if ($errorCode !== 'CANNOT_EXECUTE_FLOW_TRIGGER') {
+                continue;
+            }
+
+            $message = strtolower((string) ($errorItem['message'] ?? ''));
+
+            if (preg_match('/(owner|propietario).*(blank|en blanco)/u', $message) === 1) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function extractSalesforceErrorItems(\Throwable $exception): array
+    {
+        if (! method_exists($exception, 'getResponse')) {
+            return [];
+        }
+
+        $response = $exception->getResponse();
+
+        if (! $response) {
+            return [];
+        }
+
+        $decodedBody = json_decode((string) $response->getBody(), true);
+
+        if (! is_array($decodedBody)) {
+            return [];
+        }
+
+        $errors = [];
+
+        foreach ($decodedBody as $errorItem) {
+            if (! is_array($errorItem)) {
+                continue;
+            }
+
+            $errors[] = $errorItem;
+        }
+
+        return $errors;
     }
 
     /**

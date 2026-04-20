@@ -254,4 +254,32 @@ class SalesforceCaseMapperTest extends TestCase
         $this->assertSame('BlackInmobiliario', $payload['Nombre_de_la_Campa_a__c'] ?? null);
         $this->assertSame('BlackInmobiliario', $payload['utm_campaign__c'] ?? null);
     }
+
+    public function test_it_falls_back_to_case_owner_when_lead_owner_id_is_invalid(): void
+    {
+        config()->set('services.salesforce.lead_owner_id', 'owner-invalido');
+        config()->set('services.salesforce.case_owner_id', '005U100000CAG4bIAH');
+        config()->set('services.salesforce.lead_status', 'En Contacto');
+
+        SiteSetting::current()->update([
+            'site_name' => 'iLeben',
+            'contact_form_fields' => [
+                ['key' => 'name', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
+            ],
+        ]);
+
+        $submission = ContactSubmission::query()->create([
+            'name' => 'Mariana Test',
+            'email' => 'mariana@example.com',
+            'phone' => '987654321',
+            'fields' => [
+                'name' => 'Mariana Test',
+            ],
+            'submitted_at' => now(),
+        ]);
+
+        $payload = app(SalesforceCaseMapper::class)->mapLead($submission);
+
+        $this->assertSame('005U100000CAG4bIAH', $payload['OwnerId'] ?? null);
+    }
 }
