@@ -64,6 +64,20 @@ const sendFacebookEvent = (eventName, payload = {}) => {
     return;
   }
 
+  // Prevenir que el mismo evento dispare más de una vez en 3 segundos
+  if (!window.__ilebenLastEventTime) {
+    window.__ilebenLastEventTime = {};
+  }
+
+  const now = Date.now();
+  const lastTime = window.__ilebenLastEventTime[normalizedEventName];
+
+  if (lastTime && now - lastTime < 3000) {
+    return;
+  }
+
+  window.__ilebenLastEventTime[normalizedEventName] = now;
+
   const fbq = ensureFacebookPixelQueue();
 
   if (!fbq) {
@@ -81,7 +95,7 @@ const sendFacebookEvent = (eventName, payload = {}) => {
 };
 
 export const initializeFacebookPixel = (pixelId) => {
-  if (typeof window === 'undefined' || typeof document === 'undefined') {
+  if (typeof window === 'undefined') {
     return null;
   }
 
@@ -92,18 +106,7 @@ export const initializeFacebookPixel = (pixelId) => {
     return null;
   }
 
-  if (!document.getElementById(FB_PIXEL_SCRIPT_ID)) {
-    const script = document.createElement('script');
-    script.id = FB_PIXEL_SCRIPT_ID;
-    script.async = true;
-    script.src = 'https://connect.facebook.net/en_US/fbevents.js';
-    document.head.appendChild(script);
-  }
-
-  if (window.__ilebenFacebookPixelInitializedFor !== normalizedId) {
-    fbq('init', normalizedId);
-    window.__ilebenFacebookPixelInitializedFor = normalizedId;
-  }
+  fbq('init', normalizedId);
 
   return normalizedId;
 };
