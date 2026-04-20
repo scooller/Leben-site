@@ -21,6 +21,10 @@ class Payment extends Model
         'amount',
         'currency',
         'status',
+        'billing_name',
+        'billing_email',
+        'billing_phone',
+        'billing_rut',
         'metadata',
         'completed_at',
     ];

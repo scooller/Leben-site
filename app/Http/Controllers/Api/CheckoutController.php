@@ -46,13 +46,7 @@ class CheckoutController extends Controller
                 );
             }
 
-            $user = $request->user();
-            // Solo actualizar nombre y teléfono; email y RUT son datos de facturación
-            // del pago y no deben sobreescribir el perfil (pueden pertenecer a otra cuenta)
-            $user->update([
-                'name' => $validated['name'],
-                'phone' => $validated['phone'],
-            ]);
+            $payerUser = $this->resolvePayerUser($validated);
 
             // Obtener la planta con su proyecto
             $plant = Plant::with('proyecto')->findOrFail($validated['plant_id']);
@@ -71,12 +65,12 @@ class CheckoutController extends Controller
             $description = "{$validated['quantity']}x {$plant->name}";
 
             if ($validated['gateway'] === 'manual') {
-                return $this->initiateManual($user, $plant, $reservation, $amount, $description, $validated);
+                return $this->initiateManual($payerUser, $plant, $reservation, $amount, $description, $validated);
             }
 
             // Iniciar transacción según la pasarela
             if ($validated['gateway'] === 'transbank') {
-                return $this->initiateTransbank($user, $plant, $reservation, $amount, $description, $validated['quantity'], $validated);
+                return $this->initiateTransbank($payerUser, $plant, $reservation, $amount, $description, $validated['quantity'], $validated);
             }
 
             return $this->initiateMercadoPago(
@@ -140,6 +134,10 @@ class CheckoutController extends Controller
             'amount' => $amount,
             'currency' => config('payments.currency', 'CLP'),
             'status' => $manualTransaction['status'],
+            'billing_name' => $this->billingName($billing),
+            'billing_email' => $this->billingEmail($billing),
+            'billing_phone' => $this->billingPhone($billing),
+            'billing_rut' => $this->billingRut($billing),
             'metadata' => [
                 'description' => $description,
                 'manual_payment_reference' => $manualTransaction['reference'],
@@ -149,8 +147,6 @@ class CheckoutController extends Controller
                 'manual_payment_expires_at' => $expiresAt?->toISOString(),
                 'manual_payment_proof_submitted' => false,
                 'manual_payment_link' => $config['payment_link'] ?? null,
-                'billing_email' => $billing['email'] ?? null,
-                'billing_rut' => $billing['rut'] ?? null,
             ],
         ]);
 
@@ -244,6 +240,10 @@ class CheckoutController extends Controller
                 'amount' => $amount,
                 'currency' => config('payments.currency', 'CLP'),
                 'status' => \App\Enums\PaymentStatus::PENDING,
+                'billing_name' => $this->billingName($billing),
+                'billing_email' => $this->billingEmail($billing),
+                'billing_phone' => $this->billingPhone($billing),
+                'billing_rut' => $this->billingRut($billing),
                 'metadata' => [
                     'description' => $description,
                     'session_id' => $requestPayload['session_id'],
@@ -251,8 +251,6 @@ class CheckoutController extends Controller
                     'public_status_token' => (string) Str::uuid(),
                     'transbank_child_buy_order' => $requestPayload['child_buy_order'] ?? null,
                     'transbank_child_commerce_code' => $requestPayload['child_commerce_code'] ?? null,
-                    'billing_email' => $billing['email'] ?? null,
-                    'billing_rut' => $billing['rut'] ?? null,
                 ],
             ]);
 
@@ -479,5 +477,69 @@ class CheckoutController extends Controller
         }
 
         return filled($project->getRawOriginal('transbank_commerce_code'));
+    }
+
+    /**
+     * @param  array<string, mixed>  $billing
+     */
+    private function resolvePayerUser(array $billing): User
+    {
+        $email = $this->billingEmail($billing);
+        $existingUser = User::query()->where('email', $email)->first();
+
+        if ($existingUser) {
+            return $existingUser;
+        }
+
+        $rut = $this->billingRut($billing);
+        $safeRut = $rut !== null && User::query()->where('rut', $rut)->exists() ? null : $rut;
+
+        return User::query()->create([
+            'name' => $this->billingName($billing) ?? $email,
+            'email' => $email,
+            'user_type' => 'customer',
+            'phone' => $this->billingPhone($billing),
+            'rut' => $safeRut,
+            'password' => $email,
+            'email_verified_at' => now(),
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $billing
+     */
+    private function billingName(array $billing): ?string
+    {
+        $value = trim((string) ($billing['name'] ?? ''));
+
+        return $value !== '' ? $value : null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $billing
+     */
+    private function billingEmail(array $billing): string
+    {
+        return Str::lower(trim((string) ($billing['email'] ?? '')));
+    }
+
+    /**
+     * @param  array<string, mixed>  $billing
+     */
+    private function billingPhone(array $billing): ?string
+    {
+        $value = trim((string) ($billing['phone'] ?? ''));
+
+        return $value !== '' ? $value : null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $billing
+     */
+    private function billingRut(array $billing): ?string
+    {
+        $value = Str::upper(trim((string) ($billing['rut'] ?? '')));
+
+        return $value !== '' ? $value : null;
     }
 }

@@ -236,8 +236,16 @@ class ManualCheckoutFlowTest extends TestCase
 
         $this->assertSame('manual', $gatewayValue);
         $this->assertSame(PaymentStatus::PENDING_APPROVAL, $payment->status);
+        $this->assertNotSame($this->user->id, $payment->user_id);
+        $this->assertSame('usuario@example.com', $payment->user?->email);
         $this->assertSame($plant->id, $payment->plant_id);
         $this->assertSame($project->id, $payment->project_id);
+        $this->assertSame('Usuario Demo', $payment->billing_name);
+        $this->assertSame('usuario@example.com', $payment->billing_email);
+        $this->assertSame('912345678', $payment->billing_phone);
+        $this->assertSame('12345678-5', $payment->billing_rut);
+        $this->assertNull(data_get($payment->metadata, 'billing_email'));
+        $this->assertNull(data_get($payment->metadata, 'billing_rut'));
         $this->assertStringStartsWith('MAN-', (string) $payment->gateway_tx_id);
         $this->assertSame($payment->gateway_tx_id, $response->json('reference'));
 
@@ -474,5 +482,91 @@ class ManualCheckoutFlowTest extends TestCase
 
         $response->assertStatus(422)
             ->assertJsonPath('message', 'La fecha limite para enviar el comprobante ya expiro.');
+    }
+
+    public function test_it_reuses_existing_user_by_billing_email_without_updating_profile_and_updates_billing_per_payment(): void
+    {
+        $existingCustomer = User::factory()->create([
+            'email' => 'cliente.existente@example.com',
+            'name' => 'Cliente Original',
+            'phone' => '900000000',
+            'rut' => '11111111-1',
+            'user_type' => 'customer',
+        ]);
+
+        $project = Proyecto::factory()->create([
+            'manual_payment_instructions' => 'Instrucciones manuales',
+        ]);
+
+        $firstPlant = Plant::factory()->create([
+            'salesforce_proyecto_id' => $project->salesforce_id,
+            'is_active' => true,
+        ]);
+
+        $secondPlant = Plant::factory()->create([
+            'salesforce_proyecto_id' => $project->salesforce_id,
+            'is_active' => true,
+        ]);
+
+        SiteSetting::current()->update([
+            'gateway_manual_enabled' => true,
+            'gateway_manual_config' => [
+                'instructions' => 'Instrucciones manuales',
+                'auto_expire_hours' => 48,
+            ],
+        ]);
+
+        $firstReservation = app(PlantReservationService::class)->reserve($firstPlant->id, $this->user->id);
+
+        $firstCheckout = $this->postJson('/api/v1/checkout', [
+            'plant_id' => $firstPlant->id,
+            'quantity' => 1,
+            'gateway' => 'manual',
+            'name' => 'Nombre Facturacion Uno',
+            'email' => 'cliente.existente@example.com',
+            'phone' => '955555551',
+            'rut' => '22222222-2',
+            'session_token' => $firstReservation->session_token,
+        ]);
+
+        $firstCheckout->assertOk();
+
+        $firstPayment = Payment::query()->findOrFail((int) $firstCheckout->json('payment_id'));
+
+        $this->assertSame($existingCustomer->id, $firstPayment->user_id);
+        $this->assertSame('Nombre Facturacion Uno', $firstPayment->billing_name);
+        $this->assertSame('cliente.existente@example.com', $firstPayment->billing_email);
+        $this->assertSame('955555551', $firstPayment->billing_phone);
+        $this->assertSame('22222222-2', $firstPayment->billing_rut);
+
+        $secondReservation = app(PlantReservationService::class)->reserve($secondPlant->id, $this->user->id);
+
+        $secondCheckout = $this->postJson('/api/v1/checkout', [
+            'plant_id' => $secondPlant->id,
+            'quantity' => 1,
+            'gateway' => 'manual',
+            'name' => 'Nombre Facturacion Dos',
+            'email' => 'cliente.existente@example.com',
+            'phone' => '955555552',
+            'rut' => '33333333-3',
+            'session_token' => $secondReservation->session_token,
+        ]);
+
+        $secondCheckout->assertOk();
+
+        $secondPayment = Payment::query()->findOrFail((int) $secondCheckout->json('payment_id'));
+
+        $this->assertSame($existingCustomer->id, $secondPayment->user_id);
+        $this->assertSame('Nombre Facturacion Dos', $secondPayment->billing_name);
+        $this->assertSame('cliente.existente@example.com', $secondPayment->billing_email);
+        $this->assertSame('955555552', $secondPayment->billing_phone);
+        $this->assertSame('33333333-3', $secondPayment->billing_rut);
+
+        $existingCustomer->refresh();
+
+        $this->assertSame('Cliente Original', $existingCustomer->name);
+        $this->assertSame('900000000', $existingCustomer->phone);
+        $this->assertSame('11111111-1', $existingCustomer->rut);
+        $this->assertSame(1, User::query()->where('email', 'cliente.existente@example.com')->count());
     }
 }

@@ -63,6 +63,14 @@ class PaymentsTable
                     ->searchable(),
                 TextColumn::make('gateway_tx_id')
                     ->searchable(),
+                TextColumn::make('billing_email')
+                    ->label('Email Facturacion')
+                    ->searchable()
+                    ->toggleable(),
+                TextColumn::make('billing_rut')
+                    ->label('RUT Facturacion')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('amount')
                     ->numeric()
                     ->sortable(),

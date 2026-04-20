@@ -136,6 +136,22 @@ class PaymentInfolist
                             ->label('Planta')
                             ->placeholder('-'),
                     ]),
+                Section::make('Facturacion')
+                    ->columns(2)
+                    ->components([
+                        TextEntry::make('billing_name')
+                            ->label('Nombre Facturacion')
+                            ->placeholder('-'),
+                        TextEntry::make('billing_email')
+                            ->label('Email Facturacion')
+                            ->placeholder('-'),
+                        TextEntry::make('billing_phone')
+                            ->label('Telefono Facturacion')
+                            ->placeholder('-'),
+                        TextEntry::make('billing_rut')
+                            ->label('RUT Facturacion')
+                            ->placeholder('-'),
+                    ]),
                 Section::make('Metadata')
                     ->components([
                         TextEntry::make('manual_payment_reference')
