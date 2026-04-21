@@ -90,6 +90,7 @@ class AdminPanelProvider extends PanelProvider
             ->brandName($settings?->site_name ?? 'iLeben')
             ->favicon($settings?->faviconMedia?->url)
             ->brandLogo($settings?->logoMedia?->url)
+            ->darkModeBrandLogo($settings?->logoDarkMedia?->url ?? $settings?->logoMedia?->url)
             ->brandLogoHeight('2.5rem')
             ->renderHook(
                 PanelsRenderHook::GLOBAL_SEARCH_AFTER,
@@ -178,7 +179,7 @@ class AdminPanelProvider extends PanelProvider
             }
 
             $settings = SiteSetting::current();
-            $settings->load(['faviconMedia', 'logoMedia']);
+            $settings->load(['faviconMedia', 'logoMedia', 'logoDarkMedia']);
 
             return $settings;
         } catch (Throwable) {
