@@ -2,250 +2,298 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
-## [Unreleased] - Próximas Versiones
+## [Unreleased]
 
-### ✨ Actualizado
+### ✨ Agregado
 
-#### Reenfoque del sistema: de flujo comercial a mantenedor operativo
-- El sistema deja de estar orientado únicamente al flujo de ventas y pasa a cubrir administración operativa de proyectos y plantas
-- El backoffice Filament se consolida como interfaz principal de mantenimiento, revisión y control de datos
-- Salesforce se mantiene como sistema maestro para la sincronización de entidades comerciales relevantes
+#### Permisos y Control de Acceso (Spatie)
+- Integración de `spatie/laravel-permission` para control de acceso granular
+- Rol `marketing` con acceso restringido a recursos específicos del panel
+- Roles y permisos registrados en el seeder principal
 
-#### Sincronización y mantenedor de proyectos
-- Se agregó la columna `is_active` a `proyectos` para alinear el esquema local con la sincronización desde Salesforce
-- Se agregó la columna `tipo` a `proyectos` con almacenamiento JSON
-- `tipo` ahora funciona como multiselect con opciones iniciales `invest`, `broker`, `icon`
-- `SyncProjectsAction` ahora normaliza y persiste `tipo` como arreglo válido
-- La sincronización de proyectos evita sobreescribir `tipo` cuando Salesforce no lo envía
-- Se corrigió el alcance `scopeActive()` para usar `is_active`
+#### Canal de Contacto (ContactChannel)
+- Nuevo modelo `ContactChannel` con recurso Filament completo
+- Tabla `contact_channels` con campos: nombre, código, icono, color, estado
+- Sincronización de canales desde Salesforce con migración idempotente
+- Badges de color dinámicos usando `Filament\Support\Colors\Color`
+- Resource con List, Create, Edit y filtros de estado
 
-#### Sincronización y mantenedor de plantas
-- Se integraron imágenes de portada e interior para plantas usando Filament Curator
-- Se agregaron relaciones de medios en el modelo `Plant`
-- La API de plantas ahora expone las relaciones de imágenes para consumo frontend
-- La sincronización de plantas preserva `product_code` cuando el registro ya existe localmente
+#### Actividad de Usuarios
+- Página personalizada `UserActivitiesPage` en Filament para visualizar el log de actividad por usuario
+- Vista Blade dedicada con historial detallado de acciones
+- Tests de cobertura para la página y vista
 
-#### Panel administrativo y operación
-- Se reorganizó la navegación del panel en grupos semánticos para mejorar operación diaria
-- Se instaló y configuró el plugin Command Runner para administración
-- Se corrigieron filtros en tablas de plantas y proyectos, incluyendo el filtro de región en proyectos
-- Se habilitaron `databaseNotifications()` en Filament para soportar notificaciones persistidas de exportaciones ejecutadas por cola
-- Se habilitó exportación en users, payments y plants mediante `ExportAction`
-- Se agregó traducción local faltante para el modal de exportación de Filament
-- Se agregó la migración de la tabla `exports` requerida por el sistema de exportaciones
-- Los pagos ahora pueden relacionarse directamente con proyecto y planta desde Filament
+#### Identidad Visual Modo Oscuro
+- Campo `logo_dark_id` con `CuratorPicker` en SiteSettings (tab Branding)
+- `AdminPanelProvider` carga logo claro u oscuro según el modo activo del panel
+- Tests de cobertura para la selección dinámica de logo
 
-#### API de catálogo y disponibilidad
-- La API de plantas ahora expone `is_paid` e `is_available`
-- La disponibilidad de una planta ahora considera tanto `plant_reservations` como pagos completados/autorizados relacionados por `payments.plant_id`
-- El frontend de catálogo consume sólo plantas disponibles y bloquea compra de plantas reservadas o pagadas
+#### Acceso y Validación
+- Campo RUT en el formulario de usuario con validación de formato chileno
+- Eliminación de rol duplicado al registrar usuarios
+- Restricción de acceso al panel administrativo según permisos Spatie
 
-#### Estabilidad y testing
-- Se aisló el entorno de pruebas con SQLite en `database/testing.sqlite`
-- Se agregó `APP_KEY` al entorno de testing para asegurar ejecución completa de la suite
-- Se reparó la acción de borrado masivo de plantas para usar borrado compatible con relaciones (`delete()` en lugar de `truncate()`)
-- Se actualizaron y agregaron pruebas para sincronización de proyectos, borrado de plantas y widgets
-- Se agregaron pruebas para filtros de disponibilidad de plantas con reservas y pagos relacionados
-- Suite de filtros de API validada para disponibilidad por reservas y pagos
+---
 
-### 📋 Planificado para v1.1.0
+## [1.8.0] - 2026-04-14
 
-#### ⚠️ Cambio Crítico: Transbank Simple → Transbank Mall
+### ✨ Agregado
 
-**Contexto:**
-La configuración actual usa Webpay Plus Simple (un código comercial). Necesitamos cambiar a **Transbank Mall** para soportar múltiples códigos únicos por proyecto.
+#### Short Links
+- Nuevo modelo `ShortLink` con recurso Filament completo (List, Create, Edit)
+- Rutas cortas configurables con slug, destino, estado y etiquetas UTM
+- Acción `ExportShortLinksAction` con nombre nullable para exportaciones genéricas
+- Infer automático de `utm_site` desde el request y mapeo al campo `Website` en Salesforce
+- Icono de cursor outline en navegación de recursos
 
-**Cambios Requeridos:**
+#### Salesforce — UI y Sincronización
+- URL de lead de Salesforce visible como acción de vista rápida en submissions
+- Columnas dinámicas de Salesforce expuestas en la tabla de submissions
+- Acción de re-sincronización forzada de leads desde la tabla del panel
+- Mejoras de UI en el formulario de submissions (defaults de slug, tag manager)
 
-1. **TransbankService** - Cambiar SDK de Simple a Mall
-   - `createTransaction()`: Agregar `commerce_code_store` dinámico del proyecto
-   - `confirmTransaction()`: Validar `commerceCodeStore` en respuesta vs proyecto
+#### Frontend
+- Poster para el video hero en la página principal
+- Disclaimers configurables visibles en la sección hero
+- Columna toggles habilitados en tablas para mayor flexibilidad operativa
+- Tweaks de analítica en frontend con deduplicación de eventos
 
-2. **config/payments.php** - Nueva estructura con mapeo de proyectos
-   ```php
-   'transbank' => [
-       'environment' => env('TRANSBANK_ENV', 'integration'),
-       'commerce_code' => env('TRANSBANK_COMMERCE_CODE'), // Principal (Mall)
-       'mall_mode' => true,
-       // Cargar map de códigos desde .env (JSON)
-       'commerce_codes' => json_decode(env('TRANSBANK_STORE_CODES', '{}'), true),
-   ]
-   ```
+#### Pasarelas de Pago
+- Columna `commerce_code` renombrada para mayor consistencia
+- Link manual de pago configurable por pago en Filament
+- Lógica de preferencia: el código de comercio persistido tiene prioridad sobre configuración
 
-3. **.env - Códigos de Comercio (desde JSON configurado)**
-   ```env
-   # Transbank Mall - Principal
-   TRANSBANK_COMMERCE_CODE=xxxxx
-   
-   # Todos los códigos de comercio por proyecto (JSON)
-   # Formato: {"proyecto_slug": "codigo", "proyecto_slug2": "codigo2", ...}
-   # ⚠️ CONTENIDO SENSIBLE: Guardar en .env.local o secretos del servidor
-   TRANSBANK_STORE_CODES='{"proyecto-slug-1":"codigo1","proyecto-slug-2":"codigo2",...}'
-   ```
+#### Logging
+- Niveles de log ajustados a `debug` con lógica env-aware para no saturar producción
 
-**Sistema de Códigos de Comercio:**
-- ✅ Soporte para N proyectos únicos con su propio código Transbank
-- ✅ Configuración centralizada y segura en .env
-- ✅ Resolución dinámica de códigos por proyecto
-- ⚠️ Los códigos reales y RUTs se mantienen fuera del repositorio
+---
 
-4. **Models** - Payment + Project
-   - `Payment`: Agregar `project_id` (FK al proyecto para obtener código Transbank)
-   - `Proyecto`: Usar slug para resolver código desde config
-   ```php
-   // app/Models/Proyecto.php
-   public function getTransbankCommerceCodeAttribute(): ?string {
-       $codes = config('payments.transbank.commerce_codes', []);
-       return $codes[$this->slug] ?? null; // Buscar en config por slug del proyecto
-   }
-   ```
+## [1.7.0] - 2026-04-07
 
-5. **Database** - Nueva migración
-   ```php
-   // Agregar a payments table
-   $table->foreignId('project_id')->nullable()->constrained()->onDelete('set null');
-   ```
+### ✨ Agregado
 
-6. **PaymentWebhookController** - Validación Mall
-   ```php
-   // Validar que commerceCodeStore coincida con proyecto
-   $expectedCode = $payment->project->transbank_commerce_code;
-   if ($response['commerceCodeStore'] !== $expectedCode) {
-       // ❌ Código no coincide - rechazar
-       return reject('invalid_store_code');
-   }
-   ```
+#### SEO
+- Tab SEO en SiteSettings con meta título, descripción, keywords, og:image
+- Frontend React consume y aplica configuración SEO desde `siteConfig` context
+- Tags Open Graph y meta description generados dinámicamente
 
-**Flujo de Pago Actualizado:**
-```php
-// Ahora incluir project_id
-$payment = Payment::create([
-    'user_id' => auth()->id(),
-    'project_id' => $project->id,  // ← NUEVO: Para obtener código Transbank único
-    'gateway' => PaymentGateway::TRANSBANK,
-    'amount' => 10000,
-]);
+#### Catálogo Público y Preview
+- API de catálogo completamente pública (sin autenticación requerida)
+- Middleware `CatalogPreviewMiddleware` para acceso de preview con token
+- Campo `preview_path` en proyectos para generar URLs de preview
+- Links de preview en el panel con token de acceso temporal
+- Tests de cobertura para el middleware y tokens
 
-// Service accede al código del proyecto vía configuración
-$commerceCode = $payment->project->transbank_commerce_code; // Del .env vía config('payments.transbank.commerce_codes')
-$service->createTransaction($payment, $commerceCode);
-```
+#### Facturación y Pago
+- Campos de facturación (`billing_name`, `billing_rut`, `billing_address`, etc.) en el flujo de pago
+- Reutilización de datos del usuario pagador para pre-llenar campos de facturación
+- Página pública de estado y resultado del pago sin autenticación
+- No sobreescribir email/RUT del usuario al actualizar desde el formulario de pago
 
-**Resolución de Código Dinámico:**
-1. Payment se crea con `project_id`
-2. `$payment->project` accede al proyecto relacionado
-3. `$project->transbank_commerce_code` busca en `config/payments.php`
-4. Config carga desde `.env` la variable JSON `TRANSBANK_STORE_CODES`
-5. Se resuelve el código usando el slug del proyecto como clave
+#### Cloudflare Turnstile
+- Integración de Cloudflare Turnstile como captcha en el formulario de contacto
+- Validación server-side del token Turnstile
 
-**Impacto:**
-- ✅ 21 códigos únicos para cada proyecto
-- ✅ Configuración centralizada en .env
-- ✅ Pagos totalmente independientes por proyecto
-- ✅ Mejor seguridad y trazabilidad
-- ⚠️ Requiere migración de BD (agregar `project_id` a payments)
-- ⚠️ Requiere actualizar lógica de pagos
-- ⚠️ Requiere validar slugs de proyectos vs keys del JSON
+#### MercadoPago Webhooks
+- Verificación de firma en webhooks de Mercado Pago
+- Mejoras en el procesamiento del formulario de contacto post-pago
 
-**Datos Reales (Producción - Transbank Mall):**
-```
-Principal (Mall): xxxxx (a configurar)
+#### Scripts de Header/Footer
+- Inyección de scripts de header y footer configurables desde SiteSettings
+- Precarga de `site-config` para evitar inserción doble de scripts
+- Timeout configurable para el fetch de configuración
+- Deduplicación de eventos Facebook Pixel
 
-Códigos por Proyecto (21 tiendas):
-... (17 más, ver variables .env)
-```
+#### UTM y Rastreo
+- Respeto de `utm_campaign` por defecto configurado en SiteSettings
+- Soporte para legacy `auto-tagging` de UTM campaign
+- Resolución del teléfono del asesor del proyecto para contacto
+- Preferencia de teléfono y nombre del lead sobre datos legacy
 
-**Ver Tarjetas Test Transbank:**
-- 4051885600446623 (Visa Débito - Aprobada)
-- 5186059559590568 (Mastercard - Aprobada)
+---
 
-**Referencia:**
-- [Transbank Webpay Plus Mall](https://www.transbankdevelopers.cl/guides/webpay-plus)
-- [Integración Mall](https://www.transbankdevelopers.cl/guides/webpay-plus#integración-mall)
+## [1.6.0] - 2026-03-31
 
-### 📝 Instrucciones de Configuración v1.1.0
+### ✨ Agregado
 
-**1. Asegurar estructura de slugs en Proyectos**
+#### Salesforce — Flujo de Leads
+- El formulario de contacto ahora crea Leads en lugar de Cases
+- Reintentos automáticos de Lead ante campos inválidos con mapeo de UTMs
+- Eliminación de campos no escribibles en el payload de Salesforce
+- Resolución del ID de Salesforce del proyecto en el payload del lead
+- Logging detallado de operaciones Salesforce
 
-Los slugs de los proyectos deben coincidir con las claves en el JSON de `TRANSBANK_STORE_CODES`:
+#### Formulario de Contacto — Enriquecimiento
+- Campo de rango de ingresos (`income_range`) en el formulario de contacto
+- Manejo de `project_types` por opción con rangos selectables
+- Lógica condicional basada en proyectos en lugar de categorías
+- Campos de ingresos e inversión agregados al mapper de Salesforce
+- Soporte para aliases de campo y normalización de tokens
+- RUT y datos de proyecto enviados al mapper de Salesforce
 
-```php
-// Proyectos deben tener estos slugs exactos (sincronizados con TRANSBANK_STORE_CODES):
-- proyecto-1
-- proyecto-2
-- proyecto-3
-- proyecto-4
-- proyecto-5
-- proyecto-6
-- proyecto-7
-- proyecto-8
-- proyecto-9
-- proyecto-10
-- proyecto-11
-- proyecto-12
-- proyecto-13
-- proyecto-14
-- proyecto-15
-- proyecto-16
-- proyecto-17
-- proyecto-18
-- proyecto-19
-- proyecto-20
-- proyecto-21
+#### Catálogo y Curator
+- Toggle `mostrar_plantas` en SiteSettings para mostrar/ocultar el catálogo
+- Textos de catálogo no disponible configurables con RichEditor
+- Curación de Curator y toggle de UI del catálogo
+- `is_active` preservado en sincronización de proyectos
 
-// ⚠️ Los nombres reales de proyectos y RUTs se mantienen en la base de datos
-// Estos slugs son solo para mapeo con códigos Transbank en .env
-```
+#### Preview y Tokens
+- Generación de URLs de preview con token firmado
+- Links de preview frontend con token de acceso
+- Eliminación de la acción de activación masiva
 
-**2. Helper para generar slugs**
-```php
-// Function en app/Helpers.php o Proyecto.php
-protected static function booted() {
-    static::creating(function ($model) {
-        if (!$model->slug) {
-            $model->slug = Str::slug($model->name);
-        }
-    });
-}
-```
+#### QueuePendingList
+- Widget `QueuePendingList` en el dashboard para monitorear trabajos pendientes en cola
 
-**3. Validar en Seeder o Migraciones**
+#### Exporter
+- `ContactSubmissionsExporter` con acción de exportación CSV
 
-```php
-// database/seeders/ProyectoSeeder.php o migración
-$codes = json_decode(env('TRANSBANK_STORE_CODES', '{}'), true);
+---
 
-foreach ($codes as $slug => $code) {
-    \App\Models\Proyecto::updateOrCreate(
-        ['slug' => $slug],
-        ['name' => ucfirst(str_replace('-', ' ', $slug)), 'transbank_status' => 'active']
-    );
-}
-```
+## [1.5.0] - 2026-03-24
 
-**4. Testing post-implementación**
+### ✨ Agregado
 
-```php
-// Verificar en tinker
-$project = Proyecto::where('slug', 'leben-76281214-2')->first();
-$code = $project->transbank_commerce_code; // Debe ser 597035563628
+#### GTM y Analítica
+- Integración de Google Tag Manager configurable desde SiteSettings
+- Soporte para Facebook Pixel en el Tag Manager
+- Filtros de catálogo por slug de proyecto y comuna
+- Ruta `/f` para filtros de catálogo
+- Mejoras en el formulario de contacto con enhancements de tracking
 
-$payment = Payment::create([
-    'project_id' => $project->id,
-    'user_id' => auth()->id(),
-    'gateway' => PaymentGateway::TRANSBANK,
-    'amount' => 10000,
-]);
+#### Transbank Mall — Estabilización
+- Persistencia de pagos Transbank y manejo completo de webhooks de retorno
+- Logging detallado del flujo de checkout
+- Bridge de redirección para el retorno de Transbank
+- Validación del código de tienda (mall child code)
+- Correcciones de lógica de comercio y favicon
+- Soporte para errores HTTP globales en modo Mall
+- Corrección de parámetros y mejora de manejo de errores
 
-$service = PaymentGateway::driver('transbank');
-$response = $service->createTransaction($payment);
-// Debe contener 'commerceCodeStore' => '597035563628'
-```
+#### Tipo de Producto en Plantas
+- Campo `tipo_producto` en el modelo `Plant`
+- Normalización y filtros de `tipo_producto` en API y Filament
+- Filtro con tests de cobertura para tipo de producto
 
-**Timeline:**
-- v1.1.0 - Implementar Mall con 21 códigos de comercio
-- v1.2.0 - UI Filament para gestionar códigos dinámicamente
-- v2.0.0 - Dashboard de ventas por sub-tienda/proyecto
+#### Configuración Salesforce
+- Tab de configuración de sincronización Salesforce en SiteSettings
+- Filtro de sincronización de plantas por proyecto y tipo de producto
+
+#### UI y Operación
+- Logo de venta configurable desde SiteSettings y aplicado en frontend
+- HtmlCodeEditor disponible como componente de formulario
+- Manejo del cierre del dialog de plantas en frontend
+
+---
+
+## [1.4.0] - 2026-03-17
+
+### ✨ Agregado
+
+#### Sumisiones de Contacto
+- Tabla `contact_submissions` con campos de venta y unidad
+- Filtros de `unidad_sale` y activación masiva en la tabla de Filament
+- Tokens de monto y moneda de reserva en templates de notificaciones
+
+#### FinMail — Notificaciones de Email
+- Integración del plugin `fin-mail` para notificaciones de correo transaccional
+- Migraciones de tablas de email (`fin_mail_*`)
+- Logging de actividad de negocio vinculado a eventos del sistema
+- Wrap del registro del scheduler en try/catch para mayor estabilidad
+
+#### UI de Plantas (Frontend)
+- Interfaz actualizada del detalle de planta con estado de carga
+- Asesores de proyecto expuestos en el payload de planta y en la UI
+- Sincronización de imágenes de planta, branding y asesores desde Salesforce
+- Soporte para ScrollSmoother en PlantsGrid
+- Animaciones alternadas en las tarjetas de plantas
+- Sello de descuento y refactoring del detalle de planta
+
+#### Exportaciones y Pagos Manuales
+- `ExportAction` habilitado para usuarios, pagos y plantas
+- Soporte para pagos manuales con referencia libre
+- API de disponibilidad de plantas mejorada
+
+---
+
+## [1.3.0] - 2026-03-10
+
+### ✨ Agregado
+
+#### Web Awesome 3.4.0
+- Migración al paquete `@web.awesome.me` con versión 3.4.0
+- Soporte actualizado para componentes React de Web Awesome
+
+#### Filtros de Ubicación
+- Filtros por región y comuna en la API de proyectos y catálogo
+- Mejoras de UI en Filament para filtros de proyectos y plantas
+
+---
+
+## [1.2.0] - 2026-03-03
+
+### ✨ Agregado
+
+#### Sincronización de Plantas — Mejoras
+- Job `SyncPlantsJob` con tests de cobertura
+- Columna de imagen de portada visible en la tabla de plantas del panel
+- Payloads de imagen de plantas en tests
+- Timeout de reserva configurable con validación de UI
+
+#### API de Plantas — Filtros y Documentación
+- Filtros avanzados en la API de plantas (tipo, estado, proyecto, región)
+- Endpoint de documentación de la API v1
+- Tests de cobertura para filtros y documentación
+
+#### Autenticación de API
+- Gestión de API tokens en el panel Filament
+- Middleware de origen (`origin`) para control de acceso
+- Autenticación requerida para endpoints públicos de API
+
+#### Activity Log
+- `ActivityLogAuthorization` como middleware para restringir el log por perfil
+- Seeder actualizado para incluir el permiso de activity log
+
+#### Pruebas y Entorno
+- Aislamiento con `sqlite_testing` para suite de tests
+- Payloads de imágenes de plantas en escenarios de prueba
+
+---
+
+## [1.1.0] - 2026-02-28
+
+### ✨ Agregado
+
+#### Transbank Mall — Implementación
+- `TransbankService` migrado de Simple a Mall (`WebpayMall`)
+- Soporte para múltiples códigos de comercio por proyecto via `TRANSBANK_STORE_CODES` JSON
+- `createTransaction()` con `commerce_code_store` dinámico resuelto desde el proyecto
+- `confirmTransaction()` valida `commerceCodeStore` en respuesta vs proyecto
+- Configuración en `config/payments.php` con `mall_mode` y `commerce_codes`
+- Filament UI para gestión de códigos de comercio por proyecto
+
+#### Sistema de Reservas de Plantas
+- Tabla `plant_reservations` con timeout configurable
+- Job `ExpireReservations` para expirar reservas vencidas
+- API de disponibilidad considera reservas activas y pagos completados
+- Dialog de confirmación de reserva en frontend
+
+#### PaymentGatewayDialog
+- Componente React `PaymentGatewayDialog` integrado en Home
+- Soporte para múltiples gateways desde un único dialog
+- Dashboard con orden de widgets configurable
+
+#### API de Monitoreo
+- Widgets de monitoreo de API en el dashboard con tests
+- Endpoint de documentación de API v1
+- Autenticación requerida para endpoints administrativos
+
+### 🔄 Cambios
+
+#### Configuración del Proyecto
+- Archivos de bootstrap cacheados removidos del tracking de git
+- `TRANSBANK_STORE_CODES` como variable de entorno JSON para mapeo proyecto↔código
+- Pruebas migradas a SQLite para aislamiento
 
 ---
 

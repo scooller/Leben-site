@@ -61,42 +61,61 @@ frontend/
 
 ### Operación y Sincronización
 - ✅ **Cobertura funcional** - Administra proyectos, plantas, pagos, configuración global y activos multimedia desde el panel Filament
-- ✅ **Integración con Salesforce** - Proyectos y plantas se sincronizan desde Salesforce hacia el modelo local mediante servicios y acciones dedicadas
+- ✅ **Integración con Salesforce** - Proyectos y plantas se sincronizan desde Salesforce; el formulario de contacto crea Leads con reintentos automáticos
 - ✅ **Preservación de datos locales** - La sincronización evita sobrescribir atributos locales sensibles cuando el dato debe mantenerse en la base local
 - ✅ **Procesamiento asíncrono** - Exportaciones y notificaciones soportadas sobre cola `database` con notificaciones persistidas en Filament
 
 ### Panel Administrativo (Filament)
-- ✅ **Autenticación** - Laravel Sanctum + sessions
+- ✅ **Autenticación** - Laravel Sanctum + sessions + Spatie permissions
+- ✅ **Permisos y roles** - Control de acceso granular con roles `admin`, `marketing`
 - ✅ **Proyectos** - CRUD administrativo, filtros operativos, `tipo` multiselección y commerce code por proyecto
-- ✅ **Usuarios** - Gestión de cuentas con exportación
-- ✅ **Plantas** - Catálogo sincronizado con imágenes de portada e interior vía Curator
+- ✅ **Usuarios** - Gestión de cuentas, RUT, exportación y actividad detallada (`UserActivitiesPage`)
+- ✅ **Plantas** - Catálogo sincronizado con imágenes de portada e interior vía Curator, `tipo_producto`
 - ✅ **Plantas** - Exportación y control de disponibilidad para catálogo público
-- ✅ **Pagos** - Registro de transacciones con relación directa a proyecto y planta
+- ✅ **Pagos** - Registro de transacciones con relación directa a proyecto y planta, campos de facturación
 - ✅ **Exportaciones** - Users, Payments y Plants usan `ExportAction` de Filament con cola y notificaciones persistidas
-- ✅ **Configuración Global** - SiteSettings (9+ tabs)
-  - General, Banner, Branding, Colores, Tipografía
+- ✅ **Contacto** - Submissions con exporter, log de actividad y re-sincronización a Salesforce
+- ✅ **Short Links** - Gestión de URLs cortas con etiquetas UTM y exportación
+- ✅ **Canales de contacto** - `ContactChannel` sincronizado desde Salesforce con badges de color
+- ✅ **Configuración Global** - SiteSettings (11+ tabs)
+  - General, Banner, Branding (logo claro/oscuro), Colores, Tipografía
   - SEO, Contacto, Redes Sociales, Personalización
-  - Pasarelas de Pago, Mantenimiento
+  - Pasarelas de Pago, Mantenimiento, Scripts Header/Footer
+  - GTM, Facebook Pixel, Sincronización Salesforce
 - ✅ **Gestor de Archivos** - Curator (File Manager centralizado)
 - ✅ **Modo Mantenimiento** - RichEditor + HTML mode + Web Awesome dialog
 
 ### Integración Salesforce
 - ✅ **SOQL Queries** - Consultas a objetos y campos de Salesforce mediante `omniphx/forrest`
 - ✅ **Caching** - Cache de resultados SOQL con TTL configurable para reducir carga sobre la API externa
-- ✅ **Sincronización** - Acciones y procesos para actualizar proyectos y plantas en el modelo local
-- ✅ **Normalización de datos** - Mapeo local de `is_active`, `tipo` y otros atributos requeridos por el panel administrativo
+- ✅ **Leads** - Creación de Leads desde el formulario de contacto con reintentos automáticos ante campos inválidos
+- ✅ **Sincronización** - Proyectos, plantas, asesores, branding e imágenes sincronizados desde Salesforce
+- ✅ **Normalización** - Mapeo local de `is_active`, `tipo`, `tipo_producto` y campos comerciales
 - ✅ **Logging** - Registro y trazabilidad de operaciones de sincronización
 
+### Pasarelas de Pago
+- ✅ **Transbank Mall** - Soporte para múltiples códigos de comercio por proyecto (`TRANSBANK_STORE_CODES`)
+- ✅ **Mercado Pago** - Webhooks verificados con firma
+- ✅ **Manual** - Pagos manuales con referencia libre
+- ✅ **Facturación** - Campos de facturación en el flujo de pago con pre-llenado desde el usuario
+- ✅ **Resultado público** - Página de resultado de pago sin autenticación
+
 ### Frontend React
-- ✅ **Home Page** - Hero section + banner promocional
-- ✅ **Maintenance Mode** - Modal con Web Awesome dialog
-- ✅ **SiteConfig Context** - Datos globales (logo, theme, etc)
+- ✅ **Home Page** - Hero section con video, poster, banner promocional y disclaimers
+- ✅ **Catálogo** - Filtros por proyecto, slug, comuna, tipo_producto; disponibilidad en tiempo real
+- ✅ **Mantenimiento** - Modal Web Awesome `<wa-dialog>` con prevención de cierre
+- ✅ **SEO** - Meta tags, Open Graph y description dinámicos desde `siteConfig`
+- ✅ **Cloudflare Turnstile** - Captcha en formulario de contacto
+- ✅ **GTM / FB Pixel** - Integración configurable con deduplicación de eventos
+- ✅ **Scripts** - Header/footer scripts inyectados desde SiteSettings
+- ✅ **Preview** - Acceso a catálogo con token temporal para previews pre-publicación
+- ✅ **SiteConfig Context** - Datos globales (logo, theme, config, etc)
 - ✅ **Responsive Design** - Mobile-first con Web Awesome
 - ✅ **Themes** - 11 temas Web Awesome preinstalados
 
 ### Gestión de Medios (Curator)
 - ✅ **Centralizado** - Single File Manager en `/admin/media`
-- ✅ **Integrado** - Logo, favicon, banner, maintenance images
+- ✅ **Integrado** - Logo claro/oscuro, favicon, banner, maintenance images
 - ✅ **Plantas con imágenes** - Campos de portada e interior integrados al mantenedor de plantas
 - ✅ **RichEditor** - Attachments vía AttachCuratorMediaPlugin
 - ✅ **Database** - Tabla `curator` para metadata de archivos
@@ -104,15 +123,20 @@ frontend/
 
 ## 🔄 Últimos Cambios Relevantes
 
-- Sincronización de proyectos alineada con el esquema local mediante soporte para `is_active` y `tipo`
-- Campo `tipo` persistido como arreglo JSON y expuesto en Filament como multiselect con valores `invest`, `broker`, `icon`
-- Corrección de filtros operativos en los listados de proyectos y plantas
-- Incorporación de imágenes de portada e interior para plantas usando Filament Curator
-- Activación de `databaseNotifications()` en Filament para notificaciones de exportaciones en cola
-- Exportaciones habilitadas para usuarios, pagos y plantas con tabla `exports` y traducciones locales para Filament
-- `payments` ahora relaciona explícitamente `project_id` y `plant_id` para operación administrativa y trazabilidad
-- La API de plantas ahora marca indisponibilidad tanto por `plant_reservations` como por pagos completados/autorizados asociados a `plant_id`
-- Aislamiento del entorno de testing con SQLite y validación de suite completa
+- **Canales de contacto** — Modelo `ContactChannel` con recurso Filament, sincronización desde Salesforce y badges de color
+- **Permisos Spatie** — Control de acceso granular con rol `marketing` y acceso restringido por perfil
+- **Actividad de usuarios** — Página personalizada `UserActivitiesPage` en Filament con vista de historial detallado
+- **Logo modo oscuro** — Campo `logo_dark_id` con selección dinámica según el modo activo del panel
+- **Short Links** — Gestión de URLs cortas con Filament Resource, etiquetas UTM y exportación
+- **Salesforce Leads** — El formulario de contacto crea Leads con reintentos automáticos y mapeo UTM completo
+- **SEO configurable** — Tab SEO en SiteSettings con meta tags y Open Graph aplicados en frontend
+- **Cloudflare Turnstile** — Captcha integrado en el formulario de contacto con validación server-side
+- **MercadoPago webhooks** — Verificación de firma y procesamiento idempotente
+- **Transbank Mall** — Soporte completo para múltiples códigos de comercio por proyecto via `TRANSBANK_STORE_CODES`
+- **Catálogo público** — API de catálogo sin autenticación con middleware de preview y token temporal
+- **Facturación** — Campos de facturación y página pública de resultado de pago
+- **GTM y Facebook Pixel** — Integración configurable desde SiteSettings con deduplicación de eventos
+- **FinMail** — Notificaciones de email transaccional integradas al flujo de negocio
 
 ## 🛠️ Comandos Útiles
 
