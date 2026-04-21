@@ -19,14 +19,6 @@ class ContactSubmissionExporter extends Exporter
         return [
             ExportColumn::make('id')
                 ->label('ID'),
-            ExportColumn::make('name')
-                ->label('Nombre'),
-            // ExportColumn::make('email')
-            //     ->label('Email'),
-            // ExportColumn::make('phone')
-            //     ->label('Telefono'),
-            // ExportColumn::make('rut')
-            //     ->label('RUT'),
             ...self::getDynamicColumns(),
             ExportColumn::make('salesforce_case_id')
                 ->label('Salesforce Lead ID'),

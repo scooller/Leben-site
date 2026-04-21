@@ -80,16 +80,6 @@ class ContactSubmissionsTable
                 ->label('#')
                 ->sortable(),
             ...$dynamicColumns,
-            // TextColumn::make('email')
-            //     ->label('Email')
-            //     ->placeholder('-')
-            //     ->searchable()
-            //     ->toggleable(isToggledHiddenByDefault: true),
-            // TextColumn::make('rut')
-            //     ->label('RUT')
-            //     ->placeholder('-')
-            //     ->searchable()
-            //     ->toggleable(isToggledHiddenByDefault: true),
             TextColumn::make('submitted_at')
                 ->label('Enviado')
                 ->dateTime()
