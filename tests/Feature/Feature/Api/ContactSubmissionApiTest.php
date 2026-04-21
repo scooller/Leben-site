@@ -106,6 +106,37 @@ class ContactSubmissionApiTest extends TestCase
             ->assertJsonValidationErrors(['fields.email']);
     }
 
+    public function test_it_infers_utm_site_from_referer_when_frontend_does_not_send_it(): void
+    {
+        SiteSetting::current()->update([
+            'contact_notification_email' => null,
+            'contact_email' => null,
+            'contact_form_fields' => [
+                ['key' => 'name', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
+                ['key' => 'email', 'label' => 'Email', 'type' => 'email', 'required' => true],
+            ],
+        ]);
+
+        $response = $this
+            ->withHeaders([
+                'Referer' => 'https://sale.ileben.cl/landing/campana',
+            ])
+            ->postJson('/api/v1/contact-submissions', [
+                'fields' => [
+                    'name' => 'Sin UTM Site',
+                    'email' => 'sin-utmsite@example.com',
+                    'utm_source' => 'instagram',
+                ],
+            ]);
+
+        $response->assertCreated();
+
+        $submission = ContactSubmission::query()->latest('id')->first();
+
+        $this->assertNotNull($submission);
+        $this->assertSame('sale.ileben.cl', $submission->fields['utm_site'] ?? null);
+    }
+
     public function test_it_validates_rut_and_select_dynamic_fields(): void
     {
         SiteSetting::current()->update([

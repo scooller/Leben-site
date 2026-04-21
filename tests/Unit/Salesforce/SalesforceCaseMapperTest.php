@@ -73,6 +73,7 @@ class SalesforceCaseMapperTest extends TestCase
                 'elaboral' => 'Dependiente con antigüedad',
                 'comuna_inversion' => 'Ñuñoa',
                 'utm_source' => 'direct',
+                'utm_site' => 'leben.cl',
                 'utm_medium' => 'organic',
                 'utm_campaign' => 'BlackFriday',
                 'utm_content' => 'AON_Mood_anuncio_5',
@@ -89,6 +90,7 @@ class SalesforceCaseMapperTest extends TestCase
         $this->assertSame('992285134', $payload['Phone'] ?? null);
         $this->assertSame('992285134', $payload['MobilePhone'] ?? null);
         $this->assertSame('alejandro@example.com', $payload['Email'] ?? null);
+        $this->assertSame('leben.cl', $payload['Website'] ?? null);
         $this->assertSame('alejandro@example.com', $payload['Email__c'] ?? null);
         $this->assertSame('11.455.798-6', $payload['RUT__c'] ?? null);
         $this->assertSame('Direct', $payload['LeadSource'] ?? null);
@@ -206,6 +208,7 @@ class SalesforceCaseMapperTest extends TestCase
 
         $payload = app(SalesforceCaseMapper::class)->mapLead($submission);
 
+        $this->assertSame('direct', $payload['Website'] ?? null);
         $this->assertSame('campaign', $payload['Nombre_de_la_Campa_a__c'] ?? null);
         $this->assertSame('campaign', $payload['utm_campaign__c'] ?? null);
     }

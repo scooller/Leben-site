@@ -36,6 +36,7 @@ class SalesforceCaseMapper
 
         $projectName = $this->fieldValue($fields, ['nombre_proyecto', 'proyecto', 'project_name', 'proyecto_formulario']);
         $utmSource = $this->fieldValue($fields, ['utm_source']);
+        $website = $this->resolveWebsiteSource($fields, $utmSource);
         $utmMedium = $this->fieldValue($fields, ['utm_medium']);
         $utmCampaignDefault = $this->normalizeFieldValue(data_get($settings->extra_settings, 'utm_campaign_default'));
         $utmCampaign = $this->resolveUtmCampaign($fields, $utmCampaignDefault);
@@ -72,6 +73,7 @@ class SalesforceCaseMapper
             'Phone' => $phone,
             'MobilePhone' => $phone,
             'Email' => $email,
+            'Website' => $website,
             'Email__c' => $email,
             'RUT__c' => $submission->rut ?: $this->fieldValue($fields, ['rut']),
             'Status' => (string) config('services.salesforce.lead_status', 'En Contacto'),
@@ -383,6 +385,24 @@ class SalesforceCaseMapper
         }
 
         return preg_replace('/\s+/', '', $normalized) ?: null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $fields
+     */
+    private function resolveWebsiteSource(array $fields, ?string $utmSource): ?string
+    {
+        return $this->fieldValue($fields, [
+            'utm_site',
+            'website',
+            'site',
+            'sitio_web',
+            'sitio',
+            'origen_sitio',
+            'source_site',
+            'origin_site',
+            'referrer',
+        ]) ?: $utmSource;
     }
 
     /**

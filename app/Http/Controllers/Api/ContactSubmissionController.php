@@ -18,6 +18,7 @@ class ContactSubmissionController extends Controller
     {
         $settings = SiteSetting::current();
         $fields = $request->validated('fields', []);
+        $fields = $this->enrichMarketingFields($request, $fields);
 
         $name = $this->fieldValue($fields, ['name', 'nombre']);
         $email = $this->fieldValue($fields, ['email', 'correo']);
@@ -65,6 +66,58 @@ class ContactSubmissionController extends Controller
             'message' => 'Tu mensaje fue enviado correctamente.',
             'id' => $submission->id,
         ], 201);
+    }
+
+    /**
+     * @param  array<string, mixed>  $fields
+     * @return array<string, mixed>
+     */
+    private function enrichMarketingFields(StoreContactSubmissionRequest $request, array $fields): array
+    {
+        $utmSite = trim((string) ($fields['utm_site'] ?? ''));
+
+        if ($utmSite !== '') {
+            return $fields;
+        }
+
+        $requestSourceSite = $this->resolveRequestSourceSite($request);
+
+        if ($requestSourceSite === null) {
+            return $fields;
+        }
+
+        $fields['utm_site'] = $requestSourceSite;
+
+        return $fields;
+    }
+
+    private function resolveRequestSourceSite(StoreContactSubmissionRequest $request): ?string
+    {
+        $candidates = [
+            (string) $request->headers->get('Origin', ''),
+            (string) $request->headers->get('Referer', ''),
+            (string) $request->headers->get('X-Source-Site', ''),
+        ];
+
+        foreach ($candidates as $candidate) {
+            $normalized = trim($candidate);
+
+            if ($normalized === '') {
+                continue;
+            }
+
+            $host = parse_url($normalized, PHP_URL_HOST);
+
+            if (is_string($host) && trim($host) !== '') {
+                return trim(strtolower($host));
+            }
+
+            return $normalized;
+        }
+
+        $host = trim((string) $request->getHost());
+
+        return $host !== '' ? strtolower($host) : null;
     }
 
     /**
