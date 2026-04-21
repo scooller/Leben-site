@@ -3,8 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\Asesor;
+use App\Models\ContactSubmission;
 use App\Models\Plant;
 use App\Models\Proyecto;
+use App\Models\ShortLink;
 use App\Models\SiteSetting;
 use App\Models\User;
 use App\Support\AsesorProyectoActivityLogger;
@@ -118,5 +120,56 @@ class ActivityLogModelChangesTest extends TestCase
         $this->assertNotNull($syncActivity);
         $this->assertSame([$asesor->getKey()], $syncActivity->properties['attached_asesor_ids']);
         $this->assertSame([$asesor->getKey() + 999], $syncActivity->properties['detached_asesor_ids']);
+    }
+
+    public function test_it_logs_short_link_creation_and_contact_submission_updates(): void
+    {
+        $admin = User::factory()->create(['user_type' => 'admin']);
+        $this->actingAs($admin);
+
+        Activity::query()->delete();
+
+        $shortLink = ShortLink::factory()->create([
+            'created_by' => $admin->getKey(),
+        ]);
+
+        $shortLinkCreatedActivity = Activity::query()
+            ->where('subject_type', ShortLink::class)
+            ->where('subject_id', $shortLink->getKey())
+            ->where('event', 'created')
+            ->first();
+
+        $this->assertNotNull($shortLinkCreatedActivity);
+        $this->assertSame($admin->getKey(), $shortLinkCreatedActivity->causer_id);
+
+        $contactSubmission = ContactSubmission::query()->create([
+            'name' => 'Contacto Inicial',
+            'email' => 'contacto@example.com',
+            'phone' => '+56900000000',
+            'rut' => '11.111.111-1',
+            'fields' => ['comuna' => 'Santiago'],
+            'recipient_email' => 'ventas@example.com',
+            'submitted_at' => now(),
+        ]);
+
+        Activity::query()
+            ->where('subject_type', ContactSubmission::class)
+            ->where('subject_id', $contactSubmission->getKey())
+            ->delete();
+
+        $contactSubmission->update([
+            'name' => 'Contacto Editado',
+        ]);
+
+        $contactUpdatedActivity = Activity::query()
+            ->where('subject_type', ContactSubmission::class)
+            ->where('subject_id', $contactSubmission->getKey())
+            ->where('event', 'updated')
+            ->first();
+
+        $this->assertNotNull($contactUpdatedActivity);
+        $this->assertSame($admin->getKey(), $contactUpdatedActivity->causer_id);
+        $this->assertSame('Contacto Inicial', $contactUpdatedActivity->properties['old']['name']);
+        $this->assertSame('Contacto Editado', $contactUpdatedActivity->properties['attributes']['name']);
     }
 }

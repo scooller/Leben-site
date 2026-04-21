@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Support\LogsModelActivity;
 use Illuminate\Database\Eloquent\Model;
 
 class ContactSubmission extends Model
 {
+    use LogsModelActivity;
+
     protected $fillable = [
         'name',
         'email',

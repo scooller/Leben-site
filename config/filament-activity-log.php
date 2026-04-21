@@ -233,11 +233,14 @@ return [
     'pages' => [
         'user_activities' => [
             'enabled' => true,
-            'class' => \AlizHarb\ActivityLog\Pages\UserActivitiesPage::class,
+            'class' => \App\Filament\Pages\UserActivitiesPage::class,
             'navigation_label' => null, // null uses translation key
             'navigation_group' => 'Sistema',
             'navigation_sort' => 100,
             'polling_interval' => null,
+            'new_users' => [
+                'limit' => 10,
+            ],
         ],
     ],
 
