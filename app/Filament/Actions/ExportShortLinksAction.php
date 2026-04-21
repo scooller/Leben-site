@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Response;
 
 class ExportShortLinksAction extends Action
 {
-    public static function make(string $name = 'exportShortLinks'): static
+    public static function make(?string $name = 'exportShortLinks'): static
     {
         return parent::make($name)
             ->label('Exportar CSV')
