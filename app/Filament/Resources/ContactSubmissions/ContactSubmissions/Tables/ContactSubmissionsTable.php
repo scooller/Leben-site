@@ -3,14 +3,17 @@
 namespace App\Filament\Resources\ContactSubmissions\ContactSubmissions\Tables;
 
 use App\Filament\Exports\ContactSubmissionExporter;
+use App\Models\ContactChannel;
 use App\Models\SiteSetting;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ExportAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Js;
 use Illuminate\Support\Str;
@@ -25,11 +28,26 @@ class ContactSubmissionsTable
             ->searchable()
             ->searchPlaceholder('Buscar por RUT o email...')
             ->filters([
-                //
+                SelectFilter::make('contact_channel_id')
+                    ->label('Canal')
+                    ->options(fn (): array => ContactChannel::query()
+                        ->where('is_active', true)
+                        ->orderBy('name')
+                        ->pluck('name', 'id')
+                        ->all()
+                    )
+                    ->placeholder('Todos los canales')
+                    ->searchable(),
             ])
             ->recordActions([
                 ViewAction::make(),
                 EditAction::make(),
+                DeleteAction::make()
+                    ->modalHeading('¿Eliminar contacto?')
+                    ->modalDescription('Esta acción es irreversible. Se eliminará permanentemente el envío del contacto y no podrá recuperarse.')
+                    ->modalSubmitActionLabel('Sí, eliminar')
+                    ->modalIcon('heroicon-o-exclamation-triangle')
+                    ->color('danger'),
             ])
             ->toolbarActions([
                 ExportAction::make()
@@ -37,7 +55,11 @@ class ContactSubmissionsTable
                     ->icon('heroicon-o-document-arrow-up')
                     ->exporter(ContactSubmissionExporter::class),
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()
+                        ->modalHeading('¿Eliminar contactos seleccionados?')
+                        ->modalDescription('Esta acción es irreversible. Se eliminarán permanentemente todos los envíos seleccionados y no podrán recuperarse.')
+                        ->modalSubmitActionLabel('Sí, eliminar todos')
+                        ->modalIcon('heroicon-o-exclamation-triangle'),
                 ]),
             ]);
     }
@@ -81,6 +103,13 @@ class ContactSubmissionsTable
             TextColumn::make('id')
                 ->label('#')
                 ->sortable(),
+            TextColumn::make('channel.name')
+                ->label('Canal')
+                ->placeholder('Sin canal')
+                ->badge()
+                ->color('info')
+                ->sortable()
+                ->toggleable(),
             TextColumn::make('rut')
                 ->label('RUT')
                 ->placeholder('-')

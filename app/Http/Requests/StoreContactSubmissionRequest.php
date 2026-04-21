@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\ContactChannel;
 use App\Models\SiteSetting;
 use App\Services\TurnstileVerificationService;
 use Closure;
@@ -17,6 +18,8 @@ class StoreContactSubmissionRequest extends FormRequest
      * @var array<int, string>|null
      */
     private ?array $selectedProjects = null;
+
+    private ?ContactChannel $cachedChannel = null;
 
     /**
      * Determine if the user is authorized to make this request.
@@ -35,6 +38,7 @@ class StoreContactSubmissionRequest extends FormRequest
     {
         $rules = [
             'fields' => ['required', 'array'],
+            'channel' => ['nullable', 'string', 'max:100'],
             'turnstile_token' => $this->turnstileValidationRules(),
         ];
 
@@ -262,8 +266,11 @@ class StoreContactSubmissionRequest extends FormRequest
      */
     private function configuredFields(): array
     {
-        $settings = SiteSetting::current();
-        $fields = $settings->contact_form_fields;
+        $channel = $this->resolvedChannel();
+
+        $fields = $channel !== null
+            ? $channel->effectiveFormFields()
+            : SiteSetting::current()->contact_form_fields;
 
         if (! is_array($fields) || $fields === []) {
             return [
@@ -274,6 +281,61 @@ class StoreContactSubmissionRequest extends FormRequest
         }
 
         return $fields;
+    }
+
+    /**
+     * Resolves the contact channel from the request.
+     * Resolution order (backward-compatible — all steps optional):
+     *   1. Explicit `channel` field in the request body.
+     *   2. `X-Contact-Channel` request header.
+     *   3. Domain matching via utm_site / Origin / Referer.
+     *   4. The configured default channel.
+     */
+    public function resolvedChannel(): ?ContactChannel
+    {
+        if ($this->cachedChannel !== null) {
+            return $this->cachedChannel;
+        }
+
+        // 1. Explicit channel slug in request body.
+        $slug = trim((string) $this->input('channel', ''));
+
+        if ($slug !== '') {
+            $channel = ContactChannel::findBySlug($slug);
+
+            if ($channel !== null) {
+                return $this->cachedChannel = $channel;
+            }
+        }
+
+        // 2. X-Contact-Channel header.
+        $headerSlug = trim((string) $this->headers->get('X-Contact-Channel', ''));
+
+        if ($headerSlug !== '') {
+            $channel = ContactChannel::findBySlug($headerSlug);
+
+            if ($channel !== null) {
+                return $this->cachedChannel = $channel;
+            }
+        }
+
+        // 3. Domain pattern matching from utm_site / Origin / Referer.
+        $domainCandidates = array_filter([
+            trim((string) ($this->input('fields.utm_site', '') ?? '')),
+            parse_url((string) $this->headers->get('Origin', ''), PHP_URL_HOST) ?? '',
+            parse_url((string) $this->headers->get('Referer', ''), PHP_URL_HOST) ?? '',
+        ], fn (string $v): bool => $v !== '');
+
+        foreach ($domainCandidates as $domain) {
+            $channel = ContactChannel::findByDomain($domain);
+
+            if ($channel !== null) {
+                return $this->cachedChannel = $channel;
+            }
+        }
+
+        // 4. Default channel fallback.
+        return $this->cachedChannel = ContactChannel::getDefault();
     }
 
     /**

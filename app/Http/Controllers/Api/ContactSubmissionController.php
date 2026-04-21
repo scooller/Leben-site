@@ -16,7 +16,7 @@ class ContactSubmissionController extends Controller
 {
     public function store(StoreContactSubmissionRequest $request): JsonResponse
     {
-        $settings = SiteSetting::current();
+        $channel = $request->resolvedChannel();
         $fields = $request->validated('fields', []);
         $fields = $this->enrichMarketingFields($request, $fields);
 
@@ -25,9 +25,12 @@ class ContactSubmissionController extends Controller
         $phone = $this->fieldValue($fields, ['phone', 'telefono', 'fono', 'celular', 'whatsapp']);
         $rut = $this->fieldValue($fields, ['rut']);
 
-        $recipientEmail = $settings->contact_notification_email ?: $settings->contact_email;
+        $recipientEmail = $channel !== null
+            ? $channel->effectiveNotificationEmail()
+            : (SiteSetting::current()->contact_notification_email ?: SiteSetting::current()->contact_email);
 
         $submission = ContactSubmission::query()->create([
+            'contact_channel_id' => $channel?->id,
             'name' => $name,
             'email' => $email,
             'phone' => $phone,

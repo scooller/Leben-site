@@ -19,6 +19,9 @@ class ContactSubmissionExporter extends Exporter
         return [
             ExportColumn::make('id')
                 ->label('ID'),
+            ExportColumn::make('channel.name')
+                ->label('Canal')
+                ->state(fn (ContactSubmission $record): string => $record->channel?->name ?? '-'),
             ExportColumn::make('rut')
                 ->label('RUT'),
             ...self::getDynamicColumns(),

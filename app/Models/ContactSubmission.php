@@ -4,12 +4,14 @@ namespace App\Models;
 
 use App\Support\LogsModelActivity;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ContactSubmission extends Model
 {
     use LogsModelActivity;
 
     protected $fillable = [
+        'contact_channel_id',
         'name',
         'email',
         'phone',
@@ -27,6 +29,11 @@ class ContactSubmission extends Model
         'fields' => 'array',
         'submitted_at' => 'datetime',
     ];
+
+    public function channel(): BelongsTo
+    {
+        return $this->belongsTo(ContactChannel::class, 'contact_channel_id');
+    }
 
     public function salesforceLeadUrl(): ?string
     {
