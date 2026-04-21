@@ -8,6 +8,7 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\ExportAction;
 use Filament\Actions\ViewAction;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\Js;
@@ -20,6 +21,8 @@ class ContactSubmissionsTable
         return $table
             ->columns(self::columns())
             ->defaultSort('submitted_at', 'desc')
+            ->searchable()
+            ->searchPlaceholder('Buscar por RUT o email...')
             ->filters([
                 //
             ])
@@ -76,10 +79,32 @@ class ContactSubmissionsTable
                 ->label('#')
                 ->sortable(),
             ...$dynamicColumns,
+            TextColumn::make('email')
+                ->label('Email')
+                ->placeholder('-')
+                ->searchable()
+                ->toggleable(isToggledHiddenByDefault: true),
+            TextColumn::make('rut')
+                ->label('RUT')
+                ->placeholder('-')
+                ->searchable()
+                ->toggleable(isToggledHiddenByDefault: true),
             TextColumn::make('submitted_at')
                 ->label('Enviado')
                 ->dateTime()
                 ->sortable(),
+            IconColumn::make('salesforce_synced')
+                ->label('Salesforce')
+                ->state(fn ($record): bool => filled($record->salesforce_case_id))
+                ->boolean()
+                ->trueIcon('heroicon-o-check-circle')
+                ->falseIcon('heroicon-o-x-circle')
+                ->trueColor('success')
+                ->falseColor('danger')
+                ->tooltip(fn ($record): string => filled($record->salesforce_case_id)
+                    ? 'Lead ID: '.$record->salesforce_case_id
+                    : (filled($record->salesforce_case_error) ? 'Error: '.$record->salesforce_case_error : 'No sincronizado'))
+                ->toggleable(),
         ];
     }
 

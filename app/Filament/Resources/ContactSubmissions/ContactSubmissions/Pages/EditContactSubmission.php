@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ContactSubmissions\ContactSubmissions\Pages;
 
+use App\Filament\Actions\ResyncSalesforceLeadAction;
 use App\Filament\Resources\ContactSubmissions\ContactSubmissions\ContactSubmissionResource;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
@@ -16,6 +17,7 @@ class EditContactSubmission extends EditRecord
         return [
             ViewAction::make(),
             DeleteAction::make(),
+            ResyncSalesforceLeadAction::make(),
         ];
     }
 }

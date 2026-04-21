@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ContactSubmissions\ContactSubmissions\Schemas;
 
 use App\Models\SiteSetting;
+use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\KeyValueEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
@@ -43,6 +44,31 @@ class ContactSubmissionInfolist
                             ->state(fn ($record): array => self::formatDynamicFields($record->fields))
                             ->placeholder('Sin datos enviados')
                             ->columnSpanFull(),
+                    ]),
+
+                Section::make('Salesforce')
+                    ->columns(2)
+                    ->components([
+                        TextEntry::make('salesforce_case_id')
+                            ->label('ID Lead Salesforce')
+                            ->placeholder('No sincronizado')
+                            ->copyable()
+                            ->copyMessage('ID copiado'),
+                        IconEntry::make('salesforce_synced')
+                            ->label('Estado sincronización')
+                            ->state(fn ($record): bool => filled($record->salesforce_case_id))
+                            ->boolean()
+                            ->trueIcon('heroicon-o-check-circle')
+                            ->falseIcon('heroicon-o-x-circle')
+                            ->trueColor('success')
+                            ->falseColor('danger'),
+                        TextEntry::make('salesforce_case_error')
+                            ->label('Error de sincronización')
+                            ->placeholder('Sin errores')
+                            ->color('danger')
+                            ->visible(fn ($record): bool => filled($record->salesforce_case_error))
+                            ->columnSpanFull()
+                            ->wrap(),
                     ]),
             ]);
     }

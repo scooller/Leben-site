@@ -2,8 +2,10 @@
 
 namespace App\Filament\Resources\ContactSubmissions\ContactSubmissions;
 
+use App\Filament\Resources\ContactSubmissions\ContactSubmissions\Pages\EditContactSubmission;
 use App\Filament\Resources\ContactSubmissions\ContactSubmissions\Pages\ListContactSubmissions;
 use App\Filament\Resources\ContactSubmissions\ContactSubmissions\Pages\ViewContactSubmission;
+use App\Filament\Resources\ContactSubmissions\ContactSubmissions\Schemas\ContactSubmissionForm;
 use App\Filament\Resources\ContactSubmissions\ContactSubmissions\Schemas\ContactSubmissionInfolist;
 use App\Filament\Resources\ContactSubmissions\ContactSubmissions\Tables\ContactSubmissionsTable;
 use App\Models\ContactSubmission;
@@ -30,6 +32,11 @@ class ContactSubmissionResource extends Resource
 
     protected static ?int $navigationSort = 3;
 
+    public static function form(Schema $schema): Schema
+    {
+        return ContactSubmissionForm::configure($schema);
+    }
+
     public static function infolist(Schema $schema): Schema
     {
         return ContactSubmissionInfolist::configure($schema);
@@ -54,7 +61,7 @@ class ContactSubmissionResource extends Resource
 
     public static function canEdit($record): bool
     {
-        return false;
+        return filled($record->salesforce_case_error) || ! filled($record->salesforce_case_id);
     }
 
     public static function getNavigationBadge(): ?string
@@ -66,6 +73,7 @@ class ContactSubmissionResource extends Resource
     {
         return [
             'index' => ListContactSubmissions::route('/'),
+            'edit' => EditContactSubmission::route('/{record}/edit'),
             'view' => ViewContactSubmission::route('/{record}'),
         ];
     }
