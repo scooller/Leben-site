@@ -37,13 +37,12 @@ class EnsureMarketingPanelAccess
         }
 
         abort(403);
-
     }
 
     private function isAllowedForMarketing(string $routeName): bool
     {
         if ($routeName === '') {
-            return request()->is('livewire/*');
+            return $this->isLivewireFromAllowedPage();
         }
 
         if ($routeName === 'filament.admin.pages.dashboard') {
@@ -70,6 +69,31 @@ class EnsureMarketingPanelAccess
         }
 
         return false;
+    }
+
+    private function isLivewireFromAllowedPage(): bool
+    {
+        if (! request()->is('livewire/*')) {
+            return false;
+        }
+
+        $referer = request()->headers->get('referer', '');
+        $path = parse_url($referer, PHP_URL_PATH) ?? '';
+
+        $blockedPathPrefixes = [
+            '/admin/sent-emails',
+            '/admin/templates',
+            '/admin/users',
+            '/admin/api-tokens',
+        ];
+
+        foreach ($blockedPathPrefixes as $blocked) {
+            if (str_starts_with($path, $blocked)) {
+                return false;
+            }
+        }
+
+        return str_starts_with($path, '/admin');
     }
 
     /**

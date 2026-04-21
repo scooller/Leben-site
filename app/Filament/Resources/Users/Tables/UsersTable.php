@@ -80,7 +80,6 @@ class UsersTable
                     ->label('Tipo de Usuario')
                     ->options([
                         'customer' => 'Cliente',
-                        'cliente' => 'Cliente',
                         'marketing' => 'Marketing',
                         'admin' => 'Administrador',
                     ]),

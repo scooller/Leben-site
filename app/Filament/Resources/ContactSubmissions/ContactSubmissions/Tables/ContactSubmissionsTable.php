@@ -81,6 +81,11 @@ class ContactSubmissionsTable
             TextColumn::make('id')
                 ->label('#')
                 ->sortable(),
+            TextColumn::make('rut')
+                ->label('RUT')
+                ->placeholder('-')
+                ->searchable()
+                ->toggleable(isToggledHiddenByDefault: true),
             ...$dynamicColumns,
             TextColumn::make('submitted_at')
                 ->label('Enviado')
