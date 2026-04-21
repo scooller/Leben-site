@@ -3,7 +3,9 @@
 namespace App\Filament\Resources\ShortLinks\Schemas;
 
 use App\Enums\ShortLinkStatus;
+use App\Models\SiteSetting;
 use Filament\Forms\Components\DateTimePicker;
+use Illuminate\Support\Str;
 use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -26,10 +28,11 @@ class ShortLinkForm
                         TextInput::make('slug')
                             ->label('Slug')
                             ->required()
-                            ->minLength(4)
+                            ->minLength(2)
                             ->maxLength(32)
                             ->alphaDash()
                             ->unique(ignoreRecord: true)
+                            ->default(fn (): string => Str::lower(Str::random(2)))
                             ->helperText('Se usa en la URL corta /s/{slug}.'),
                         Select::make('status')
                             ->label('Estado')
@@ -48,6 +51,7 @@ class ShortLinkForm
                             ->placeholder('GTM-XXXXXXX')
                             ->maxLength(50)
                             ->regex('/^GTM-[A-Z0-9]+$/')
+                            ->default(fn (): ?string => SiteSetting::get('tag_manager_id') ?: null)
                             ->helperText('Si se deja vacio, usa el tag_manager_id global de Site Settings.'),
                         DateTimePicker::make('expires_at')
                             ->label('Expira en')
