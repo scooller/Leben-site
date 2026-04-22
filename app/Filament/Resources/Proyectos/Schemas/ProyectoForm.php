@@ -31,6 +31,20 @@ class ProyectoForm
                             ->disabled()
                             ->required(),
 
+                        TextInput::make('salesforce_id')
+                            ->label('Salesforce Product ID')
+                            ->disabled()
+                            ->suffixAction(
+                                Action::make('openSalesforceProject')
+                                    ->label('Ver en Salesforce')
+                                    ->icon('heroicon-m-arrow-top-right-on-square')
+                                    ->url(fn (?Proyecto $record): ?string => filled($record?->salesforce_id)
+                                        ? "https://leben.lightning.force.com/lightning/r/Proyecto__c/{$record->salesforce_id}/view"
+                                        : null)
+                                    ->openUrlInNewTab()
+                                    ->visible(fn (?Proyecto $record): bool => filled($record?->salesforce_id))
+                            ),
+
                         Textarea::make('descripcion')
                             ->label('Descripción')
                             ->disabled()

@@ -171,6 +171,16 @@ class PlantsTable
                         'is_active' => ! $record->is_active,
                     ]))
                     ->successNotificationTitle('Estado actualizado'),
+                Action::make('viewInSalesforce')
+                    ->label('Ver en Salesforce')
+                    ->icon('heroicon-o-arrow-top-right-on-square')
+                    ->url(
+                        fn (Plant $record): ?string => filled($record->salesforce_product_id)
+                            ? "https://leben.lightning.force.com/lightning/r/Product2/{$record->salesforce_product_id}/view"
+                            : null,
+                        shouldOpenInNewTab: true
+                    )
+                    ->visible(fn (Plant $record): bool => filled($record->salesforce_product_id)),
                 EditAction::make(),
             ])
             ->toolbarActions([

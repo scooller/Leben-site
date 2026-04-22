@@ -20,7 +20,15 @@ class PlantForm
                 TextInput::make('salesforce_product_id')
                     ->label('Salesforce Product ID')
                     ->required()
-                    ->disabled(),
+                    ->disabled()
+                    ->suffixAction(
+                        Action::make('openSalesforcePlant')
+                            ->label('Ver en Salesforce')
+                            ->icon('heroicon-o-arrow-top-right-on-square')
+                            ->url(fn (?string $state): ?string => filled($state)
+                                ? "https://leben.lightning.force.com/lightning/r/Product2/{$state}/view"
+                                : null, shouldOpenInNewTab: true)
+                    ),
                 TextInput::make('name')
                     ->label('Nombre')
                     // ->disabled()

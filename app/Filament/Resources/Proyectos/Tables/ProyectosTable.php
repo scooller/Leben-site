@@ -37,6 +37,16 @@ class ProyectosTable
                         'is_active' => ! $record->is_active,
                     ]))
                     ->successNotificationTitle('Estado actualizado'),
+                Action::make('viewInSalesforce')
+                    ->label('Ver en Salesforce')
+                    ->icon('heroicon-o-arrow-top-right-on-square')
+                    ->url(
+                        fn (Proyecto $record): ?string => filled($record->salesforce_id)
+                            ? "https://leben.lightning.force.com/lightning/r/Proyecto__c/{$record->salesforce_id}/view"
+                            : null,
+                        shouldOpenInNewTab: true
+                    )
+                    ->visible(fn (Proyecto $record): bool => filled($record->salesforce_id)),
                 EditAction::make(),
             ])
             ->toolbarActions([
