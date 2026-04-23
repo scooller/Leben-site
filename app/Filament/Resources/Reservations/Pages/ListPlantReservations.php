@@ -14,6 +14,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 
@@ -101,7 +102,7 @@ class ListPlantReservations extends ListRecords
                         'user_id' => ! empty($data['user_id']) ? (int) $data['user_id'] : null,
                         'session_token' => Str::uuid()->toString(),
                         'status' => ReservationStatus::ACTIVE,
-                        'expires_at' => now()->addYears(30),
+                        'expires_at' => self::manualLockExpiresAt(),
                         'metadata' => $metadata,
                     ]);
 
@@ -112,5 +113,14 @@ class ListPlantReservations extends ListRecords
                         ->send();
                 }),
         ];
+    }
+
+    private static function manualLockExpiresAt(): Carbon
+    {
+        // plant_reservations.expires_at is TIMESTAMP in MySQL; values beyond 2038 fail.
+        $candidate = now()->addYears(30);
+        $timestampSafeMax = Carbon::create(2037, 12, 31, 23, 59, 59);
+
+        return $candidate->greaterThan($timestampSafeMax) ? $timestampSafeMax : $candidate;
     }
 }
