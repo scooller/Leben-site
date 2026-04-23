@@ -144,6 +144,10 @@ class PlantReservation extends Model
      */
     public function release(string $releasedBy = 'user', ?string $reason = null): bool
     {
+        if ($this->isManualLock()) {
+            return false;
+        }
+
         $metadata = $this->metadata ?? [];
         if ($reason) {
             $metadata['release_reason'] = $reason;
@@ -155,5 +159,12 @@ class PlantReservation extends Model
             'released_by' => $releasedBy,
             'metadata' => $metadata,
         ]);
+    }
+
+    public function isManualLock(): bool
+    {
+        $value = data_get($this->metadata, 'manual_lock', false);
+
+        return \filter_var($value, \FILTER_VALIDATE_BOOLEAN);
     }
 }

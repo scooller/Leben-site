@@ -51,6 +51,12 @@ class PlantReservationsTable
                         return $status?->label() ?? '-';
                     })
                     ->searchable(),
+                TextColumn::make('lock_type')
+                    ->label('Bloqueo')
+                    ->state(fn ($record): string => $record->isManualLock() ? 'Manual' : 'Temporal')
+                    ->badge()
+                    ->color(fn (string $state): string => $state === 'Manual' ? 'danger' : 'gray')
+                    ->icon(fn (string $state): string => $state === 'Manual' ? 'heroicon-o-lock-closed' : 'heroicon-o-clock'),
                 TextColumn::make('expires_at')
                     ->label('Expira')
                     ->dateTime()
@@ -80,7 +86,7 @@ class PlantReservationsTable
                     ->requiresConfirmation()
                     ->modalHeading('Liberar Reserva')
                     ->modalDescription('Esta accion liberara la reserva y permitira que otros usuarios puedan reservar esta planta.')
-                    ->visible(fn ($record) => $record->status === ReservationStatus::ACTIVE)
+                    ->visible(fn ($record) => $record->status === ReservationStatus::ACTIVE && ! $record->isManualLock())
                     ->action(function ($record): void {
                         app(PlantReservationService::class)->releaseById($record->id, 'admin', 'Released from admin panel');
                     }),
@@ -102,17 +108,26 @@ class PlantReservationsTable
                         $service = app(PlantReservationService::class);
 
                         $releasedCount = $records
-                            ->filter(fn ($record) => $record->status === ReservationStatus::ACTIVE)
+                            ->filter(fn ($record) => $record->status === ReservationStatus::ACTIVE && ! $record->isManualLock())
                             ->reduce(function (int $carry, $record) use ($service): int {
                                 return $service->releaseById($record->id, 'admin', 'Bulk release from admin panel')
                                     ? $carry + 1
                                     : $carry;
                             }, 0);
 
+                        $manualLockedSkipped = $records
+                            ->filter(fn ($record) => $record->status === ReservationStatus::ACTIVE && $record->isManualLock())
+                            ->count();
+
+                        $body = "Se liberaron {$releasedCount} reservas activas.";
+                        if ($manualLockedSkipped > 0) {
+                            $body .= " {$manualLockedSkipped} reservas bloqueadas manualmente no se pueden liberar.";
+                        }
+
                         Notification::make()
                             ->success()
                             ->title('Reservas liberadas')
-                            ->body("Se liberaron {$releasedCount} reservas activas.")
+                            ->body($body)
                             ->send();
                     }),
                 DeleteBulkAction::make()

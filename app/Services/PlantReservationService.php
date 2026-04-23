@@ -9,9 +9,12 @@ use App\Models\Plant;
 use App\Models\PlantReservation;
 use App\Models\SiteSetting;
 use App\Support\BusinessActivityLogger;
+use DateTimeInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
+use RuntimeException;
 
 class PlantReservationService
 {
@@ -23,8 +26,8 @@ class PlantReservationService
      *
      * @param  array<string, mixed>  $metadata
      *
-     * @throws \InvalidArgumentException If plant does not exist or is not active
-     * @throws \RuntimeException If plant is already reserved by another user
+     * @throws InvalidArgumentException If plant does not exist or is not active
+     * @throws RuntimeException If plant is already reserved by another user
      */
     public function reserve(int $plantId, int $userId, array $metadata = []): PlantReservation
     {
@@ -32,7 +35,7 @@ class PlantReservationService
             $plant = Plant::lockForUpdate()->find($plantId);
 
             if (! $plant || ! $plant->is_active) {
-                throw new \InvalidArgumentException('La planta no existe o no esta disponible.');
+                throw new InvalidArgumentException('La planta no existe o no esta disponible.');
             }
 
             // Check for existing active reservation on this plant
@@ -59,7 +62,7 @@ class PlantReservationService
                     return $existing->fresh();
                 }
 
-                throw new \RuntimeException('Esta planta ya esta reservada por otro usuario.');
+                throw new RuntimeException('Esta planta ya esta reservada por otro usuario.');
             }
 
             // Expire any stale active reservations for this plant
@@ -106,7 +109,19 @@ class PlantReservationService
             return false;
         }
 
-        $reservation->release($releasedBy, $reason);
+        if ($reservation->isManualLock()) {
+            Log::warning('PlantReservation: Release by token blocked for manual lock', [
+                'reservation_id' => $reservation->id,
+                'plant_id' => $reservation->plant_id,
+                'released_by' => $releasedBy,
+            ]);
+
+            return false;
+        }
+
+        if (! $reservation->release($releasedBy, $reason)) {
+            return false;
+        }
 
         BusinessActivityLogger::logReservationReleased($reservation->fresh(), $releasedBy, $reason, 'release_by_token');
 
@@ -133,7 +148,19 @@ class PlantReservationService
             return false;
         }
 
-        $reservation->release($releasedBy, $reason);
+        if ($reservation->isManualLock()) {
+            Log::warning('PlantReservation: Release by ID blocked for manual lock', [
+                'reservation_id' => $reservation->id,
+                'plant_id' => $reservation->plant_id,
+                'released_by' => $releasedBy,
+            ]);
+
+            return false;
+        }
+
+        if (! $reservation->release($releasedBy, $reason)) {
+            return false;
+        }
 
         BusinessActivityLogger::logReservationReleased($reservation->fresh(), $releasedBy, $reason, 'release_by_id');
 
@@ -191,7 +218,19 @@ class PlantReservationService
             return false;
         }
 
-        $reservation->release('system', $reason);
+        if ($reservation->isManualLock()) {
+            Log::warning('PlantReservation: Release for plant blocked for manual lock', [
+                'reservation_id' => $reservation->id,
+                'plant_id' => $plantId,
+                'reason' => $reason,
+            ]);
+
+            return false;
+        }
+
+        if (! $reservation->release('system', $reason)) {
+            return false;
+        }
 
         BusinessActivityLogger::logReservationReleased($reservation->fresh(), 'system', $reason, 'release_for_plant');
 
@@ -218,7 +257,7 @@ class PlantReservationService
     /**
      * Validate that a given session token owns the active reservation for a plant.
      *
-     * @throws \RuntimeException If no valid reservation exists
+     * @throws RuntimeException If no valid reservation exists
      */
     public function validateReservationForCheckout(int $plantId, string $sessionToken): PlantReservation
     {
@@ -229,7 +268,7 @@ class PlantReservationService
             ->first();
 
         if (! $reservation) {
-            throw new \RuntimeException('No tienes una reserva activa para esta planta. Por favor, intenta de nuevo.');
+            throw new RuntimeException('No tienes una reserva activa para esta planta. Por favor, intenta de nuevo.');
         }
 
         return $reservation;
@@ -240,7 +279,7 @@ class PlantReservationService
      *
      * @param  array<string, mixed>  $metadata
      */
-    public function extendForManualPayment(PlantReservation $reservation, \DateTimeInterface $expiresAt, array $metadata = []): PlantReservation
+    public function extendForManualPayment(PlantReservation $reservation, DateTimeInterface $expiresAt, array $metadata = []): PlantReservation
     {
         $reservationMetadata = array_merge($reservation->metadata ?? [], $metadata);
 
@@ -268,6 +307,11 @@ class PlantReservationService
     {
         $count = PlantReservation::where('status', ReservationStatus::ACTIVE)
             ->where('expires_at', '<', now())
+            ->where(function ($query): void {
+                $query
+                    ->whereNull('metadata->manual_lock')
+                    ->orWhere('metadata->manual_lock', false);
+            })
             ->update([
                 'status' => ReservationStatus::EXPIRED,
                 'released_at' => now(),
