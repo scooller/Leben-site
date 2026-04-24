@@ -134,6 +134,14 @@ class ManualPaymentService implements PaymentGatewayInterface
      */
     protected function getExpirationDate(): ?string
     {
+        $minutes = $this->config['auto_expire_minutes'] ?? null;
+
+        if (is_numeric($minutes)) {
+            $safeMinutes = max(1, min(10080, (int) $minutes));
+
+            return now()->addMinutes($safeMinutes)->toISOString();
+        }
+
         $hours = $this->config['auto_expire_hours'] ?? null;
 
         if (! $hours) {

@@ -432,6 +432,9 @@ class CheckoutController extends Controller
         $baseConfig = [
             'name' => $defaultConfig['name'] ?? 'Pago Manual',
             'requires_proof' => (bool) ($defaultConfig['requires_proof'] ?? true),
+            'auto_expire_minutes' => is_numeric($defaultConfig['auto_expire_minutes'] ?? null)
+                ? max(1, min(10080, (int) $defaultConfig['auto_expire_minutes']))
+                : null,
             'auto_expire_hours' => $defaultConfig['auto_expire_hours'] ?? null,
             'instructions' => null,
             'bank_accounts' => [],

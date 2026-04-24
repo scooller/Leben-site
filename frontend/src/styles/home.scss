@@ -155,7 +155,7 @@ html.wa-light #root{
     cursor: pointer;
 
     .plant-price-wrapper {
-      width: 100%;
+      width: 40%;
       .prices-list {
         .price-text {
           font-size: var(--wa-font-size-s);
@@ -577,7 +577,7 @@ html.wa-light #root{
 
   .plant-detail-media {
     min-height: 400px;
-    max-height: 460px;
+    // max-height: 460px;
   }
 
   .plant-detail-content wa-scroller {
@@ -622,6 +622,7 @@ html.wa-light #root{
     // Tarjetas de plantas
     wa-card.plant-card {
         .plant-price-wrapper {
+            width: 100%;
             .prices-list {
                 .price-text {
                     font-size: var(--wa-font-size-xs);

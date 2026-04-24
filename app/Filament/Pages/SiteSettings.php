@@ -832,6 +832,15 @@ class SiteSettings extends Page implements HasForms
                                             ->helperText('Transferencia bancaria, efectivo u otro método offline')
                                             ->default(true),
 
+                                        TextInput::make('gateway_manual_config.auto_expire_minutes')
+                                            ->label('Tiempo de reserva en Pago Manual (minutos)')
+                                            ->helperText('Cuánto tiempo se mantiene la reserva cuando se inicia un pago manual. Si está vacío se usa la configuración por defecto del gateway manual.')
+                                            ->numeric()
+                                            ->minValue(1)
+                                            ->maxValue(10080)
+                                            ->step(1)
+                                            ->nullable(),
+
                                         TextInput::make('gateway_reservation_timeout_minutes')
                                             ->label('Tiempo de espera de reserva (minutos)')
                                             ->helperText('Tiempo máximo que una planta queda reservada antes de liberarse automáticamente.')

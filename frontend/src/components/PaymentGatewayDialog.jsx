@@ -49,6 +49,9 @@ function PaymentGatewayDialog({
   const [turnstileToken, setTurnstileToken] = useState('');
   const [turnstileError, setTurnstileError] = useState(null);
 
+  const manualProofMaxBytes = 5 * 1024 * 1024;
+  const manualProofAllowedExtensions = ['jpg', 'jpeg', 'png', 'pdf', 'heic', 'heif'];
+
   const turnstileSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
   const isTurnstileEnabled = Boolean(turnstileSiteKey);
 
@@ -599,13 +602,40 @@ function PaymentGatewayDialog({
                 <strong>Enviar comprobante</strong>
                 <input
                   type="file"
-                  accept=".jpg,.jpeg,.png,.pdf"
+                  accept=".jpg,.jpeg,.png,.pdf,.heic,.heif"
                   onChange={(event) => {
-                    setManualProofFile(event.target.files?.[0] || null);
+                    const selectedFile = event.target.files?.[0] || null;
+
+                    if (!selectedFile) {
+                      setManualProofFile(null);
+                      setManualProofError(null);
+
+                      return;
+                    }
+
+                    const extension = selectedFile.name.split('.').pop()?.toLowerCase() || '';
+
+                    if (!manualProofAllowedExtensions.includes(extension)) {
+                      setManualProofFile(null);
+                      setManualProofError('Formato no permitido. Usa JPG, PNG, HEIC, HEIF o PDF.');
+                      event.target.value = '';
+
+                      return;
+                    }
+
+                    if (selectedFile.size > manualProofMaxBytes) {
+                      setManualProofFile(null);
+                      setManualProofError('El archivo supera el máximo permitido de 5 MB.');
+                      event.target.value = '';
+
+                      return;
+                    }
+
+                    setManualProofFile(selectedFile);
                     setManualProofError(null);
                   }}
                 />
-                <small className="wa-caption-s">Formatos permitidos: JPG, PNG o PDF. Maximo 5 MB.</small>
+                <small className="wa-caption-s">Formatos permitidos: JPG, PNG, HEIC, HEIF o PDF. Máximo 5 MB.</small>
               </div>
             )}
 

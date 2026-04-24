@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Notifications\DatabaseNotification;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Mockery;
@@ -312,6 +313,56 @@ class ManualCheckoutFlowTest extends TestCase
             'Comprobante de pago recibido',
             (string) data_get($notification->data, 'title')
         );
+    }
+
+    public function test_it_applies_manual_payment_timeout_configured_in_minutes(): void
+    {
+        $project = Proyecto::factory()->create([
+            'manual_payment_instructions' => 'Deposita y comparte tu comprobante.',
+        ]);
+
+        $plant = Plant::factory()->create([
+            'salesforce_proyecto_id' => $project->salesforce_id,
+            'is_active' => true,
+        ]);
+
+        SiteSetting::current()->update([
+            'gateway_manual_enabled' => true,
+            'gateway_manual_config' => [
+                'instructions' => 'Transfiere y envia tu comprobante.',
+                'auto_expire_minutes' => 30,
+                'auto_expire_hours' => 48,
+            ],
+        ]);
+
+        $reservation = app(PlantReservationService::class)->reserve($plant->id, $this->user->id);
+
+        $response = $this->postJson('/api/v1/checkout', [
+            'plant_id' => $plant->id,
+            'quantity' => 1,
+            'gateway' => 'manual',
+            'name' => 'Usuario Demo',
+            'email' => 'usuario@example.com',
+            'phone' => '912345678',
+            'rut' => '12345678-5',
+            'session_token' => $reservation->session_token,
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('flow', 'manual')
+            ->assertJsonPath('gateway', 'manual');
+
+        $expiresAt = Carbon::parse((string) $response->json('expires_at'));
+        $minutesUntilExpiration = now()->diffInMinutes($expiresAt, false);
+
+        $this->assertGreaterThanOrEqual(29, $minutesUntilExpiration);
+        $this->assertLessThanOrEqual(31, $minutesUntilExpiration);
+
+        $reservation->refresh();
+
+        $reservationMinutesUntilExpiration = now()->diffInMinutes($reservation->expires_at, false);
+        $this->assertGreaterThanOrEqual(29, $reservationMinutesUntilExpiration);
+        $this->assertLessThanOrEqual(31, $reservationMinutesUntilExpiration);
     }
 
     public function test_it_does_not_persist_manual_payment_proof_when_post_upload_processing_fails(): void

@@ -257,11 +257,7 @@ class CheckoutService {
         formData.append('notes', notes);
       }
 
-      const response = await api.post(`/payments/${paymentId}/manual-proof`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const response = await api.post(`/payments/${paymentId}/manual-proof`, formData);
 
       return response.data;
     } catch (error) {
@@ -272,13 +268,39 @@ class CheckoutService {
 
       logError('CheckoutService.submitManualProof', error);
       const parsed = parseError(error);
+      const proofValidationMessage = Array.isArray(parsed?.details?.proof)
+        ? parsed.details.proof[0]
+        : null;
+      const normalizedValidationMessage = `${parsed?.message || ''}`.trim().toLowerCase();
+
+      let userMessage = 'No se pudo enviar el comprobante. Intenta nuevamente.';
+
+      if (parsed.type === ErrorTypes.VALIDATION) {
+        if (proofValidationMessage) {
+          userMessage = proofValidationMessage;
+        } else if (normalizedValidationMessage === 'validation.uploaded') {
+          userMessage = 'No se pudo cargar el archivo. Verifica que pese menos de 5 MB y vuelve a intentarlo.';
+        } else if (normalizedValidationMessage.includes('expiro')) {
+          userMessage = 'La reserva o el plazo para enviar el comprobante ya expiró. Inicia nuevamente el proceso.';
+        } else {
+          userMessage = parsed.message || 'No se pudo subir el comprobante. Revisa el archivo seleccionado.';
+        }
+      } else if (parsed.status === 413) {
+        userMessage = 'El archivo es demasiado grande para el servidor. Intenta con uno de menor tamaño.';
+      } else if (parsed.type === ErrorTypes.AUTHENTICATION) {
+        userMessage = 'Tu sesión expiró. Inicia sesión nuevamente y vuelve a enviar el comprobante.';
+      } else if (parsed.type === ErrorTypes.NOT_FOUND) {
+        userMessage = 'No encontramos el pago manual asociado. Recarga la página e inténtalo otra vez.';
+      } else if (parsed.type === ErrorTypes.NETWORK) {
+        userMessage = 'No hay conexión con el servidor. Revisa tu internet e intenta nuevamente.';
+      } else if (parsed.type === ErrorTypes.SERVER) {
+        userMessage = 'El servidor no pudo procesar el comprobante en este momento. Intenta de nuevo en unos minutos.';
+      }
 
       throw {
         ...parsed,
         context: 'submitManualProof',
-        userMessage: parsed.type === ErrorTypes.VALIDATION
-          ? 'No se pudo subir el comprobante. Revisa el archivo seleccionado.'
-          : 'No se pudo enviar el comprobante. Intenta nuevamente.',
+        userMessage,
       };
     }
   }

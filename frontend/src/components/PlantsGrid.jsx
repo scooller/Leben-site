@@ -321,7 +321,7 @@ function PlantsGrid({
           {plants.map((plant) => (
             <wa-card
               key={plant.id}
-              className={`plant-card box-shadow-2 ${plant.isReserved ? 'plant-card--reserved' : 'plant-card--not-reserved'} ${isSaleEventActive && plant.discountPercentage > 0 ? 'plant-card--sale-unit' : 'plant-card--regular-unit'}`}
+              className={`plant-card box-shadow-2 ${plant.isReserved || plant.isPaid ? 'plant-card--reserved' : 'plant-card--not-reserved'} ${isSaleEventActive && plant.discountPercentage > 0 ? 'plant-card--sale-unit' : 'plant-card--regular-unit'}`}
               appearance="filled"
             >
                 <div slot="media" className="plant-media">
