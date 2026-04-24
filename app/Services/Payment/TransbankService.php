@@ -11,12 +11,12 @@ use Transbank\Webpay\WebpayPlus\Transaction;
 
 class TransbankService implements PaymentGatewayInterface
 {
-    private const INTEGRATION_SIMPLE_COMMERCE_CODE = '597055555532';
-
     private const INTEGRATION_MALL_CHILD_CODES = [
         WebpayPlus::INTEGRATION_MALL_CHILD_COMMERCE_CODE_1,
         WebpayPlus::INTEGRATION_MALL_CHILD_COMMERCE_CODE_2,
     ];
+
+    private const INTEGRATION_API_KEY = WebpayPlus::INTEGRATION_API_KEY;
 
     protected array $config;
 
@@ -60,24 +60,17 @@ class TransbankService implements PaymentGatewayInterface
      */
     protected function resolveCommerceCode(?Payment $payment = null): string
     {
-        $defaultCommerceCode = $this->commerceCode ?: WebpayPlus::INTEGRATION_COMMERCE_CODE;
-
-        if ($this->mallMode && $this->environment === 'integration' && $defaultCommerceCode === self::INTEGRATION_SIMPLE_COMMERCE_CODE) {
-            Log::warning('Transbank: Código de comercio de integración simple detectado en modo Mall. Se utilizará código Mall por defecto.', [
-                'configured_commerce_code' => $defaultCommerceCode,
-                'resolved_commerce_code' => WebpayPlus::INTEGRATION_MALL_COMMERCE_CODE,
-            ]);
-
-            $defaultCommerceCode = WebpayPlus::INTEGRATION_MALL_COMMERCE_CODE;
+        if ($this->environment === 'integration') {
+            return $this->mallMode
+                ? WebpayPlus::INTEGRATION_MALL_COMMERCE_CODE
+                : WebpayPlus::INTEGRATION_COMMERCE_CODE;
         }
+
+        $defaultCommerceCode = $this->commerceCode;
 
         // Si no estamos en mall mode o no hay payment, usar código default
         if (! $this->mallMode || ! $payment) {
-            if ($this->mallMode && $this->environment === 'integration') {
-                return $defaultCommerceCode ?: WebpayPlus::INTEGRATION_MALL_COMMERCE_CODE;
-            }
-
-            return $defaultCommerceCode ?: WebpayPlus::INTEGRATION_COMMERCE_CODE;
+            return $defaultCommerceCode;
         }
 
         // Cargar proyecto si existe
@@ -100,11 +93,7 @@ class TransbankService implements PaymentGatewayInterface
             'payment_id' => $payment?->id,
         ]);
 
-        if ($this->mallMode && $this->environment === 'integration') {
-            return $defaultCommerceCode ?: WebpayPlus::INTEGRATION_MALL_COMMERCE_CODE;
-        }
-
-        return $defaultCommerceCode ?: WebpayPlus::INTEGRATION_COMMERCE_CODE;
+        return $defaultCommerceCode;
     }
 
     /**
@@ -149,7 +138,9 @@ class TransbankService implements PaymentGatewayInterface
 
     protected function buildTransactionClient(string $commerceCode): Transaction|MallTransaction
     {
-        $apiKey = $this->apiKey ?: WebpayPlus::INTEGRATION_API_KEY;
+        $apiKey = $this->environment === 'integration'
+            ? self::INTEGRATION_API_KEY
+            : $this->apiKey;
 
         if ($this->mallMode) {
             if ($this->environment === 'production') {
@@ -507,6 +498,10 @@ class TransbankService implements PaymentGatewayInterface
      */
     public function validateConfiguration(): bool
     {
+        if ($this->environment === 'integration') {
+            return true;
+        }
+
         return ! empty($this->commerceCode) && ! empty($this->apiKey);
     }
 }

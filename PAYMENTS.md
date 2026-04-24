@@ -124,6 +124,10 @@ MERCADOPAGO_ACCESS_TOKEN=APP_USR-tu-access-token
 APP_URL=https://tu-dominio.com
 ```
 
+> Nota importante (Transbank):
+> Si `TRANSBANK_ENVIRONMENT=integration`, el sistema ignora `TRANSBANK_COMMERCE_CODE` y `TRANSBANK_API_KEY` del `.env`, y utiliza automáticamente las credenciales oficiales de integración del SDK.
+> Si `TRANSBANK_ENVIRONMENT=production`, sí utiliza `TRANSBANK_COMMERCE_CODE` y `TRANSBANK_API_KEY` definidos en `.env`.
+
 ### Webhook de Mercado Pago
 
 Configurar en: https://www.mercadopago.com/developers/panel/notifications/webhooks
@@ -373,7 +377,10 @@ tail -f storage/logs/laravel.log | grep -E "Transbank|MercadoPago"
 
 ### Transbank: "Invalid commerce code"
 **Causa:** Environment en producción pero usando credenciales de integración  
-**Solución:** `TRANSBANK_ENVIRONMENT=integration`
+**Solución:** Verificar que `TRANSBANK_ENVIRONMENT` coincida con el ambiente real.
+
+- En `integration`, se usan credenciales oficiales de integración automáticamente.
+- En `production`, debes configurar credenciales reales en `TRANSBANK_COMMERCE_CODE` y `TRANSBANK_API_KEY`.
 
 ### Transbank: "Transaction not found"
 **Causa:** Token expiró (15 minutos)  

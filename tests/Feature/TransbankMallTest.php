@@ -8,7 +8,9 @@ use App\Models\Payment;
 use App\Models\Plant;
 use App\Models\Proyecto;
 use App\Models\User;
+use App\Services\Payment\TransbankService;
 use Tests\TestCase;
+use Transbank\Webpay\WebpayPlus;
 
 class TransbankMallTest extends TestCase
 {
@@ -119,5 +121,47 @@ class TransbankMallTest extends TestCase
         ]);
 
         $this->assertTrue($proyecto->payments->contains($payment));
+    }
+
+    /**
+     * Test 6: Integration mode ignores custom simple credentials
+     */
+    public function test_integration_mode_ignores_custom_simple_credentials(): void
+    {
+        $service = new TransbankService([
+            'environment' => 'integration',
+            'mall_mode' => false,
+            'commerce_code' => '999999999999',
+            'api_key' => 'custom-api-key',
+        ]);
+
+        $resolveCommerceCode = new \ReflectionMethod($service, 'resolveCommerceCode');
+        $resolveCommerceCode->setAccessible(true);
+
+        $resolvedCode = $resolveCommerceCode->invoke($service, null);
+
+        $this->assertSame(WebpayPlus::INTEGRATION_COMMERCE_CODE, $resolvedCode);
+        $this->assertTrue($service->validateConfiguration());
+    }
+
+    /**
+     * Test 7: Integration mode ignores custom mall credentials
+     */
+    public function test_integration_mode_ignores_custom_mall_credentials(): void
+    {
+        $service = new TransbankService([
+            'environment' => 'integration',
+            'mall_mode' => true,
+            'commerce_code' => '999999999999',
+            'api_key' => 'custom-api-key',
+        ]);
+
+        $resolveCommerceCode = new \ReflectionMethod($service, 'resolveCommerceCode');
+        $resolveCommerceCode->setAccessible(true);
+
+        $resolvedCode = $resolveCommerceCode->invoke($service, null);
+
+        $this->assertSame(WebpayPlus::INTEGRATION_MALL_COMMERCE_CODE, $resolvedCode);
+        $this->assertTrue($service->validateConfiguration());
     }
 }
