@@ -106,6 +106,27 @@ class ContactSubmissionApiTest extends TestCase
             ->assertJsonValidationErrors(['fields.email']);
     }
 
+    public function test_it_requires_commune_and_project_fields(): void
+    {
+        SiteSetting::current()->update([
+            'contact_form_fields' => [
+                ['key' => 'name', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
+                ['key' => 'email', 'label' => 'Email', 'type' => 'email', 'required' => true],
+            ],
+        ]);
+
+        $response = $this->postJson('/api/v1/contact-submissions', [
+            'fields' => [
+                'name' => 'Sin comuna ni proyecto',
+                'email' => 'sin-comuna@example.com',
+            ],
+        ]);
+
+        $response
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['fields.comuna', 'fields.proyecto']);
+    }
+
     public function test_it_infers_utm_site_from_referer_when_frontend_does_not_send_it(): void
     {
         SiteSetting::current()->update([

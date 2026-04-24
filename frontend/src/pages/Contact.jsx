@@ -547,7 +547,7 @@ function Contact({ onNavigate, currentPath }) {
           },
         });
         setTurnstileLoading(false);
-      } catch (error) {
+      } catch {
         setTurnstileLoading(false);
       }
     };
@@ -583,6 +583,10 @@ function Contact({ onNavigate, currentPath }) {
 
   const validateField = (field, candidateValue) => {
     const nextValue = `${candidateValue ?? ''}`.trim();
+
+    if (field.key === CONTACT_COMUNA_FIELD.key && nextValue === '') {
+      return 'Debes seleccionar una comuna.';
+    }
 
     if (field.key === CONTACT_PROJECT_FIELD.key && nextValue === '') {
       return 'Debes seleccionar un proyecto.';
@@ -726,6 +730,8 @@ function Contact({ onNavigate, currentPath }) {
         setFieldErrors((current) => ({ ...current, ...nextErrors }));
       }
 
+      const hasBackendFieldErrors = Object.keys(nextErrors).length > 0;
+
       if (backendErrors.turnstile_token?.[0]) {
         setTurnstileToken('');
         setTurnstileError(backendErrors.turnstile_token[0]);
@@ -736,6 +742,7 @@ function Contact({ onNavigate, currentPath }) {
       }
 
       const message = backendErrors.turnstile_token?.[0]
+        || (hasBackendFieldErrors ? 'Revisa los campos marcados antes de enviar.' : '')
         || error?.response?.data?.message
         || 'No pudimos enviar tu mensaje. Intenta nuevamente.';
 
@@ -794,7 +801,9 @@ function Contact({ onNavigate, currentPath }) {
     const value = values[field.key] || '';
     const errorMessage = fieldErrors[field.key];
     const fieldIcon = resolveFieldIcon(field);
+    const isComunaField = field.key === CONTACT_COMUNA_FIELD.key;
     const isProjectField = field.key === CONTACT_PROJECT_FIELD.key;
+    const isRequiredSelectionField = isComunaField || isProjectField;
 
     if (field.type === 'textarea') {
       return (
@@ -821,9 +830,9 @@ function Contact({ onNavigate, currentPath }) {
           <wa-select
             value={value}
             placeholder={field.placeholder || 'Selecciona una opción'}
-            required={field.required || isProjectField}
+            required={field.required || isRequiredSelectionField}
             disabled={field.disabled}
-            clearable={!field.required}
+            clearable={!field.required && !isRequiredSelectionField}
             onChange={(event) => handleFieldChange(field, event.target.value || '')}
           >
             {renderFieldLabel(field)}

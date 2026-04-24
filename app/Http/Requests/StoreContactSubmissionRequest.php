@@ -144,11 +144,13 @@ class StoreContactSubmissionRequest extends FormRequest
 
     public function withValidator(Validator $validator): void
     {
-        if (! $this->isTurnstileEnabled()) {
-            return;
-        }
-
         $validator->after(function (Validator $validator): void {
+            $this->validateRequiredContactSelectionFields($validator);
+
+            if (! $this->isTurnstileEnabled()) {
+                return;
+            }
+
             if ($validator->errors()->has('turnstile_token')) {
                 return;
             }
@@ -259,6 +261,43 @@ class StoreContactSubmissionRequest extends FormRequest
             'message' => 'Mensaje',
             'mensaje' => 'Mensaje',
         ];
+    }
+
+    private function validateRequiredContactSelectionFields(Validator $validator): void
+    {
+        $this->validateRequiredFieldGroup(
+            validator: $validator,
+            aliases: ['comuna', 'commune', 'district', 'project_commune'],
+            errorKey: 'fields.comuna',
+            label: 'Comuna',
+        );
+
+        $this->validateRequiredFieldGroup(
+            validator: $validator,
+            aliases: ['proyecto', 'project', 'project_name', 'nombre_proyecto'],
+            errorKey: 'fields.proyecto',
+            label: 'Proyecto',
+        );
+    }
+
+    /**
+     * @param  array<int, string>  $aliases
+     */
+    private function validateRequiredFieldGroup(Validator $validator, array $aliases, string $errorKey, string $label): void
+    {
+        if ($validator->errors()->has($errorKey)) {
+            return;
+        }
+
+        foreach ($aliases as $alias) {
+            $value = trim((string) $this->input("fields.{$alias}", ''));
+
+            if ($value !== '') {
+                return;
+            }
+        }
+
+        $validator->errors()->add($errorKey, "El campo {$label} es obligatorio.");
     }
 
     /**
