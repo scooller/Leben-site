@@ -3,6 +3,7 @@
 namespace Tests\Unit\Filament\Actions;
 
 use App\Filament\Actions\SyncPlantsAction;
+use App\Models\Asesor;
 use App\Models\Plant;
 use App\Models\Proyecto;
 use App\Services\Salesforce\SalesforceService;
@@ -273,5 +274,62 @@ class SyncPlantsActionTest extends TestCase
             'salesforce_product_id' => 'SF_PLANT_PERCENT',
             'porcentaje_maximo_unidad' => 17.5,
         ]);
+    }
+
+    public function test_sync_plants_preserves_manual_asesor_id_on_update(): void
+    {
+        $proyecto = Proyecto::factory()->create([
+            'salesforce_id' => 'SF_PROJ_ADVISOR_LOCK',
+        ]);
+
+        $advisor = Asesor::factory()->create([
+            'is_active' => true,
+        ]);
+
+        $plant = Plant::create([
+            'salesforce_product_id' => 'SF_PLANT_ADVISOR_LOCK',
+            'salesforce_proyecto_id' => $proyecto->salesforce_id,
+            'asesor_id' => $advisor->id,
+            'name' => 'Original Advisor Plant',
+            'product_code' => 'LOCK-001',
+            'is_active' => true,
+        ]);
+
+        $this->mock(SalesforceService::class, function (MockInterface $mock) use ($proyecto): void {
+            $mock->shouldReceive('findPlants')
+                ->once()
+                ->andReturn([
+                    [
+                        'id' => 'SF_PLANT_ADVISOR_LOCK',
+                        'name' => 'Updated Advisor Plant',
+                        'product_code' => 'LOCK-001',
+                        'orientacion' => 'Norte',
+                        'programa' => '2 dormitorios',
+                        'programa2' => '2 baños',
+                        'piso' => '4',
+                        'precio_base' => 6000.0,
+                        'precio_lista' => 6500.0,
+                        'porcentaje_maximo_unidad' => null,
+                        'superficie_total_principal' => 80.0,
+                        'superficie_interior' => 70.0,
+                        'superficie_util' => 68.0,
+                        'superficie_terraza' => 12.0,
+                        'tipo_producto' => 'DEPARTAMENTO',
+                        'proyecto_id' => $proyecto->salesforce_id,
+                    ],
+                ]);
+
+            $mock->shouldReceive('findPublicProjectDocuments')
+                ->once()
+                ->andReturn([]);
+        });
+
+        $result = SyncPlantsAction::execute();
+
+        $this->assertTrue($result['success']);
+
+        $plant->refresh();
+        $this->assertSame($advisor->id, $plant->asesor_id);
+        $this->assertSame('Updated Advisor Plant', $plant->name);
     }
 }

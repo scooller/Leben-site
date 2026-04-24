@@ -20,6 +20,7 @@ class Plant extends Model
     protected $fillable = [
         'salesforce_product_id',
         'salesforce_proyecto_id',
+        'asesor_id',
         'name',
         'product_code',
         'tipo_producto',
@@ -61,6 +62,11 @@ class Plant extends Model
     public function proyecto()
     {
         return $this->belongsTo(Proyecto::class, 'salesforce_proyecto_id', 'salesforce_id');
+    }
+
+    public function asesor(): BelongsTo
+    {
+        return $this->belongsTo(Asesor::class, 'asesor_id');
     }
 
     public function coverImageMedia(): BelongsTo

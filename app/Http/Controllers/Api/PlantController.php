@@ -20,7 +20,7 @@ class PlantController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = Plant::query()
-            ->with(['proyecto.asesores.avatarImageMedia', 'activeReservation', 'completedReservation', 'completedPayment', 'coverImageMedia', 'interiorImageMedia'])
+            ->with(['proyecto.asesores.avatarImageMedia', 'asesor.avatarImageMedia', 'activeReservation', 'completedReservation', 'completedPayment', 'coverImageMedia', 'interiorImageMedia'])
             ->whereHas('proyecto', function ($projectQuery) {
                 $projectQuery->where('is_active', true);
             }) // Solo plantas con proyecto activo asociado
@@ -272,7 +272,7 @@ class PlantController extends Controller
     public function show(string $id): JsonResponse
     {
         $plant = Plant::query()
-            ->with(['proyecto.asesores.avatarImageMedia', 'activeReservation', 'completedReservation', 'completedPayment', 'coverImageMedia', 'interiorImageMedia'])
+            ->with(['proyecto.asesores.avatarImageMedia', 'asesor.avatarImageMedia', 'activeReservation', 'completedReservation', 'completedPayment', 'coverImageMedia', 'interiorImageMedia'])
             ->whereHas('proyecto', function ($projectQuery) {
                 $projectQuery->where('is_active', true);
             })
@@ -287,7 +287,7 @@ class PlantController extends Controller
         $normalizedUnitSlug = Str::of($normalizedUnitName)->lower()->replace(' ', '-')->value();
 
         $plant = Plant::query()
-            ->with(['proyecto.asesores.avatarImageMedia', 'activeReservation', 'completedReservation', 'completedPayment', 'coverImageMedia', 'interiorImageMedia'])
+            ->with(['proyecto.asesores.avatarImageMedia', 'asesor.avatarImageMedia', 'activeReservation', 'completedReservation', 'completedPayment', 'coverImageMedia', 'interiorImageMedia'])
             ->where('is_active', true)
             ->where(function ($plantQuery) use ($normalizedUnitName, $normalizedUnitSlug) {
                 $plantQuery
@@ -391,6 +391,7 @@ class PlantController extends Controller
     private function plantPayload(Plant $plant): array
     {
         $payload = $plant->toArray();
+        $defaultAdvisorAvatarUrl = $this->getDefaultAdvisorAvatarUrl();
 
         unset($payload['cover_image_id'], $payload['interior_image_id']);
 
@@ -400,6 +401,7 @@ class PlantController extends Controller
         $payload['interior_image_url'] = $plant->interiorImageMedia?->url ?: $plant->salesforce_interior_image_url;
         $payload['salesforce_interior_image_url'] = $plant->salesforce_interior_image_url;
         $payload['proyecto'] = $this->projectPayload($plant->proyecto);
+        $payload['asesores'] = $this->resolvePlantAdvisors($plant, $defaultAdvisorAvatarUrl);
         $payload['projectLogoUrl'] = $this->resolveProjectLogoUrl($plant);
         $payload['proyectoImageUrl'] = $plant->proyecto?->image_url;
         $payload['imageUrl'] = $this->resolveImageUrl($plant);
@@ -410,6 +412,22 @@ class PlantController extends Controller
             && $plant->completedPayment === null;
 
         return $payload;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function resolvePlantAdvisors(Plant $plant, string $defaultAdvisorAvatarUrl): array
+    {
+        if ($plant->asesor !== null && (bool) $plant->asesor->is_active) {
+            return [$this->asesorPayload($plant->asesor, $defaultAdvisorAvatarUrl)];
+        }
+
+        return $plant->proyecto?->asesores
+            ->where('is_active', true)
+            ->values()
+            ->map(fn (Asesor $asesor): array => $this->asesorPayload($asesor, $defaultAdvisorAvatarUrl))
+            ->all() ?? [];
     }
 
     private function resolveImageUrl(Plant $plant): string

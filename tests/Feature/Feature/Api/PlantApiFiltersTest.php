@@ -655,6 +655,75 @@ class PlantApiFiltersTest extends TestCase
         $response->assertJsonPath('proyecto.asesores.0.email', 'camila@example.com');
         $response->assertJsonPath('proyecto.asesores.0.whatsapp_owner', '+56 9 8765 4321');
         $response->assertJsonPath('proyecto.asesores.0.avatar_url', $logoMedia->url);
+        $response->assertJsonPath('asesores.0.id', $advisor->id);
+    }
+
+    public function test_it_prioritizes_plant_advisor_over_project_advisors_in_payload(): void
+    {
+        $project = Proyecto::factory()->create([
+            'is_active' => true,
+        ]);
+
+        $logoMedia = Media::query()->create([
+            'disk' => 'curator',
+            'directory' => null,
+            'visibility' => 'public',
+            'name' => 'branding-logo-2',
+            'path' => 'branding-logo-2.png',
+            'width' => 320,
+            'height' => 120,
+            'size' => 10240,
+            'type' => 'image/png',
+            'ext' => 'png',
+            'title' => 'Branding Logo 2',
+        ]);
+
+        SiteSetting::query()->update([
+            'logo_id' => $logoMedia->id,
+        ]);
+
+        $projectAdvisor = Asesor::factory()->create([
+            'first_name' => 'Camila',
+            'last_name' => 'Diaz',
+            'email' => 'camila@example.com',
+            'whatsapp_owner' => '+56 9 8765 4321',
+            'is_active' => true,
+        ]);
+
+        $plantAdvisor = Asesor::factory()->create([
+            'first_name' => 'Jorge',
+            'last_name' => 'Paz',
+            'email' => 'jorge@example.com',
+            'whatsapp_owner' => '+56 9 1111 1111',
+            'is_active' => true,
+        ]);
+
+        $project->asesores()->attach($projectAdvisor->id);
+
+        $plant = Plant::query()->create([
+            'salesforce_product_id' => (string) Str::uuid(),
+            'salesforce_proyecto_id' => $project->salesforce_id,
+            'asesor_id' => $plantAdvisor->id,
+            'name' => '401',
+            'product_code' => 'PLANT-401',
+            'programa' => '2 dormitorios',
+            'programa2' => '2 baños',
+            'precio_base' => 5000,
+            'precio_lista' => 5500,
+            'is_active' => true,
+            'last_synced_at' => now(),
+        ]);
+
+        $response = $this->getJson('/api/v1/plantas/'.$plant->id);
+
+        $response->assertOk();
+        $response->assertJsonCount(1, 'asesores');
+        $response->assertJsonPath('asesores.0.id', $plantAdvisor->id);
+        $response->assertJsonPath('asesores.0.first_name', 'Jorge');
+        $response->assertJsonPath('asesores.0.last_name', 'Paz');
+        $response->assertJsonPath('asesores.0.email', 'jorge@example.com');
+
+        $response->assertJsonPath('proyecto.asesores.0.id', $projectAdvisor->id);
     }
 
     private function createPlant(string $salesforceProyectoId, bool $isActive, array $attributes = []): Plant

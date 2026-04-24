@@ -417,6 +417,10 @@ function Home({ onNavigate, currentPath }) {
       ? Math.max(0, Math.round(Math.abs(((precioLista - precioBase) / precioLista) * 100)))
       : 0;
 
+    const advisorsSource = Array.isArray(plant.asesores) && plant.asesores.length > 0
+      ? plant.asesores
+      : (Array.isArray(plant.proyecto?.asesores) ? plant.proyecto.asesores : []);
+
     return {
       ...plant,
       nombre: plant.name,
@@ -435,8 +439,7 @@ function Home({ onNavigate, currentPath }) {
       proyectoDireccion: plant.proyecto?.direccion,
       proyectoComuna: plant.proyecto?.comuna,
       proyectoEtapa: plant.proyecto?.etapa,
-      asesores: Array.isArray(plant.proyecto?.asesores)
-        ? plant.proyecto.asesores.map((asesor) => ({
+      asesores: advisorsSource.map((asesor) => ({
           id: asesor.id,
           fullName: asesor.full_name,
           firstName: asesor.first_name,
@@ -444,8 +447,7 @@ function Home({ onNavigate, currentPath }) {
           email: asesor.email,
           whatsapp: asesor.whatsapp_owner,
           avatarUrl: asesor.avatar_url,
-        }))
-        : [],
+        })),
       isPaid: !!plant.is_paid,
       isAvailable: !!plant.is_available,
       isReserved: !!plant.active_reservation,
@@ -1579,9 +1581,16 @@ function Home({ onNavigate, currentPath }) {
       <PaymentGatewayDialog
         open={gatewayDialogOpen}
         onClose={() => {
+          const wasManualPaymentFlow = Boolean(manualPayment);
+
           setGatewayDialogOpen(false);
           setPlantForCheckout(null);
           setManualPayment(null);
+
+          if (wasManualPaymentFlow) {
+            setSelectedPlantDetail(null);
+            onNavigate?.('/');
+          }
         }}
         plant={plantForCheckout}
         gateways={gateways}

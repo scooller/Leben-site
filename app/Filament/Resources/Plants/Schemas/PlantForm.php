@@ -10,6 +10,8 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 
 class PlantForm
 {
@@ -45,6 +47,28 @@ class PlantForm
                     ->options(Proyecto::pluck('name', 'salesforce_id'))
                     ->disabled()
                     ->searchable(),
+                Select::make('asesor_id')
+                    ->label('Asesor de planta')
+                    ->relationship(
+                        name: 'asesor',
+                        titleAttribute: 'email',
+                        modifyQueryUsing: fn (Builder $query): Builder => $query
+                            ->where('is_active', true)
+                            ->orderBy('first_name')
+                            ->orderBy('last_name')
+                    )
+                    ->searchable(['first_name', 'last_name', 'email'])
+                    ->getOptionLabelFromRecordUsing(function (Model $record): string {
+                        $fullName = trim(implode(' ', array_filter([$record->first_name, $record->last_name])));
+
+                        if ($fullName !== '' && filled($record->email)) {
+                            return "{$fullName} ({$record->email})";
+                        }
+
+                        return $fullName !== '' ? $fullName : (string) ($record->email ?? 'Asesor');
+                    })
+                    ->nullable()
+                    ->helperText('Si seleccionas un asesor de planta, tendrá prioridad sobre los asesores configurados en el proyecto.'),
                 TextInput::make('piso')
                     ->label('Piso')
                     ->disabled(),
