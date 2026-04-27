@@ -16,6 +16,7 @@ use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 class PlantReservationsTable
@@ -26,6 +27,9 @@ class PlantReservationsTable
             ->columns([
                 TextColumn::make('id')
                     ->sortable(),
+                TextColumn::make('plant.proyecto.name')
+                    ->label('Proyecto')
+                    ->searchable(),
                 TextColumn::make('plant.name')
                     ->label('Planta')
                     ->searchable(),
@@ -70,6 +74,7 @@ class PlantReservationsTable
                     ->sortable(),
             ])
             ->defaultSort('created_at', 'desc')
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['plant.proyecto', 'user']))
             ->recordUrl(fn ($record): string => PlantReservationResource::getUrl('view', ['record' => $record]))
             ->filters([
                 SelectFilter::make('status')
