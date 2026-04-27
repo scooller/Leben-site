@@ -1,19 +1,19 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSiteConfig } from '../contexts/SiteConfigContext';
 import PlantsService from '../services/plants';
 import { proyectosService } from '../services/proyectos';
 import CheckoutService from '../services/checkout';
 import { authService } from '../services/auth';
 import ErrorNotification from '../components/ErrorNotification';
-import PlantsGrid from '../components/PlantsGrid';
-import PaymentGatewayDialog from '../components/PaymentGatewayDialog';
 import SiteHeader from '../components/SiteHeader';
 import SiteFooter from '../components/SiteFooter';
 import siteConfigService from '../services/siteConfig';
 import { isRetryableError } from '../utils/errorHandler';
 import { trackEvent, trackPageView } from '../utils/tagManager';
-import gsap from 'gsap';
 import '../styles/home.scss' with { type: 'css' };
+
+const PlantsGrid = lazy(() => import('../components/PlantsGrid'));
+const PaymentGatewayDialog = lazy(() => import('../components/PaymentGatewayDialog'));
 
 const PLANT_DETAIL_BASE_PATH = '/p';
 const FILTER_BASE_PATH = '/f';
@@ -875,69 +875,111 @@ function Home({ onNavigate, currentPath }) {
 
   // Animaciones del Hero con GSAP
   useEffect(() => {
-    if (configLoading || !heroRef.current) return;
+    if (configLoading || !heroRef.current) {
+      return;
+    }
 
-    const ctx = gsap.context(() => {
-      const tl = gsap.timeline();
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const isMobileViewport = window.matchMedia('(max-width: 768px)').matches;
 
-      // Logo - flipInX (0ms)
-      const logo = heroRef.current.querySelector('.hero-logo');
-      if (logo) {
-        tl.fromTo(logo, {
-          y: -90,
-          opacity: 0,
-        }, {
-          y: 0,
-          opacity: 1,
-          duration: 1.8,
-          ease: 'back.out(1.7)',
-        }, 0);
+    if (prefersReducedMotion || isMobileViewport) {
+      return;
+    }
+
+    let isCancelled = false;
+    let ctx = null;
+    let idleHandle = null;
+    let timeoutHandle = null;
+
+    const runHeroAnimation = async () => {
+      const { default: gsap } = await import('gsap');
+
+      if (isCancelled || !heroRef.current) {
+        return;
       }
 
-      // Título y descripción - fadeInDown (500ms)
-      const heroTextTargets = heroRef.current.querySelectorAll('.hero-section h1, .hero-section p');
+      ctx = gsap.context(() => {
+        const tl = gsap.timeline();
 
-      if (heroTextTargets.length > 0) {
-        tl.fromTo(heroTextTargets, {
-          y: -50,
-          opacity: 0,
-        }, {
-          y: 0,
-          opacity: 1,
-          duration: 0.8,
-          ease: 'power2.out',
-          stagger: 0.1,
-        }, 0.5);
+        const logo = heroRef.current.querySelector('.hero-logo');
+        if (logo) {
+          tl.fromTo(logo, {
+            y: -90,
+            opacity: 0,
+          }, {
+            y: 0,
+            opacity: 1,
+            duration: 1.8,
+            ease: 'back.out(1.7)',
+          }, 0);
+        }
+
+        const heroTextTargets = heroRef.current.querySelectorAll('.hero-section h1, .hero-section p');
+
+        if (heroTextTargets.length > 0) {
+          tl.fromTo(heroTextTargets, {
+            y: -50,
+            opacity: 0,
+          }, {
+            y: 0,
+            opacity: 1,
+            duration: 0.8,
+            ease: 'power2.out',
+            stagger: 0.1,
+          }, 0.5);
+        }
+
+        const plantsHeader = heroRef.current.querySelector('.plants-header');
+
+        if (plantsHeader) {
+          tl.fromTo(plantsHeader, {
+            opacity: 0,
+          }, {
+            opacity: 1,
+            duration: 1,
+            ease: 'power1.out',
+          }, 0.7);
+        }
+
+        const filtersDetails = heroRef.current.querySelector('.filters-details');
+
+        if (filtersDetails) {
+          tl.fromTo(filtersDetails, {
+            opacity: 0,
+          }, {
+            opacity: 1,
+            duration: 1,
+            ease: 'power1.out',
+          }, 1);
+        }
+      }, heroRef);
+    };
+
+    if (typeof window.requestIdleCallback === 'function') {
+      idleHandle = window.requestIdleCallback(() => {
+        runHeroAnimation();
+      }, { timeout: 1500 });
+    } else {
+      timeoutHandle = window.setTimeout(() => {
+        runHeroAnimation();
+      }, 350);
+    }
+
+    return () => {
+      isCancelled = true;
+
+      if (idleHandle !== null && typeof window.cancelIdleCallback === 'function') {
+        window.cancelIdleCallback(idleHandle);
       }
 
-      // Header plantas - fadeIn (700ms)
-      const plantsHeader = heroRef.current.querySelector('.plants-header');
-
-      if (plantsHeader) {
-        tl.fromTo(plantsHeader, {
-          opacity: 0,
-        }, {
-          opacity: 1,
-          duration: 1,
-          ease: 'power1.out',
-        }, 0.7);
+      if (timeoutHandle !== null) {
+        window.clearTimeout(timeoutHandle);
       }
 
-      // Filtros - fadeIn (1000ms)
-      const filtersDetails = heroRef.current.querySelector('.filters-details');
-
-      if (filtersDetails) {
-        tl.fromTo(filtersDetails, {
-          opacity: 0,
-        }, {
-          opacity: 1,
-          duration: 1,
-          ease: 'power1.out',
-        }, 1);
+      if (ctx) {
+        ctx.revert();
       }
-    }, heroRef);
-
-    return () => ctx.revert();
+    };
   }, [configLoading]);
 
   const syncCatalogUrl = useCallback((projectValues, comunaValues) => {
@@ -1289,7 +1331,7 @@ function Home({ onNavigate, currentPath }) {
         {homeHeroType === 'image' ? (
           <picture>
             <source media="(max-width: 768px)" srcSet={homeHeroMobileImage || homeHeroDesktopImage} />
-            <img src={homeHeroDesktopImage} alt={config?.site_name || 'Hero'} className="hero-video" />
+            <img src={homeHeroDesktopImage} alt={config?.site_name || 'Hero'} className="hero-video" decoding="async" fetchPriority="high" />
           </picture>
         ) : (
           <>
@@ -1299,6 +1341,8 @@ function Home({ onNavigate, currentPath }) {
                 alt=""
                 aria-hidden="true"
                 className="hero-video hero-video-poster"
+                decoding="async"
+                fetchPriority="high"
               />
             )}
             <video
@@ -1306,6 +1350,8 @@ function Home({ onNavigate, currentPath }) {
               muted
               loop
               playsInline
+              preload="metadata"
+              poster={homeHeroPoster}
               className="hero-video"
               onPlay={() => setVideoPlaying(true)}
               onCanPlay={() => setVideoPlaying(true)}
@@ -1554,54 +1600,60 @@ function Home({ onNavigate, currentPath }) {
         </wa-details>
 
       {/* Plantas Grid */}
-      <PlantsGrid
-        plants={plants}
-        isSaleEventActive={isSaleEventActive}
-        saleLogoUrl={config?.logo_sale || null}
-        loading={loading}
-        checkoutLoading={checkoutLoading}
-        onQuickCheckout={handleQuickCheckout}
-        onDetailBlocked={(message) => {
-          setCheckoutError({
-            type: 'validation',
-            title: 'Planta no disponible',
-            userMessage: message,
-          });
-        }}
-        selectedPlant={selectedPlantDetail}
-        onSelectPlant={handleSelectPlantDetail}
-        onClosePlantDetail={handleClosePlantDetail}
-        totalPlants={totalPlants}
-        page={page}
-        totalPages={totalPages}
-        onPageChange={setPage}
-      />
+      <Suspense fallback={null}>
+        <PlantsGrid
+          plants={plants}
+          isSaleEventActive={isSaleEventActive}
+          saleLogoUrl={config?.logo_sale || null}
+          loading={loading}
+          checkoutLoading={checkoutLoading}
+          onQuickCheckout={handleQuickCheckout}
+          onDetailBlocked={(message) => {
+            setCheckoutError({
+              type: 'validation',
+              title: 'Planta no disponible',
+              userMessage: message,
+            });
+          }}
+          selectedPlant={selectedPlantDetail}
+          onSelectPlant={handleSelectPlantDetail}
+          onClosePlantDetail={handleClosePlantDetail}
+          totalPlants={totalPlants}
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+        />
+      </Suspense>
 
       {/* Diálogo - Selección de Pasarela de Pago */}
-      <PaymentGatewayDialog
-        open={gatewayDialogOpen}
-        onClose={() => {
-          const wasManualPaymentFlow = Boolean(manualPayment);
+      {gatewayDialogOpen ? (
+        <Suspense fallback={null}>
+          <PaymentGatewayDialog
+            open={gatewayDialogOpen}
+            onClose={() => {
+              const wasManualPaymentFlow = Boolean(manualPayment);
 
-          setGatewayDialogOpen(false);
-          setPlantForCheckout(null);
-          setManualPayment(null);
+              setGatewayDialogOpen(false);
+              setPlantForCheckout(null);
+              setManualPayment(null);
 
-          if (wasManualPaymentFlow) {
-            setSelectedPlantDetail(null);
-            onNavigate?.('/');
-          }
-        }}
-        plant={plantForCheckout}
-        gateways={gateways}
-        loading={checkoutLoading}
-        checkoutError={checkoutError}
-        manualPayment={manualPayment}
-        manualProofLoading={manualProofLoading}
-        isAuthenticated={isAuthenticated}
-        onConfirm={handleConfirmCheckout}
-        onSubmitManualProof={handleManualProofSubmission}
-      />
+              if (wasManualPaymentFlow) {
+                setSelectedPlantDetail(null);
+                onNavigate?.('/');
+              }
+            }}
+            plant={plantForCheckout}
+            gateways={gateways}
+            loading={checkoutLoading}
+            checkoutError={checkoutError}
+            manualPayment={manualPayment}
+            manualProofLoading={manualProofLoading}
+            isAuthenticated={isAuthenticated}
+            onConfirm={handleConfirmCheckout}
+            onSubmitManualProof={handleManualProofSubmission}
+          />
+        </Suspense>
+      ) : null}
 
       {/* Notificación de errores de checkout */}
       <ErrorNotification

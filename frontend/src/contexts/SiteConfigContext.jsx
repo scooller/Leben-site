@@ -1,12 +1,20 @@
 import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import siteConfigService from '../services/siteConfig';
-import WebAwesomeService from '../services/webAwesome';
 import { initializeFacebookPixel, initializeTagManager } from '../utils/tagManager';
 import { setUtmDefaultOverrides } from '../utils/utmSession';
 
 export const SiteConfigContext = createContext(null);
 
 const COLOR_MODE_STORAGE_KEY = 'ileben-color-mode';
+let webAwesomeServicePromise = null;
+
+const getWebAwesomeService = async () => {
+  if (!webAwesomeServicePromise) {
+    webAwesomeServicePromise = import('../services/webAwesome').then((module) => module.default);
+  }
+
+  return webAwesomeServicePromise;
+};
 
 const resolveInitialColorMode = () => {
   if (typeof window === 'undefined') {
@@ -22,12 +30,36 @@ const resolveInitialColorMode = () => {
   return 'dark';
 };
 
+const runWhenBrowserIdle = (callback, timeout = 1200) => {
+  if (typeof window === 'undefined') {
+    callback();
+    return () => {};
+  }
+
+  if (typeof window.requestIdleCallback === 'function') {
+    const idleHandle = window.requestIdleCallback(callback, { timeout });
+
+    return () => {
+      if (typeof window.cancelIdleCallback === 'function') {
+        window.cancelIdleCallback(idleHandle);
+      }
+    };
+  }
+
+  const timer = window.setTimeout(callback, 450);
+
+  return () => {
+    window.clearTimeout(timer);
+  };
+};
+
 export const SiteConfigProvider = ({ children }) => {
   const [config, setConfig] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [colorMode, setColorModeState] = useState(resolveInitialColorMode);
   const hasLoadedConfig = useRef(false);
+  const cancelDeferredSetupRef = useRef(null);
 
   const applyColorModeToDocument = (mode) => {
     const htmlElement = document.documentElement;
@@ -55,6 +87,12 @@ export const SiteConfigProvider = ({ children }) => {
   const loadConfig = useCallback(async (forceRefresh = false) => {
     try {
       setLoading(true);
+
+      if (cancelDeferredSetupRef.current) {
+        cancelDeferredSetupRef.current();
+        cancelDeferredSetupRef.current = null;
+      }
+
       const data = await siteConfigService.getConfig(forceRefresh);
       setConfig(data);
 
@@ -62,64 +100,6 @@ export const SiteConfigProvider = ({ children }) => {
       if (data.site_name) {
         siteConfigService.setTitle(data.site_name);
       }
-
-      // Aplicar tema predefinido de Web Awesome
-      // Los colores semánticos (brand, success, warning, danger, neutral) están definidos por el tema
-      const theme = data.webawesome_theme || 'mellow';
-      await WebAwesomeService.applyPrebuiltTheme(theme);
-
-      // Aplicar paleta de colores
-      // Define los tonos y matices específicos de los colores
-      const palette = data.webawesome_palette || 'natural';
-      WebAwesomeService.applyPalette(palette);
-
-      // Aplicar color principal de marca en :root
-      WebAwesomeService.applyBrandColor(data.brand_color || '#eb0029');
-
-      // Aplicar colores semánticos específicos (wa-brand-blue, wa-success-green, etc.)
-      WebAwesomeService.applySemanticColors({
-        semantic_brand_color: data.semantic_brand_color || 'blue',
-        semantic_neutral_color: data.semantic_neutral_color || 'gray',
-        semantic_success_color: data.semantic_success_color || 'green',
-        semantic_warning_color: data.semantic_warning_color || 'yellow',
-        semantic_danger_color: data.semantic_danger_color || 'red',
-      });
-
-      // Aplicar familia de iconos (data-font-family en HTML)
-      const iconFamily = data.icon_family || 'classic';
-      document.documentElement.setAttribute('data-font-family', iconFamily);
-
-      // Cargar stylesheet de Google Fonts si existe
-      if (data.google_fonts_stylesheet) {
-        const linkId = 'google-fonts-stylesheet';
-        let link = document.getElementById(linkId);
-
-        if (!link) {
-          link = document.createElement('link');
-          link.id = linkId;
-          link.rel = 'stylesheet';
-          document.head.appendChild(link);
-        }
-
-        link.href = data.google_fonts_stylesheet;
-      }
-
-      // Aplicar tipografía personalizada (Google Fonts u otras fuentes)
-      if (data.font_family_body || data.font_family_heading) {
-        WebAwesomeService.applyFonts({
-          font_family_body: data.font_family_body,
-          font_family_heading: data.font_family_heading,
-        });
-      }
-
-      if (data.custom_css) {
-        siteConfigService.injectCustomCSS(data.custom_css);
-      }
-
-      if (!window.__ilebenHeaderScriptsLoaded) {
-        siteConfigService.injectHeaderScripts(data.header_scripts);
-      }
-      siteConfigService.injectFooterScripts(data.footer_scripts);
 
       if (data.favicon) {
         siteConfigService.setFavicon(data.favicon);
@@ -136,17 +116,72 @@ export const SiteConfigProvider = ({ children }) => {
         utm_campaign: data?.seo?.utm_campaign_default,
       });
 
-      if (data?.seo?.tag_manager_id) {
-        initializeTagManager(data.seo.tag_manager_id);
-      }
-
-      const facebookPixelId = data?.seo?.facebook_pixel_id || data?.seo?.meta_pixel_id;
-
-      if (facebookPixelId) {
-        initializeFacebookPixel(facebookPixelId);
-      }
-
       setError(null);
+
+      cancelDeferredSetupRef.current = runWhenBrowserIdle(async () => {
+        try {
+          const WebAwesomeService = await getWebAwesomeService();
+          const theme = data.webawesome_theme || 'mellow';
+          const palette = data.webawesome_palette || 'natural';
+
+          await WebAwesomeService.applyPrebuiltTheme(theme);
+          WebAwesomeService.applyPalette(palette);
+          WebAwesomeService.applyBrandColor(data.brand_color || '#eb0029');
+          WebAwesomeService.applySemanticColors({
+            semantic_brand_color: data.semantic_brand_color || 'blue',
+            semantic_neutral_color: data.semantic_neutral_color || 'gray',
+            semantic_success_color: data.semantic_success_color || 'green',
+            semantic_warning_color: data.semantic_warning_color || 'yellow',
+            semantic_danger_color: data.semantic_danger_color || 'red',
+          });
+
+          const iconFamily = data.icon_family || 'classic';
+          document.documentElement.setAttribute('data-font-family', iconFamily);
+
+          if (data.google_fonts_stylesheet) {
+            const linkId = 'google-fonts-stylesheet';
+            let link = document.getElementById(linkId);
+
+            if (!link) {
+              link = document.createElement('link');
+              link.id = linkId;
+              link.rel = 'stylesheet';
+              document.head.appendChild(link);
+            }
+
+            link.href = data.google_fonts_stylesheet;
+          }
+
+          if (data.font_family_body || data.font_family_heading) {
+            WebAwesomeService.applyFonts({
+              font_family_body: data.font_family_body,
+              font_family_heading: data.font_family_heading,
+            });
+          }
+
+          if (data.custom_css) {
+            siteConfigService.injectCustomCSS(data.custom_css);
+          }
+
+          if (!window.__ilebenHeaderScriptsLoaded) {
+            siteConfigService.injectHeaderScripts(data.header_scripts);
+          }
+
+          siteConfigService.injectFooterScripts(data.footer_scripts);
+
+          if (data?.seo?.tag_manager_id) {
+            initializeTagManager(data.seo.tag_manager_id);
+          }
+
+          const facebookPixelId = data?.seo?.facebook_pixel_id || data?.seo?.meta_pixel_id;
+
+          if (facebookPixelId) {
+            initializeFacebookPixel(facebookPixelId);
+          }
+        } catch (deferredError) {
+          console.error('[SiteConfig] Error aplicando configuracion diferida', deferredError);
+        }
+      });
     } catch (err) {
       setError(err);
       console.error('[SiteConfig] Error cargando configuracion', err);
@@ -164,6 +199,14 @@ export const SiteConfigProvider = ({ children }) => {
 
     loadConfig();
   }, [loadConfig]);
+
+  useEffect(() => {
+    return () => {
+      if (cancelDeferredSetupRef.current) {
+        cancelDeferredSetupRef.current();
+      }
+    };
+  }, []);
 
   const value = {
     config,

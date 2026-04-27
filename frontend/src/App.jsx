@@ -1,16 +1,17 @@
-import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { SiteConfigProvider, SiteConfigContext } from './contexts/SiteConfigContext';
 import MaintenanceMode from './components/MaintenanceMode';
 import ErrorNotification from './components/ErrorNotification';
-import Home from './pages/Home';
-import Contact from './pages/Contact';
-import Payment from './pages/Payment';
 import { APP_HTTP_ERROR_EVENT } from './utils/errorHandler';
 import { trackPageView } from './utils/tagManager';
 import { captureUtmParamsFromUrl } from './utils/utmSession';
 import siteConfigService from './services/siteConfig';
 import './App.scss';
 import './styles/maintenance.scss';
+
+const Home = lazy(() => import('./pages/Home'));
+const Contact = lazy(() => import('./pages/Contact'));
+const Payment = lazy(() => import('./pages/Payment'));
 
 const normalizePathname = (value) => {
   const sanitizedPath = `${value || '/'}`.split('?')[0];
@@ -192,13 +193,15 @@ function AppContent() {
         duration={5500}
       />
       <main>
-        {currentPath === '/contacto' ? (
-          <Contact onNavigate={navigate} currentPath={currentPath} />
-        ) : currentPath === '/pago' ? (
-          <Payment onNavigate={navigate} currentPath={currentPath} />
-        ) : (
-          <Home onNavigate={navigate} currentPath={currentPath} />
-        )}
+        <Suspense fallback={null}>
+          {currentPath === '/contacto' ? (
+            <Contact onNavigate={navigate} currentPath={currentPath} />
+          ) : currentPath === '/pago' ? (
+            <Payment onNavigate={navigate} currentPath={currentPath} />
+          ) : (
+            <Home onNavigate={navigate} currentPath={currentPath} />
+          )}
+        </Suspense>
       </main>
     </div>
   );

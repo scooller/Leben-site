@@ -618,7 +618,7 @@ function PaymentGatewayDialog({
       ref={dialogRef}
       className="payment-gateway-dialog"
       label={manualPayment ? 'Pago Manual' : 'Seleccionar Pasarela de Pago'}
-      style={{ '--width': '500px' }}
+      style={{ '--width': 'min(500px, calc(100dvw - 2rem))' }}
       light-dismiss
     >
       <wa-toast ref={validationToastRef} placement="top-end"></wa-toast>
@@ -722,7 +722,7 @@ function PaymentGatewayDialog({
           </div>
         ) : (
           <>
-            <div className="checkout-user-fields wa-stack wa-gap-m">
+            <div className="checkout-user-fields wa-stack wa-gap-m" style={{ maxWidth: '100%', overflowX: 'hidden' }}>
               {reservationLoading && (
                 <wa-callout variant="info">
                   <wa-spinner slot="icon"></wa-spinner>

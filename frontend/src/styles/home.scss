@@ -46,6 +46,29 @@ html.wa-light #root{
   scroll-margin-top: 6.5rem;
 }
 
+#plantas {
+  scroll-margin-top: 7rem;
+}
+
+// Paginación
+.pagination {
+  margin-top: var(--wa-space-l);
+
+  .pagination-info {
+    color: var(--wa-color-text-quiet);
+  }
+}
+
+html.wa-light {
+  .pagination {
+    wa-button::part(base) {
+      background-color: var(--wa-color-surface-raised);
+      border-color: var(--wa-color-neutral-border-loud);
+      color: var(--wa-color-text-normal);
+    }
+  }
+}
+
 
 /* Video */
 .video-home {
@@ -152,6 +175,11 @@ html.wa-light #root{
   wa-card.plant-card {
     opacity: 0.1;
     scale: 0.55;
+
+    @media (max-width: 768px) {
+      opacity: 1;
+      scale: 1;
+    }
     cursor: pointer;
 
     .plant-price-wrapper {

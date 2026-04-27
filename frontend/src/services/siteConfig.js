@@ -9,6 +9,20 @@ class SiteConfigService {
     this.loading = false;
   }
 
+  getBootstrappedConfig() {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+
+    const candidate = window.__ilebenConfigCache;
+
+    if (!candidate || typeof candidate !== 'object') {
+      return null;
+    }
+
+    return candidate;
+  }
+
   /**
    * Obtener la configuración del sitio desde la API
    * @param {boolean} forceRefresh - Si es true, ignora caché en memoria
@@ -17,6 +31,15 @@ class SiteConfigService {
   async getConfig(forceRefresh = false) {
     if (!forceRefresh && this.config) {
       return this.config;
+    }
+
+    if (!forceRefresh) {
+      const cachedConfig = this.getBootstrappedConfig();
+
+      if (cachedConfig) {
+        this.config = cachedConfig;
+        return this.config;
+      }
     }
 
     this.loading = true;

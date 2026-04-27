@@ -1,11 +1,7 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { ScrollSmoother } from 'gsap/ScrollSmoother';
-import PlantDetailDialog from './PlantDetailDialog';
+import { Suspense, lazy, useState, useRef, useEffect, useCallback } from 'react';
 import PlantsService from '../services/plants';
 
-gsap.registerPlugin(ScrollTrigger, ScrollSmoother);
+const PlantDetailDialog = lazy(() => import('./PlantDetailDialog'));
 
 
 
@@ -32,6 +28,7 @@ function PlantsGrid({
   const [detailLoadingId, setDetailLoadingId] = useState(null);
   const dialogRef = useRef(null);
   const gridContainerRef = useRef(null);
+  const gsapRuntimeRef = useRef(null);
   const activePlant = selectedPlant ?? internalSelectedPlant;
 
   const notifyDetailBlocked = useCallback(() => {
@@ -69,11 +66,29 @@ function PlantsGrid({
     let ctx;
     let isMounted = true;
 
-    // Esperar a que wa-card esté definido para evitar condiciones de carrera al montar web components.
-    customElements.whenDefined('wa-card').then(() => {
+    const setupCardAnimations = async () => {
+      if (!gsapRuntimeRef.current) {
+        const [{ default: gsap }, { ScrollTrigger }, { ScrollSmoother }] = await Promise.all([
+          import('gsap'),
+          import('gsap/ScrollTrigger'),
+          import('gsap/ScrollSmoother'),
+        ]);
+
+        gsap.registerPlugin(ScrollTrigger, ScrollSmoother);
+        gsapRuntimeRef.current = { gsap, ScrollTrigger, ScrollSmoother };
+      }
+
       if (!isMounted) {
         return;
       }
+
+      await customElements.whenDefined('wa-card');
+
+      if (!isMounted || !gridContainerRef.current) {
+        return;
+      }
+
+      const { gsap, ScrollTrigger, ScrollSmoother } = gsapRuntimeRef.current;
 
       let smoother = ScrollSmoother.get();
 
@@ -86,7 +101,7 @@ function PlantsGrid({
             wrapper,
             content,
             smooth: 1,
-            effects: true
+            effects: true,
           });
         }
       }
@@ -104,7 +119,7 @@ function PlantsGrid({
           gsap.to(card, {
             opacity: 1,
             scale: 1,
-            delay: index % 2 === 0 ? 0 : 0.8, // Stagger para cards pares e impares
+            delay: index % 2 === 0 ? 0 : 0.8,
             ease: 'Power2.in',
             scrollTrigger: {
               trigger: card,
@@ -112,14 +127,16 @@ function PlantsGrid({
               start: 'top 85%',
               end: 'top 50%',
               toggleActions: 'play none none none',
-              markers: false
-            }
+              markers: false,
+            },
           });
         });
       }, gridContainerRef);
 
       ScrollTrigger.refresh();
-    });
+    };
+
+    setupCardAnimations();
 
     return () => {
       isMounted = false;
@@ -157,6 +174,17 @@ function PlantsGrid({
   };
 
   const paginationItems = buildPaginationItems();
+
+  const handlePageChange = (newPage) => {
+    onPageChange(newPage);
+    const smoother = gsapRuntimeRef.current?.ScrollSmoother?.get?.();
+    if (smoother && gridContainerRef.current) {
+      smoother.scrollTo(gridContainerRef.current, true, 'top 100px');
+    } else {
+      gridContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   const showingFrom = totalPlants > 0 ? (page - 1) * 12 + 1 : 0;
   const showingTo = Math.min((page - 1) * 12 + plants.length, totalPlants || 0);
 
@@ -330,6 +358,8 @@ function PlantsGrid({
                     alt={plant.nombre}
                     onClick={() => openPlantDetail(plant)}
                     className="plant-image"
+                    loading="lazy"
+                    decoding="async"
                     />
                     {plant.proyectoComuna && (
                     <wa-badge variant="neutral" className="plant-comuna-badge"><wa-icon slot="start" name="map-location"></wa-icon>{plant.proyectoComuna}</wa-badge>
@@ -467,15 +497,19 @@ function PlantsGrid({
       </div>
 
       {/* Diálogo - Detalles de Planta */}
-      <PlantDetailDialog
-        plant={activePlant}
-        isSaleEventActive={isSaleEventActive}
-        saleLogoUrl={saleLogoUrl}
-        dialogRef={dialogRef}
-        checkoutLoading={checkoutLoading}
-        onCheckout={handleCheckoutFromDialog}
-        onClose={closeActivePlant}
-      />
+      {activePlant ? (
+        <Suspense fallback={null}>
+          <PlantDetailDialog
+            plant={activePlant}
+            isSaleEventActive={isSaleEventActive}
+            saleLogoUrl={saleLogoUrl}
+            dialogRef={dialogRef}
+            checkoutLoading={checkoutLoading}
+            onCheckout={handleCheckoutFromDialog}
+            onClose={closeActivePlant}
+          />
+        </Suspense>
+      ) : null}
 
       {/* Paginación */}
       {totalPages > 1 && (
@@ -486,7 +520,7 @@ function PlantsGrid({
               Mostrando {showingFrom} a {showingTo} de {totalPlants || 0} resultados
             </span>
             <wa-button-group orientation="horizontal" label="Paginación">
-              <wa-button appearance="outlined" disabled={page === 1} onClick={() => onPageChange(page - 1)}>
+              <wa-button appearance="outlined" disabled={page === 1} onClick={() => handlePageChange(page - 1)}>
                 <wa-icon name="chevron-left"></wa-icon>
               </wa-button>
 
@@ -506,14 +540,14 @@ function PlantsGrid({
                     key={item}
                     appearance={isActivePage ? 'accent' : 'outlined'}
                     {...(isActivePage ? { variant: 'brand' } : {})}
-                    onClick={() => onPageChange(item)}
+                    onClick={() => handlePageChange(item)}
                   >
                     {item}
                   </wa-button>
                 );
               })}
 
-              <wa-button appearance="outlined" disabled={page === totalPages} onClick={() => onPageChange(page + 1)}>
+              <wa-button appearance="outlined" disabled={page === totalPages} onClick={() => handlePageChange(page + 1)}>
                 <wa-icon name="chevron-right"></wa-icon>
               </wa-button>
             </wa-button-group>

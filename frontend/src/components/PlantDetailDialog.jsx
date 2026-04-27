@@ -1,10 +1,16 @@
-import { Fancybox } from '@fancyapps/ui';
-import '@fancyapps/ui/dist/fancybox/fancybox.css';
 import { trackEvent } from '../utils/tagManager';
 import { useEffect, useRef } from 'react';
 
 function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = null, dialogRef, checkoutLoading, onCheckout, onClose }) {
     const closeNotifiedRef = useRef(false);
+
+    // Abre el diálogo al montar (necesario cuando el componente se carga lazy:
+    // el useEffect en el padre corre antes de que este componente esté en el DOM)
+    useEffect(() => {
+        if (dialogRef?.current) {
+            dialogRef.current.open = true;
+        }
+    }, [dialogRef]);
 
     useEffect(() => {
         const dialogElement = dialogRef?.current;
@@ -97,12 +103,17 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
             .join('');
     };
 
-    const openImageZoom = (event) => {
+    const openImageZoom = async (event) => {
         event.preventDefault();
 
         if (!plant?.detailImageUrl) {
             return;
         }
+
+        const [{ Fancybox }] = await Promise.all([
+            import('@fancyapps/ui'),
+            import('@fancyapps/ui/dist/fancybox/fancybox.css'),
+        ]);
 
         const imageUrl = plant.detailImageUrl;
         const isSvg = /\.svg($|[?#])/i.test(imageUrl) || imageUrl.startsWith('data:image/svg+xml');
@@ -164,6 +175,8 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
                             alt={plant.nombre}
                             className="plant-detail-image"
                             style={{ cursor: 'zoom-in' }}
+                            loading="lazy"
+                            decoding="async"
                         />
                     </a>
                     {plant.projectLogoUrl && (
