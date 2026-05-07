@@ -55,7 +55,7 @@ class ShortLinkRedirectController extends Controller
             'shortLink' => $shortLink,
             'destinationUrl' => $destinationUrl,
             'tagManagerId' => $resolvedTagManagerId,
-            'redirectDelayMs' => 500,
+            'redirectDelayMs' => 150,
         ]);
     }
 }

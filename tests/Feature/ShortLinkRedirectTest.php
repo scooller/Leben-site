@@ -30,7 +30,7 @@ class ShortLinkRedirectTest extends TestCase
             'tag_manager_id' => null,
         ]);
 
-        $response = $this->get('/s/'.$shortLink->slug.'?utm_source=google');
+        $response = $this->get('/s/' . $shortLink->slug . '?utm_source=google');
 
         $response->assertRedirect('https://example.com/landing?utm_source=google');
 
@@ -51,13 +51,14 @@ class ShortLinkRedirectTest extends TestCase
             'status' => ShortLinkStatus::ACTIVE,
         ]);
 
-        $response = $this->get('/s/'.$shortLink->slug);
+        $response = $this->get('/s/' . $shortLink->slug);
 
         $response
             ->assertOk()
             ->assertSee('googletagmanager.com/gtm.js', false)
             ->assertSee('short_link_click', false)
-            ->assertSee('https://example.com/offer', false);
+            ->assertSee('https://example.com/offer', false)
+            ->assertSee('}, 150);', false);
     }
 
     public function test_disabled_short_link_returns_not_found(): void
@@ -66,7 +67,7 @@ class ShortLinkRedirectTest extends TestCase
             'slug' => 'promo03',
         ]);
 
-        $response = $this->get('/s/'.$shortLink->slug);
+        $response = $this->get('/s/' . $shortLink->slug);
 
         $response->assertNotFound();
     }
@@ -77,7 +78,7 @@ class ShortLinkRedirectTest extends TestCase
             'slug' => 'promo04',
         ]);
 
-        $response = $this->get('/s/'.$shortLink->slug);
+        $response = $this->get('/s/' . $shortLink->slug);
 
         $response->assertNotFound();
     }
