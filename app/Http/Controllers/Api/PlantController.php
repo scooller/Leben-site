@@ -40,7 +40,7 @@ class PlantController extends Controller
         $provinciaValues = $this->normalizeInputValues($request->input('provincia'));
         $regionValues = $this->normalizeInputValues($request->input('region'));
         $entregaValues = $this->normalizeEtapaValues($request->input('entrega'));
-        $eventoSale = $this->normalizeBoolean($request->input('evento_sale'));
+        $eventoSale = $this->resolveEventoSaleActive($request);
         $available = $this->normalizeBoolean($request->input('disponible', $request->input('available')));
 
         // Filtros
@@ -82,7 +82,7 @@ class PlantController extends Controller
                 $normalizedCatalogSlug = Str::slug($catalogSlugValue);
 
                 $projectSlugMatchExists = $activeProjects->contains(
-                    fn(Proyecto $project): bool => $project->slug === $normalizedCatalogSlug
+                    fn (Proyecto $project): bool => $project->slug === $normalizedCatalogSlug
                 );
 
                 if ($projectSlugMatchExists) {
@@ -134,9 +134,9 @@ class PlantController extends Controller
                             $dormNumber = preg_replace('/\D+/', '', $dormText);
 
                             if ($dormText === 'ST') {
-                                $dormQuery->orWhereRaw($normalizedColumn . ' like ?', ['ST%']);
+                                $dormQuery->orWhereRaw($normalizedColumn.' like ?', ['ST%']);
                             } elseif ($dormNumber !== '') {
-                                $dormQuery->orWhereRaw($normalizedColumn . ' like ?', [$dormNumber . 'D%']);
+                                $dormQuery->orWhereRaw($normalizedColumn.' like ?', [$dormNumber.'D%']);
                             }
                         }
                     });
@@ -149,8 +149,8 @@ class PlantController extends Controller
 
                             if ($banosNumber !== '') {
                                 $banosQuery
-                                    ->orWhereRaw($normalizedColumn . ' like ?', ['%+' . $banosNumber . 'B%'])
-                                    ->orWhereRaw($normalizedColumn . ' like ?', ['%+' . $banosNumber]);
+                                    ->orWhereRaw($normalizedColumn.' like ?', ['%+'.$banosNumber.'B%'])
+                                    ->orWhereRaw($normalizedColumn.' like ?', ['%+'.$banosNumber]);
                             }
                         }
                     });
@@ -207,12 +207,16 @@ class PlantController extends Controller
         $perPage = (int) $request->input('perPage', $defaultPerPage);
         $perPage = max(1, min($perPage, 100));
 
+        $orderByDiscountField = $eventoSale === true
+            ? 'porcentaje_maximo_unidad'
+            : 'descuento_defecto_cotizacion_web';
+
         $query->orderByRaw(
-            'COALESCE(CASE WHEN porcentaje_maximo_unidad > 0 AND precio_lista > 0 THEN CASE WHEN (precio_lista - ((precio_lista * porcentaje_maximo_unidad) / 100)) < 0 THEN 0 ELSE (precio_lista - ((precio_lista * porcentaje_maximo_unidad) / 100)) END ELSE precio_base END, 999999999999) ASC'
+            "COALESCE(CASE WHEN {$orderByDiscountField} > 0 AND precio_lista > 0 THEN CASE WHEN (precio_lista - ((precio_lista * {$orderByDiscountField}) / 100)) < 0 THEN 0 ELSE (precio_lista - ((precio_lista * {$orderByDiscountField}) / 100)) END ELSE precio_base END, 999999999999) ASC"
         )->orderBy('id');
 
-        $plants = $query->paginate($perPage)->through(function (Plant $plant): array {
-            return $this->plantPayload($plant);
+        $plants = $query->paginate($perPage)->through(function (Plant $plant) use ($eventoSale): array {
+            return $this->plantPayload($plant, $eventoSale);
         });
 
         return $this->noStoreJson($plants);
@@ -224,7 +228,7 @@ class PlantController extends Controller
     private function normalizeInputValues(mixed $value): array
     {
         if (is_array($value)) {
-            return array_values(array_filter(array_map(static fn(mixed $item): string => trim((string) $item), $value), static fn(string $item): bool => $item !== ''));
+            return array_values(array_filter(array_map(static fn (mixed $item): string => trim((string) $item), $value), static fn (string $item): bool => $item !== ''));
         }
 
         if (is_string($value)) {
@@ -235,7 +239,7 @@ class PlantController extends Controller
             if (str_contains($value, ',')) {
                 $parts = explode(',', $value);
 
-                return array_values(array_filter(array_map(static fn(string $item): string => trim($item), $parts), static fn(string $item): bool => $item !== ''));
+                return array_values(array_filter(array_map(static fn (string $item): string => trim($item), $parts), static fn (string $item): bool => $item !== ''));
             }
 
             return [trim($value)];
@@ -279,8 +283,8 @@ class PlantController extends Controller
     private function normalizeEtapaValues(mixed $value): array
     {
         return collect($this->normalizeInputValues($value))
-            ->map(static fn(string $item): ?string => Proyecto::normalizeEtapa($item))
-            ->filter(static fn(?string $item): bool => $item !== null)
+            ->map(static fn (string $item): ?string => Proyecto::normalizeEtapa($item))
+            ->filter(static fn (?string $item): bool => $item !== null)
             ->values()
             ->all();
     }
@@ -288,8 +292,10 @@ class PlantController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(string $id): JsonResponse
+    public function show(Request $request, string $id): JsonResponse
     {
+        $eventoSale = $this->resolveEventoSaleActive($request);
+
         $plant = Plant::query()
             ->with(['proyecto.asesores.avatarImageMedia', 'asesor.avatarImageMedia', 'activeReservation', 'completedReservation', 'completedPayment', 'coverImageMedia', 'interiorImageMedia'])
             ->whereHas('proyecto', function ($projectQuery) {
@@ -297,11 +303,12 @@ class PlantController extends Controller
             })
             ->findOrFail($id);
 
-        return $this->noStoreJson($this->plantPayload($plant));
+        return $this->noStoreJson($this->plantPayload($plant, $eventoSale));
     }
 
-    public function showByProjectSlugAndUnitName(string $projectSlug, string $unitName): JsonResponse
+    public function showByProjectSlugAndUnitName(Request $request, string $projectSlug, string $unitName): JsonResponse
     {
+        $eventoSale = $this->resolveEventoSaleActive($request);
         $normalizedUnitName = trim($unitName);
         $normalizedUnitSlug = Str::of($normalizedUnitName)->lower()->replace(' ', '-')->value();
 
@@ -320,7 +327,7 @@ class PlantController extends Controller
             })
             ->firstOrFail();
 
-        return $this->noStoreJson($this->plantPayload($plant));
+        return $this->noStoreJson($this->plantPayload($plant, $eventoSale));
     }
 
     public function locationFilters(): JsonResponse
@@ -338,8 +345,8 @@ class PlantController extends Controller
                 $projectQuery->where('is_active', true);
             })
             ->pluck('orientacion')
-            ->map(static fn(mixed $orientacion): string => trim((string) $orientacion))
-            ->filter(static fn(string $orientacion): bool => $orientacion !== '')
+            ->map(static fn (mixed $orientacion): string => trim((string) $orientacion))
+            ->filter(static fn (string $orientacion): bool => $orientacion !== '')
             ->unique()
             ->sort(SORT_NATURAL | SORT_FLAG_CASE)
             ->values();
@@ -350,8 +357,8 @@ class PlantController extends Controller
                 $projectQuery->where('is_active', true);
             })
             ->pluck('tipo_producto')
-            ->map(static fn(mixed $tipoProducto): string => trim((string) $tipoProducto))
-            ->filter(static fn(string $tipoProducto): bool => $tipoProducto !== '')
+            ->map(static fn (mixed $tipoProducto): string => trim((string) $tipoProducto))
+            ->filter(static fn (string $tipoProducto): bool => $tipoProducto !== '')
             ->unique()
             ->sort(SORT_NATURAL | SORT_FLAG_CASE)
             ->values();
@@ -362,24 +369,24 @@ class PlantController extends Controller
                 $projectQuery->where('is_active', true);
             })
             ->pluck('piso')
-            ->map(static fn(mixed $piso): string => trim((string) $piso))
-            ->filter(static fn(string $piso): bool => $piso !== '')
+            ->map(static fn (mixed $piso): string => trim((string) $piso))
+            ->filter(static fn (string $piso): bool => $piso !== '')
             ->unique()
             ->sort(SORT_NATURAL | SORT_FLAG_CASE)
             ->values();
 
         $regions = $projects
             ->pluck('region')
-            ->map(static fn(mixed $region): string => trim((string) $region))
-            ->filter(static fn(string $region): bool => $region !== '')
+            ->map(static fn (mixed $region): string => trim((string) $region))
+            ->filter(static fn (string $region): bool => $region !== '')
             ->unique()
             ->sort(SORT_NATURAL | SORT_FLAG_CASE)
             ->values();
 
         $comunas = $projects
             ->pluck('comuna')
-            ->map(static fn(mixed $comuna): string => trim((string) $comuna))
-            ->filter(static fn(string $comuna): bool => $comuna !== '')
+            ->map(static fn (mixed $comuna): string => trim((string) $comuna))
+            ->filter(static fn (string $comuna): bool => $comuna !== '')
             ->unique()
             ->sort(SORT_NATURAL | SORT_FLAG_CASE)
             ->values();
@@ -391,7 +398,7 @@ class PlantController extends Controller
                     'comuna' => trim((string) $proyecto->comuna),
                 ];
             })
-            ->filter(static fn(array $entry): bool => $entry['region'] !== '' && $entry['comuna'] !== '')
+            ->filter(static fn (array $entry): bool => $entry['region'] !== '' && $entry['comuna'] !== '')
             ->groupBy('region')
             ->map(function ($entries) {
                 return collect($entries)
@@ -403,8 +410,8 @@ class PlantController extends Controller
 
         $entregas = $projects
             ->pluck('etapa')
-            ->map(static fn(mixed $etapa): string => trim((string) (Proyecto::etapaLabel($etapa) ?? '')))
-            ->filter(static fn(string $etapa): bool => $etapa !== '')
+            ->map(static fn (mixed $etapa): string => trim((string) (Proyecto::etapaLabel($etapa) ?? '')))
+            ->filter(static fn (string $etapa): bool => $etapa !== '')
             ->unique()
             ->sort(SORT_NATURAL | SORT_FLAG_CASE)
             ->values();
@@ -430,7 +437,7 @@ class PlantController extends Controller
         ]);
     }
 
-    private function plantPayload(Plant $plant): array
+    private function plantPayload(Plant $plant, bool $eventoSale): array
     {
         $payload = $plant->toArray();
         $defaultAdvisorAvatarUrl = $this->getDefaultAdvisorAvatarUrl();
@@ -452,8 +459,20 @@ class PlantController extends Controller
         $payload['is_available'] = $plant->activeReservation === null
             && $plant->completedReservation === null
             && $plant->completedPayment === null;
+        $payload['precio_final'] = $plant->resolveFinalPrice($eventoSale);
 
         return $payload;
+    }
+
+    private function resolveEventoSaleActive(Request $request): bool
+    {
+        $eventoSaleFromQuery = $this->normalizeBoolean($request->input('evento_sale'));
+
+        if ($eventoSaleFromQuery !== null) {
+            return $eventoSaleFromQuery;
+        }
+
+        return (bool) (SiteSetting::current()->evento_sale ?? false);
     }
 
     /**
@@ -468,7 +487,7 @@ class PlantController extends Controller
         return $plant->proyecto?->asesores
             ->where('is_active', true)
             ->values()
-            ->map(fn(Asesor $asesor): array => $this->asesorPayload($asesor, $defaultAdvisorAvatarUrl))
+            ->map(fn (Asesor $asesor): array => $this->asesorPayload($asesor, $defaultAdvisorAvatarUrl))
             ->all() ?? [];
     }
 
@@ -569,7 +588,7 @@ class PlantController extends Controller
             'asesores' => $proyecto->asesores
                 ->where('is_active', true)
                 ->values()
-                ->map(fn(Asesor $asesor): array => $this->asesorPayload($asesor, $defaultAdvisorAvatarUrl))
+                ->map(fn (Asesor $asesor): array => $this->asesorPayload($asesor, $defaultAdvisorAvatarUrl))
                 ->all(),
         ];
     }
@@ -607,7 +626,7 @@ class PlantController extends Controller
             return (string) $siteSettings->logo;
         }
 
-        return 'data:image/svg+xml,' . rawurlencode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M320 312C253.7 312 200 258.3 200 192C200 125.7 253.7 72 320 72C386.3 72 440 125.7 440 192C440 258.3 386.3 312 320 312zM289.5 368L350.5 368C360.2 368 368 375.8 368 385.5C368 389.7 366.5 393.7 363.8 396.9L336.4 428.9L367.4 544L368 544L402.6 405.5C404.8 396.8 413.7 391.5 422.1 394.7C484 418.3 528 478.3 528 548.5C528 563.6 515.7 575.9 500.6 575.9L139.4 576C124.3 576 112 563.7 112 548.6C112 478.4 156 418.4 217.9 394.8C226.3 391.6 235.2 396.9 237.4 405.6L272 544.1L272.6 544.1L303.6 429L276.2 397C273.5 393.8 272 389.8 272 385.6C272 375.9 279.8 368.1 289.5 368.1z"/></svg>');
+        return 'data:image/svg+xml,'.rawurlencode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M320 312C253.7 312 200 258.3 200 192C200 125.7 253.7 72 320 72C386.3 72 440 125.7 440 192C440 258.3 386.3 312 320 312zM289.5 368L350.5 368C360.2 368 368 375.8 368 385.5C368 389.7 366.5 393.7 363.8 396.9L336.4 428.9L367.4 544L368 544L402.6 405.5C404.8 396.8 413.7 391.5 422.1 394.7C484 418.3 528 478.3 528 548.5C528 563.6 515.7 575.9 500.6 575.9L139.4 576C124.3 576 112 563.7 112 548.6C112 478.4 156 418.4 217.9 394.8C226.3 391.6 235.2 396.9 237.4 405.6L272 544.1L272.6 544.1L303.6 429L276.2 397C273.5 393.8 272 389.8 272 385.6C272 375.9 279.8 368.1 289.5 368.1z"/></svg>');
     }
 
     /**

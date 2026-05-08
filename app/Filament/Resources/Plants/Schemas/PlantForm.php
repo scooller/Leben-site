@@ -101,6 +101,11 @@ class PlantForm
                     ->numeric()
                     ->suffix('%')
                     ->helperText('Solo para plantas con programa "Departamento". Intentar no modificar, se perdera al sincronizar.'),
+                TextInput::make('descuento_defecto_cotizacion_web')
+                    ->label('Descuento por Defecto Cotización Web (%)')
+                    ->numeric()
+                    ->suffix('%')
+                    ->disabled(),
                 Toggle::make('unidad_sale')
                     ->label('Unidad Sale')
                     ->helperText('Define si esta unidad debe mostrarse cuando la configuración sale está activa.'),

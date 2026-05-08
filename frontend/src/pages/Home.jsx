@@ -409,10 +409,15 @@ function Home({ onNavigate, currentPath }) {
     const precioBase = Number(plant.precio_base) || 0;
     const precioLista = Number(plant.precio_lista) || 0;
     const porcentajeMaximoUnidad = Number(plant.porcentaje_maximo_unidad) || 0;
-    const precioCalculadoPorPorcentaje = porcentajeMaximoUnidad > 0 && precioLista > 0
-      ? Math.max(0, precioLista - ((precioLista * porcentajeMaximoUnidad) / 100))
+    const descuentoDefectoCotizacionWeb = Number(plant.descuento_defecto_cotizacion_web) || 0;
+    const porcentajeAplicado = isSaleEventActive ? porcentajeMaximoUnidad : descuentoDefectoCotizacionWeb;
+    const precioCalculadoPorPorcentaje = porcentajeAplicado > 0 && precioLista > 0
+      ? Math.max(0, precioLista - ((precioLista * porcentajeAplicado) / 100))
       : 0;
-    const precioFinal = precioCalculadoPorPorcentaje > 0 ? precioCalculadoPorPorcentaje : precioBase;
+    const precioFinalApi = Number(plant.precio_final) || 0;
+    const precioFinal = precioFinalApi > 0
+      ? precioFinalApi
+      : (precioCalculadoPorPorcentaje > 0 ? precioCalculadoPorPorcentaje : precioBase);
     const discountPercentage = precioLista > 0 && precioFinal > 0 && precioFinal < precioLista
       ? Math.max(0, Math.round(Math.abs(((precioLista - precioFinal) / precioLista) * 100)))
       : 0;
@@ -436,6 +441,7 @@ function Home({ onNavigate, currentPath }) {
       precioLista,
       precioFinal,
       porcentajeMaximoUnidad,
+      descuentoDefectoCotizacionWeb,
       discountPercentage: discountPercentage || legacyDiscountPercentage,
       reservaExigidaPeso: Number(plant.proyecto?.valor_reserva_exigido_defecto_peso) || 0,
       proyectoNombre: plant.proyecto?.name,
@@ -460,7 +466,7 @@ function Home({ onNavigate, currentPath }) {
       isReserved: !!plant.active_reservation,
       tipoProducto: `${plant.tipo_producto ?? ''}`.trim().toUpperCase(),
     };
-  }, []);
+  }, [isSaleEventActive]);
 
   useEffect(() => {
     if (!canRenderPlantsCatalog) {

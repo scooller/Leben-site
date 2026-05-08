@@ -28,6 +28,7 @@ class PlantTest extends TestCase
             'precio_base',
             'precio_lista',
             'porcentaje_maximo_unidad',
+            'descuento_defecto_cotizacion_web',
             'unidad_sale',
             'superficie_total_principal',
             'superficie_interior',
@@ -82,5 +83,29 @@ class PlantTest extends TestCase
         $this->assertDatabaseHas('plants', [
             'id' => $plant->id,
         ]);
+    }
+
+    public function test_it_resolves_final_price_using_default_discount_when_sale_event_is_inactive(): void
+    {
+        $plant = Plant::factory()->create([
+            'precio_base' => 100,
+            'precio_lista' => 200,
+            'descuento_defecto_cotizacion_web' => 25,
+            'porcentaje_maximo_unidad' => 5,
+        ]);
+
+        $this->assertSame(150.0, $plant->resolveFinalPrice(false));
+    }
+
+    public function test_it_resolves_final_price_using_porcentaje_maximo_when_sale_event_is_active(): void
+    {
+        $plant = Plant::factory()->create([
+            'precio_base' => 100,
+            'precio_lista' => 200,
+            'descuento_defecto_cotizacion_web' => 25,
+            'porcentaje_maximo_unidad' => 10,
+        ]);
+
+        $this->assertSame(180.0, $plant->resolveFinalPrice(true));
     }
 }
