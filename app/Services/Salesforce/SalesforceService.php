@@ -909,7 +909,7 @@ class SalesforceService
 
         $ttl = $cacheTtl ?? $this->defaultCacheTtl;
 
-        return Cache::remember('salesforce:proyectos', $ttl, function () use ($soql) {
+        return Cache::remember('salesforce:proyectos:v2', $ttl, function () use ($soql) {
             try {
                 $result = Forrest::query($soql);
                 $entries = $result['records'] ?? [];
@@ -940,7 +940,10 @@ class SalesforceService
                         ]),
                         'valor_reserva_exigido_defecto_peso' => $entry['Valor_Reserva_Exigido_Defecto_Peso__c'] ? (float) $entry['Valor_Reserva_Exigido_Defecto_Peso__c'] : null,
                         'valor_reserva_exigido_min_peso' => $entry['Valor_Reserva_Exigido_Min_Peso__c'] ? (float) $entry['Valor_Reserva_Exigido_Min_Peso__c'] : null,
-                        'descuento_defecto_cotizacion_web' => $entry['Descuento_por_Defecto_Cotizaci_n_Web__c'] ? (float) $entry['Descuento_por_Defecto_Cotizaci_n_Web__c'] : null,
+                        'descuento_defecto_cotizacion_web' => array_key_exists('Descuento_por_Defecto_Cotizaci_n_Web__c', $entry)
+                            && $entry['Descuento_por_Defecto_Cotizaci_n_Web__c'] !== null
+                            ? (float) $entry['Descuento_por_Defecto_Cotizaci_n_Web__c']
+                            : null,
                         'entrega_inmediata' => (bool) ($entry['Entrega_Inmediata__c'] ?? false),
                     ];
                 }, $entries);
@@ -974,7 +977,10 @@ class SalesforceService
                         ]),
                         'valor_reserva_exigido_defecto_peso' => $entry['Valor_Reserva_Exigido_Defecto_Peso__c'] ? (float) $entry['Valor_Reserva_Exigido_Defecto_Peso__c'] : null,
                         'valor_reserva_exigido_min_peso' => $entry['Valor_Reserva_Exigido_Min_Peso__c'] ? (float) $entry['Valor_Reserva_Exigido_Min_Peso__c'] : null,
-                        'descuento_defecto_cotizacion_web' => $entry['Descuento_por_Defecto_Cotizaci_n_Web__c'] ? (float) $entry['Descuento_por_Defecto_Cotizaci_n_Web__c'] : null,
+                        'descuento_defecto_cotizacion_web' => array_key_exists('Descuento_por_Defecto_Cotizaci_n_Web__c', $entry)
+                            && $entry['Descuento_por_Defecto_Cotizaci_n_Web__c'] !== null
+                            ? (float) $entry['Descuento_por_Defecto_Cotizaci_n_Web__c']
+                            : null,
                         'entrega_inmediata' => (bool) ($entry['Entrega_Inmediata__c'] ?? false),
                     ];
                 }, $entries);
@@ -988,6 +994,7 @@ class SalesforceService
     public function invalidateProjectsCache(): void
     {
         Cache::forget('salesforce:proyectos');
+        Cache::forget('salesforce:proyectos:v2');
     }
 
     /**

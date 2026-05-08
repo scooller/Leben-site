@@ -127,7 +127,7 @@ class SyncProjectsAction
                     'horario_atencion' => $proyectoData['horario_atencion'],
                     'valor_reserva_exigido_defecto_peso' => $proyectoData['valor_reserva_exigido_defecto_peso'],
                     'valor_reserva_exigido_min_peso' => $proyectoData['valor_reserva_exigido_min_peso'],
-                    'descuento_defecto_cotizacion_web' => $proyectoData['descuento_defecto_cotizacion_web'],
+                    'descuento_defecto_cotizacion_web' => $proyectoData['descuento_defecto_cotizacion_web'] ?? null,
                     'entrega_inmediata' => $proyectoData['entrega_inmediata'],
                 ];
 
