@@ -290,6 +290,12 @@ class ProyectoForm
                                     ->numeric()
                                     ->disabled()
                                     ->prefix('$'),
+
+                                TextInput::make('descuento_defecto_cotizacion_web')
+                                    ->label('Descuento por Defecto Cotización Web (%)')
+                                    ->numeric()
+                                    ->disabled()
+                                    ->suffix('%'),
                             ])
                             ->columns(2),
 

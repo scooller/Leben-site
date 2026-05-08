@@ -161,9 +161,11 @@ class Plant extends Model
         $precioLista = (float) ($this->precio_lista ?? 0);
         $precioBase = (float) ($this->precio_base ?? 0);
 
+        $projectDiscount = $this->proyecto?->descuento_defecto_cotizacion_web;
+
         $porcentajeDescuento = $eventoSaleActivo
             ? (float) ($this->porcentaje_maximo_unidad ?? 0)
-            : (float) ($this->descuento_defecto_cotizacion_web ?? 0);
+            : (float) ($projectDiscount ?? 0);
 
         if ($precioLista > 0 && $porcentajeDescuento > 0) {
             $precioConDescuento = $precioLista - (($precioLista * $porcentajeDescuento) / 100);

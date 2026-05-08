@@ -39,6 +39,7 @@ class SyncProjectsAction
         'horario_atencion' => 'Horario atencion',
         'valor_reserva_exigido_defecto_peso' => 'Valor reserva exigido defecto (peso)',
         'valor_reserva_exigido_min_peso' => 'Valor reserva exigido minimo (peso)',
+        'descuento_defecto_cotizacion_web' => 'Descuento por defecto cotizacion web',
         'entrega_inmediata' => 'Entrega inmediata',
         'tipo' => 'Tipo',
         'salesforce_logo_url' => 'Logo Salesforce',
@@ -126,6 +127,7 @@ class SyncProjectsAction
                     'horario_atencion' => $proyectoData['horario_atencion'],
                     'valor_reserva_exigido_defecto_peso' => $proyectoData['valor_reserva_exigido_defecto_peso'],
                     'valor_reserva_exigido_min_peso' => $proyectoData['valor_reserva_exigido_min_peso'],
+                    'descuento_defecto_cotizacion_web' => $proyectoData['descuento_defecto_cotizacion_web'],
                     'entrega_inmediata' => $proyectoData['entrega_inmediata'],
                 ];
 

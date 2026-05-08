@@ -36,6 +36,7 @@ class ProyectoFactory extends Factory
             'horario_atencion' => 'Lunes a Viernes 9:00 - 18:00',
             'valor_reserva_exigido_defecto_peso' => fake()->randomFloat(2, 100000, 500000),
             'valor_reserva_exigido_min_peso' => fake()->randomFloat(2, 50000, 200000),
+            'descuento_defecto_cotizacion_web' => fake()->optional(0.5)->randomFloat(2, 0, 20),
             'entrega_inmediata' => fake()->boolean(30),
         ];
     }

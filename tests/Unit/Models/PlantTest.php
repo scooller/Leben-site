@@ -87,10 +87,14 @@ class PlantTest extends TestCase
 
     public function test_it_resolves_final_price_using_default_discount_when_sale_event_is_inactive(): void
     {
+        $proyecto = Proyecto::factory()->create([
+            'descuento_defecto_cotizacion_web' => 25,
+        ]);
+
         $plant = Plant::factory()->create([
+            'salesforce_proyecto_id' => $proyecto->salesforce_id,
             'precio_base' => 100,
             'precio_lista' => 200,
-            'descuento_defecto_cotizacion_web' => 25,
             'porcentaje_maximo_unidad' => 5,
         ]);
 
@@ -99,10 +103,14 @@ class PlantTest extends TestCase
 
     public function test_it_resolves_final_price_using_porcentaje_maximo_when_sale_event_is_active(): void
     {
+        $proyecto = Proyecto::factory()->create([
+            'descuento_defecto_cotizacion_web' => 25,
+        ]);
+
         $plant = Plant::factory()->create([
+            'salesforce_proyecto_id' => $proyecto->salesforce_id,
             'precio_base' => 100,
             'precio_lista' => 200,
-            'descuento_defecto_cotizacion_web' => 25,
             'porcentaje_maximo_unidad' => 10,
         ]);
 

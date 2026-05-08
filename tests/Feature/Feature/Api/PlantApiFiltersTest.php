@@ -829,13 +829,13 @@ class PlantApiFiltersTest extends TestCase
     {
         $project = Proyecto::factory()->create([
             'is_active' => true,
+            'descuento_defecto_cotizacion_web' => 10,
         ]);
 
         $this->createPlant($project->salesforce_id, true, [
             'name' => 'HIGH',
             'precio_base' => 50,
             'precio_lista' => 250,
-            'descuento_defecto_cotizacion_web' => 10,
             'porcentaje_maximo_unidad' => 1,
         ]);
 
@@ -843,7 +843,6 @@ class PlantApiFiltersTest extends TestCase
             'name' => 'LOW',
             'precio_base' => 100,
             'precio_lista' => 100,
-            'descuento_defecto_cotizacion_web' => 20,
             'porcentaje_maximo_unidad' => 1,
         ]);
 
@@ -851,7 +850,6 @@ class PlantApiFiltersTest extends TestCase
             'name' => 'MID',
             'precio_base' => 150,
             'precio_lista' => 150,
-            'descuento_defecto_cotizacion_web' => 10,
             'porcentaje_maximo_unidad' => 1,
         ]);
 
@@ -865,13 +863,13 @@ class PlantApiFiltersTest extends TestCase
     {
         $project = Proyecto::factory()->create([
             'is_active' => true,
+            'descuento_defecto_cotizacion_web' => 40,
         ]);
 
         $this->createPlant($project->salesforce_id, true, [
             'name' => 'HIGH',
             'precio_base' => 50,
             'precio_lista' => 250,
-            'descuento_defecto_cotizacion_web' => 40,
             'porcentaje_maximo_unidad' => 10,
             'unidad_sale' => true,
         ]);
@@ -880,7 +878,6 @@ class PlantApiFiltersTest extends TestCase
             'name' => 'LOW',
             'precio_base' => 100,
             'precio_lista' => 100,
-            'descuento_defecto_cotizacion_web' => 0,
             'porcentaje_maximo_unidad' => 20,
             'unidad_sale' => true,
         ]);
@@ -889,7 +886,6 @@ class PlantApiFiltersTest extends TestCase
             'name' => 'MID',
             'precio_base' => 150,
             'precio_lista' => 150,
-            'descuento_defecto_cotizacion_web' => 0,
             'porcentaje_maximo_unidad' => 10,
             'unidad_sale' => true,
         ]);
@@ -904,12 +900,12 @@ class PlantApiFiltersTest extends TestCase
     {
         $project = Proyecto::factory()->create([
             'is_active' => true,
+            'descuento_defecto_cotizacion_web' => 25,
         ]);
 
         $plant = $this->createPlant($project->salesforce_id, true, [
             'precio_base' => 100,
             'precio_lista' => 200,
-            'descuento_defecto_cotizacion_web' => 25,
             'porcentaje_maximo_unidad' => 10,
             'unidad_sale' => true,
         ]);
@@ -935,7 +931,6 @@ class PlantApiFiltersTest extends TestCase
             'programa2' => '2 baños',
             'precio_base' => 5000,
             'precio_lista' => 5500,
-            'descuento_defecto_cotizacion_web' => 0,
             'porcentaje_maximo_unidad' => 0,
             'is_active' => $isActive,
             'last_synced_at' => now(),

@@ -409,7 +409,7 @@ function Home({ onNavigate, currentPath }) {
     const precioBase = Number(plant.precio_base) || 0;
     const precioLista = Number(plant.precio_lista) || 0;
     const porcentajeMaximoUnidad = Number(plant.porcentaje_maximo_unidad) || 0;
-    const descuentoDefectoCotizacionWeb = Number(plant.descuento_defecto_cotizacion_web) || 0;
+    const descuentoDefectoCotizacionWeb = Number(plant.proyecto?.descuento_defecto_cotizacion_web) || 0;
     const porcentajeAplicado = isSaleEventActive ? porcentajeMaximoUnidad : descuentoDefectoCotizacionWeb;
     const precioCalculadoPorPorcentaje = porcentajeAplicado > 0 && precioLista > 0
       ? Math.max(0, precioLista - ((precioLista * porcentajeAplicado) / 100))

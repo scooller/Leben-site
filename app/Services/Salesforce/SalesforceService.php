@@ -720,7 +720,6 @@ class SalesforceService
      *               'precio_lista' => float,
      *               'porcentaje_maximo_unidad' => float,
      *               'superficie_total_principal' => float,
-     *               'descuento_defecto_cotizacion_web' => float|null,
      *               'superficie_interior' => float,
      *               'superficie_util' => float,
      *               'superficie_terraza' => float,
@@ -750,7 +749,6 @@ class SalesforceService
         // SOQL para obtener plantas desde Product2
         $soql = 'SELECT Id, Name, ProductCode, Orientacion2__c, Programa__c, Programa2__c, Modelo__r.Name, Modelo__r.Programa__c, Piso__c, '
             .'Precio_Base__c, Precio_Lista__c, Porcentaje_maximo_de_unidad__c, '
-            .'Descuento_por_Defecto_Cotizaci_n_Web__c, '
             .'Superficie_Total_Producto_Principal__c, Superficie_Interior__c, Superficie_Util__c, '
             .'Superficie_Terraza__c, Proyecto__c, Tipo_Producto__c '
             .'FROM Product2 '
@@ -783,7 +781,6 @@ class SalesforceService
                         'precio_lista' => (float) ($entry['Precio_Lista__c'] ?? 0) ?: 0,
                         'porcentaje_maximo_unidad' => (float) ($entry['Porcentaje_maximo_de_unidad__c'] ?? 0) ?: 0,
                         'superficie_total_principal' => (float) ($entry['Superficie_Total_Producto_Principal__c'] ?? 0),
-                        'descuento_defecto_cotizacion_web' => $entry['Descuento_por_Defecto_Cotizaci_n_Web__c'] ? (float) $entry['Descuento_por_Defecto_Cotizaci_n_Web__c'] : null,
                         'superficie_interior' => (float) ($entry['Superficie_Interior__c'] ?? 0),
                         'superficie_util' => (float) ($entry['Superficie_Util__c'] ?? 0),
                         'superficie_terraza' => (float) ($entry['Superficie_Terraza__c'] ?? 0),
@@ -813,7 +810,6 @@ class SalesforceService
                         'precio_lista' => (float) ($entry['Precio_Lista__c'] ?? 0) ?: 0,
                         'porcentaje_maximo_unidad' => (float) ($entry['Porcentaje_maximo_de_unidad__c'] ?? 0) ?: 0,
                         'superficie_total_principal' => (float) ($entry['Superficie_Total_Producto_Principal__c'] ?? 0),
-                        'descuento_defecto_cotizacion_web' => $entry['Descuento_por_Defecto_Cotizaci_n_Web__c'] ? (float) $entry['Descuento_por_Defecto_Cotizaci_n_Web__c'] : null,
                         'superficie_interior' => (float) ($entry['Superficie_Interior__c'] ?? 0),
                         'superficie_util' => (float) ($entry['Superficie_Util__c'] ?? 0),
                         'superficie_terraza' => (float) ($entry['Superficie_Terraza__c'] ?? 0),
@@ -885,6 +881,7 @@ class SalesforceService
      *               'horario_atencion' => string|null,
      *               'valor_reserva_exigido_defecto_peso' => float|null,
      *               'valor_reserva_exigido_min_peso' => float|null,
+     *               'descuento_defecto_cotizacion_web' => float|null,
      *               'entrega_inmediata' => bool
      *               ]
      */
@@ -904,7 +901,7 @@ class SalesforceService
             .'Fecha_Inicio_Ventas__c, Fecha_Recepcion_Municipal__c, Etapa__c, Horario_Atencion__c, '
             .'Asesor_Responsable__c, Asesor_1__c, Asesor_2__c, '
             .'Valor_Reserva_Exigido_Defecto_Peso__c, Valor_Reserva_Exigido_Min_Peso__c, '
-            .'Entrega_Inmediata__c '
+            .'Descuento_por_Defecto_Cotizaci_n_Web__c, Entrega_Inmediata__c '
             .'FROM Proyecto__c '
             ."WHERE IsDeleted = false AND Activo__c = true AND Tipo_Producto__c = 'DEPARTAMENTO' "
             .'ORDER BY Name '
@@ -943,6 +940,7 @@ class SalesforceService
                         ]),
                         'valor_reserva_exigido_defecto_peso' => $entry['Valor_Reserva_Exigido_Defecto_Peso__c'] ? (float) $entry['Valor_Reserva_Exigido_Defecto_Peso__c'] : null,
                         'valor_reserva_exigido_min_peso' => $entry['Valor_Reserva_Exigido_Min_Peso__c'] ? (float) $entry['Valor_Reserva_Exigido_Min_Peso__c'] : null,
+                        'descuento_defecto_cotizacion_web' => $entry['Descuento_por_Defecto_Cotizaci_n_Web__c'] ? (float) $entry['Descuento_por_Defecto_Cotizaci_n_Web__c'] : null,
                         'entrega_inmediata' => (bool) ($entry['Entrega_Inmediata__c'] ?? false),
                     ];
                 }, $entries);
@@ -976,6 +974,7 @@ class SalesforceService
                         ]),
                         'valor_reserva_exigido_defecto_peso' => $entry['Valor_Reserva_Exigido_Defecto_Peso__c'] ? (float) $entry['Valor_Reserva_Exigido_Defecto_Peso__c'] : null,
                         'valor_reserva_exigido_min_peso' => $entry['Valor_Reserva_Exigido_Min_Peso__c'] ? (float) $entry['Valor_Reserva_Exigido_Min_Peso__c'] : null,
+                        'descuento_defecto_cotizacion_web' => $entry['Descuento_por_Defecto_Cotizaci_n_Web__c'] ? (float) $entry['Descuento_por_Defecto_Cotizaci_n_Web__c'] : null,
                         'entrega_inmediata' => (bool) ($entry['Entrega_Inmediata__c'] ?? false),
                     ];
                 }, $entries);

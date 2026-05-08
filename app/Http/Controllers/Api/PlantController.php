@@ -207,12 +207,12 @@ class PlantController extends Controller
         $perPage = (int) $request->input('perPage', $defaultPerPage);
         $perPage = max(1, min($perPage, 100));
 
-        $orderByDiscountField = $eventoSale === true
+        $orderByDiscountExpression = $eventoSale === true
             ? 'porcentaje_maximo_unidad'
-            : 'descuento_defecto_cotizacion_web';
+            : 'COALESCE((SELECT p.descuento_defecto_cotizacion_web FROM proyectos p WHERE p.salesforce_id = plants.salesforce_proyecto_id LIMIT 1), 0)';
 
         $query->orderByRaw(
-            "COALESCE(CASE WHEN {$orderByDiscountField} > 0 AND precio_lista > 0 THEN CASE WHEN (precio_lista - ((precio_lista * {$orderByDiscountField}) / 100)) < 0 THEN 0 ELSE (precio_lista - ((precio_lista * {$orderByDiscountField}) / 100)) END ELSE precio_base END, 999999999999) ASC"
+            "COALESCE(CASE WHEN {$orderByDiscountExpression} > 0 AND precio_lista > 0 THEN CASE WHEN (precio_lista - ((precio_lista * {$orderByDiscountExpression}) / 100)) < 0 THEN 0 ELSE (precio_lista - ((precio_lista * {$orderByDiscountExpression}) / 100)) END ELSE precio_base END, 999999999999) ASC"
         )->orderBy('id');
 
         $plants = $query->paginate($perPage)->through(function (Plant $plant) use ($eventoSale): array {
@@ -585,6 +585,7 @@ class PlantController extends Controller
             'salesforce_logo_url' => $proyecto->salesforce_logo_url,
             'valor_reserva_exigido_defecto_peso' => $proyecto->valor_reserva_exigido_defecto_peso,
             'valor_reserva_exigido_min_peso' => $proyecto->valor_reserva_exigido_min_peso,
+            'descuento_defecto_cotizacion_web' => $proyecto->descuento_defecto_cotizacion_web,
             'asesores' => $proyecto->asesores
                 ->where('is_active', true)
                 ->values()
