@@ -25,6 +25,7 @@ class ProyectosTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn ($query) => $query->withMax('plantas as descuento_maximo_unidad', 'porcentaje_maximo_unidad'))
             ->columns(self::getColumns())
             ->filters(self::getFilters())
             ->recordActions([
@@ -148,6 +149,20 @@ class ProyectosTable
                 ->sortable()
                 ->searchable()
                 ->toggleable(isToggledHiddenByDefault: true),
+
+            TextColumn::make('descuento_defecto_cotizacion_web')
+                ->label('Desc. Defecto Web')
+                ->badge()
+                ->color('teal')
+                ->formatStateUsing(fn ($state): string => $state !== null ? number_format((float) $state, 2, ',', '.').'%' : '-')
+                ->sortable(),
+
+            TextColumn::make('descuento_maximo_unidad')
+                ->label('Desc. Máx. Unidad')
+                ->badge()
+                ->color('amber')
+                ->formatStateUsing(fn ($state): string => $state !== null ? number_format((float) $state, 2, ',', '.').'%' : '-')
+                ->sortable(),
 
             IconColumn::make('entrega_inmediata')
                 ->label('Entrega Inmediata')
