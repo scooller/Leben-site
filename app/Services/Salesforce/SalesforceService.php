@@ -774,9 +774,15 @@ class SalesforceService
      *
      * @return array{success: bool, message: string, synced: int, created: int, updated: int, watermark: string|null}
      */
-    public function syncOpportunitiesIncrementally(?Carbon $since = null, int $limit = 1000): array
+    public function syncOpportunitiesIncrementally(?Carbon $since = null, int $limit = 2000): array
     {
         $watermark = $since?->copy()->utc() ?? $this->getOpportunitySyncWatermark();
+
+        // Bootstrap defensivo: si no hay watermark, traemos una ventana reciente para poblar KPIs comerciales.
+        if ($watermark === null) {
+            $watermark = now()->copy()->utc()->subDays(120);
+        }
+
         $records = $this->fetchIncrementalOpportunities($watermark, $limit);
 
         if ($records === []) {

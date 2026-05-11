@@ -41,7 +41,7 @@ class CommercialTopBrokersChartWidget extends ChartWidget
             'datasets' => [
                 [
                     'label' => 'Oportunidades',
-                    'data' => $rows->pluck('opportunities')->map(fn ($value) => (int) $value)->toArray(),
+                    'data' => $rows->pluck('opportunities')->map(fn($value) => (int) $value)->toArray(),
                     'backgroundColor' => '#2563eb',
                     'borderColor' => '#1d4ed8',
                 ],

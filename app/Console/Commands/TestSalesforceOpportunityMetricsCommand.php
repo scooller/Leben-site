@@ -31,7 +31,7 @@ class TestSalesforceOpportunityMetricsCommand extends Command
         $limit = max(1, min((int) $this->option('limit'), 200));
 
         try {
-            $tokenResponse = Http::asForm()->post($loginUrl.'/services/oauth2/token', [
+            $tokenResponse = Http::asForm()->post($loginUrl . '/services/oauth2/token', [
                 'grant_type' => 'password',
                 'client_id' => $clientId,
                 'client_secret' => $clientSecret,
@@ -40,7 +40,7 @@ class TestSalesforceOpportunityMetricsCommand extends Command
             ]);
 
             if (! $tokenResponse->successful()) {
-                $this->error('Error obteniendo token Salesforce: HTTP '.$tokenResponse->status());
+                $this->error('Error obteniendo token Salesforce: HTTP ' . $tokenResponse->status());
                 $this->line($tokenResponse->body());
 
                 return self::FAILURE;
@@ -60,10 +60,10 @@ class TestSalesforceOpportunityMetricsCommand extends Command
             $apiVersion = $configuredVersion !== '' ? $configuredVersion : null;
 
             if ($apiVersion === null) {
-                $versionsResponse = Http::withToken($accessToken)->get($instanceUrl.'/services/data');
+                $versionsResponse = Http::withToken($accessToken)->get($instanceUrl . '/services/data');
 
                 if (! $versionsResponse->successful()) {
-                    $this->error('No fue posible resolver versión API: HTTP '.$versionsResponse->status());
+                    $this->error('No fue posible resolver versión API: HTTP ' . $versionsResponse->status());
                     $this->line($versionsResponse->body());
 
                     return self::FAILURE;
@@ -87,17 +87,17 @@ class TestSalesforceOpportunityMetricsCommand extends Command
             }
 
             $soql = 'SELECT Id, Name, Broker__c, Broker__r.Name, Proyecto__c, Proyecto__r.Name, StageName, IsWon, IsClosed, CreatedDate '
-                .'FROM Opportunity '
-                .'WHERE IsDeleted = false AND IsPrivate = false AND Proyecto__c != null '
-                .'ORDER BY CreatedDate DESC '
-                .'LIMIT '.$limit;
+                . 'FROM Opportunity '
+                . 'WHERE IsDeleted = false AND IsPrivate = false AND Proyecto__c != null '
+                . 'ORDER BY CreatedDate DESC '
+                . 'LIMIT ' . $limit;
 
-            $queryResponse = Http::withToken($accessToken)->get($instanceUrl.'/services/data/v'.$apiVersion.'/query', [
+            $queryResponse = Http::withToken($accessToken)->get($instanceUrl . '/services/data/v' . $apiVersion . '/query', [
                 'q' => $soql,
             ]);
 
             if (! $queryResponse->successful()) {
-                $this->error('Error en query SOQL: HTTP '.$queryResponse->status());
+                $this->error('Error en query SOQL: HTTP ' . $queryResponse->status());
                 $this->line($queryResponse->body());
 
                 return self::FAILURE;
@@ -135,11 +135,11 @@ class TestSalesforceOpportunityMetricsCommand extends Command
                 ];
             }
 
-            $this->info('Query ejecutada con éxito. API v'.$apiVersion);
-            $this->line('Total devuelto por Salesforce: '.(string) ($payload['totalSize'] ?? count($records)));
-            $this->line('Registros inspeccionados: '.count($records));
-            $this->line('Sin Broker__c: '.$missingBrokerLink);
-            $this->line('Sin Proyecto__c: '.$missingProjectLink);
+            $this->info('Query ejecutada con éxito. API v' . $apiVersion);
+            $this->line('Total devuelto por Salesforce: ' . (string) ($payload['totalSize'] ?? count($records)));
+            $this->line('Registros inspeccionados: ' . count($records));
+            $this->line('Sin Broker__c: ' . $missingBrokerLink);
+            $this->line('Sin Proyecto__c: ' . $missingProjectLink);
 
             if ($rows !== []) {
                 $this->table(
@@ -150,7 +150,7 @@ class TestSalesforceOpportunityMetricsCommand extends Command
 
             return self::SUCCESS;
         } catch (Throwable $e) {
-            $this->error('Excepción durante prueba Salesforce: '.$e->getMessage());
+            $this->error('Excepción durante prueba Salesforce: ' . $e->getMessage());
 
             return self::FAILURE;
         }

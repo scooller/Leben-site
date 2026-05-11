@@ -61,22 +61,22 @@ class CommercialPipelineStatsWidget extends StatsOverviewWidget
 
         return [
             Stat::make('Oportunidades (30d)', (string) $total)
-                ->description((string) $open.' abiertas')
+                ->description((string) $open . ' abiertas')
                 ->color('info'),
-            Stat::make('Tasa cierre (30d)', number_format($closureRate, 2).'%')
-                ->description((string) $won.' ganadas')
+            Stat::make('Tasa cierre (30d)', number_format($closureRate, 2) . '%')
+                ->description((string) $won . ' ganadas')
                 ->color($closureRate > 0 ? 'success' : 'gray'),
             Stat::make('Sin broker asignado (30d)', (string) $withoutAssignedBroker)
-                ->description(number_format($brokerCoverage, 2).'% con broker')
+                ->description(number_format($brokerCoverage, 2) . '% con broker')
                 ->color($withoutAssignedBroker > 0 ? 'danger' : 'success'),
-            Stat::make('Cobertura broker (30d)', number_format($brokerCoverage, 2).'%')
-                ->description((string) $withAssignedBroker.' de '.(string) $total.' oportunidades')
+            Stat::make('Cobertura broker (30d)', number_format($brokerCoverage, 2) . '%')
+                ->description((string) $withAssignedBroker . ' de ' . (string) $total . ' oportunidades')
                 ->color($brokerCoverage >= 80 ? 'success' : ($brokerCoverage >= 50 ? 'warning' : 'danger')),
             Stat::make('Top broker atribuido (30d)', $topBrokerLabel !== '' ? $topBrokerLabel : '-')
-                ->description((string) ($topBroker->opportunities ?? 0).' oportunidades')
+                ->description((string) ($topBroker->opportunities ?? 0) . ' oportunidades')
                 ->color('primary'),
             Stat::make('Top proyecto (30d)', $topProjectLabel !== '' ? $topProjectLabel : 'Sin proyecto')
-                ->description((string) ($topProject->opportunities ?? 0).' oportunidades')
+                ->description((string) ($topProject->opportunities ?? 0) . ' oportunidades')
                 ->color('warning'),
         ];
     }
