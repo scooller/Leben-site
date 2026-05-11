@@ -6,6 +6,17 @@ use App\Http\Controllers\ShortLinkRedirectController;
 use App\Models\Payment;
 use Illuminate\Support\Facades\Route;
 
+// Rutas de preview para frontend (deben saltar mantenimiento)
+Route::get('/frontend-preview/{token}', function ($token) {
+    // Aquí deberías tener la lógica real de preview, placeholder por ahora
+    return response()->json(['preview' => true, 'token' => $token]);
+})->middleware('bypass.maintenance.preview');
+
+Route::get('/preview-link/{token}', function ($token) {
+    // Aquí deberías tener la lógica real de preview, placeholder por ahora
+    return response()->json(['preview' => true, 'token' => $token]);
+})->middleware('bypass.maintenance.preview');
+
 Route::get('/', function () {
     return redirect('/admin');
 });
