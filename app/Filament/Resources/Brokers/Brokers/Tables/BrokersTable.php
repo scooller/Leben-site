@@ -30,7 +30,8 @@ class BrokersTable
 
                 TextColumn::make('resolved_name')
                     ->label('Nombre')
-                    ->searchable(['display_name', 'contact_email']),
+                    ->searchable(['display_name', 'contact_email'])
+                    ->sortable(),
 
                 TextColumn::make('category.name')
                     ->label('Categoria')
@@ -42,6 +43,7 @@ class BrokersTable
 
                 TextColumn::make('resolved_email')
                     ->label('Email')
+                    ->sortable()
                     ->toggleable(),
 
                 TextColumn::make('opportunities_total')
@@ -62,7 +64,7 @@ class BrokersTable
                     ->label('Cierre 30d')
                     ->formatStateUsing(fn($state): string => $state === null ? '-' : number_format((float) $state, 2) . '%')
                     ->sortable()
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('pipeline_amount_30d')
                     ->label('Pipeline 30d')
@@ -80,17 +82,31 @@ class BrokersTable
                     ->label('Ultima opp')
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('projects_portfolio')
                     ->label('Proyectos')
                     ->formatStateUsing(function ($state): string {
+                        if (is_string($state)) {
+                            $decoded = json_decode($state, true);
+                            $state = is_array($decoded) ? $decoded : [];
+                        }
+
                         if (! is_array($state) || $state === []) {
                             return '-';
                         }
 
-                        $visible = array_slice($state, 0, 3);
-                        $suffix = count($state) > 3 ? '...' : '';
+                        $normalized = array_values(array_filter(array_map(
+                            fn($project): string => trim((string) $project),
+                            $state
+                        ), fn(string $project): bool => $project !== ''));
+
+                        if ($normalized === []) {
+                            return '-';
+                        }
+
+                        $visible = array_slice($normalized, 0, 3);
+                        $suffix = count($normalized) > 3 ? '...' : '';
 
                         return implode(', ', $visible) . $suffix;
                     })
