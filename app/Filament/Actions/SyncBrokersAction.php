@@ -72,13 +72,6 @@ class SyncBrokersAction
                     continue;
                 }
 
-                $email = filled($brokerData['email'] ?? null) ? trim((string) $brokerData['email']) : null;
-                $phone = filled($brokerData['phone'] ?? null) ? trim((string) $brokerData['phone']) : null;
-
-                if ($email === null && $phone === null) {
-                    continue;
-                }
-
                 $existing = Broker::query()->where('salesforce_id', $salesforceId)->first();
 
                 $data = [
@@ -100,6 +93,8 @@ class SyncBrokersAction
                 }
             }
 
+            $salesforceService->syncBrokerCommercialMetricsFromSnapshots();
+
             $total = $created + $updated;
             $message = "Brokers sincronizados: {$total} (Creados: {$created}, Actualizados: {$updated})";
 
@@ -113,11 +108,11 @@ class SyncBrokersAction
                 'updated' => $updated,
             ];
         } catch (\Throwable $e) {
-            Log::error('Error al sincronizar brokers desde Salesforce: ' . $e->getMessage());
+            Log::error('Error al sincronizar brokers desde Salesforce: '.$e->getMessage());
 
             return [
                 'success' => false,
-                'message' => 'Error al sincronizar: ' . $e->getMessage(),
+                'message' => 'Error al sincronizar: '.$e->getMessage(),
                 'count' => 0,
                 'created' => 0,
                 'updated' => 0,

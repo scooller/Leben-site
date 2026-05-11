@@ -20,7 +20,7 @@ class BrokersTable
             ->columns([
                 ImageColumn::make('avatar_image_id')
                     ->label('Avatar')
-                    ->getStateUsing(fn($record): ?string => $record->avatarImageMedia?->url)
+                    ->getStateUsing(fn ($record): ?string => $record->avatarImageMedia?->url)
                     ->circular(),
 
                 TextColumn::make('salesforce_id')
@@ -43,6 +43,44 @@ class BrokersTable
                 TextColumn::make('resolved_email')
                     ->label('Email')
                     ->toggleable(),
+
+                TextColumn::make('opportunities_total')
+                    ->label('Opp total')
+                    ->sortable(),
+
+                TextColumn::make('opportunities_open')
+                    ->label('Opp abiertas')
+                    ->sortable()
+                    ->toggleable(),
+
+                TextColumn::make('opportunities_won')
+                    ->label('Opp ganadas')
+                    ->sortable()
+                    ->toggleable(),
+
+                TextColumn::make('closure_rate_30d')
+                    ->label('Cierre 30d')
+                    ->formatStateUsing(fn ($state): string => $state === null ? '-' : number_format((float) $state, 2).'%')
+                    ->sortable()
+                    ->toggleable(),
+
+                TextColumn::make('pipeline_amount_30d')
+                    ->label('Pipeline 30d')
+                    ->money('CLP')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('won_amount_30d')
+                    ->label('Ganado 30d')
+                    ->money('CLP')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('last_opportunity_at')
+                    ->label('Ultima opp')
+                    ->dateTime('d/m/Y H:i')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 IconColumn::make('is_active')
                     ->label('Activo')

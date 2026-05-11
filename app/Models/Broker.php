@@ -28,6 +28,17 @@ class Broker extends Model
         'sort_order',
         'notes',
         'salesforce_synced_at',
+        'opportunities_total',
+        'opportunities_open',
+        'opportunities_won',
+        'opportunities_lost',
+        'opportunities_total_30d',
+        'opportunities_won_30d',
+        'closure_rate_30d',
+        'pipeline_amount_30d',
+        'won_amount_30d',
+        'last_opportunity_at',
+        'last_stage_name',
     ];
 
     protected function casts(): array
@@ -36,6 +47,16 @@ class Broker extends Model
             'is_active' => 'boolean',
             'sort_order' => 'integer',
             'salesforce_synced_at' => 'datetime',
+            'opportunities_total' => 'integer',
+            'opportunities_open' => 'integer',
+            'opportunities_won' => 'integer',
+            'opportunities_lost' => 'integer',
+            'opportunities_total_30d' => 'integer',
+            'opportunities_won_30d' => 'integer',
+            'closure_rate_30d' => 'decimal:2',
+            'pipeline_amount_30d' => 'decimal:2',
+            'won_amount_30d' => 'decimal:2',
+            'last_opportunity_at' => 'datetime',
         ];
     }
 
@@ -75,7 +96,7 @@ class Broker extends Model
             return (string) $this->display_name;
         }
 
-        return (string) ($this->user?->name ?? ('Broker #' . $this->id));
+        return (string) ($this->user?->name ?? ('Broker #'.$this->id));
     }
 
     public function getResolvedEmailAttribute(): ?string

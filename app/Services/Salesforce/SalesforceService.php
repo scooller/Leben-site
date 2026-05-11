@@ -832,6 +832,8 @@ class SalesforceService
             $this->setOpportunitySyncWatermark($latestSystemModstamp);
         }
 
+        $this->syncBrokerCommercialMetricsFromSnapshots();
+
         $synced = $created + $updated;
 
         return [
@@ -842,6 +844,109 @@ class SalesforceService
             'updated' => $updated,
             'watermark' => $latestSystemModstamp?->toIso8601String(),
         ];
+    }
+
+    /**
+     * Recalcula y persiste métricas comerciales por broker basadas en snapshots de oportunidades.
+     */
+    public function syncBrokerCommercialMetricsFromSnapshots(): void
+    {
+        $now = now();
+        $windowStart = $now->copy()->subDays(30);
+
+        $baseQuery = SalesforceOpportunity::query()
+            ->whereNotNull('broker_salesforce_id')
+            ->where('is_deleted', false)
+            ->where('is_private', false);
+
+        $totals = (clone $baseQuery)
+            ->selectRaw('broker_salesforce_id')
+            ->selectRaw("MAX(COALESCE(broker_name, '')) as broker_name")
+            ->selectRaw('COUNT(*) as opportunities_total')
+            ->selectRaw('SUM(CASE WHEN is_closed = 0 THEN 1 ELSE 0 END) as opportunities_open')
+            ->selectRaw('SUM(CASE WHEN is_won = 1 THEN 1 ELSE 0 END) as opportunities_won')
+            ->selectRaw('SUM(CASE WHEN is_closed = 1 AND is_won = 0 THEN 1 ELSE 0 END) as opportunities_lost')
+            ->selectRaw('MAX(salesforce_created_at) as last_opportunity_at')
+            ->groupBy('broker_salesforce_id')
+            ->get()
+            ->keyBy('broker_salesforce_id');
+
+        $windowed = (clone $baseQuery)
+            ->where('salesforce_created_at', '>=', $windowStart)
+            ->selectRaw('broker_salesforce_id')
+            ->selectRaw('COUNT(*) as opportunities_total_30d')
+            ->selectRaw('SUM(CASE WHEN is_won = 1 THEN 1 ELSE 0 END) as opportunities_won_30d')
+            ->selectRaw('COALESCE(SUM(amount), 0) as pipeline_amount_30d')
+            ->selectRaw('COALESCE(SUM(CASE WHEN is_won = 1 THEN amount ELSE 0 END), 0) as won_amount_30d')
+            ->groupBy('broker_salesforce_id')
+            ->get()
+            ->keyBy('broker_salesforce_id');
+
+        $latestStageByBroker = [];
+        foreach ((clone $baseQuery)
+            ->orderByDesc('salesforce_created_at')
+            ->orderByDesc('id')
+            ->get(['broker_salesforce_id', 'stage_name']) as $row) {
+            if (! isset($latestStageByBroker[$row->broker_salesforce_id])) {
+                $latestStageByBroker[$row->broker_salesforce_id] = $row->stage_name;
+            }
+        }
+
+        $allBrokerSalesforceIds = collect($totals->keys())
+            ->merge($windowed->keys())
+            ->unique()
+            ->values();
+
+        foreach ($allBrokerSalesforceIds as $brokerSalesforceId) {
+            $totalRow = $totals->get($brokerSalesforceId);
+            $windowRow = $windowed->get($brokerSalesforceId);
+
+            $total30d = (int) ($windowRow->opportunities_total_30d ?? 0);
+            $won30d = (int) ($windowRow->opportunities_won_30d ?? 0);
+            $closureRate30d = $total30d > 0 ? round(($won30d / $total30d) * 100, 2) : null;
+
+            Broker::query()->updateOrCreate(
+                ['salesforce_id' => $brokerSalesforceId],
+                [
+                    'display_name' => trim((string) ($totalRow->broker_name ?? '')) !== ''
+                        ? $totalRow->broker_name
+                        : null,
+                    'opportunities_total' => (int) ($totalRow->opportunities_total ?? 0),
+                    'opportunities_open' => (int) ($totalRow->opportunities_open ?? 0),
+                    'opportunities_won' => (int) ($totalRow->opportunities_won ?? 0),
+                    'opportunities_lost' => (int) ($totalRow->opportunities_lost ?? 0),
+                    'opportunities_total_30d' => $total30d,
+                    'opportunities_won_30d' => $won30d,
+                    'closure_rate_30d' => $closureRate30d,
+                    'pipeline_amount_30d' => (float) ($windowRow->pipeline_amount_30d ?? 0),
+                    'won_amount_30d' => (float) ($windowRow->won_amount_30d ?? 0),
+                    'last_opportunity_at' => $totalRow?->last_opportunity_at,
+                    'last_stage_name' => $latestStageByBroker[$brokerSalesforceId] ?? null,
+                    'salesforce_synced_at' => $now,
+                    'is_active' => true,
+                ]
+            );
+        }
+
+        Broker::query()
+            ->whereNotNull('salesforce_id')
+            ->when(
+                $allBrokerSalesforceIds->isNotEmpty(),
+                fn ($query) => $query->whereNotIn('salesforce_id', $allBrokerSalesforceIds->all())
+            )
+            ->update([
+                'opportunities_total' => 0,
+                'opportunities_open' => 0,
+                'opportunities_won' => 0,
+                'opportunities_lost' => 0,
+                'opportunities_total_30d' => 0,
+                'opportunities_won_30d' => 0,
+                'closure_rate_30d' => null,
+                'pipeline_amount_30d' => 0,
+                'won_amount_30d' => 0,
+                'last_opportunity_at' => null,
+                'last_stage_name' => null,
+            ]);
     }
 
     private function fetchIncrementalOpportunities(?Carbon $since, int $limit): array

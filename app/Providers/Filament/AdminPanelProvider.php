@@ -9,6 +9,9 @@ use AlizHarb\ActivityLog\Widgets\LatestActivityWidget;
 use App\Filament\Pages\Dashboard;
 use App\Filament\Widgets\ApiMonitoringWidget;
 use App\Filament\Widgets\ApiUsageChartWidget;
+use App\Filament\Widgets\CommercialPipelineStatsWidget;
+use App\Filament\Widgets\CommercialTopBrokersChartWidget;
+use App\Filament\Widgets\FinancialTopProjectsChartWidget;
 use App\Filament\Widgets\PaymentGatewayChartWidget;
 use App\Filament\Widgets\PaymentsChartWidget;
 use App\Filament\Widgets\PaymentStatusChartWidget;
@@ -16,6 +19,7 @@ use App\Filament\Widgets\ShortLinksStatsWidget;
 use App\Filament\Widgets\ShortLinksVisitsChartWidget;
 use App\Filament\Widgets\SyncPlantsWidget;
 use App\Filament\Widgets\SyncProjectsWidget;
+use App\Filament\Widgets\SyncSalesforceOpportunitiesWidget;
 use App\Filament\Widgets\UsersChartWidget;
 use App\Http\Middleware\EnsureMarketingPanelAccess;
 use App\Models\SiteSetting;
@@ -50,6 +54,9 @@ class AdminPanelProvider extends PanelProvider
 
         $defaultWidgets = [
             AccountWidget::class,
+            CommercialPipelineStatsWidget::class,
+            CommercialTopBrokersChartWidget::class,
+            FinancialTopProjectsChartWidget::class,
             ApiMonitoringWidget::class,
             ApiUsageChartWidget::class,
             UsersChartWidget::class,
@@ -60,6 +67,7 @@ class AdminPanelProvider extends PanelProvider
             PaymentStatusChartWidget::class,
             ShortLinksStatsWidget::class,
             ShortLinksVisitsChartWidget::class,
+            SyncSalesforceOpportunitiesWidget::class,
             SyncPlantsWidget::class,
             SyncProjectsWidget::class,
         ];
@@ -68,7 +76,7 @@ class AdminPanelProvider extends PanelProvider
         $widgetOrder = is_array($widgetOrder) ? array_values($widgetOrder) : [];
 
         if (! empty($widgetOrder)) {
-            $ordered = array_values(array_filter($widgetOrder, fn(string $widget): bool => in_array($widget, $defaultWidgets, true)));
+            $ordered = array_values(array_filter($widgetOrder, fn (string $widget): bool => in_array($widget, $defaultWidgets, true)));
             $missing = array_values(array_diff($defaultWidgets, $ordered));
             $widgets = array_merge($ordered, $missing);
         } else {
@@ -95,7 +103,7 @@ class AdminPanelProvider extends PanelProvider
             ->brandLogoHeight('2.5rem')
             ->renderHook(
                 PanelsRenderHook::GLOBAL_SEARCH_AFTER,
-                fn(): \Illuminate\Contracts\View\View => view('filament.components.view-web-button'),
+                fn (): \Illuminate\Contracts\View\View => view('filament.components.view-web-button'),
             )
             ->colors([
                 'primary' => '#eb0029',
@@ -152,13 +160,13 @@ class AdminPanelProvider extends PanelProvider
                     ->navigationGroup('Monitoreo')
                     ->navigationSort(1),
                 FilamentLogViewer::make()
-                    ->authorize(fn(): bool => Auth::user()?->isAdmin() ?? false)
+                    ->authorize(fn (): bool => Auth::user()?->isAdmin() ?? false)
                     ->navigationGroup('Monitoreo')
                     ->navigationIcon('heroicon-o-document-text')
                     ->navigationLabel('Log Viewer')
                     ->navigationSort(2),
                 CommandRunnerPlugin::make()
-                    ->authorize(fn(): bool => Auth::user()?->isAdmin() ?? false)
+                    ->authorize(fn (): bool => Auth::user()?->isAdmin() ?? false)
                     ->navigationGroup('Herramientas')
                     ->navigationLabel('Command Runner')
                     ->navigationIcon('heroicon-o-command-line')

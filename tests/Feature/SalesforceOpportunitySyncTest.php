@@ -82,6 +82,15 @@ class SalesforceOpportunitySyncTest extends TestCase
         $this->assertSame('AGORA INMOBILIARIO', $snapshot->broker_name);
         $this->assertSame('Edificio Demo', $snapshot->proyecto_name);
 
+        $this->assertDatabaseHas('brokers', [
+            'salesforce_id' => 'a0u123456789ABC',
+            'opportunities_total' => 1,
+            'opportunities_open' => 1,
+            'opportunities_won' => 0,
+            'opportunities_total_30d' => 1,
+            'opportunities_won_30d' => 0,
+        ]);
+
         $settings = SiteSetting::current()->fresh();
         $this->assertSame(
             '2026-05-11T10:10:00+00:00',
