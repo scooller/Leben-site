@@ -2,7 +2,9 @@
 
 namespace App\Filament\Resources\Brokers\Brokers\Schemas;
 
+use App\Models\Broker;
 use Awcodes\Curator\Components\Forms\CuratorPicker;
+use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -22,28 +24,17 @@ class BrokerForm
                             ->label('Salesforce ID')
                             ->disabled()
                             ->copyable()
-                            ->visible(fn($record): bool => filled($record?->salesforce_id)),
-
-                        TextInput::make('salesforce_link')
-                            ->label('Ver en Salesforce')
-                            ->disabled()
-                            ->formatStateUsing(function ($record): string {
-                                if ($record === null || blank($record->salesforce_id)) {
-                                    return '';
-                                }
-
-                                $sfId = (string) $record->salesforce_id;
-                                $instanceUrl = config('services.salesforce.instance_url') ?? env('SF_INSTANCE_URL', '');
-
-                                if (blank($instanceUrl)) {
-                                    return 'Instancia Salesforce no configurada';
-                                }
-
-                                $profileUrl = rtrim((string) $instanceUrl, '/') . '/lightning/r/Broker__c/' . $sfId . '/view';
-
-                                return $profileUrl;
-                            })
-                            ->visible(fn($record): bool => filled($record?->salesforce_id)),
+                            ->suffixAction(
+                                Action::make('openSalesforceBroker')
+                                    ->label('Ver en Salesforce')
+                                    ->icon('heroicon-m-arrow-top-right-on-square')
+                                    ->url(fn (?Broker $record): ?string => filled($record?->salesforce_id)
+                                        ? (config('services.salesforce.instance_url') ?? env('SF_INSTANCE_URL', '')).'/lightning/r/Broker__c/'.$record->salesforce_id.'/view'
+                                        : null)
+                                    ->openUrlInNewTab()
+                                    ->visible(fn (?Broker $record): bool => filled($record?->salesforce_id))
+                            )
+                            ->visible(fn ($record): bool => filled($record?->salesforce_id)),
 
                         Select::make('user_id')
                             ->label('Usuario')
