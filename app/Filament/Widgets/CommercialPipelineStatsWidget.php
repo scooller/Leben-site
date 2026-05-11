@@ -15,8 +15,14 @@ class CommercialPipelineStatsWidget extends StatsOverviewWidget
     protected function getStats(): array
     {
         $baseQuery = SalesforceOpportunity::query()
-            ->where('is_deleted', false)
-            ->where('is_private', false)
+            ->where(function ($query): void {
+                $query->where('is_deleted', false)
+                    ->orWhereNull('is_deleted');
+            })
+            ->where(function ($query): void {
+                $query->where('is_private', false)
+                    ->orWhereNull('is_private');
+            })
             ->where('salesforce_created_at', '>=', now()->subDays(30));
 
         $total = (clone $baseQuery)->count();
@@ -25,16 +31,19 @@ class CommercialPipelineStatsWidget extends StatsOverviewWidget
         $closureRate = $total > 0 ? round(($won / $total) * 100, 2) : 0.0;
 
         $topBroker = (clone $baseQuery)
-            ->selectRaw("COALESCE(NULLIF(broker_name, ''), 'Sin broker') as broker_label, COUNT(*) as opportunities")
-            ->groupByRaw("COALESCE(NULLIF(broker_name, ''), 'Sin broker')")
+            ->selectRaw('broker_name, COUNT(*) as opportunities')
+            ->groupBy('broker_name')
             ->orderByDesc('opportunities')
             ->first();
 
         $topProject = (clone $baseQuery)
-            ->selectRaw("COALESCE(NULLIF(proyecto_name, ''), 'Sin proyecto') as project_label, COUNT(*) as opportunities")
-            ->groupByRaw("COALESCE(NULLIF(proyecto_name, ''), 'Sin proyecto')")
+            ->selectRaw('proyecto_name, COUNT(*) as opportunities')
+            ->groupBy('proyecto_name')
             ->orderByDesc('opportunities')
             ->first();
+
+        $topBrokerLabel = trim((string) ($topBroker->broker_name ?? ''));
+        $topProjectLabel = trim((string) ($topProject->proyecto_name ?? ''));
 
         return [
             Stat::make('Oportunidades (30d)', (string) $total)
@@ -43,10 +52,10 @@ class CommercialPipelineStatsWidget extends StatsOverviewWidget
             Stat::make('Tasa cierre (30d)', number_format($closureRate, 2).'%')
                 ->description((string) $won.' ganadas')
                 ->color($closureRate > 0 ? 'success' : 'gray'),
-            Stat::make('Top broker (30d)', (string) ($topBroker->broker_label ?? '-'))
+            Stat::make('Top broker (30d)', $topBrokerLabel !== '' ? $topBrokerLabel : 'Sin broker')
                 ->description((string) ($topBroker->opportunities ?? 0).' oportunidades')
                 ->color('primary'),
-            Stat::make('Top proyecto (30d)', (string) ($topProject->project_label ?? '-'))
+            Stat::make('Top proyecto (30d)', $topProjectLabel !== '' ? $topProjectLabel : 'Sin proyecto')
                 ->description((string) ($topProject->opportunities ?? 0).' oportunidades')
                 ->color('warning'),
         ];

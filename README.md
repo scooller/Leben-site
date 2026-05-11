@@ -177,9 +177,19 @@ php artisan test:sync-projects
 # Sincronizar plantas
 php artisan sync:plants
 
+# Recalcular metricas comerciales de brokers desde snapshots locales
+php artisan salesforce:sync-broker-metrics
+
 # Probar autenticación Salesforce
 php artisan salesforce:test-auth
 ```
+
+#### Scheduler operativo (Laravel)
+
+- `reservations:expire`: cada minuto
+- `sync:plants` (job): cada 5 minutos
+- `SyncSalesforceOpportunitiesJob` (job): cada 60 minutos
+- `salesforce:sync-broker-metrics`: cada 15 minutos
 
 ### Reservas y pagos
 

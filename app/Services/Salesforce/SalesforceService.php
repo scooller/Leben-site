@@ -855,11 +855,27 @@ class SalesforceService
         $windowStart = $now->copy()->subDays(30);
 
         $baseQuery = SalesforceOpportunity::query()
-            ->whereNotNull('broker_salesforce_id')
-            ->where('is_deleted', false)
-            ->where('is_private', false);
+            ->where(function ($query): void {
+                $query->where('is_deleted', false)
+                    ->orWhereNull('is_deleted');
+            })
+            ->where(function ($query): void {
+                $query->where('is_private', false)
+                    ->orWhereNull('is_private');
+            })
+            ->where(function ($query): void {
+                $query->whereNotNull('broker_salesforce_id')
+                    ->where('broker_salesforce_id', '!=', '')
+                    ->orWhere(function ($inner): void {
+                        $inner->whereNull('broker_salesforce_id')
+                            ->whereNotNull('broker_name')
+                            ->whereRaw("TRIM(broker_name) != ''");
+                    });
+            });
 
-        $totals = (clone $baseQuery)
+        $bySalesforceId = (clone $baseQuery)
+            ->whereNotNull('broker_salesforce_id')
+            ->where('broker_salesforce_id', '!=', '')
             ->selectRaw('broker_salesforce_id')
             ->selectRaw("MAX(COALESCE(broker_name, '')) as broker_name")
             ->selectRaw('COUNT(*) as opportunities_total')
@@ -871,7 +887,9 @@ class SalesforceService
             ->get()
             ->keyBy('broker_salesforce_id');
 
-        $windowed = (clone $baseQuery)
+        $bySalesforceId30d = (clone $baseQuery)
+            ->whereNotNull('broker_salesforce_id')
+            ->where('broker_salesforce_id', '!=', '')
             ->where('salesforce_created_at', '>=', $windowStart)
             ->selectRaw('broker_salesforce_id')
             ->selectRaw('COUNT(*) as opportunities_total_30d')
@@ -882,24 +900,27 @@ class SalesforceService
             ->get()
             ->keyBy('broker_salesforce_id');
 
-        $latestStageByBroker = [];
+        $latestStageBySalesforceId = [];
         foreach ((clone $baseQuery)
+            ->whereNotNull('broker_salesforce_id')
+            ->where('broker_salesforce_id', '!=', '')
             ->orderByDesc('salesforce_created_at')
             ->orderByDesc('id')
-            ->get(['broker_salesforce_id', 'stage_name']) as $row) {
-            if (! isset($latestStageByBroker[$row->broker_salesforce_id])) {
-                $latestStageByBroker[$row->broker_salesforce_id] = $row->stage_name;
+            ->get(['broker_salesforce_id', 'stage_name']) as $row
+        ) {
+            if (! isset($latestStageBySalesforceId[$row->broker_salesforce_id])) {
+                $latestStageBySalesforceId[$row->broker_salesforce_id] = $row->stage_name;
             }
         }
 
-        $allBrokerSalesforceIds = collect($totals->keys())
-            ->merge($windowed->keys())
+        $allBrokerSalesforceIds = collect($bySalesforceId->keys())
+            ->merge($bySalesforceId30d->keys())
             ->unique()
             ->values();
 
         foreach ($allBrokerSalesforceIds as $brokerSalesforceId) {
-            $totalRow = $totals->get($brokerSalesforceId);
-            $windowRow = $windowed->get($brokerSalesforceId);
+            $totalRow = $bySalesforceId->get($brokerSalesforceId);
+            $windowRow = $bySalesforceId30d->get($brokerSalesforceId);
 
             $total30d = (int) ($windowRow->opportunities_total_30d ?? 0);
             $won30d = (int) ($windowRow->opportunities_won_30d ?? 0);
@@ -921,11 +942,126 @@ class SalesforceService
                     'pipeline_amount_30d' => (float) ($windowRow->pipeline_amount_30d ?? 0),
                     'won_amount_30d' => (float) ($windowRow->won_amount_30d ?? 0),
                     'last_opportunity_at' => $totalRow?->last_opportunity_at,
-                    'last_stage_name' => $latestStageByBroker[$brokerSalesforceId] ?? null,
+                    'last_stage_name' => $latestStageBySalesforceId[$brokerSalesforceId] ?? null,
                     'salesforce_synced_at' => $now,
                     'is_active' => true,
                 ]
             );
+        }
+
+        $brokersByNameKey = Broker::query()
+            ->whereNotNull('display_name')
+            ->get(['id', 'salesforce_id', 'display_name'])
+            ->mapWithKeys(function (Broker $broker): array {
+                $key = mb_strtolower(trim((string) $broker->display_name));
+
+                return $key !== '' ? [$key => $broker] : [];
+            });
+
+        $byName = (clone $baseQuery)
+            ->where(function ($query): void {
+                $query->whereNull('broker_salesforce_id')
+                    ->orWhere('broker_salesforce_id', '');
+            })
+            ->whereNotNull('broker_name')
+            ->whereRaw("TRIM(broker_name) != ''")
+            ->selectRaw('LOWER(TRIM(broker_name)) as broker_name_key')
+            ->selectRaw('MAX(TRIM(broker_name)) as broker_name')
+            ->selectRaw('COUNT(*) as opportunities_total')
+            ->selectRaw('SUM(CASE WHEN is_closed = 0 THEN 1 ELSE 0 END) as opportunities_open')
+            ->selectRaw('SUM(CASE WHEN is_won = 1 THEN 1 ELSE 0 END) as opportunities_won')
+            ->selectRaw('SUM(CASE WHEN is_closed = 1 AND is_won = 0 THEN 1 ELSE 0 END) as opportunities_lost')
+            ->selectRaw('MAX(salesforce_created_at) as last_opportunity_at')
+            ->groupByRaw('LOWER(TRIM(broker_name))')
+            ->get()
+            ->keyBy('broker_name_key');
+
+        $byName30d = (clone $baseQuery)
+            ->where(function ($query): void {
+                $query->whereNull('broker_salesforce_id')
+                    ->orWhere('broker_salesforce_id', '');
+            })
+            ->whereNotNull('broker_name')
+            ->whereRaw("TRIM(broker_name) != ''")
+            ->where('salesforce_created_at', '>=', $windowStart)
+            ->selectRaw('LOWER(TRIM(broker_name)) as broker_name_key')
+            ->selectRaw('COUNT(*) as opportunities_total_30d')
+            ->selectRaw('SUM(CASE WHEN is_won = 1 THEN 1 ELSE 0 END) as opportunities_won_30d')
+            ->selectRaw('COALESCE(SUM(amount), 0) as pipeline_amount_30d')
+            ->selectRaw('COALESCE(SUM(CASE WHEN is_won = 1 THEN amount ELSE 0 END), 0) as won_amount_30d')
+            ->groupByRaw('LOWER(TRIM(broker_name))')
+            ->get()
+            ->keyBy('broker_name_key');
+
+        $latestStageByNameKey = [];
+        foreach ((clone $baseQuery)
+            ->where(function ($query): void {
+                $query->whereNull('broker_salesforce_id')
+                    ->orWhere('broker_salesforce_id', '');
+            })
+            ->whereNotNull('broker_name')
+            ->whereRaw("TRIM(broker_name) != ''")
+            ->orderByDesc('salesforce_created_at')
+            ->orderByDesc('id')
+            ->get(['broker_name', 'stage_name']) as $row
+        ) {
+            $key = mb_strtolower(trim((string) $row->broker_name));
+
+            if ($key !== '' && ! isset($latestStageByNameKey[$key])) {
+                $latestStageByNameKey[$key] = $row->stage_name;
+            }
+        }
+
+        $allBrokerNameKeys = collect($byName->keys())
+            ->merge($byName30d->keys())
+            ->unique()
+            ->values();
+
+        foreach ($allBrokerNameKeys as $nameKey) {
+            $broker = $brokersByNameKey->get($nameKey);
+            if ($broker === null) {
+                continue;
+            }
+
+            $totalRow = $byName->get($nameKey);
+            $windowRow = $byName30d->get($nameKey);
+
+            $brokerModel = Broker::query()->find($broker->id);
+            if ($brokerModel === null) {
+                continue;
+            }
+
+            $total30d = (int) ($windowRow->opportunities_total_30d ?? 0);
+            $won30d = (int) ($windowRow->opportunities_won_30d ?? 0);
+            $mergedTotal30d = (int) $brokerModel->opportunities_total_30d + $total30d;
+            $mergedWon30d = (int) $brokerModel->opportunities_won_30d + $won30d;
+            $closureRate30d = $mergedTotal30d > 0 ? round(($mergedWon30d / $mergedTotal30d) * 100, 2) : null;
+
+            $existingLastOpportunityAt = $brokerModel->last_opportunity_at;
+            $candidateLastOpportunityAt = $totalRow?->last_opportunity_at;
+            $mergedLastOpportunityAt = $existingLastOpportunityAt;
+            $mergedLastStageName = $brokerModel->last_stage_name;
+
+            if ($candidateLastOpportunityAt !== null && ($existingLastOpportunityAt === null || $candidateLastOpportunityAt > $existingLastOpportunityAt)) {
+                $mergedLastOpportunityAt = $candidateLastOpportunityAt;
+                $mergedLastStageName = $latestStageByNameKey[$nameKey] ?? $brokerModel->last_stage_name;
+            }
+
+            Broker::query()->whereKey($broker->id)->update([
+                'opportunities_total' => (int) $brokerModel->opportunities_total + (int) ($totalRow->opportunities_total ?? 0),
+                'opportunities_open' => (int) $brokerModel->opportunities_open + (int) ($totalRow->opportunities_open ?? 0),
+                'opportunities_won' => (int) $brokerModel->opportunities_won + (int) ($totalRow->opportunities_won ?? 0),
+                'opportunities_lost' => (int) $brokerModel->opportunities_lost + (int) ($totalRow->opportunities_lost ?? 0),
+                'opportunities_total_30d' => $mergedTotal30d,
+                'opportunities_won_30d' => $mergedWon30d,
+                'closure_rate_30d' => $closureRate30d,
+                'pipeline_amount_30d' => (float) $brokerModel->pipeline_amount_30d + (float) ($windowRow->pipeline_amount_30d ?? 0),
+                'won_amount_30d' => (float) $brokerModel->won_amount_30d + (float) ($windowRow->won_amount_30d ?? 0),
+                'last_opportunity_at' => $mergedLastOpportunityAt,
+                'last_stage_name' => $mergedLastStageName,
+                'salesforce_synced_at' => $now,
+                'is_active' => true,
+            ]);
         }
 
         Broker::query()

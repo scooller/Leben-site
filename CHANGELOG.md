@@ -38,6 +38,10 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 - Mejoras de descripción y formato en formularios/infolist de Short Links
 - Nuevo flujo de redirección WhatsApp para asesores con helpers UTM
 
+#### Salesforce - Métricas Comerciales de Brokers
+- Nuevo comando `salesforce:sync-broker-metrics` para recalcular métricas comerciales desde snapshots locales de oportunidades
+- Programación en scheduler cada 15 minutos con `withoutOverlapping()` para mantener datos de brokers actualizados
+
 ### 🔄 Cambios
 
 #### Salesforce — Etapas de Proyecto

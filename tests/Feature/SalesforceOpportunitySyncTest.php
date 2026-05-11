@@ -150,4 +150,104 @@ class SalesforceOpportunitySyncTest extends TestCase
             'is_won' => true,
         ]);
     }
+
+    public function test_it_updates_broker_metrics_by_name_when_salesforce_broker_id_is_missing(): void
+    {
+        $broker = Broker::query()->create([
+            'display_name' => 'AGORA INMOBILIARIO',
+            'is_active' => true,
+        ]);
+
+        SalesforceOpportunity::query()->create([
+            'salesforce_id' => '006AAA0000000001',
+            'broker_salesforce_id' => null,
+            'broker_name' => 'AGORA INMOBILIARIO',
+            'name' => 'Opp sin broker id 1',
+            'is_closed' => false,
+            'is_won' => false,
+            'is_deleted' => false,
+            'is_private' => false,
+            'amount' => 1500,
+            'salesforce_created_at' => now()->subDays(5),
+            'salesforce_system_modstamp' => now()->subDays(5),
+            'synced_at' => now(),
+        ]);
+
+        SalesforceOpportunity::query()->create([
+            'salesforce_id' => '006AAA0000000002',
+            'broker_salesforce_id' => null,
+            'broker_name' => 'AGORA INMOBILIARIO',
+            'name' => 'Opp sin broker id 2',
+            'is_closed' => true,
+            'is_won' => true,
+            'is_deleted' => false,
+            'is_private' => false,
+            'amount' => 3500,
+            'salesforce_created_at' => now()->subDays(2),
+            'salesforce_system_modstamp' => now()->subDays(2),
+            'synced_at' => now(),
+        ]);
+
+        app(SalesforceService::class)->syncBrokerCommercialMetricsFromSnapshots();
+
+        $this->assertDatabaseHas('brokers', [
+            'id' => $broker->id,
+            'opportunities_total' => 2,
+            'opportunities_open' => 1,
+            'opportunities_won' => 1,
+            'opportunities_lost' => 0,
+            'opportunities_total_30d' => 2,
+            'opportunities_won_30d' => 1,
+        ]);
+    }
+
+    public function test_it_merges_name_based_metrics_into_broker_with_salesforce_id(): void
+    {
+        $broker = Broker::query()->create([
+            'salesforce_id' => 'a0u123456789ABC',
+            'display_name' => 'AGORA INMOBILIARIO',
+            'is_active' => true,
+        ]);
+
+        SalesforceOpportunity::query()->create([
+            'salesforce_id' => '006AAA0000001001',
+            'broker_salesforce_id' => 'a0u123456789ABC',
+            'broker_name' => 'AGORA INMOBILIARIO',
+            'name' => 'Opp con broker id',
+            'is_closed' => false,
+            'is_won' => false,
+            'is_deleted' => false,
+            'is_private' => false,
+            'amount' => 1000,
+            'salesforce_created_at' => now()->subDays(8),
+            'salesforce_system_modstamp' => now()->subDays(8),
+            'synced_at' => now(),
+        ]);
+
+        SalesforceOpportunity::query()->create([
+            'salesforce_id' => '006AAA0000001002',
+            'broker_salesforce_id' => null,
+            'broker_name' => 'AGORA INMOBILIARIO',
+            'name' => 'Opp solo por nombre',
+            'is_closed' => true,
+            'is_won' => true,
+            'is_deleted' => false,
+            'is_private' => false,
+            'amount' => 2000,
+            'salesforce_created_at' => now()->subDays(4),
+            'salesforce_system_modstamp' => now()->subDays(4),
+            'synced_at' => now(),
+        ]);
+
+        app(SalesforceService::class)->syncBrokerCommercialMetricsFromSnapshots();
+
+        $this->assertDatabaseHas('brokers', [
+            'id' => $broker->id,
+            'opportunities_total' => 2,
+            'opportunities_open' => 1,
+            'opportunities_won' => 1,
+            'opportunities_total_30d' => 2,
+            'opportunities_won_30d' => 1,
+        ]);
+    }
 }

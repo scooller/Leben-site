@@ -10,11 +10,14 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-foreach ([
-    static fn () => Schedule::command('reservations:expire')->everyMinute(),
-    static fn () => Schedule::job(new SyncPlantsJob)->everyFiveMinutes()->withoutOverlapping(),
-    static fn () => Schedule::job(new SyncSalesforceOpportunitiesJob)->hourly()->withoutOverlapping(),
-] as $registerSchedule) {
+foreach (
+    [
+        static fn () => Schedule::command('reservations:expire')->everyMinute(),
+        static fn () => Schedule::job(new SyncPlantsJob)->everyFiveMinutes()->withoutOverlapping(),
+        static fn () => Schedule::job(new SyncSalesforceOpportunitiesJob)->hourly()->withoutOverlapping(),
+        static fn () => Schedule::command('salesforce:sync-broker-metrics')->everyFifteenMinutes()->withoutOverlapping(),
+    ] as $registerSchedule
+) {
     try {
         $registerSchedule();
     } catch (\Throwable) {
