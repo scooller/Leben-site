@@ -11,6 +11,8 @@ use App\Filament\Widgets\ApiMonitoringWidget;
 use App\Filament\Widgets\ApiUsageChartWidget;
 use App\Filament\Widgets\CommercialPipelineStatsWidget;
 use App\Filament\Widgets\CommercialTopBrokersChartWidget;
+use App\Filament\Widgets\CommercialTopOpenBrokersChartWidget;
+use App\Filament\Widgets\CommercialTopWonAmountBrokersChartWidget;
 use App\Filament\Widgets\FinancialTopProjectsChartWidget;
 use App\Filament\Widgets\PaymentGatewayChartWidget;
 use App\Filament\Widgets\PaymentsChartWidget;
@@ -56,6 +58,8 @@ class AdminPanelProvider extends PanelProvider
             AccountWidget::class,
             CommercialPipelineStatsWidget::class,
             CommercialTopBrokersChartWidget::class,
+            CommercialTopOpenBrokersChartWidget::class,
+            CommercialTopWonAmountBrokersChartWidget::class,
             FinancialTopProjectsChartWidget::class,
             ApiMonitoringWidget::class,
             ApiUsageChartWidget::class,
@@ -76,7 +80,7 @@ class AdminPanelProvider extends PanelProvider
         $widgetOrder = is_array($widgetOrder) ? array_values($widgetOrder) : [];
 
         if (! empty($widgetOrder)) {
-            $ordered = array_values(array_filter($widgetOrder, fn (string $widget): bool => in_array($widget, $defaultWidgets, true)));
+            $ordered = array_values(array_filter($widgetOrder, fn(string $widget): bool => in_array($widget, $defaultWidgets, true)));
             $missing = array_values(array_diff($defaultWidgets, $ordered));
             $widgets = array_merge($ordered, $missing);
         } else {
@@ -103,7 +107,7 @@ class AdminPanelProvider extends PanelProvider
             ->brandLogoHeight('2.5rem')
             ->renderHook(
                 PanelsRenderHook::GLOBAL_SEARCH_AFTER,
-                fn (): \Illuminate\Contracts\View\View => view('filament.components.view-web-button'),
+                fn(): \Illuminate\Contracts\View\View => view('filament.components.view-web-button'),
             )
             ->colors([
                 'primary' => '#eb0029',
@@ -160,13 +164,13 @@ class AdminPanelProvider extends PanelProvider
                     ->navigationGroup('Monitoreo')
                     ->navigationSort(1),
                 FilamentLogViewer::make()
-                    ->authorize(fn (): bool => Auth::user()?->isAdmin() ?? false)
+                    ->authorize(fn(): bool => Auth::user()?->isAdmin() ?? false)
                     ->navigationGroup('Monitoreo')
                     ->navigationIcon('heroicon-o-document-text')
                     ->navigationLabel('Log Viewer')
                     ->navigationSort(2),
                 CommandRunnerPlugin::make()
-                    ->authorize(fn (): bool => Auth::user()?->isAdmin() ?? false)
+                    ->authorize(fn(): bool => Auth::user()?->isAdmin() ?? false)
                     ->navigationGroup('Herramientas')
                     ->navigationLabel('Command Runner')
                     ->navigationIcon('heroicon-o-command-line')

@@ -5,9 +5,9 @@ namespace App\Filament\Widgets;
 use App\Models\SalesforceOpportunity;
 use Filament\Widgets\ChartWidget;
 
-class CommercialTopBrokersChartWidget extends ChartWidget
+class CommercialTopOpenBrokersChartWidget extends ChartWidget
 {
-    protected ?string $heading = 'Top brokers atribuidos por oportunidades (all-time)';
+    protected ?string $heading = 'Brokers con mas oportunidades abiertas (all-time)';
 
     protected ?string $pollingInterval = '300s';
 
@@ -26,23 +26,23 @@ class CommercialTopBrokersChartWidget extends ChartWidget
                 $query->where('is_private', false)
                     ->orWhereNull('is_private');
             })
+            ->where('is_closed', false)
             ->whereNotNull('broker_name')
             ->whereRaw("TRIM(broker_name) != ''")
             ->selectRaw('broker_name')
-            ->selectRaw('COUNT(*) as opportunities')
-            ->selectRaw('COALESCE(SUM(amount), 0) as total_amount')
+            ->selectRaw('COUNT(*) as open_opportunities')
             ->groupBy('broker_name')
-            ->orderByDesc('opportunities')
+            ->orderByDesc('open_opportunities')
             ->limit(8)
             ->get();
 
         return [
             'datasets' => [
                 [
-                    'label' => 'Oportunidades',
-                    'data' => $rows->pluck('opportunities')->map(fn($value) => (int) $value)->toArray(),
-                    'backgroundColor' => '#2563eb',
-                    'borderColor' => '#1d4ed8',
+                    'label' => 'Opp abiertas',
+                    'data' => $rows->pluck('open_opportunities')->map(fn($value) => (int) $value)->toArray(),
+                    'backgroundColor' => '#f59e0b',
+                    'borderColor' => '#d97706',
                 ],
             ],
             'labels' => $rows->pluck('broker_name')->toArray(),
