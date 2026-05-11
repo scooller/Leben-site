@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\SiteSetting;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Omniphx\Forrest\Providers\Laravel\Facades\Forrest;
 
@@ -13,9 +14,15 @@ class SalesforceOAuthController extends Controller
      * Inicia el flujo OAuth de Salesforce (WebServer).
      * Forrest::authenticate() construye la URL y redirige directamente a Salesforce.
      */
-    public function connect(): RedirectResponse
+    public function connect(Request $request): RedirectResponse
     {
         Log::info('Salesforce OAuth: Iniciando flujo de conexión');
+
+        $redirectTo = $request->query('redirect_to', $request->headers->get('referer'));
+
+        if (is_string($redirectTo) && $this->isSafeRedirectTarget($redirectTo, $request)) {
+            session()->put('salesforce_oauth_redirect_to', $redirectTo);
+        }
 
         // En WebServer flow, authenticate() retorna un RedirectResponse hacia Salesforce
         return Forrest::authenticate();
@@ -36,7 +43,7 @@ class SalesforceOAuthController extends Controller
                 'error_description' => $errorDescription,
             ]);
 
-            return redirect('/admin/site-settings')
+            return redirect($this->resolvePostOAuthRedirectTarget())
                 ->withErrors(['salesforce' => "Salesforce: {$errorDescription}"]);
         }
 
@@ -64,14 +71,52 @@ class SalesforceOAuthController extends Controller
             // Guardar en cache por 5 minutos para que la notificación se muestre una sola vez
             \Illuminate\Support\Facades\Cache::put('salesforce_oauth_just_connected', true, now()->addMinutes(5));
 
-            return redirect('/admin/site-settings');
+            return redirect($this->resolvePostOAuthRedirectTarget());
         } catch (\Throwable $e) {
             Log::error('Salesforce OAuth: Error en callback', [
                 'error' => $e->getMessage(),
             ]);
 
-            return redirect('/admin/site-settings')
-                ->withErrors(['salesforce' => 'Error al procesar autorización: ' . $e->getMessage()]);
+            return redirect($this->resolvePostOAuthRedirectTarget())
+                ->withErrors(['salesforce' => 'Error al procesar autorización: '.$e->getMessage()]);
         }
+    }
+
+    private function resolvePostOAuthRedirectTarget(): string
+    {
+        $redirectTo = session()->pull('salesforce_oauth_redirect_to');
+
+        if (is_string($redirectTo) && $this->isSafeRedirectTarget($redirectTo, request())) {
+            return $redirectTo;
+        }
+
+        return '/admin/site-settings';
+    }
+
+    private function isSafeRedirectTarget(string $target, Request $request): bool
+    {
+        if ($target === '' || str_starts_with($target, '//')) {
+            return false;
+        }
+
+        $targetPath = parse_url($target, PHP_URL_PATH);
+        $connectPath = route('salesforce.oauth.connect', [], false);
+        $callbackPath = route('salesforce.callback', [], false);
+
+        if (! is_string($targetPath)) {
+            return false;
+        }
+
+        if ($targetPath === $connectPath || $targetPath === $callbackPath) {
+            return false;
+        }
+
+        if (str_starts_with($target, '/')) {
+            return true;
+        }
+
+        $targetHost = parse_url($target, PHP_URL_HOST);
+
+        return is_string($targetHost) && strcasecmp($targetHost, $request->getHost()) === 0;
     }
 }
