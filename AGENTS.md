@@ -240,6 +240,9 @@ php artisan test --compact --filter=testName  # Por test
 - Manejo robusto de tokens expirados
 - Caché ampliado para consultas SOQL
 - OAuth con flujo authenticate/callback
+- Snapshot incremental de oportunidades (`salesforce_opportunities`) para KPIs comerciales
+- Comando operativo `salesforce:sync-broker-metrics` para recalcular métricas de brokers desde snapshots locales
+- Scheduler: recálculo de métricas de brokers cada 15 minutos (`withoutOverlapping`)
 
 ### Contactos
 - Validación por canal (sale, info, etc.)

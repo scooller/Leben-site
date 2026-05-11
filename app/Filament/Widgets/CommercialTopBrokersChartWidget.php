@@ -18,27 +18,41 @@ class CommercialTopBrokersChartWidget extends ChartWidget
     protected function getData(): array
     {
         $rows = SalesforceOpportunity::query()
-            ->where('is_deleted', false)
-            ->where('is_private', false)
+            ->where(function ($query): void {
+                $query->where('is_deleted', false)
+                    ->orWhereNull('is_deleted');
+            })
+            ->where(function ($query): void {
+                $query->where('is_private', false)
+                    ->orWhereNull('is_private');
+            })
             ->where('salesforce_created_at', '>=', now()->subDays(30))
-            ->selectRaw("COALESCE(NULLIF(broker_name, ''), 'Sin broker') as broker_label")
+            ->selectRaw('broker_name')
             ->selectRaw('COUNT(*) as opportunities')
             ->selectRaw('COALESCE(SUM(amount), 0) as total_amount')
-            ->groupByRaw("COALESCE(NULLIF(broker_name, ''), 'Sin broker')")
+            ->groupBy('broker_name')
             ->orderByDesc('opportunities')
             ->limit(8)
             ->get();
+
+        $labels = $rows
+            ->map(function ($row): string {
+                $label = trim((string) ($row->broker_name ?? ''));
+
+                return $label !== '' ? $label : 'Sin broker';
+            })
+            ->toArray();
 
         return [
             'datasets' => [
                 [
                     'label' => 'Oportunidades',
-                    'data' => $rows->pluck('opportunities')->map(fn ($value) => (int) $value)->toArray(),
+                    'data' => $rows->pluck('opportunities')->map(fn($value) => (int) $value)->toArray(),
                     'backgroundColor' => '#2563eb',
                     'borderColor' => '#1d4ed8',
                 ],
             ],
-            'labels' => $rows->pluck('broker_label')->toArray(),
+            'labels' => $labels,
         ];
     }
 

@@ -47,16 +47,16 @@ class CommercialPipelineStatsWidget extends StatsOverviewWidget
 
         return [
             Stat::make('Oportunidades (30d)', (string) $total)
-                ->description((string) $open.' abiertas')
+                ->description((string) $open . ' abiertas')
                 ->color('info'),
-            Stat::make('Tasa cierre (30d)', number_format($closureRate, 2).'%')
-                ->description((string) $won.' ganadas')
+            Stat::make('Tasa cierre (30d)', number_format($closureRate, 2) . '%')
+                ->description((string) $won . ' ganadas')
                 ->color($closureRate > 0 ? 'success' : 'gray'),
             Stat::make('Top broker (30d)', $topBrokerLabel !== '' ? $topBrokerLabel : 'Sin broker')
-                ->description((string) ($topBroker->opportunities ?? 0).' oportunidades')
+                ->description((string) ($topBroker->opportunities ?? 0) . ' oportunidades')
                 ->color('primary'),
             Stat::make('Top proyecto (30d)', $topProjectLabel !== '' ? $topProjectLabel : 'Sin proyecto')
-                ->description((string) ($topProject->opportunities ?? 0).' oportunidades')
+                ->description((string) ($topProject->opportunities ?? 0) . ' oportunidades')
                 ->color('warning'),
         ];
     }

@@ -12,10 +12,10 @@ Artisan::command('inspire', function () {
 
 foreach (
     [
-        static fn () => Schedule::command('reservations:expire')->everyMinute(),
-        static fn () => Schedule::job(new SyncPlantsJob)->everyFiveMinutes()->withoutOverlapping(),
-        static fn () => Schedule::job(new SyncSalesforceOpportunitiesJob)->hourly()->withoutOverlapping(),
-        static fn () => Schedule::command('salesforce:sync-broker-metrics')->everyFifteenMinutes()->withoutOverlapping(),
+        static fn() => Schedule::command('reservations:expire')->everyMinute(),
+        static fn() => Schedule::job(new SyncPlantsJob)->everyFiveMinutes()->withoutOverlapping(),
+        static fn() => Schedule::job(new SyncSalesforceOpportunitiesJob)->hourly()->withoutOverlapping(),
+        static fn() => Schedule::command('salesforce:sync-broker-metrics')->everyFifteenMinutes()->withoutOverlapping(),
     ] as $registerSchedule
 ) {
     try {
