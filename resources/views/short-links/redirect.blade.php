@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Redirigiendo...</title>
-    <meta http-equiv="refresh" content="2;url={{ $destinationUrl }}">
+    <meta http-equiv="refresh" content="1;url={{ $destinationUrl }}">
 </head>
 <body>
     <p>Te estamos redirigiendo...</p>

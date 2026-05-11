@@ -30,6 +30,7 @@ class PlantFactory extends Factory
             'precio_base' => fake()->randomFloat(2, 3000, 10000),
             'precio_lista' => fake()->randomFloat(2, 3200, 10500),
             'porcentaje_maximo_unidad' => fake()->randomFloat(2, 0, 100),
+            'descuento_defecto_cotizacion_web' => fake()->optional(0.5)->randomFloat(2, 0, 20),
             'unidad_sale' => fake()->boolean(20),
             'superficie_total_principal' => fake()->randomFloat(2, 40, 150),
             'superficie_interior' => fake()->randomFloat(2, 35, 120),

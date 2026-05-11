@@ -32,6 +32,7 @@ class Plant extends Model
         'precio_base',
         'precio_lista',
         'porcentaje_maximo_unidad',
+        'descuento_defecto_cotizacion_web',
         'unidad_sale',
         'superficie_total_principal',
         'superficie_interior',
@@ -48,6 +49,7 @@ class Plant extends Model
         'precio_base' => 'decimal:2',
         'precio_lista' => 'decimal:2',
         'porcentaje_maximo_unidad' => 'decimal:2',
+        'descuento_defecto_cotizacion_web' => 'decimal:2',
         'unidad_sale' => 'boolean',
         'superficie_total_principal' => 'decimal:2',
         'superficie_interior' => 'decimal:2',
@@ -152,6 +154,26 @@ class Plant extends Model
             ])
             ->latest('completed_at')
             ->latest('id');
+    }
+
+    public function resolveFinalPrice(bool $eventoSaleActivo = false): float
+    {
+        $precioLista = (float) ($this->precio_lista ?? 0);
+        $precioBase = (float) ($this->precio_base ?? 0);
+
+        $projectDiscount = $this->proyecto?->descuento_defecto_cotizacion_web;
+
+        $porcentajeDescuento = $eventoSaleActivo
+            ? (float) ($this->porcentaje_maximo_unidad ?? 0)
+            : (float) ($projectDiscount ?? 0);
+
+        if ($precioLista > 0 && $porcentajeDescuento > 0) {
+            $precioConDescuento = $precioLista - (($precioLista * $porcentajeDescuento) / 100);
+
+            return max(0, $precioConDescuento);
+        }
+
+        return max(0, $precioBase);
     }
 
     /**
