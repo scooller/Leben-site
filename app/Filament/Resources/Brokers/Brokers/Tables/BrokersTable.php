@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Brokers\Brokers\Tables;
 
+use App\Models\SalesforceOpportunity;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -88,20 +89,31 @@ class BrokersTable
 
                 TextColumn::make('projects_portfolio')
                     ->label('Proyectos')
-                    ->formatStateUsing(function ($state): string {
+                    ->formatStateUsing(function ($state, $record): string {
                         if (is_string($state)) {
                             $decoded = json_decode($state, true);
                             $state = is_array($decoded) ? $decoded : [];
                         }
 
-                        if (! is_array($state) || $state === []) {
-                            return '-';
-                        }
-
                         $normalized = array_values(array_filter(array_map(
                             fn($project): string => trim((string) $project),
-                            $state
+                            is_array($state) ? $state : []
                         ), fn(string $project): bool => $project !== ''));
+
+                        if ($normalized === [] && filled($record?->salesforce_id)) {
+                            $normalized = SalesforceOpportunity::query()
+                                ->where('broker_salesforce_id', (string) $record->salesforce_id)
+                                ->whereNotNull('proyecto_name')
+                                ->whereRaw("TRIM(proyecto_name) != ''")
+                                ->distinct()
+                                ->orderBy('proyecto_name')
+                                ->limit(20)
+                                ->pluck('proyecto_name')
+                                ->map(fn($project): string => trim((string) $project))
+                                ->filter(fn(string $project): bool => $project !== '')
+                                ->values()
+                                ->all();
+                        }
 
                         if ($normalized === []) {
                             return '-';
