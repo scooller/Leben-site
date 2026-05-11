@@ -117,6 +117,21 @@ class SalesforceOAuthController extends Controller
 
         $targetHost = parse_url($target, PHP_URL_HOST);
 
-        return is_string($targetHost) && strcasecmp($targetHost, $request->getHost()) === 0;
+        if (! is_string($targetHost)) {
+            return false;
+        }
+
+        $allowedHosts = [
+            $request->getHost(),
+            parse_url((string) config('app.url', ''), PHP_URL_HOST),
+        ];
+
+        foreach ($allowedHosts as $allowedHost) {
+            if (is_string($allowedHost) && $allowedHost !== '' && strcasecmp($targetHost, $allowedHost) === 0) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

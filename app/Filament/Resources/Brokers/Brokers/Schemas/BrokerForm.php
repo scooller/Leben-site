@@ -18,6 +18,33 @@ class BrokerForm
             ->components([
                 Section::make('Perfil Broker')
                     ->schema([
+                        TextInput::make('salesforce_id')
+                            ->label('Salesforce ID')
+                            ->disabled()
+                            ->copyable()
+                            ->visible(fn($record): bool => filled($record?->salesforce_id)),
+
+                        TextInput::make('salesforce_link')
+                            ->label('Ver en Salesforce')
+                            ->disabled()
+                            ->formatStateUsing(function ($record): string {
+                                if ($record === null || blank($record->salesforce_id)) {
+                                    return '';
+                                }
+
+                                $sfId = (string) $record->salesforce_id;
+                                $instanceUrl = config('services.salesforce.instance_url') ?? env('SF_INSTANCE_URL', '');
+
+                                if (blank($instanceUrl)) {
+                                    return 'Instancia Salesforce no configurada';
+                                }
+
+                                $profileUrl = rtrim((string) $instanceUrl, '/') . '/lightning/r/Broker__c/' . $sfId . '/view';
+
+                                return $profileUrl;
+                            })
+                            ->visible(fn($record): bool => filled($record?->salesforce_id)),
+
                         Select::make('user_id')
                             ->label('Usuario')
                             ->relationship('user', 'name')
