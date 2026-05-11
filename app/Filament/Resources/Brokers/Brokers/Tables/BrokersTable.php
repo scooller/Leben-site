@@ -21,7 +21,7 @@ class BrokersTable
             ->columns([
                 ImageColumn::make('avatar_image_id')
                     ->label('Avatar')
-                    ->getStateUsing(fn($record): ?string => $record->avatarImageMedia?->url)
+                    ->getStateUsing(fn ($record): ?string => $record->avatarImageMedia?->url)
                     ->circular(),
 
                 TextColumn::make('salesforce_id')
@@ -31,7 +31,7 @@ class BrokersTable
 
                 TextColumn::make('display_name')
                     ->label('Nombre')
-                    ->state(fn($record): string => $record->resolved_name)
+                    ->state(fn ($record): string => $record->resolved_name)
                     ->searchable(['display_name', 'contact_email'])
                     ->sortable(),
 
@@ -45,7 +45,7 @@ class BrokersTable
 
                 TextColumn::make('contact_email')
                     ->label('Email')
-                    ->state(fn($record): ?string => $record->resolved_email)
+                    ->state(fn ($record): ?string => $record->resolved_email)
                     ->sortable()
                     ->toggleable(),
 
@@ -65,7 +65,7 @@ class BrokersTable
 
                 TextColumn::make('closure_rate_30d')
                     ->label('Cierre 30d')
-                    ->formatStateUsing(fn($state): string => $state === null ? '-' : number_format((float) $state, 2) . '%')
+                    ->formatStateUsing(fn ($state): string => $state === null ? '-' : number_format((float) $state, 2).'%')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
@@ -89,31 +89,20 @@ class BrokersTable
 
                 TextColumn::make('projects_portfolio')
                     ->label('Proyectos')
-                    ->formatStateUsing(function ($state, $record): string {
+                    ->formatStateUsing(function ($state, $record): ?string {
                         $projects = self::resolveProjectsPortfolio($state, $record);
 
                         if ($projects === []) {
-                            return '-';
+                            return null;
                         }
 
-                        $visible = array_slice($projects, 0, 2);
-                        $hiddenCount = max(0, count($projects) - count($visible));
-                        $badges = array_map(static function (string $project): string {
-                            return '<span class="inline-flex items-center rounded-md border border-gray-200 px-2 py-0.5 text-xs font-medium text-gray-700">'
-                                . e($project)
-                                . '</span>';
-                        }, $visible);
-
-                        if ($hiddenCount > 0) {
-                            $badges[] = '<span class="inline-flex items-center rounded-md border border-gray-200 px-2 py-0.5 text-xs font-medium text-gray-500">+'
-                                . $hiddenCount
-                                . '</span>';
-                        }
-
-                        return '<div class="flex flex-wrap gap-1">' . implode('', $badges) . '</div>';
+                        return implode(',', $projects);
                     })
-                    ->html()
-                    ->wrap()
+                    ->badge()
+                    ->separator(',')
+                    ->limitList(2)
+                    ->expandableLimitedList()
+                    ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 IconColumn::make('is_active')
@@ -148,14 +137,16 @@ class BrokersTable
     private static function resolveProjectsPortfolio(mixed $state, mixed $record): array
     {
         if (is_string($state)) {
-            $decoded = json_decode($state, true);
-            $state = is_array($decoded) ? $decoded : [];
+            $state = array_map(
+                static fn (string $project): string => trim($project, " []\"'"),
+                explode(',', $state)
+            );
         }
 
         $normalized = array_values(array_filter(array_map(
-            fn($project): string => trim((string) $project),
+            fn ($project): string => trim((string) $project),
             is_array($state) ? $state : []
-        ), fn(string $project): bool => $project !== ''));
+        ), fn (string $project): bool => $project !== ''));
 
         if ($normalized === [] && filled($record?->salesforce_id)) {
             $normalized = SalesforceOpportunity::query()
@@ -166,8 +157,8 @@ class BrokersTable
                 ->orderBy('proyecto_name')
                 ->limit(50)
                 ->pluck('proyecto_name')
-                ->map(fn($project): string => trim((string) $project))
-                ->filter(fn(string $project): bool => $project !== '')
+                ->map(fn ($project): string => trim((string) $project))
+                ->filter(fn (string $project): bool => $project !== '')
                 ->values()
                 ->all();
         }
