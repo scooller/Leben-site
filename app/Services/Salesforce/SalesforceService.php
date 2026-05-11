@@ -2,7 +2,9 @@
 
 namespace App\Services\Salesforce;
 
+use App\Models\Broker;
 use App\Models\Proyecto;
+use App\Models\SalesforceOpportunity;
 use App\Models\SiteSetting;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -76,7 +78,7 @@ class SalesforceService
         try {
             $result = Forrest::query($normalizedSoql);
         } catch (Throwable $e) {
-            Log::debug('Salesforce: Re-autenticando en ejecución manual SOQL debido a: ' . $e->getMessage());
+            Log::debug('Salesforce: Re-autenticando en ejecución manual SOQL debido a: '.$e->getMessage());
             $this->authenticate();
             $result = Forrest::query($normalizedSoql);
         }
@@ -93,7 +95,7 @@ class SalesforceService
             try {
                 $result = Forrest::next($result['nextRecordsUrl']);
             } catch (Throwable $e) {
-                Log::debug('Salesforce: Re-autenticando en paginación SOQL debido a: ' . $e->getMessage());
+                Log::debug('Salesforce: Re-autenticando en paginación SOQL debido a: '.$e->getMessage());
                 $this->authenticate();
                 $result = Forrest::next($result['nextRecordsUrl']);
             }
@@ -765,6 +767,211 @@ class SalesforceService
     public function clearCache(): void
     {
         Cache::flush(); // En producción, usar tags para ser más específico
+    }
+
+    /**
+     * Sincroniza oportunidades de Salesforce a snapshots locales usando SystemModstamp.
+     *
+     * @return array{success: bool, message: string, synced: int, created: int, updated: int, watermark: string|null}
+     */
+    public function syncOpportunitiesIncrementally(?Carbon $since = null, int $limit = 1000): array
+    {
+        $watermark = $since?->copy()->utc() ?? $this->getOpportunitySyncWatermark();
+        $records = $this->fetchIncrementalOpportunities($watermark, $limit);
+
+        if ($records === []) {
+            return [
+                'success' => true,
+                'message' => 'No se encontraron oportunidades nuevas para sincronizar.',
+                'synced' => 0,
+                'created' => 0,
+                'updated' => 0,
+                'watermark' => $watermark?->toIso8601String(),
+            ];
+        }
+
+        $brokerIds = $this->normalizeSalesforceIdList(array_column($records, 'Broker__c'));
+        $projectIds = $this->normalizeSalesforceIdList(array_column($records, 'Proyecto__c'));
+
+        $brokersBySalesforceId = Broker::query()
+            ->whereIn('salesforce_id', $brokerIds)
+            ->pluck('id', 'salesforce_id')
+            ->all();
+
+        $projectsBySalesforceId = Proyecto::query()
+            ->whereIn('salesforce_id', $projectIds)
+            ->pluck('id', 'salesforce_id')
+            ->all();
+
+        $created = 0;
+        $updated = 0;
+        $latestSystemModstamp = $watermark;
+        $now = now();
+
+        foreach ($records as $record) {
+            $attributes = $this->mapSalesforceOpportunityRecord($record, $brokersBySalesforceId, $projectsBySalesforceId, $now);
+
+            $snapshot = SalesforceOpportunity::query()->updateOrCreate(
+                ['salesforce_id' => $attributes['salesforce_id']],
+                $attributes,
+            );
+
+            if ($snapshot->wasRecentlyCreated) {
+                $created++;
+            } else {
+                $updated++;
+            }
+
+            $recordSystemModstamp = $attributes['salesforce_system_modstamp'];
+            if ($recordSystemModstamp instanceof Carbon && ($latestSystemModstamp === null || $recordSystemModstamp->gt($latestSystemModstamp))) {
+                $latestSystemModstamp = $recordSystemModstamp->copy();
+            }
+        }
+
+        if ($latestSystemModstamp instanceof Carbon) {
+            $this->setOpportunitySyncWatermark($latestSystemModstamp);
+        }
+
+        $synced = $created + $updated;
+
+        return [
+            'success' => true,
+            'message' => "Sincronización de oportunidades completada. {$created} creadas, {$updated} actualizadas.",
+            'synced' => $synced,
+            'created' => $created,
+            'updated' => $updated,
+            'watermark' => $latestSystemModstamp?->toIso8601String(),
+        ];
+    }
+
+    private function fetchIncrementalOpportunities(?Carbon $since, int $limit): array
+    {
+        $limit = max(1, min($limit, 2000));
+
+        $whereClauses = [
+            'IsDeleted = false',
+            'IsPrivate = false',
+            'Proyecto__c != null',
+        ];
+
+        if ($since instanceof Carbon) {
+            $whereClauses[] = "SystemModstamp > {$since->copy()->utc()->format('Y-m-d\\TH:i:s\\Z')}";
+        }
+
+        $soql = 'SELECT Id, Name, Broker__c, Broker__r.Name, Proyecto__c, Proyecto__r.Name, StageName, ForecastCategoryName, '
+            .'IsWon, IsClosed, IsDeleted, IsPrivate, CreatedDate, LastModifiedDate, SystemModstamp, CloseDate, Amount, '
+            .'CurrencyIsoCode, Probability, AccountId, ContactId, OwnerId '
+            .'FROM Opportunity '
+            .'WHERE '.implode(' AND ', $whereClauses).' '
+            .'ORDER BY SystemModstamp ASC '
+            .'LIMIT '.$limit;
+
+        return $this->runPaginatedQuery($soql, $limit);
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function runPaginatedQuery(string $soql, int $limitRequested): array
+    {
+        try {
+            $result = Forrest::query($soql);
+        } catch (Throwable $e) {
+            Log::debug('Salesforce: Re-autenticando incremental sync de oportunidades debido a: '.$e->getMessage());
+            $this->authenticate();
+            $result = Forrest::query($soql);
+        }
+
+        $records = is_array($result['records'] ?? null) ? $result['records'] : [];
+
+        while (
+            empty($result['done'])
+            && ! empty($result['nextRecordsUrl'])
+            && count($records) < $limitRequested
+        ) {
+            try {
+                $result = Forrest::next($result['nextRecordsUrl']);
+            } catch (Throwable $e) {
+                Log::debug('Salesforce: Re-autenticando paginación incremental de oportunidades debido a: '.$e->getMessage());
+                $this->authenticate();
+                $result = Forrest::next($result['nextRecordsUrl']);
+            }
+
+            $page = is_array($result['records'] ?? null) ? $result['records'] : [];
+            $records = array_merge($records, $page);
+        }
+
+        if (count($records) > $limitRequested) {
+            return array_slice($records, 0, $limitRequested);
+        }
+
+        return $records;
+    }
+
+    /**
+     * @param  array<string, mixed>  $record
+     * @param  array<string, int>  $brokersBySalesforceId
+     * @param  array<string, int>  $projectsBySalesforceId
+     * @return array<string, mixed>
+     */
+    private function mapSalesforceOpportunityRecord(array $record, array $brokersBySalesforceId, array $projectsBySalesforceId, Carbon $syncedAt): array
+    {
+        $brokerSalesforceId = $this->normalizeSalesforceId($record['Broker__c'] ?? null);
+        $projectSalesforceId = $this->normalizeSalesforceId($record['Proyecto__c'] ?? null);
+
+        return [
+            'broker_id' => $brokerSalesforceId !== null ? ($brokersBySalesforceId[$brokerSalesforceId] ?? null) : null,
+            'proyecto_id' => $projectSalesforceId !== null ? ($projectsBySalesforceId[$projectSalesforceId] ?? null) : null,
+            'salesforce_id' => (string) ($record['Id'] ?? ''),
+            'broker_salesforce_id' => $brokerSalesforceId,
+            'proyecto_salesforce_id' => $projectSalesforceId,
+            'account_salesforce_id' => $this->normalizeSalesforceId($record['AccountId'] ?? null),
+            'contact_salesforce_id' => $this->normalizeSalesforceId($record['ContactId'] ?? null),
+            'owner_salesforce_id' => $this->normalizeSalesforceId($record['OwnerId'] ?? null),
+            'name' => (string) ($record['Name'] ?? ''),
+            'broker_name' => $record['Broker__r']['Name'] ?? null,
+            'proyecto_name' => $record['Proyecto__r']['Name'] ?? null,
+            'stage_name' => $record['StageName'] ?? null,
+            'forecast_category_name' => $record['ForecastCategoryName'] ?? null,
+            'currency_iso_code' => $record['CurrencyIsoCode'] ?? null,
+            'amount' => array_key_exists('Amount', $record) && $record['Amount'] !== null ? (float) $record['Amount'] : null,
+            'probability' => array_key_exists('Probability', $record) && $record['Probability'] !== null ? (float) $record['Probability'] : null,
+            'is_closed' => (bool) ($record['IsClosed'] ?? false),
+            'is_won' => (bool) ($record['IsWon'] ?? false),
+            'is_deleted' => (bool) ($record['IsDeleted'] ?? false),
+            'is_private' => (bool) ($record['IsPrivate'] ?? false),
+            'close_date' => $record['CloseDate'] ?? null,
+            'salesforce_created_at' => isset($record['CreatedDate']) ? Carbon::parse((string) $record['CreatedDate']) : null,
+            'salesforce_last_modified_at' => isset($record['LastModifiedDate']) ? Carbon::parse((string) $record['LastModifiedDate']) : null,
+            'salesforce_system_modstamp' => isset($record['SystemModstamp']) ? Carbon::parse((string) $record['SystemModstamp']) : null,
+            'synced_at' => $syncedAt->copy(),
+            'payload' => $record,
+        ];
+    }
+
+    private function getOpportunitySyncWatermark(): ?Carbon
+    {
+        $extraSettings = SiteSetting::get('extra_settings', []);
+        $value = is_array($extraSettings)
+            ? data_get($extraSettings, 'salesforce_sync.opportunities_last_system_modstamp')
+            : null;
+
+        if (! is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        return Carbon::parse($value);
+    }
+
+    private function setOpportunitySyncWatermark(Carbon $watermark): void
+    {
+        $settings = SiteSetting::current();
+        $extraSettings = is_array($settings->extra_settings) ? $settings->extra_settings : [];
+        data_set($extraSettings, 'salesforce_sync.opportunities_last_system_modstamp', $watermark->copy()->utc()->toIso8601String());
+
+        $settings->update([
+            'extra_settings' => $extraSettings,
+        ]);
     }
 
     /**
@@ -1473,10 +1680,10 @@ class SalesforceService
         }
 
         $soql = 'SELECT Id, Name, Email_Broker__c, Telefono_Broker__c '
-            . 'FROM Broker__c '
-            . 'WHERE IsDeleted = false '
-            . 'ORDER BY Name '
-            . 'LIMIT 2000';
+            .'FROM Broker__c '
+            .'WHERE IsDeleted = false '
+            .'ORDER BY Name '
+            .'LIMIT 2000';
 
         $ttl = $cacheTtl ?? $this->defaultCacheTtl;
 
