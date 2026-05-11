@@ -924,10 +924,24 @@ class SalesforceService
             ->unique()
             ->values();
 
+        $projectNamesBySalesforceId = Proyecto::query()
+            ->whereNotNull('salesforce_id')
+            ->pluck('name', 'salesforce_id')
+            ->map(fn($name): string => $this->normalizeUtf8Text($name) ?? trim((string) $name))
+            ->all();
+
         $projectsBySalesforceId = [];
         $projectsByNameKey = [];
-        foreach ((clone $baseQuery)->get(['broker_salesforce_id', 'broker_name', 'proyecto_name']) as $row) {
-            $projectName = $this->normalizeUtf8Text($row->proyecto_name ?? null) ?? trim((string) ($row->proyecto_name ?? ''));
+        foreach ((clone $baseQuery)->get(['broker_salesforce_id', 'broker_name', 'proyecto_name', 'proyecto_salesforce_id']) as $row) {
+            $projectSalesforceId = trim((string) ($row->proyecto_salesforce_id ?? ''));
+            $projectName = $projectSalesforceId !== ''
+                ? ($projectNamesBySalesforceId[$projectSalesforceId] ?? null)
+                : null;
+
+            if ($projectName === null || $projectName === '') {
+                $projectName = $this->normalizeUtf8Text($row->proyecto_name ?? null) ?? trim((string) ($row->proyecto_name ?? ''));
+            }
+
             if ($projectName === '') {
                 continue;
             }

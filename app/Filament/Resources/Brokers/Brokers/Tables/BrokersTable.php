@@ -28,8 +28,9 @@ class BrokersTable
                     ->copyable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
-                TextColumn::make('resolved_name')
+                TextColumn::make('display_name')
                     ->label('Nombre')
+                    ->state(fn($record): string => $record->resolved_name)
                     ->searchable(['display_name', 'contact_email'])
                     ->sortable(),
 
@@ -41,8 +42,9 @@ class BrokersTable
                     ->label('Telefono')
                     ->toggleable(),
 
-                TextColumn::make('resolved_email')
+                TextColumn::make('contact_email')
                     ->label('Email')
+                    ->state(fn($record): ?string => $record->resolved_email)
                     ->sortable()
                     ->toggleable(),
 
