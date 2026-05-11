@@ -6,14 +6,12 @@ use App\Models\Broker;
 use App\Models\SalesforceOpportunity;
 use Awcodes\Curator\Components\Forms\CuratorPicker;
 use Filament\Actions\Action;
-use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
-use Illuminate\Support\HtmlString;
 
 class BrokerForm
 {
@@ -85,36 +83,31 @@ class BrokerForm
                             ->rows(3)
                             ->columnSpanFull(),
 
-                        Placeholder::make('projects_portfolio_readonly')
+                        Select::make('projects_portfolio_readonly')
                             ->label('Portafolio de proyectos (desde oportunidades)')
-                            ->content(function (?Broker $record): HtmlString {
-                                if ($record === null) {
-                                    return new HtmlString('-');
-                                }
-
-                                $projects = self::resolveProjectsPortfolio($record);
-
-                                if ($projects === []) {
-                                    return new HtmlString('-');
-                                }
-
-                                $badges = array_map(static function (string $project): string {
-                                    return '<span class="inline-flex items-center rounded-md border border-gray-200 px-2 py-0.5 text-xs font-medium text-gray-700">'
-                                        . e($project)
-                                        . '</span>';
-                                }, $projects);
-
-                                return new HtmlString('<div class="flex flex-wrap gap-1">' . implode('', $badges) . '</div>');
+                            ->options(fn(?Broker $record): array => collect(self::resolveProjectsPortfolio($record))
+                                ->mapWithKeys(fn(string $project): array => [$project => $project])
+                                ->all())
+                            ->multiple()
+                            ->dehydrated(false)
+                            ->disabled()
+                            ->afterStateHydrated(function (Select $component, ?Broker $record): void {
+                                $component->state(self::resolveProjectsPortfolio($record));
                             })
                             ->visible(fn(?Broker $record): bool => $record !== null)
+                            ->placeholder('-')
                             ->columnSpanFull(),
                     ])
                     ->columns(2),
             ]);
     }
 
-    private static function resolveProjectsPortfolio(Broker $record): array
+    private static function resolveProjectsPortfolio(?Broker $record): array
     {
+        if ($record === null) {
+            return [];
+        }
+
         $portfolio = is_array($record->projects_portfolio)
             ? $record->projects_portfolio
             : [];
