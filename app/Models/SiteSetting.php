@@ -286,10 +286,12 @@ class SiteSetting extends Model
         $settings = static::current();
         $settings->load(['logoMedia', 'logoDarkMedia', 'faviconMedia', 'iconMedia', 'logoSaleMedia']);
 
+        $isPreviewAuthorized = $request instanceof Request && FrontendPreviewLink::isAuthorizedForRequest($request);
+
         $mostrarPlantas = (bool) ($settings->mostrar_plantas ?? true);
 
-        if (! $mostrarPlantas && $request instanceof Request) {
-            $mostrarPlantas = FrontendPreviewLink::isAuthorizedForRequest($request);
+        if (! $mostrarPlantas && $isPreviewAuthorized) {
+            $mostrarPlantas = true;
         }
 
         $extraSettings = is_array($settings->extra_settings) ? $settings->extra_settings : [];
@@ -375,7 +377,7 @@ class SiteSetting extends Model
             'header_scripts' => $settings->header_scripts,
             'footer_scripts' => $settings->footer_scripts,
             'plants_per_page' => (int) ($settings->plants_per_page ?? 12),
-            'maintenance_mode' => $settings->maintenance_mode,
+            'maintenance_mode' => $settings->maintenance_mode && ! $isPreviewAuthorized,
             'maintenance_message' => $settings->maintenance_message,
             'hero' => [
                 'home' => [
