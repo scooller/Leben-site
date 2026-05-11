@@ -75,9 +75,9 @@ class SyncBrokersAction
                 $existing = Broker::query()->where('salesforce_id', $salesforceId)->first();
 
                 $data = [
-                    'display_name' => $brokerData['name'] ?? null,
-                    'contact_email' => $brokerData['email'] ?? null,
-                    'contact_phone' => $brokerData['phone'] ?? null,
+                    'display_name' => self::normalizeUtf8Text($brokerData['name'] ?? null),
+                    'contact_email' => self::normalizeUtf8Text($brokerData['email'] ?? null),
+                    'contact_phone' => self::normalizeUtf8Text($brokerData['phone'] ?? null),
                     'salesforce_synced_at' => $syncedAt,
                 ];
 
@@ -108,11 +108,11 @@ class SyncBrokersAction
                 'updated' => $updated,
             ];
         } catch (\Throwable $e) {
-            Log::error('Error al sincronizar brokers desde Salesforce: '.$e->getMessage());
+            Log::error('Error al sincronizar brokers desde Salesforce: ' . $e->getMessage());
 
             return [
                 'success' => false,
-                'message' => 'Error al sincronizar: '.$e->getMessage(),
+                'message' => 'Error al sincronizar: ' . $e->getMessage(),
                 'count' => 0,
                 'created' => 0,
                 'updated' => 0,
@@ -123,5 +123,37 @@ class SyncBrokersAction
     public static function getTotalBrokers(): int
     {
         return Broker::count();
+    }
+
+    private static function normalizeUtf8Text(mixed $value): ?string
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $trimmed = trim($value);
+        if ($trimmed === '') {
+            return null;
+        }
+
+        if (mb_check_encoding($trimmed, 'UTF-8')) {
+            return $trimmed;
+        }
+
+        foreach (['Windows-1252', 'ISO-8859-1'] as $sourceEncoding) {
+            try {
+                $converted = mb_convert_encoding($trimmed, 'UTF-8', $sourceEncoding);
+            } catch (\ValueError) {
+                continue;
+            }
+
+            $converted = trim($converted);
+
+            if ($converted !== '' && mb_check_encoding($converted, 'UTF-8')) {
+                return $converted;
+            }
+        }
+
+        return mb_convert_encoding($trimmed, 'UTF-8', 'UTF-8');
     }
 }

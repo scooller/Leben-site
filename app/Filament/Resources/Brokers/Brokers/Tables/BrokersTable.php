@@ -16,7 +16,7 @@ class BrokersTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->defaultSort('sort_order')
+            ->defaultSort('opportunities_total', 'desc')
             ->columns([
                 ImageColumn::make('avatar_image_id')
                     ->label('Avatar')

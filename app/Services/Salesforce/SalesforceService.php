@@ -927,7 +927,7 @@ class SalesforceService
         $projectsBySalesforceId = [];
         $projectsByNameKey = [];
         foreach ((clone $baseQuery)->get(['broker_salesforce_id', 'broker_name', 'proyecto_name']) as $row) {
-            $projectName = trim((string) ($row->proyecto_name ?? ''));
+            $projectName = $this->normalizeUtf8Text($row->proyecto_name ?? null) ?? trim((string) ($row->proyecto_name ?? ''));
             if ($projectName === '') {
                 continue;
             }
@@ -937,7 +937,7 @@ class SalesforceService
                 $projectsBySalesforceId[$brokerSalesforceId][$projectName] = true;
             }
 
-            $brokerNameKey = mb_strtolower(trim((string) ($row->broker_name ?? '')));
+            $brokerNameKey = mb_strtolower($this->normalizeUtf8Text($row->broker_name ?? null) ?? trim((string) ($row->broker_name ?? '')));
             if ($brokerNameKey !== '') {
                 $projectsByNameKey[$brokerNameKey][$projectName] = true;
             }
@@ -956,9 +956,7 @@ class SalesforceService
             Broker::query()->updateOrCreate(
                 ['salesforce_id' => $brokerSalesforceId],
                 [
-                    'display_name' => trim((string) ($totalRow->broker_name ?? '')) !== ''
-                        ? $totalRow->broker_name
-                        : null,
+                    'display_name' => $this->normalizeUtf8Text($totalRow->broker_name ?? null),
                     'opportunities_total' => (int) ($totalRow->opportunities_total ?? 0),
                     'opportunities_open' => (int) ($totalRow->opportunities_open ?? 0),
                     'opportunities_won' => (int) ($totalRow->opportunities_won ?? 0),
@@ -981,7 +979,7 @@ class SalesforceService
             ->whereNotNull('display_name')
             ->get(['id', 'salesforce_id', 'display_name'])
             ->mapWithKeys(function (Broker $broker): array {
-                $key = mb_strtolower(trim((string) $broker->display_name));
+                $key = mb_strtolower($this->normalizeUtf8Text($broker->display_name) ?? trim((string) $broker->display_name));
 
                 return $key !== '' ? [$key => $broker] : [];
             });
@@ -1033,7 +1031,7 @@ class SalesforceService
                 ->orderByDesc('id')
                 ->get(['broker_name', 'stage_name']) as $row
         ) {
-            $key = mb_strtolower(trim((string) $row->broker_name));
+            $key = mb_strtolower($this->normalizeUtf8Text($row->broker_name ?? null) ?? trim((string) $row->broker_name));
 
             if ($key !== '' && ! isset($latestStageByNameKey[$key])) {
                 $latestStageByNameKey[$key] = $row->stage_name;
@@ -1088,6 +1086,9 @@ class SalesforceService
             }
 
             Broker::query()->whereKey($broker->id)->update([
+                'display_name' => $totalRow !== null
+                    ? ($this->normalizeUtf8Text($totalRow->broker_name ?? null) ?? $brokerModel->display_name)
+                    : $brokerModel->display_name,
                 'opportunities_total' => (int) $brokerModel->opportunities_total + (int) ($totalRow->opportunities_total ?? 0),
                 'opportunities_open' => (int) $brokerModel->opportunities_open + (int) ($totalRow->opportunities_open ?? 0),
                 'opportunities_won' => (int) $brokerModel->opportunities_won + (int) ($totalRow->opportunities_won ?? 0),
@@ -1207,6 +1208,7 @@ class SalesforceService
     {
         $brokerSalesforceId = $this->normalizeSalesforceId($record['Broker__c'] ?? null);
         $projectSalesforceId = $this->normalizeSalesforceId($record['Proyecto__c'] ?? null);
+        $normalizedName = $this->normalizeUtf8Text($record['Name'] ?? null);
 
         return [
             'broker_id' => $brokerSalesforceId !== null ? ($brokersBySalesforceId[$brokerSalesforceId] ?? null) : null,
@@ -1217,12 +1219,12 @@ class SalesforceService
             'account_salesforce_id' => $this->normalizeSalesforceId($record['AccountId'] ?? null),
             'contact_salesforce_id' => $this->normalizeSalesforceId($record['ContactId'] ?? null),
             'owner_salesforce_id' => $this->normalizeSalesforceId($record['OwnerId'] ?? null),
-            'name' => (string) ($record['Name'] ?? ''),
-            'broker_name' => $record['Broker__r']['Name'] ?? null,
-            'proyecto_name' => $record['Proyecto__r']['Name'] ?? null,
-            'stage_name' => $record['StageName'] ?? null,
-            'forecast_category_name' => $record['ForecastCategoryName'] ?? null,
-            'currency_iso_code' => $record['CurrencyIsoCode'] ?? null,
+            'name' => $normalizedName ?? (string) ($record['Name'] ?? ''),
+            'broker_name' => $this->normalizeUtf8Text($record['Broker__r']['Name'] ?? null),
+            'proyecto_name' => $this->normalizeUtf8Text($record['Proyecto__r']['Name'] ?? null),
+            'stage_name' => $this->normalizeUtf8Text($record['StageName'] ?? null),
+            'forecast_category_name' => $this->normalizeUtf8Text($record['ForecastCategoryName'] ?? null),
+            'currency_iso_code' => $this->normalizeUtf8Text($record['CurrencyIsoCode'] ?? null),
             'amount' => array_key_exists('Amount', $record) && $record['Amount'] !== null ? (float) $record['Amount'] : null,
             'probability' => array_key_exists('Probability', $record) && $record['Probability'] !== null ? (float) $record['Probability'] : null,
             'is_closed' => (bool) ($record['IsClosed'] ?? false),
@@ -1236,6 +1238,45 @@ class SalesforceService
             'synced_at' => $syncedAt->copy(),
             'payload' => $record,
         ];
+    }
+
+    private function normalizeUtf8Text(mixed $value): ?string
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $trimmed = trim($value);
+        if ($trimmed === '') {
+            return null;
+        }
+
+        if (mb_check_encoding($trimmed, 'UTF-8')) {
+            return $trimmed;
+        }
+
+        foreach (['Windows-1252', 'ISO-8859-1'] as $sourceEncoding) {
+            $converted = $this->convertToUtf8($trimmed, $sourceEncoding);
+
+            if ($converted !== null) {
+                return $converted;
+            }
+        }
+
+        return mb_convert_encoding($trimmed, 'UTF-8', 'UTF-8');
+    }
+
+    private function convertToUtf8(string $text, string $sourceEncoding): ?string
+    {
+        try {
+            $converted = mb_convert_encoding($text, 'UTF-8', $sourceEncoding);
+        } catch (\ValueError) {
+            return null;
+        }
+
+        $converted = trim($converted);
+
+        return $converted !== '' && mb_check_encoding($converted, 'UTF-8') ? $converted : null;
     }
 
     private function getOpportunitySyncWatermark(): ?Carbon

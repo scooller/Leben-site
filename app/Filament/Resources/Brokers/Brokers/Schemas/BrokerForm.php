@@ -23,7 +23,7 @@ class BrokerForm
                             ->relationship('user', 'name')
                             ->searchable()
                             ->preload()
-                            ->required()
+                            ->nullable()
                             ->unique(ignoreRecord: true),
 
                         Select::make('broker_category_id')
