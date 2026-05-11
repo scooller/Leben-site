@@ -90,40 +90,29 @@ class BrokersTable
                 TextColumn::make('projects_portfolio')
                     ->label('Proyectos')
                     ->formatStateUsing(function ($state, $record): string {
-                        if (is_string($state)) {
-                            $decoded = json_decode($state, true);
-                            $state = is_array($decoded) ? $decoded : [];
-                        }
+                        $projects = self::resolveProjectsPortfolio($state, $record);
 
-                        $normalized = array_values(array_filter(array_map(
-                            fn($project): string => trim((string) $project),
-                            is_array($state) ? $state : []
-                        ), fn(string $project): bool => $project !== ''));
-
-                        if ($normalized === [] && filled($record?->salesforce_id)) {
-                            $normalized = SalesforceOpportunity::query()
-                                ->where('broker_salesforce_id', (string) $record->salesforce_id)
-                                ->whereNotNull('proyecto_name')
-                                ->whereRaw("TRIM(proyecto_name) != ''")
-                                ->distinct()
-                                ->orderBy('proyecto_name')
-                                ->limit(20)
-                                ->pluck('proyecto_name')
-                                ->map(fn($project): string => trim((string) $project))
-                                ->filter(fn(string $project): bool => $project !== '')
-                                ->values()
-                                ->all();
-                        }
-
-                        if ($normalized === []) {
+                        if ($projects === []) {
                             return '-';
                         }
 
-                        $visible = array_slice($normalized, 0, 3);
-                        $suffix = count($normalized) > 3 ? '...' : '';
+                        $visible = array_slice($projects, 0, 2);
+                        $hiddenCount = max(0, count($projects) - count($visible));
+                        $badges = array_map(static function (string $project): string {
+                            return '<span class="inline-flex items-center rounded-md border border-gray-200 px-2 py-0.5 text-xs font-medium text-gray-700">'
+                                . e($project)
+                                . '</span>';
+                        }, $visible);
 
-                        return implode(', ', $visible) . $suffix;
+                        if ($hiddenCount > 0) {
+                            $badges[] = '<span class="inline-flex items-center rounded-md border border-gray-200 px-2 py-0.5 text-xs font-medium text-gray-500">+'
+                                . $hiddenCount
+                                . '</span>';
+                        }
+
+                        return '<div class="flex flex-wrap gap-1">' . implode('', $badges) . '</div>';
                     })
+                    ->html()
                     ->wrap()
                     ->toggleable(isToggledHiddenByDefault: true),
 
@@ -154,5 +143,35 @@ class BrokersTable
                     DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    private static function resolveProjectsPortfolio(mixed $state, mixed $record): array
+    {
+        if (is_string($state)) {
+            $decoded = json_decode($state, true);
+            $state = is_array($decoded) ? $decoded : [];
+        }
+
+        $normalized = array_values(array_filter(array_map(
+            fn($project): string => trim((string) $project),
+            is_array($state) ? $state : []
+        ), fn(string $project): bool => $project !== ''));
+
+        if ($normalized === [] && filled($record?->salesforce_id)) {
+            $normalized = SalesforceOpportunity::query()
+                ->where('broker_salesforce_id', (string) $record->salesforce_id)
+                ->whereNotNull('proyecto_name')
+                ->whereRaw("TRIM(proyecto_name) != ''")
+                ->distinct()
+                ->orderBy('proyecto_name')
+                ->limit(50)
+                ->pluck('proyecto_name')
+                ->map(fn($project): string => trim((string) $project))
+                ->filter(fn(string $project): bool => $project !== '')
+                ->values()
+                ->all();
+        }
+
+        return $normalized;
     }
 }
