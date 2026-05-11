@@ -28,13 +28,13 @@ class BrokerForm
                                 Action::make('openSalesforceBroker')
                                     ->label('Ver en Salesforce')
                                     ->icon('heroicon-m-arrow-top-right-on-square')
-                                    ->url(fn (?Broker $record): ?string => filled($record?->salesforce_id)
-                                        ? (config('services.salesforce.instance_url') ?? env('SF_INSTANCE_URL', '')).'/lightning/r/Broker__c/'.$record->salesforce_id.'/view'
+                                    ->url(fn(?Broker $record): ?string => filled($record?->salesforce_id)
+                                        ? (config('services.salesforce.instance_url') ?? env('SF_INSTANCE_URL', '')) . '/lightning/r/Broker__c/' . $record->salesforce_id . '/view'
                                         : null)
                                     ->openUrlInNewTab()
-                                    ->visible(fn (?Broker $record): bool => filled($record?->salesforce_id))
+                                    ->visible(fn(?Broker $record): bool => filled($record?->salesforce_id))
                             )
-                            ->visible(fn ($record): bool => filled($record?->salesforce_id)),
+                            ->visible(fn($record): bool => filled($record?->salesforce_id)),
 
                         Select::make('user_id')
                             ->label('Usuario')

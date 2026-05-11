@@ -26,6 +26,11 @@ La aplicación soporta:
 - ✅ **Normalización de Etapas**: Conversión de etapas de proyectos (proyecto_etapa)
 - ✅ **Website Preview**: Links de vista previa y normalización de URLs
 - ✅ **Settings dinámicos**: Configuración de plantas por página en API
+- ✅ **Snapshots comerciales SF**: Sincronización incremental de oportunidades para KPIs de brokers
+- ✅ **Widgets comerciales all-time**: Top brokers por oportunidades, abiertas y monto ganado
+- ✅ **Brokers por opp total DESC**: Orden por defecto en tabla de brokers
+- ✅ **Perfil Broker en Filament**: `user_id` opcional + `salesforce_id` con link directo a Salesforce
+- ✅ **Normalización UTF-8**: Corrección defensiva de caracteres para nombres Salesforce (tildes/ñ)
 
 ### Módulos Activos
 1. **Salesforce Integration** - Sincronización de leads/casos, OAuth, caché
@@ -243,6 +248,10 @@ php artisan test --compact --filter=testName  # Por test
 - Snapshot incremental de oportunidades (`salesforce_opportunities`) para KPIs comerciales
 - Comando operativo `salesforce:sync-broker-metrics` para recalcular métricas de brokers desde snapshots locales
 - Scheduler: recálculo de métricas de brokers cada 15 minutos (`withoutOverlapping`)
+- Scheduler: sincronización de oportunidades Salesforce en modo incremental
+- Enriquecimiento de métricas de brokers por `salesforce_id` y por `broker_name` (fallback)
+- Portafolio de proyectos por broker (`projects_portfolio`) desde snapshots locales
+- Normalización defensiva UTF-8 en mapeo/sync para evitar caracteres corruptos
 
 ### Contactos
 - Validación por canal (sale, info, etc.)
@@ -262,6 +271,8 @@ php artisan test --compact --filter=testName  # Por test
 - Upload de archivos con límite mayor
 - Website preview links
 - QR code en Asesores
+- Perfil Broker: campo `salesforce_id` con acción "Ver en Salesforce" (nueva pestaña)
+- Dashboard comercial: widgets all-time para seguimiento de brokers
 
 ---
 
