@@ -39,6 +39,7 @@ class Broker extends Model
         'won_amount_30d',
         'last_opportunity_at',
         'last_stage_name',
+        'projects_portfolio',
     ];
 
     protected function casts(): array
@@ -57,6 +58,7 @@ class Broker extends Model
             'pipeline_amount_30d' => 'decimal:2',
             'won_amount_30d' => 'decimal:2',
             'last_opportunity_at' => 'datetime',
+            'projects_portfolio' => 'array',
         ];
     }
 
@@ -96,7 +98,7 @@ class Broker extends Model
             return (string) $this->display_name;
         }
 
-        return (string) ($this->user?->name ?? ('Broker #'.$this->id));
+        return (string) ($this->user?->name ?? ('Broker #' . $this->id));
     }
 
     public function getResolvedEmailAttribute(): ?string

@@ -20,7 +20,7 @@ class BrokersTable
             ->columns([
                 ImageColumn::make('avatar_image_id')
                     ->label('Avatar')
-                    ->getStateUsing(fn ($record): ?string => $record->avatarImageMedia?->url)
+                    ->getStateUsing(fn($record): ?string => $record->avatarImageMedia?->url)
                     ->circular(),
 
                 TextColumn::make('salesforce_id')
@@ -60,7 +60,7 @@ class BrokersTable
 
                 TextColumn::make('closure_rate_30d')
                     ->label('Cierre 30d')
-                    ->formatStateUsing(fn ($state): string => $state === null ? '-' : number_format((float) $state, 2).'%')
+                    ->formatStateUsing(fn($state): string => $state === null ? '-' : number_format((float) $state, 2) . '%')
                     ->sortable()
                     ->toggleable(),
 
@@ -80,6 +80,21 @@ class BrokersTable
                     ->label('Ultima opp')
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('projects_portfolio')
+                    ->label('Proyectos')
+                    ->formatStateUsing(function ($state): string {
+                        if (! is_array($state) || $state === []) {
+                            return '-';
+                        }
+
+                        $visible = array_slice($state, 0, 3);
+                        $suffix = count($state) > 3 ? '...' : '';
+
+                        return implode(', ', $visible) . $suffix;
+                    })
+                    ->wrap()
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 IconColumn::make('is_active')

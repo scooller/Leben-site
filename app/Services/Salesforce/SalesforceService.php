@@ -918,9 +918,30 @@ class SalesforceService
             ->unique()
             ->values();
 
+        $projectsBySalesforceId = [];
+        $projectsByNameKey = [];
+        foreach ((clone $baseQuery)->get(['broker_salesforce_id', 'broker_name', 'proyecto_name']) as $row) {
+            $projectName = trim((string) ($row->proyecto_name ?? ''));
+            if ($projectName === '') {
+                continue;
+            }
+
+            $brokerSalesforceId = trim((string) ($row->broker_salesforce_id ?? ''));
+            if ($brokerSalesforceId !== '') {
+                $projectsBySalesforceId[$brokerSalesforceId][$projectName] = true;
+            }
+
+            $brokerNameKey = mb_strtolower(trim((string) ($row->broker_name ?? '')));
+            if ($brokerNameKey !== '') {
+                $projectsByNameKey[$brokerNameKey][$projectName] = true;
+            }
+        }
+
         foreach ($allBrokerSalesforceIds as $brokerSalesforceId) {
             $totalRow = $bySalesforceId->get($brokerSalesforceId);
             $windowRow = $bySalesforceId30d->get($brokerSalesforceId);
+            $projectsPortfolio = array_keys($projectsBySalesforceId[$brokerSalesforceId] ?? []);
+            sort($projectsPortfolio);
 
             $total30d = (int) ($windowRow->opportunities_total_30d ?? 0);
             $won30d = (int) ($windowRow->opportunities_won_30d ?? 0);
@@ -943,6 +964,7 @@ class SalesforceService
                     'won_amount_30d' => (float) ($windowRow->won_amount_30d ?? 0),
                     'last_opportunity_at' => $totalRow?->last_opportunity_at,
                     'last_stage_name' => $latestStageBySalesforceId[$brokerSalesforceId] ?? null,
+                    'projects_portfolio' => $projectsPortfolio !== [] ? $projectsPortfolio : null,
                     'salesforce_synced_at' => $now,
                     'is_active' => true,
                 ]
@@ -1016,11 +1038,16 @@ class SalesforceService
             ->merge($byName30d->keys())
             ->unique()
             ->values();
+        $brokerSalesforceIdsTouchedByName = collect();
 
         foreach ($allBrokerNameKeys as $nameKey) {
             $broker = $brokersByNameKey->get($nameKey);
             if ($broker === null) {
                 continue;
+            }
+
+            if (filled($broker->salesforce_id)) {
+                $brokerSalesforceIdsTouchedByName->push((string) $broker->salesforce_id);
             }
 
             $totalRow = $byName->get($nameKey);
@@ -1036,6 +1063,13 @@ class SalesforceService
             $mergedTotal30d = (int) $brokerModel->opportunities_total_30d + $total30d;
             $mergedWon30d = (int) $brokerModel->opportunities_won_30d + $won30d;
             $closureRate30d = $mergedTotal30d > 0 ? round(($mergedWon30d / $mergedTotal30d) * 100, 2) : null;
+            $mergedProjectsPortfolio = collect(is_array($brokerModel->projects_portfolio) ? $brokerModel->projects_portfolio : [])
+                ->merge(array_keys($projectsByNameKey[$nameKey] ?? []))
+                ->filter(fn($projectName): bool => trim((string) $projectName) !== '')
+                ->unique()
+                ->sort()
+                ->values()
+                ->all();
 
             $existingLastOpportunityAt = $brokerModel->last_opportunity_at;
             $candidateLastOpportunityAt = $totalRow?->last_opportunity_at;
@@ -1059,16 +1093,23 @@ class SalesforceService
                 'won_amount_30d' => (float) $brokerModel->won_amount_30d + (float) ($windowRow->won_amount_30d ?? 0),
                 'last_opportunity_at' => $mergedLastOpportunityAt,
                 'last_stage_name' => $mergedLastStageName,
+                'projects_portfolio' => $mergedProjectsPortfolio !== [] ? $mergedProjectsPortfolio : null,
                 'salesforce_synced_at' => $now,
                 'is_active' => true,
             ]);
         }
 
+        $brokerSalesforceIdsToKeep = $allBrokerSalesforceIds
+            ->merge($brokerSalesforceIdsTouchedByName)
+            ->filter(fn($id): bool => trim((string) $id) !== '')
+            ->unique()
+            ->values();
+
         Broker::query()
             ->whereNotNull('salesforce_id')
             ->when(
-                $allBrokerSalesforceIds->isNotEmpty(),
-                fn($query) => $query->whereNotIn('salesforce_id', $allBrokerSalesforceIds->all())
+                $brokerSalesforceIdsToKeep->isNotEmpty(),
+                fn($query) => $query->whereNotIn('salesforce_id', $brokerSalesforceIdsToKeep->all())
             )
             ->update([
                 'opportunities_total' => 0,
@@ -1082,6 +1123,7 @@ class SalesforceService
                 'won_amount_30d' => 0,
                 'last_opportunity_at' => null,
                 'last_stage_name' => null,
+                'projects_portfolio' => null,
             ]);
     }
 

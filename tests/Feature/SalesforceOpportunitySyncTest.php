@@ -162,6 +162,7 @@ class SalesforceOpportunitySyncTest extends TestCase
             'salesforce_id' => '006AAA0000000001',
             'broker_salesforce_id' => null,
             'broker_name' => 'AGORA INMOBILIARIO',
+            'proyecto_name' => 'Proyecto Norte',
             'name' => 'Opp sin broker id 1',
             'is_closed' => false,
             'is_won' => false,
@@ -177,6 +178,7 @@ class SalesforceOpportunitySyncTest extends TestCase
             'salesforce_id' => '006AAA0000000002',
             'broker_salesforce_id' => null,
             'broker_name' => 'AGORA INMOBILIARIO',
+            'proyecto_name' => 'Proyecto Centro',
             'name' => 'Opp sin broker id 2',
             'is_closed' => true,
             'is_won' => true,
@@ -198,6 +200,7 @@ class SalesforceOpportunitySyncTest extends TestCase
             'opportunities_lost' => 0,
             'opportunities_total_30d' => 2,
             'opportunities_won_30d' => 1,
+            'projects_portfolio' => json_encode(['Proyecto Centro', 'Proyecto Norte']),
         ]);
     }
 
@@ -213,6 +216,7 @@ class SalesforceOpportunitySyncTest extends TestCase
             'salesforce_id' => '006AAA0000001001',
             'broker_salesforce_id' => 'a0u123456789ABC',
             'broker_name' => 'AGORA INMOBILIARIO',
+            'proyecto_name' => 'Proyecto Alfa',
             'name' => 'Opp con broker id',
             'is_closed' => false,
             'is_won' => false,
@@ -228,6 +232,7 @@ class SalesforceOpportunitySyncTest extends TestCase
             'salesforce_id' => '006AAA0000001002',
             'broker_salesforce_id' => null,
             'broker_name' => 'AGORA INMOBILIARIO',
+            'proyecto_name' => 'Proyecto Beta',
             'name' => 'Opp solo por nombre',
             'is_closed' => true,
             'is_won' => true,
@@ -248,6 +253,42 @@ class SalesforceOpportunitySyncTest extends TestCase
             'opportunities_won' => 1,
             'opportunities_total_30d' => 2,
             'opportunities_won_30d' => 1,
+            'projects_portfolio' => json_encode(['Proyecto Alfa', 'Proyecto Beta']),
+        ]);
+    }
+
+    public function test_it_does_not_reset_broker_with_salesforce_id_when_updated_only_by_name(): void
+    {
+        $broker = Broker::query()->create([
+            'salesforce_id' => 'a0u123456789XYZ',
+            'display_name' => 'Broker Legacy',
+            'is_active' => true,
+        ]);
+
+        SalesforceOpportunity::query()->create([
+            'salesforce_id' => '006AAA0000002001',
+            'broker_salesforce_id' => null,
+            'broker_name' => 'Broker Legacy',
+            'proyecto_name' => 'Proyecto Sur',
+            'name' => 'Opp por nombre',
+            'is_closed' => false,
+            'is_won' => false,
+            'is_deleted' => false,
+            'is_private' => false,
+            'amount' => 500,
+            'salesforce_created_at' => now()->subDays(3),
+            'salesforce_system_modstamp' => now()->subDays(3),
+            'synced_at' => now(),
+        ]);
+
+        app(SalesforceService::class)->syncBrokerCommercialMetricsFromSnapshots();
+
+        $this->assertDatabaseHas('brokers', [
+            'id' => $broker->id,
+            'opportunities_total' => 1,
+            'opportunities_open' => 1,
+            'opportunities_won' => 0,
+            'projects_portfolio' => json_encode(['Proyecto Sur']),
         ]);
     }
 }
