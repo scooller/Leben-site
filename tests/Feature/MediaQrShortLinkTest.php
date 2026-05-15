@@ -100,4 +100,24 @@ class MediaQrShortLinkTest extends TestCase
             ->assertOk()
             ->assertSee('Ver QR');
     }
+
+    public function test_qr_modal_view_includes_download_button(): void
+    {
+        $html = view('filament.actions.show-qr-code', [
+            'url' => 'https://example.test/s/abc123',
+            'qrSvg' => '<svg><rect width="10" height="10"/></svg>',
+            'qrDownloadUrl' => 'data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=',
+            'qrDownloadName' => 'qr-archivo-1.svg',
+        ])->render();
+
+        $this->assertStringContainsString('Descargar QR', $html);
+        $this->assertStringContainsString('download="qr-archivo-1.svg"', $html);
+    }
+
+    public function test_curator_replace_section_translation_is_available_in_spanish(): void
+    {
+        app()->setLocale('es');
+
+        $this->assertSame('Reemplazar', trans('curator::forms.sections.replace'));
+    }
 }
