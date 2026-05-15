@@ -83,7 +83,11 @@ class ShortLinkInfolist
                     ->components([
                         KeyValueEntry::make('metadata')
                             ->label('Metadata')
-                            ->placeholder('Sin metadata'),
+                            ->placeholder('Sin metadata')
+                            ->state(fn(ShortLink $record): array => collect($record->metadata ?? [])
+                                ->map(fn($value) => is_array($value) ? json_encode($value, JSON_UNESCAPED_UNICODE) : (string) $value)
+                                ->toArray()
+                            ),
                     ]),
             ]);
     }
