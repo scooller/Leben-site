@@ -42,7 +42,7 @@ return [
             'form' => Awcodes\Curator\Resources\Media\Schemas\MediaForm::class,
         ],
         'tables' => [
-            'table' => Awcodes\Curator\Resources\Media\Tables\MediaTable::class,
+            'table' => App\Filament\Curator\Tables\MediaTable::class,
         ],
     ],
 ];

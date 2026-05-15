@@ -47,6 +47,16 @@ class AppServiceProvider extends ServiceProvider
                 'image/*',
                 'video/*',
                 'application/pdf',
+                'application/msword',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'application/vnd.ms-excel',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'application/vnd.ms-powerpoint',
+                'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                'application/xml',
+                'text/xml',
+                'text/plain',
+                'text/csv',
             ])
             ->maxSize(512000) // KB (~500 MB) para permitir videos
             ->disk((string) config('curator.default_disk', 'curator'))
