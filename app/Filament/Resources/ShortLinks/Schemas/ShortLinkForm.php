@@ -6,11 +6,13 @@ use App\Enums\ShortLinkStatus;
 use App\Models\ShortLink;
 use App\Models\SiteSetting;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
@@ -37,53 +39,52 @@ class ShortLinkForm
                             ->alphaDash()
                             ->unique(ignoreRecord: true)
                             ->live(onBlur: true)
-                            ->default(fn (): string => Str::lower(Str::random(2)))
+                            ->default(fn(): string => Str::lower(Str::random(2)))
                             ->helperText('Se usa en la URL corta /s/{slug}.')
-                            ->hint(function (Get $get, ?Model $record): ?string {
-                                $slug = $get('slug');
+                            ->afterStateUpdated(function (?string $state, Set $set, ?Model $record): void {
+                                if (! $state) {
+                                    $set('slug_available', null);
 
-                                if (! $slug) {
-                                    return null;
+                                    return;
                                 }
 
-                                $query = ShortLink::where('slug', $slug);
+                                $query = ShortLink::where('slug', $state);
 
                                 if ($record) {
                                     $query->whereNot('id', $record->id);
                                 }
 
-                                return $query->exists() ? 'No disponible' : 'Disponible';
+                                $set('slug_available', ! $query->exists());
                             })
-                            ->hintColor(function (Get $get, ?Model $record): string {
-                                $slug = $get('slug');
+                            ->hint(function (Get $get): ?string {
+                                $available = $get('slug_available');
 
-                                if (! $slug) {
+                                if ($available === null) {
+                                    return null;
+                                }
+
+                                return $available ? 'Disponible' : 'No disponible';
+                            })
+                            ->hintColor(function (Get $get): string {
+                                $available = $get('slug_available');
+
+                                if ($available === null) {
                                     return 'gray';
                                 }
 
-                                $query = ShortLink::where('slug', $slug);
-
-                                if ($record) {
-                                    $query->whereNot('id', $record->id);
-                                }
-
-                                return $query->exists() ? 'danger' : 'success';
+                                return $available ? 'success' : 'danger';
                             })
-                            ->hintIcon(function (Get $get, ?Model $record): ?string {
-                                $slug = $get('slug');
+                            ->hintIcon(function (Get $get): ?string {
+                                $available = $get('slug_available');
 
-                                if (! $slug) {
+                                if ($available === null) {
                                     return null;
                                 }
 
-                                $query = ShortLink::where('slug', $slug);
-
-                                if ($record) {
-                                    $query->whereNot('id', $record->id);
-                                }
-
-                                return $query->exists() ? 'heroicon-m-x-circle' : 'heroicon-m-check-circle';
+                                return $available ? 'heroicon-m-check-circle' : 'heroicon-m-x-circle';
                             }),
+                        Hidden::make('slug_available')
+                            ->dehydrated(false),
                         Select::make('status')
                             ->label('Estado')
                             ->options(ShortLinkStatus::toSelectArray())
@@ -102,7 +103,7 @@ class ShortLinkForm
                             ->placeholder('GTM-XXXXXXX')
                             ->maxLength(50)
                             ->regex('/^GTM-[A-Z0-9]+$/')
-                            ->default(fn (): ?string => SiteSetting::get('tag_manager_id') ?: null)
+                            ->default(fn(): ?string => SiteSetting::get('tag_manager_id') ?: null)
                             ->helperText('Si se deja vacio, usa el tag_manager_id global de Site Settings.'),
                         DateTimePicker::make('expires_at')
                             ->label('Expira en')
