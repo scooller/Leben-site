@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ShortLinks\Schemas;
 
 use App\Enums\ShortLinkStatus;
+use App\Models\ShortLink;
 use App\Models\SiteSetting;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\KeyValue;
@@ -10,6 +11,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
 class ShortLinkForm
@@ -33,8 +35,48 @@ class ShortLinkForm
                             ->maxLength(32)
                             ->alphaDash()
                             ->unique(ignoreRecord: true)
+                            ->live(onBlur: true)
                             ->default(fn(): string => Str::lower(Str::random(2)))
-                            ->helperText('Se usa en la URL corta /s/{slug}.'),
+                            ->helperText('Se usa en la URL corta /s/{slug}.')
+                            ->hint(function (?string $state, ?Model $record): ?string {
+                                if (! $state) {
+                                    return null;
+                                }
+
+                                $query = ShortLink::where('slug', $state);
+
+                                if ($record) {
+                                    $query->whereNot('id', $record->id);
+                                }
+
+                                return $query->exists() ? 'No disponible' : 'Disponible';
+                            })
+                            ->hintColor(function (?string $state, ?Model $record): string {
+                                if (! $state) {
+                                    return 'gray';
+                                }
+
+                                $query = ShortLink::where('slug', $state);
+
+                                if ($record) {
+                                    $query->whereNot('id', $record->id);
+                                }
+
+                                return $query->exists() ? 'danger' : 'success';
+                            })
+                            ->hintIcon(function (?string $state, ?Model $record): ?string {
+                                if (! $state) {
+                                    return null;
+                                }
+
+                                $query = ShortLink::where('slug', $state);
+
+                                if ($record) {
+                                    $query->whereNot('id', $record->id);
+                                }
+
+                                return $query->exists() ? 'heroicon-m-x-circle' : 'heroicon-m-check-circle';
+                            }),
                         Select::make('status')
                             ->label('Estado')
                             ->options(ShortLinkStatus::toSelectArray())
