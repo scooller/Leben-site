@@ -20,9 +20,9 @@ return [
         ],
     ],
     'glide_token' => env('CURATOR_GLIDE_TOKEN'),
-    'model' => Awcodes\Curator\Models\Media::class,
+    'model' => App\Models\CuratorMedia::class,
     'path_generator' => null,
-    'url_provider' => Awcodes\Curator\Providers\GlideUrlProvider::class,
+    'url_provider' => 'App\\Filament\\Curator\\Providers\\GifSafeGlideUrlProvider',
     'resource' => [
         'label' => 'Media',
         'plural_label' => 'Media',

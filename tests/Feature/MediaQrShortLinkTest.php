@@ -4,11 +4,14 @@ namespace Tests\Feature;
 
 use App\Filament\Curator\Tables\MediaTable;
 use App\Jobs\RecordShortLinkVisitJob;
+use App\Models\CuratorMedia;
 use App\Models\ShortLink;
 use App\Models\User;
 use Awcodes\Curator\Models\Media;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class MediaQrShortLinkTest extends TestCase
@@ -55,13 +58,13 @@ class MediaQrShortLinkTest extends TestCase
         $shortLink = ShortLink::query()->where('metadata->origin', 'media_file_qr')->first();
 
         $this->assertNotNull($shortLink);
-        $this->assertStringContainsString('/s/' . $shortLink?->slug, $qrUrl);
+        $this->assertStringContainsString('/s/'.$shortLink?->slug, $qrUrl);
         $this->assertStringContainsString('utm_source=archivo', $qrUrl);
         $this->assertStringContainsString('utm_medium=qr', $qrUrl);
 
         $response = $this->get($qrUrl);
 
-        $response->assertRedirect(url('/curator/docs/terms.xml') . '?utm_source=archivo&utm_medium=qr&utm_campaign=archivo_qr&utm_content=media_' . $media->id);
+        $response->assertRedirect(url('/curator/docs/terms.xml').'?utm_source=archivo&utm_medium=qr&utm_campaign=archivo_qr&utm_content=media_'.$media->id);
 
         Queue::assertPushed(RecordShortLinkVisitJob::class, function (RecordShortLinkVisitJob $job): bool {
             return ($job->payload['utm_source'] ?? null) === 'archivo'
@@ -159,5 +162,56 @@ class MediaQrShortLinkTest extends TestCase
         $result = \App\Filament\Curator\Pages\EditMedia::extractSvgMarkup($svg);
 
         $this->assertSame($svg, $result);
+    }
+
+    public function test_curator_uses_custom_media_model(): void
+    {
+        $this->assertSame(CuratorMedia::class, config('curator.model'));
+    }
+
+    public function test_gif_media_uses_original_url_instead_of_glide_urls(): void
+    {
+        $media = new CuratorMedia([
+            'disk' => 'public',
+            'path' => 'docs/animated.gif',
+            'ext' => 'gif',
+            'name' => 'animated',
+            'directory' => 'docs',
+            'visibility' => 'public',
+        ]);
+
+        $this->assertSame($media->url, $media->thumbnail_url);
+        $this->assertSame($media->url, $media->medium_url);
+        $this->assertSame($media->url, $media->large_url);
+    }
+
+    public function test_curator_uses_gif_safe_url_provider(): void
+    {
+        $this->assertSame(
+            \App\Filament\Curator\Providers\GifSafeGlideUrlProvider::class,
+            config('curator.url_provider'),
+        );
+    }
+
+    public function test_gif_safe_url_provider_returns_direct_storage_url_for_gif(): void
+    {
+        $path = 'docs/animated.gif';
+        /** @var FilesystemAdapter $disk */
+        $disk = Storage::disk((string) config('curator.default_disk', 'curator'));
+
+        $this->assertSame(
+            $disk->url($path),
+            \App\Filament\Curator\Providers\GifSafeGlideUrlProvider::getMediumUrl($path),
+        );
+    }
+
+    public function test_gif_safe_url_provider_keeps_glide_for_non_gif(): void
+    {
+        $path = 'docs/photo.jpg';
+
+        $this->assertStringContainsString(
+            'fm=webp',
+            \App\Filament\Curator\Providers\GifSafeGlideUrlProvider::getMediumUrl($path),
+        );
     }
 }
