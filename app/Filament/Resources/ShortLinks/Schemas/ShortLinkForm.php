@@ -10,6 +10,7 @@ use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
@@ -36,14 +37,16 @@ class ShortLinkForm
                             ->alphaDash()
                             ->unique(ignoreRecord: true)
                             ->live(onBlur: true)
-                            ->default(fn(): string => Str::lower(Str::random(2)))
+                            ->default(fn (): string => Str::lower(Str::random(2)))
                             ->helperText('Se usa en la URL corta /s/{slug}.')
-                            ->hint(function (?string $state, ?Model $record): ?string {
-                                if (! $state) {
+                            ->hint(function (Get $get, ?Model $record): ?string {
+                                $slug = $get('slug');
+
+                                if (! $slug) {
                                     return null;
                                 }
 
-                                $query = ShortLink::where('slug', $state);
+                                $query = ShortLink::where('slug', $slug);
 
                                 if ($record) {
                                     $query->whereNot('id', $record->id);
@@ -51,12 +54,14 @@ class ShortLinkForm
 
                                 return $query->exists() ? 'No disponible' : 'Disponible';
                             })
-                            ->hintColor(function (?string $state, ?Model $record): string {
-                                if (! $state) {
+                            ->hintColor(function (Get $get, ?Model $record): string {
+                                $slug = $get('slug');
+
+                                if (! $slug) {
                                     return 'gray';
                                 }
 
-                                $query = ShortLink::where('slug', $state);
+                                $query = ShortLink::where('slug', $slug);
 
                                 if ($record) {
                                     $query->whereNot('id', $record->id);
@@ -64,12 +69,14 @@ class ShortLinkForm
 
                                 return $query->exists() ? 'danger' : 'success';
                             })
-                            ->hintIcon(function (?string $state, ?Model $record): ?string {
-                                if (! $state) {
+                            ->hintIcon(function (Get $get, ?Model $record): ?string {
+                                $slug = $get('slug');
+
+                                if (! $slug) {
                                     return null;
                                 }
 
-                                $query = ShortLink::where('slug', $state);
+                                $query = ShortLink::where('slug', $slug);
 
                                 if ($record) {
                                     $query->whereNot('id', $record->id);
@@ -95,7 +102,7 @@ class ShortLinkForm
                             ->placeholder('GTM-XXXXXXX')
                             ->maxLength(50)
                             ->regex('/^GTM-[A-Z0-9]+$/')
-                            ->default(fn(): ?string => SiteSetting::get('tag_manager_id') ?: null)
+                            ->default(fn (): ?string => SiteSetting::get('tag_manager_id') ?: null)
                             ->helperText('Si se deja vacio, usa el tag_manager_id global de Site Settings.'),
                         DateTimePicker::make('expires_at')
                             ->label('Expira en')
