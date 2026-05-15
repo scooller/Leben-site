@@ -58,13 +58,13 @@ class MediaQrShortLinkTest extends TestCase
         $shortLink = ShortLink::query()->where('metadata->origin', 'media_file_qr')->first();
 
         $this->assertNotNull($shortLink);
-        $this->assertStringContainsString('/s/'.$shortLink?->slug, $qrUrl);
+        $this->assertStringContainsString('/s/' . $shortLink?->slug, $qrUrl);
         $this->assertStringContainsString('utm_source=archivo', $qrUrl);
         $this->assertStringContainsString('utm_medium=qr', $qrUrl);
 
         $response = $this->get($qrUrl);
 
-        $response->assertRedirect(url('/curator/docs/terms.xml').'?utm_source=archivo&utm_medium=qr&utm_campaign=archivo_qr&utm_content=media_'.$media->id);
+        $response->assertRedirect(url('/curator/docs/terms.xml') . '?utm_source=archivo&utm_medium=qr&utm_campaign=archivo_qr&utm_content=media_' . $media->id);
 
         Queue::assertPushed(RecordShortLinkVisitJob::class, function (RecordShortLinkVisitJob $job): bool {
             return ($job->payload['utm_source'] ?? null) === 'archivo'

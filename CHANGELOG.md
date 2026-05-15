@@ -40,6 +40,11 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ### 🔄 Cambios
 
+#### Curator y Tests
+- Ajuste de estilo en `MediaForm` (closures y concatenación) para mantener consistencia de formato.
+- Normalización de concatenación en test de QR short link para mayor legibilidad.
+- Sin cambios funcionales en el flujo de redirección ni en la generación de short links.
+
 #### Salesforce — Etapas de Proyecto
 - Normalización centralizada de `etapa` con catálogo canónico y aliases legacy
 - Sincronización de proyectos normaliza `Etapa__c` antes de persistir

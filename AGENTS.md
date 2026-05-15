@@ -259,6 +259,7 @@ php artisan test --compact --filter=testName  # Por test
 - Upload de archivos con límite mayor
 - Website preview links
 - QR code en Asesores
+- Ajustes de formato en Curator (`MediaForm`) y test de QR short link para mantener consistencia (sin cambios funcionales)
 
 ---
 
