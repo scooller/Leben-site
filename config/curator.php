@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Filament\Curator\Schemas\MediaForm;
+
 return [
     'curation_formats' => Awcodes\Curator\Enums\PreviewableExtensions::toArray(),
     'default_disk' => env('CURATOR_DEFAULT_DISK', 'curator'),
@@ -39,7 +41,7 @@ return [
             'index' => Awcodes\Curator\Resources\Media\Pages\ListMedia::class,
         ],
         'schemas' => [
-            'form' => Awcodes\Curator\Resources\Media\Schemas\MediaForm::class,
+            'form' => MediaForm::class,
         ],
         'tables' => [
             'table' => App\Filament\Curator\Tables\MediaTable::class,

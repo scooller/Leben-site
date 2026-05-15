@@ -67,4 +67,14 @@ class MediaQrShortLinkTest extends TestCase
                 && ($job->payload['utm_medium'] ?? null) === 'qr';
         });
     }
+
+    public function test_media_uploader_has_friendly_uploaded_error_message(): void
+    {
+        $uploader = \App\Filament\Curator\Schemas\MediaForm::getUploaderField();
+
+        $this->assertSame(
+            'El archivo no se pudo subir. Si pesa mas de lo permitido, aumenta upload_max_filesize y post_max_size en el servidor.',
+            $uploader->getValidationMessages()['uploaded'] ?? null,
+        );
+    }
 }
