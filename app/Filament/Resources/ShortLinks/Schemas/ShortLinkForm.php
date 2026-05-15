@@ -38,8 +38,8 @@ class ShortLinkForm
                                 'unique' => 'No disponible: este slug ya existe.',
                             ])
                             ->extraInputAttributes([
-                                'x-on:blur' => "console.log('[ShortLink.slug] blur', { value: $event.target.value, name: $event.target.name, id: $event.target.id });",
-                                'x-on:focusout' => "console.log('[ShortLink.slug] focusout', { value: $event.target.value, name: $event.target.name, id: $event.target.id });",
+                                'x-on:blur' => "console.log('[ShortLink.slug] blur', { value: \$event.target.value, name: \$event.target.name, id: \$event.target.id });",
+                                'x-on:focusout' => "console.log('[ShortLink.slug] focusout', { value: \$event.target.value, name: \$event.target.name, id: \$event.target.id });",
                             ])
                             ->live(onBlur: true)
                             ->default(fn(): string => Str::lower(Str::random(2)))
