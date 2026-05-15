@@ -11,16 +11,13 @@ use App\Services\ShortLink\ShortLinkService;
 use Awcodes\Curator\Components\Tables\CuratorColumn;
 use Awcodes\Curator\Models\Media;
 use Exception;
-use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\Layout\View;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
-use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Support\Facades\Auth;
-use LaraZeus\Qr\Facades\Qr;
 
 class MediaTable
 {
@@ -37,25 +34,6 @@ class MediaTable
             )
             ->searchable(['title', 'caption', 'description'])
             ->recordActions([
-                Action::make('createMediaQr')
-                    ->label('Crear QR')
-                    ->icon('heroicon-o-qr-code')
-                    ->color('gray')
-                    ->modalHeading('Codigo QR del archivo')
-                    ->modalDescription('Genera un short-link para el archivo y agrega UTMs para tracking automatico.')
-                    ->modalSubmitAction(false)
-                    ->modalCancelActionLabel('Cerrar')
-                    ->modalContent(function (Media $record): ViewContract {
-                        $qrUrl = self::resolveMediaQrUrl($record);
-                        $qrOptions = SiteSetting::current()->qrOptions();
-                        $qrOptions['type'] = 'svg';
-
-                        return view('filament.actions.show-qr-code', [
-                            'url' => $qrUrl,
-                            'qrSvg' => Qr::render(data: $qrUrl, options: $qrOptions, downloadable: false),
-                        ]);
-                    })
-                    ->action(static fn (): null => null),
                 EditAction::make(),
                 DeleteAction::make(),
             ])

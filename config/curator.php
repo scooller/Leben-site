@@ -34,11 +34,11 @@ return [
             'should_register' => true,
             'should_show_badge' => false,
         ],
-        'resource' => Awcodes\Curator\Resources\Media\MediaResource::class,
+        'resource' => 'App\\Filament\\Curator\\MediaResource',
         'pages' => [
-            'create' => Awcodes\Curator\Resources\Media\Pages\CreateMedia::class,
-            'edit' => Awcodes\Curator\Resources\Media\Pages\EditMedia::class,
-            'index' => Awcodes\Curator\Resources\Media\Pages\ListMedia::class,
+            'create' => App\Filament\Curator\Pages\CreateMedia::class,
+            'edit' => App\Filament\Curator\Pages\EditMedia::class,
+            'index' => App\Filament\Curator\Pages\ListMedia::class,
         ],
         'schemas' => [
             'form' => MediaForm::class,

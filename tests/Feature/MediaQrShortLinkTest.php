@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Filament\Curator\Tables\MediaTable;
 use App\Jobs\RecordShortLinkVisitJob;
 use App\Models\ShortLink;
+use App\Models\User;
 use Awcodes\Curator\Models\Media;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
@@ -76,5 +77,27 @@ class MediaQrShortLinkTest extends TestCase
             'El archivo no se pudo subir. Si pesa mas de lo permitido, aumenta upload_max_filesize y post_max_size en el servidor.',
             $uploader->getValidationMessages()['uploaded'] ?? null,
         );
+    }
+
+    public function test_media_edit_page_shows_qr_section(): void
+    {
+        $this->actingAs(User::factory()->create([
+            'user_type' => 'admin',
+        ]));
+
+        $media = Media::query()->create([
+            'disk' => 'public',
+            'directory' => 'docs',
+            'visibility' => 'public',
+            'name' => 'contract',
+            'path' => 'docs/contract.pdf',
+            'type' => 'application/pdf',
+            'ext' => 'pdf',
+            'size' => 3145728,
+        ]);
+
+        $this->get(\App\Filament\Curator\MediaResource::getUrl('edit', ['record' => $media]))
+            ->assertOk()
+            ->assertSee('Ver QR');
     }
 }
