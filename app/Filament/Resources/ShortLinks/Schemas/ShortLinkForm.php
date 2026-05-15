@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ShortLinks\Schemas;
 
 use App\Enums\ShortLinkStatus;
+use App\Models\ShortLink;
 use App\Models\SiteSetting;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\KeyValue;
@@ -37,19 +38,37 @@ class ShortLinkForm
                             ->validationMessages([
                                 'unique' => 'No disponible: este slug ya existe.',
                             ])
-                            ->extraInputAttributes([
-                                'x-on:blur' => "console.log('[ShortLink.slug] blur', { value: \$event.target.value, name: \$event.target.name, id: \$event.target.id });",
-                                'x-on:focusout' => "console.log('[ShortLink.slug] focusout', { value: \$event.target.value, name: \$event.target.name, id: \$event.target.id });",
-                            ])
                             ->live(onBlur: true)
                             ->default(fn(): string => Str::lower(Str::random(2)))
                             ->helperText('Se usa en la URL corta /s/{slug}.')
                             ->afterStateUpdated(function (TextInput $component, Component $livewire, ?string $state): void {
+                                $statePath = $component->getStatePath();
+                                $prefixedStatePath = "form.{$statePath}";
+
+                                $livewire->resetValidation([$statePath, $prefixedStatePath]);
+
                                 if (blank($state)) {
                                     return;
                                 }
 
-                                $livewire->validateOnly($component->getStatePath());
+                                $record = $component->getRecord();
+
+                                $slugExists = ShortLink::query()
+                                    ->where('slug', $state)
+                                    ->when(
+                                        $record,
+                                        fn($query) => $query->where('id', '!=', $record->id),
+                                    )
+                                    ->exists();
+
+                                if (! $slugExists) {
+                                    return;
+                                }
+
+                                $message = 'No disponible: este slug ya existe.';
+
+                                $livewire->addError($statePath, $message);
+                                $livewire->addError($prefixedStatePath, $message);
                             }),
                         Select::make('status')
                             ->label('Estado')
