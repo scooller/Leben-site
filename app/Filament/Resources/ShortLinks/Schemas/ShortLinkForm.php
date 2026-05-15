@@ -37,6 +37,10 @@ class ShortLinkForm
                             ->validationMessages([
                                 'unique' => 'No disponible: este slug ya existe.',
                             ])
+                            ->extraInputAttributes([
+                                'x-on:blur' => "console.log('[ShortLink.slug] blur', { value: $event.target.value, name: $event.target.name, id: $event.target.id });",
+                                'x-on:focusout' => "console.log('[ShortLink.slug] focusout', { value: $event.target.value, name: $event.target.name, id: $event.target.id });",
+                            ])
                             ->live(onBlur: true)
                             ->default(fn(): string => Str::lower(Str::random(2)))
                             ->helperText('Se usa en la URL corta /s/{slug}.')
