@@ -82,6 +82,16 @@ class MediaQrShortLinkTest extends TestCase
         );
     }
 
+    public function test_media_uploader_disables_image_transformations(): void
+    {
+        $uploader = \App\Filament\Curator\Schemas\MediaForm::getUploaderField();
+
+        $this->assertNull($uploader->getImageCropAspectRatio());
+        $this->assertNull($uploader->getImageResizeMode());
+        $this->assertNull($uploader->getImageResizeTargetWidth());
+        $this->assertNull($uploader->getImageResizeTargetHeight());
+    }
+
     public function test_media_edit_page_shows_qr_section(): void
     {
         $this->actingAs(User::factory()->create([

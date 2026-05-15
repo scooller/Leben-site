@@ -62,7 +62,7 @@ class MediaForm
                                             ->label(trans('curator::forms.sections.curation'))
                                             ->hiddenLabel()
                                             ->reorderable(false)
-                                            ->itemLabel(fn($state): ?string => $state['curation']['key'] ?? null)
+                                            ->itemLabel(fn ($state): ?string => $state['curation']['key'] ?? null)
                                             ->collapsible()
                                             ->schema([
                                                 CuratorEditor::make('curation')
@@ -129,7 +129,7 @@ class MediaForm
                 }),
             TextInput::make('alt')
                 ->label(trans('curator::forms.fields.alt'))
-                ->hint(fn(): HtmlString => new HtmlString('<a href="https://www.w3.org/WAI/tutorials/images/decision-tree" class="filament-link text-primary-500 text-xs" target="_blank">' . trans('curator::forms.fields.alt_hint') . '</a>')),
+                ->hint(fn (): HtmlString => new HtmlString('<a href="https://www.w3.org/WAI/tutorials/images/decision-tree" class="filament-link text-primary-500 text-xs" target="_blank">'.trans('curator::forms.fields.alt_hint').'</a>')),
             TextInput::make('title')
                 ->label(trans('curator::forms.fields.title')),
             Textarea::make('caption')
@@ -158,10 +158,6 @@ class MediaForm
                 'uploaded' => 'El archivo no se pudo subir. Si pesa mas de lo permitido, aumenta upload_max_filesize y post_max_size en el servidor.',
             ])
             ->visibility(Curator::getVisibility())
-            ->storeFileNamesIn('originalFilename')
-            ->imageCropAspectRatio(Curator::getImageCropAspectRatio())
-            ->imageResizeMode(Curator::getImageResizeMode())
-            ->imageResizeTargetWidth(Curator::getImageResizeTargetWidth())
-            ->imageResizeTargetHeight(Curator::getImageResizeTargetHeight());
+            ->storeFileNamesIn('originalFilename');
     }
 }
