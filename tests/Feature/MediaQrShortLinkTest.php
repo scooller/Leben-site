@@ -55,13 +55,13 @@ class MediaQrShortLinkTest extends TestCase
         $shortLink = ShortLink::query()->where('metadata->origin', 'media_file_qr')->first();
 
         $this->assertNotNull($shortLink);
-        $this->assertStringContainsString('/s/'.$shortLink?->slug, $qrUrl);
+        $this->assertStringContainsString('/s/' . $shortLink?->slug, $qrUrl);
         $this->assertStringContainsString('utm_source=archivo', $qrUrl);
         $this->assertStringContainsString('utm_medium=qr', $qrUrl);
 
         $response = $this->get($qrUrl);
 
-        $response->assertRedirect(url('/curator/docs/terms.xml').'?utm_source=archivo&utm_medium=qr&utm_campaign=archivo_qr&utm_content=media_'.$media->id);
+        $response->assertRedirect(url('/curator/docs/terms.xml') . '?utm_source=archivo&utm_medium=qr&utm_campaign=archivo_qr&utm_content=media_' . $media->id);
 
         Queue::assertPushed(RecordShortLinkVisitJob::class, function (RecordShortLinkVisitJob $job): bool {
             return ($job->payload['utm_source'] ?? null) === 'archivo'
@@ -141,5 +141,23 @@ class MediaQrShortLinkTest extends TestCase
     public function test_custom_uploader_keeps_metadata_extraction_for_jpg(): void
     {
         $this->assertTrue(\App\Filament\Curator\Components\Forms\Uploader::shouldExtractImageMetadata('jpg'));
+    }
+
+    public function test_qr_download_extraction_returns_only_svg_markup(): void
+    {
+        $wrapped = '<div class="qr-wrapper"><svg viewBox="0 0 10 10"><rect width="10" height="10"/></svg></div>';
+
+        $result = \App\Filament\Curator\Pages\EditMedia::extractSvgMarkup($wrapped);
+
+        $this->assertSame('<svg viewBox="0 0 10 10"><rect width="10" height="10"/></svg>', $result);
+    }
+
+    public function test_qr_download_extraction_keeps_plain_svg_unchanged(): void
+    {
+        $svg = '<svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="4"/></svg>';
+
+        $result = \App\Filament\Curator\Pages\EditMedia::extractSvgMarkup($svg);
+
+        $this->assertSame($svg, $result);
     }
 }

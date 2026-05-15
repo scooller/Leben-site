@@ -34,17 +34,27 @@ class EditMedia extends BaseEditMedia
                     $qrOptions = SiteSetting::current()->qrOptions();
                     $qrOptions['type'] = 'svg';
                     $qrSvg = (string) Qr::render(data: $qrUrl, options: $qrOptions, downloadable: false);
+                    $qrDownloadSvg = self::extractSvgMarkup($qrSvg);
                     $downloadName = sprintf('qr-archivo-%s.svg', $this->record->id);
 
                     return view('filament.actions.show-qr-code', [
                         'url' => $qrUrl,
                         'qrSvg' => $qrSvg,
-                        'qrDownloadUrl' => 'data:image/svg+xml;base64,'.base64_encode($qrSvg),
+                        'qrDownloadUrl' => 'data:image/svg+xml;base64,' . base64_encode($qrDownloadSvg),
                         'qrDownloadName' => $downloadName,
                     ]);
                 })
-                ->action(static fn (): null => null),
+                ->action(static fn(): null => null),
             ...parent::getHeaderActions(),
         ];
+    }
+
+    public static function extractSvgMarkup(string $html): string
+    {
+        if (preg_match('/<svg\b[^>]*>.*<\/svg>/is', $html, $matches) === 1) {
+            return $matches[0];
+        }
+
+        return $html;
     }
 }

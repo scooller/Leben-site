@@ -57,13 +57,13 @@ class Uploader extends FileUpload
                 $exif = $image->exif()->toArray();
             }
 
-            if (Storage::disk($component->getDiskName())->exists(ltrim($component->getDirectory().'/'.$filename.'.'.$extension, '/'))) {
-                $filename = $filename.'-'.time();
+            if (Storage::disk($component->getDiskName())->exists(ltrim($component->getDirectory() . '/' . $filename . '.' . $extension, '/'))) {
+                $filename = $filename . '-' . time();
             }
 
             $path = $file->{$storeMethod}(
                 $component->getDirectory(),
-                $filename.'.'.$extension,
+                $filename . '.' . $extension,
                 $component->getDiskName()
             );
 
@@ -82,13 +82,13 @@ class Uploader extends FileUpload
             ];
 
             if (Config::get('curator.is_tenant_aware') && Filament::hasTenancy()) {
-                $data[Config::get('curator.tenant_ownership_relationship_name').'_id'] = Filament::getTenant()->id;
+                $data[Config::get('curator.tenant_ownership_relationship_name') . '_id'] = Filament::getTenant()->id;
             }
 
             return $data;
         });
 
-        $this->dehydrateStateUsing(fn ($component) => $component->getState());
+        $this->dehydrateStateUsing(fn($component) => $component->getState());
     }
 
     public static function shouldExtractImageMetadata(string $extension): bool

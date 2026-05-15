@@ -73,11 +73,11 @@ class MediaTable
                 ->sortable(),
             TextColumn::make('size')
                 ->label(trans('curator::tables.columns.size'))
-                ->formatStateUsing(fn ($record): string => \Awcodes\Curator\Facades\Curator::sizeForHumans($record->size))
+                ->formatStateUsing(fn($record): string => \Awcodes\Curator\Facades\Curator::sizeForHumans($record->size))
                 ->sortable(),
             TextColumn::make('dimensions')
                 ->label(trans('curator::tables.columns.dimensions'))
-                ->getStateUsing(fn ($record): ?string => $record->width ? $record->width.'x'.$record->height : null),
+                ->getStateUsing(fn($record): ?string => $record->width ? $record->width . 'x' . $record->height : null),
             TextColumn::make('disk')
                 ->label(trans('curator::tables.columns.disk'))
                 ->toggledHiddenByDefault()
@@ -129,7 +129,7 @@ class MediaTable
             return $shortLink->shortUrl();
         }
 
-        return $shortLink->shortUrl().'?'.$query;
+        return $shortLink->shortUrl() . '?' . $query;
     }
 
     public static function resolveOrCreateMediaShortLink(Media $media): ShortLink
@@ -174,7 +174,7 @@ class MediaTable
     {
         $path = trim((string) $media->path, '/');
 
-        return url('/curator/'.$path);
+        return url('/curator/' . $path);
     }
 
     /**
@@ -192,7 +192,7 @@ class MediaTable
             'utm_source' => 'archivo',
             'utm_medium' => 'qr',
             'utm_campaign' => $campaign,
-            'utm_content' => 'media_'.$media->id,
+            'utm_content' => 'media_' . $media->id,
         ];
     }
 }
