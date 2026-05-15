@@ -52,11 +52,13 @@ class ShortLinkForm
                                     return null;
                                 }
 
+                                $currentRecordKey = $record?->exists ? $record->getKey() : null;
+
                                 $slugExists = ShortLink::query()
                                     ->where('slug', $state)
                                     ->when(
-                                        $record,
-                                        fn($query) => $query->whereKeyNot($record->getKey()),
+                                        filled($currentRecordKey),
+                                        fn($query) => $query->whereKeyNot($currentRecordKey),
                                     )
                                     ->exists();
 
