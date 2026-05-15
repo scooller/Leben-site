@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Actions\ShowQrCodeAction;
 use App\Filament\Curator\Tables\MediaTable;
 use App\Jobs\RecordShortLinkVisitJob;
 use App\Models\CuratorMedia;
@@ -58,13 +59,13 @@ class MediaQrShortLinkTest extends TestCase
         $shortLink = ShortLink::query()->where('metadata->origin', 'media_file_qr')->first();
 
         $this->assertNotNull($shortLink);
-        $this->assertStringContainsString('/s/' . $shortLink?->slug, $qrUrl);
+        $this->assertStringContainsString('/s/'.$shortLink?->slug, $qrUrl);
         $this->assertStringContainsString('utm_source=archivo', $qrUrl);
         $this->assertStringContainsString('utm_medium=qr', $qrUrl);
 
         $response = $this->get($qrUrl);
 
-        $response->assertRedirect(url('/curator/docs/terms.xml') . '?utm_source=archivo&utm_medium=qr&utm_campaign=archivo_qr&utm_content=media_' . $media->id);
+        $response->assertRedirect(url('/curator/docs/terms.xml').'?utm_source=archivo&utm_medium=qr&utm_campaign=archivo_qr&utm_content=media_'.$media->id);
 
         Queue::assertPushed(RecordShortLinkVisitJob::class, function (RecordShortLinkVisitJob $job): bool {
             return ($job->payload['utm_source'] ?? null) === 'archivo'
@@ -127,6 +128,16 @@ class MediaQrShortLinkTest extends TestCase
         $this->assertStringContainsString('download="qr-archivo-1.svg"', $html);
     }
 
+    public function test_qr_modal_view_does_not_fallback_to_hash_download_link(): void
+    {
+        $html = view('filament.actions.show-qr-code', [
+            'url' => 'https://example.test/s/abc123',
+            'qrSvg' => '<svg><rect width="10" height="10"/></svg>',
+        ])->render();
+
+        $this->assertStringNotContainsString('href="#"', $html);
+    }
+
     public function test_curator_replace_section_translation_is_available_in_spanish(): void
     {
         app()->setLocale('es');
@@ -172,6 +183,15 @@ class MediaQrShortLinkTest extends TestCase
         $result = \App\Filament\Curator\Pages\EditMedia::extractSvgMarkup($svg);
 
         $this->assertSame($svg, $result);
+    }
+
+    public function test_shared_qr_action_download_extraction_returns_only_svg_markup(): void
+    {
+        $wrapped = '<div class="qr-wrapper"><svg viewBox="0 0 10 10"><rect width="10" height="10"/></svg></div>';
+
+        $result = ShowQrCodeAction::extractSvgMarkup($wrapped);
+
+        $this->assertSame('<svg viewBox="0 0 10 10"><rect width="10" height="10"/></svg>', $result);
     }
 
     public function test_curator_uses_custom_media_model(): void

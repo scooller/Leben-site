@@ -4,13 +4,19 @@
     </div>
 
     <div class="flex justify-center">
-        <a
-            href="{{ $qrDownloadUrl ?? '#' }}"
-            download="{{ $qrDownloadName ?? 'qr.svg' }}"
-            class="inline-flex items-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-700 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-200"
-        >
-            Descargar QR
-        </a>
+        @if (! empty($qrDownloadUrl))
+            <a
+                href="{{ $qrDownloadUrl }}"
+                download="{{ $qrDownloadName ?? 'qr.svg' }}"
+                class="inline-flex items-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-700 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-200"
+            >
+                Descargar QR
+            </a>
+        @else
+            <span class="inline-flex cursor-not-allowed items-center rounded-lg bg-gray-300 px-4 py-2 text-sm font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                Descargar QR
+            </span>
+        @endif
     </div>
 
     <div class="space-y-2">
