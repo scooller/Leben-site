@@ -10,7 +10,9 @@ use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Text;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
 class ShortLinkForm
@@ -33,52 +35,34 @@ class ShortLinkForm
                             ->minLength(2)
                             ->maxLength(32)
                             ->alphaDash()
-                            ->unique(ignoreRecord: true)
+                            ->scopedUnique(ignoreRecord: true)
                             ->validationMessages([
                                 'unique' => 'No disponible: este slug ya existe.',
                             ])
                             ->extraInputAttributes([
                                 'x-on:blur' => "console.log('[ShortLink.slug] blur', { value: \$event.target.value, name: \$event.target.name, id: \$event.target.id });",
                                 'x-on:focusout' => "console.log('[ShortLink.slug] focusout', { value: \$event.target.value, name: \$event.target.name, id: \$event.target.id });",
-                                'x-on:slug-validation-debug.window' => "console.log('[ShortLink.slug] livewire-validation', \$event.detail);",
                             ])
                             ->live(onBlur: true)
+                            ->partiallyRenderAfterStateUpdated()
                             ->default(fn(): string => Str::lower(Str::random(2)))
                             ->helperText('Se usa en la URL corta /s/{slug}.')
-                            ->afterStateUpdated(function (TextInput $component, $livewire, ?string $state): void {
-                                $statePath = $component->getStatePath();
-                                $prefixedStatePath = "form.{$statePath}";
-
-                                $livewire->resetValidation([$statePath, $prefixedStatePath]);
-
+                            ->belowContent(function (?string $state, ?Model $record): ?Text {
                                 if (blank($state)) {
-                                    $livewire->dispatch('slug-validation-debug', stage: 'blank', statePath: $statePath, prefixedStatePath: $prefixedStatePath, slug: $state);
-
-                                    return;
+                                    return null;
                                 }
-
-                                $record = $component->getRecord();
 
                                 $slugExists = ShortLink::query()
                                     ->where('slug', $state)
                                     ->when(
                                         $record,
-                                        fn($query) => $query->where('id', '!=', $record->id),
+                                        fn($query) => $query->whereKeyNot($record->getKey()),
                                     )
                                     ->exists();
 
-                                if (! $slugExists) {
-                                    $livewire->dispatch('slug-validation-debug', stage: 'available', statePath: $statePath, prefixedStatePath: $prefixedStatePath, slug: $state, slugExists: false);
-
-                                    return;
-                                }
-
-                                $message = 'No disponible: este slug ya existe.';
-
-                                $livewire->addError($statePath, $message);
-                                $livewire->addError($prefixedStatePath, $message);
-
-                                $livewire->dispatch('slug-validation-debug', stage: 'duplicate', statePath: $statePath, prefixedStatePath: $prefixedStatePath, slug: $state, slugExists: true, message: $message);
+                                return Text::make($slugExists ? 'No disponible' : 'Disponible')
+                                    ->color($slugExists ? 'danger' : 'success')
+                                    ->weight('medium');
                             }),
                         Select::make('status')
                             ->label('Estado')
