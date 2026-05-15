@@ -132,4 +132,14 @@ class MediaQrShortLinkTest extends TestCase
     {
         $this->assertContains('image/gif', \Awcodes\Curator\Facades\Curator::getAcceptedFileTypes());
     }
+
+    public function test_custom_uploader_skips_metadata_extraction_for_gif(): void
+    {
+        $this->assertFalse(\App\Filament\Curator\Components\Forms\Uploader::shouldExtractImageMetadata('gif'));
+    }
+
+    public function test_custom_uploader_keeps_metadata_extraction_for_jpg(): void
+    {
+        $this->assertTrue(\App\Filament\Curator\Components\Forms\Uploader::shouldExtractImageMetadata('jpg'));
+    }
 }

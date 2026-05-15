@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Filament\Curator\Schemas;
 
+use App\Filament\Curator\Components\Forms\Uploader;
 use Awcodes\Curator\Components\Forms\CuratorEditor;
-use Awcodes\Curator\Components\Forms\Uploader;
 use Awcodes\Curator\CuratorPlugin;
 use Awcodes\Curator\Facades\Curator;
 use Exception;
