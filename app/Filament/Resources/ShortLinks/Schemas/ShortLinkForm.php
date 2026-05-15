@@ -3,19 +3,15 @@
 namespace App\Filament\Resources\ShortLinks\Schemas;
 
 use App\Enums\ShortLinkStatus;
-use App\Models\ShortLink;
 use App\Models\SiteSetting;
 use Filament\Forms\Components\DateTimePicker;
-use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Utilities\Get;
-use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
+use Livewire\Component;
 
 class ShortLinkForm
 {
@@ -38,53 +34,19 @@ class ShortLinkForm
                             ->maxLength(32)
                             ->alphaDash()
                             ->unique(ignoreRecord: true)
+                            ->validationMessages([
+                                'unique' => 'No disponible: este slug ya existe.',
+                            ])
                             ->live(onBlur: true)
                             ->default(fn(): string => Str::lower(Str::random(2)))
                             ->helperText('Se usa en la URL corta /s/{slug}.')
-                            ->afterStateUpdated(function (?string $state, Set $set, ?Model $record): void {
-                                if (! $state) {
-                                    $set('slug_available', null);
-
+                            ->afterStateUpdated(function (TextInput $component, Component $livewire, ?string $state): void {
+                                if (blank($state)) {
                                     return;
                                 }
 
-                                $query = ShortLink::where('slug', $state);
-
-                                if ($record) {
-                                    $query->whereNot('id', $record->id);
-                                }
-
-                                $set('slug_available', ! $query->exists());
-                            })
-                            ->hint(function (Get $get): ?string {
-                                $available = $get('slug_available');
-
-                                if ($available === null) {
-                                    return null;
-                                }
-
-                                return $available ? 'Disponible' : 'No disponible';
-                            })
-                            ->hintColor(function (Get $get): string {
-                                $available = $get('slug_available');
-
-                                if ($available === null) {
-                                    return 'gray';
-                                }
-
-                                return $available ? 'success' : 'danger';
-                            })
-                            ->hintIcon(function (Get $get): ?string {
-                                $available = $get('slug_available');
-
-                                if ($available === null) {
-                                    return null;
-                                }
-
-                                return $available ? 'heroicon-m-check-circle' : 'heroicon-m-x-circle';
+                                $livewire->validateOnly($component->getStatePath());
                             }),
-                        Hidden::make('slug_available')
-                            ->dehydrated(false),
                         Select::make('status')
                             ->label('Estado')
                             ->options(ShortLinkStatus::toSelectArray())
