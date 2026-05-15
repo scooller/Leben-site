@@ -33,7 +33,7 @@ class EditMedia extends BaseEditMedia
                     $qrUrl = MediaTable::resolveMediaQrUrl($this->record);
                     $qrOptions = SiteSetting::current()->qrOptions();
                     $qrOptions['type'] = 'svg';
-                    $qrSvg = Qr::render(data: $qrUrl, options: $qrOptions, downloadable: false);
+                    $qrSvg = (string) Qr::render(data: $qrUrl, options: $qrOptions, downloadable: false);
                     $downloadName = sprintf('qr-archivo-%s.svg', $this->record->id);
 
                     return view('filament.actions.show-qr-code', [
