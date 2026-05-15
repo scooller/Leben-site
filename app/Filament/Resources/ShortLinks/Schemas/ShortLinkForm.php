@@ -38,8 +38,13 @@ class ShortLinkForm
                             ->validationMessages([
                                 'unique' => 'No disponible: este slug ya existe.',
                             ])
+                            ->extraInputAttributes([
+                                'x-on:blur' => "console.log('[ShortLink.slug] blur', { value: \$event.target.value, name: \$event.target.name, id: \$event.target.id });",
+                                'x-on:focusout' => "console.log('[ShortLink.slug] focusout', { value: \$event.target.value, name: \$event.target.name, id: \$event.target.id });",
+                                'x-on:slug-validation-debug.window' => "console.log('[ShortLink.slug] livewire-validation', \$event.detail);",
+                            ])
                             ->live(onBlur: true)
-                            ->default(fn(): string => Str::lower(Str::random(2)))
+                            ->default(fn (): string => Str::lower(Str::random(2)))
                             ->helperText('Se usa en la URL corta /s/{slug}.')
                             ->afterStateUpdated(function (TextInput $component, Component $livewire, ?string $state): void {
                                 $statePath = $component->getStatePath();
@@ -48,6 +53,8 @@ class ShortLinkForm
                                 $livewire->resetValidation([$statePath, $prefixedStatePath]);
 
                                 if (blank($state)) {
+                                    $livewire->dispatch('slug-validation-debug', stage: 'blank', statePath: $statePath, prefixedStatePath: $prefixedStatePath, slug: $state);
+
                                     return;
                                 }
 
@@ -57,11 +64,13 @@ class ShortLinkForm
                                     ->where('slug', $state)
                                     ->when(
                                         $record,
-                                        fn($query) => $query->where('id', '!=', $record->id),
+                                        fn ($query) => $query->where('id', '!=', $record->id),
                                     )
                                     ->exists();
 
                                 if (! $slugExists) {
+                                    $livewire->dispatch('slug-validation-debug', stage: 'available', statePath: $statePath, prefixedStatePath: $prefixedStatePath, slug: $state, slugExists: false);
+
                                     return;
                                 }
 
@@ -69,6 +78,8 @@ class ShortLinkForm
 
                                 $livewire->addError($statePath, $message);
                                 $livewire->addError($prefixedStatePath, $message);
+
+                                $livewire->dispatch('slug-validation-debug', stage: 'duplicate', statePath: $statePath, prefixedStatePath: $prefixedStatePath, slug: $state, slugExists: true, message: $message);
                             }),
                         Select::make('status')
                             ->label('Estado')
@@ -88,7 +99,7 @@ class ShortLinkForm
                             ->placeholder('GTM-XXXXXXX')
                             ->maxLength(50)
                             ->regex('/^GTM-[A-Z0-9]+$/')
-                            ->default(fn(): ?string => SiteSetting::get('tag_manager_id') ?: null)
+                            ->default(fn (): ?string => SiteSetting::get('tag_manager_id') ?: null)
                             ->helperText('Si se deja vacio, usa el tag_manager_id global de Site Settings.'),
                         DateTimePicker::make('expires_at')
                             ->label('Expira en')
