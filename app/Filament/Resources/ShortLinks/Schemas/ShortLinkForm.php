@@ -12,7 +12,6 @@ use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Str;
-use Livewire\Component;
 
 class ShortLinkForm
 {
@@ -44,9 +43,9 @@ class ShortLinkForm
                                 'x-on:slug-validation-debug.window' => "console.log('[ShortLink.slug] livewire-validation', \$event.detail);",
                             ])
                             ->live(onBlur: true)
-                            ->default(fn (): string => Str::lower(Str::random(2)))
+                            ->default(fn(): string => Str::lower(Str::random(2)))
                             ->helperText('Se usa en la URL corta /s/{slug}.')
-                            ->afterStateUpdated(function (TextInput $component, Component $livewire, ?string $state): void {
+                            ->afterStateUpdated(function (TextInput $component, $livewire, ?string $state): void {
                                 $statePath = $component->getStatePath();
                                 $prefixedStatePath = "form.{$statePath}";
 
@@ -64,7 +63,7 @@ class ShortLinkForm
                                     ->where('slug', $state)
                                     ->when(
                                         $record,
-                                        fn ($query) => $query->where('id', '!=', $record->id),
+                                        fn($query) => $query->where('id', '!=', $record->id),
                                     )
                                     ->exists();
 
@@ -99,7 +98,7 @@ class ShortLinkForm
                             ->placeholder('GTM-XXXXXXX')
                             ->maxLength(50)
                             ->regex('/^GTM-[A-Z0-9]+$/')
-                            ->default(fn (): ?string => SiteSetting::get('tag_manager_id') ?: null)
+                            ->default(fn(): ?string => SiteSetting::get('tag_manager_id') ?: null)
                             ->helperText('Si se deja vacio, usa el tag_manager_id global de Site Settings.'),
                         DateTimePicker::make('expires_at')
                             ->label('Expira en')
