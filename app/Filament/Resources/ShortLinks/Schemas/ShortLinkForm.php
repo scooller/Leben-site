@@ -11,8 +11,10 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Text;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class ShortLinkForm
@@ -44,34 +46,40 @@ class ShortLinkForm
                                 'x-on:focusout' => "console.log('[ShortLink.slug] focusout', { value: \$event.target.value, name: \$event.target.name, id: \$event.target.id });",
                             ])
                             ->live(onBlur: true)
-                            ->partiallyRenderAfterStateUpdated()
+                            ->partiallyRenderComponentsAfterStateUpdated(['slugAvailability'])
                             ->default(fn(): string => Str::lower(Str::random(2)))
-                            ->helperText('Se usa en la URL corta /s/{slug}.')
-                            ->belowContent(function (?string $state, ?Model $record): ?Text {
-                                if (blank($state)) {
-                                    return null;
-                                }
-
-                                $currentRecordKey = $record?->exists ? $record->getKey() : null;
-
-                                $slugExists = ShortLink::query()
-                                    ->where('slug', $state)
-                                    ->when(
-                                        filled($currentRecordKey),
-                                        fn($query) => $query->whereKeyNot($currentRecordKey),
-                                    )
-                                    ->exists();
-
-                                return Text::make($slugExists ? 'No disponible' : 'Disponible')
-                                    ->color($slugExists ? 'danger' : 'success')
-                                    ->weight('medium');
-                            }),
+                            ->helperText('Se usa en la URL corta /s/{slug}.'),
                         Select::make('status')
                             ->label('Estado')
                             ->options(ShortLinkStatus::toSelectArray())
                             ->searchable()
                             ->required()
                             ->default(ShortLinkStatus::ACTIVE->value),
+                        Text::make(function (Get $get, ?Model $record): ?string {
+                            $slug = $get('slug');
+
+                            if (blank($slug)) {
+                                return null;
+                            }
+
+                            $slugExists = static::slugExists($slug, $record);
+
+                            return $slugExists ? 'No disponible' : 'Disponible';
+                        })
+                            ->key('slugAvailability')
+                            ->hidden(fn(Get $get): bool => blank($get('slug')))
+                            ->color(function (Get $get, ?Model $record): string {
+                                $slug = $get('slug');
+
+                                if (blank($slug)) {
+                                    return 'gray';
+                                }
+
+                                $slugExists = static::slugExists($slug, $record);
+
+                                return $slugExists ? 'danger' : 'success';
+                            })
+                            ->weight('medium'),
                         TextInput::make('destination_url')
                             ->label('URL destino')
                             ->url()
@@ -97,5 +105,26 @@ class ShortLinkForm
                             ->columnSpanFull(),
                     ]),
             ]);
+    }
+
+    protected static function slugExists(string $slug, ?Model $record): bool
+    {
+        $currentRecordKey = $record?->exists ? $record->getKey() : null;
+
+        $slugExists = ShortLink::query()
+            ->where('slug', $slug)
+            ->when(
+                filled($currentRecordKey),
+                fn($query) => $query->whereKeyNot($currentRecordKey),
+            )
+            ->exists();
+
+        Log::info('short-link slug availability check', [
+            'slug' => $slug,
+            'current_record_key' => $currentRecordKey,
+            'slug_exists' => $slugExists,
+        ]);
+
+        return $slugExists;
     }
 }
