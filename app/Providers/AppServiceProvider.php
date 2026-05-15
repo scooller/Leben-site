@@ -45,6 +45,7 @@ class AppServiceProvider extends ServiceProvider
         Curator::configure()
             ->acceptedFileTypes([
                 'image/*',
+                'image/gif',
                 'video/*',
                 'application/pdf',
                 'application/msword',

@@ -120,4 +120,16 @@ class MediaQrShortLinkTest extends TestCase
 
         $this->assertSame('Reemplazar', trans('curator::forms.sections.replace'));
     }
+
+    public function test_curator_mime_type_translation_is_available_in_spanish(): void
+    {
+        app()->setLocale('es');
+
+        $this->assertSame('Tipo de archivo', trans('curator::views.details.mime_type'));
+    }
+
+    public function test_curator_accepts_gif_mime_type(): void
+    {
+        $this->assertContains('image/gif', \Awcodes\Curator\Facades\Curator::getAcceptedFileTypes());
+    }
 }
