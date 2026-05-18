@@ -109,7 +109,7 @@ class SalesforceCaseMapperTest extends TestCase
         $this->assertSame('Inversión para arriendo', $payload['usoDepartamento__c'] ?? null);
         $this->assertSame('Dependiente con antigüedad', $payload['estadoLaboral__c'] ?? null);
         $this->assertSame('Ñuñoa', $payload['comunaInversion__c'] ?? null);
-        $this->assertSame('Direct', $payload['Medio_de_Llegada__c'] ?? null);
+        $this->assertSame('direct', $payload['Medio_de_Llegada__c'] ?? null);
         $this->assertSame('BlackFriday', $payload['Nombre_de_la_Campa_a__c'] ?? null);
         $this->assertSame('organic', $payload['Audiencia__c'] ?? null);
         $this->assertSame('AON_Mood_anuncio_5', $payload['Pieza_Grafica__c'] ?? null);
@@ -351,6 +351,7 @@ class SalesforceCaseMapperTest extends TestCase
                 'name' => 'Cesar Test',
                 'apellido' => 'Mapper',
                 'origen_prospecto' => 'facebook ads',
+                'medio_de_llegada' => 'Meta',
             ],
             'submitted_at' => now(),
         ]);
@@ -358,7 +359,8 @@ class SalesforceCaseMapperTest extends TestCase
         $payload = app(SalesforceCaseMapper::class)->mapLead($submission);
 
         $this->assertSame('Facebook ads', $payload['LeadSource'] ?? null);
-        $this->assertSame('facebook ads', $payload['utm_source__c'] ?? null);
+        $this->assertSame('Meta', $payload['Medio_de_Llegada__c'] ?? null);
+        $this->assertSame('Meta', $payload['utm_source__c'] ?? null);
     }
 
     public function test_it_prefers_origen_prospecto_over_utm_source_for_lead_source(): void
@@ -391,7 +393,8 @@ class SalesforceCaseMapperTest extends TestCase
         $payload = app(SalesforceCaseMapper::class)->mapLead($submission);
 
         $this->assertSame('Leben | vive el sur | edificio inn | icon | brochure | febrero 2026', $payload['LeadSource'] ?? null);
-        $this->assertSame('Leben | Vive el sur | Edificio Inn | ICON | Brochure | Febrero 2026', $payload['utm_source__c'] ?? null);
+        $this->assertSame('Meta', $payload['Medio_de_Llegada__c'] ?? null);
+        $this->assertSame('Meta', $payload['utm_source__c'] ?? null);
     }
 
     public function test_it_uses_channel_domain_for_website_when_available(): void

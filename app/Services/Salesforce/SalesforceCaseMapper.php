@@ -35,30 +35,30 @@ class SalesforceCaseMapper
             ?: 'Sin Apellido';
 
         $projectName = $this->fieldValue($fields, ['nombre_proyecto', 'proyecto', 'project_name', 'proyecto_formulario']);
-        $technicalUtmSource = $this->fieldValue($fields, [
+        $utmSourceValue = $this->fieldValue($fields, [
             'utm_source',
-            'medio_de_llegada',
-            'medio_llegada',
             'lead_source',
         ]);
+        $arrivalMedium = $this->fieldValue($fields, [
+            'medio_de_llegada',
+            'medio_llegada',
+        ]) ?: $utmSourceValue;
         $originProspect = $this->fieldValue($fields, [
             'origen_del_prospecto',
             'origen_prospecto',
             'origen del prospecto',
             'origen-del-prospecto',
         ]);
-        $website = $this->resolveWebsiteSource($submission, $fields, $technicalUtmSource);
+        $website = $this->resolveWebsiteSource($submission, $fields, $utmSourceValue);
         $utmMedium = $this->fieldValue($fields, ['utm_medium', 'audiencia']);
         $utmCampaignDefault = $this->normalizeFieldValue(data_get($settings->extra_settings, 'utm_campaign_default'));
         $utmCampaign = $this->resolveUtmCampaign($fields, $utmCampaignDefault);
         $utmContent = $this->fieldValue($fields, ['utm_content', 'pieza_grafica']);
         $utmTerm = $this->fieldValue($fields, ['utm_term', 'audiencia']);
-        $leadSource = $originProspect ?: $technicalUtmSource ?: $this->fieldValue($fields, [
+        $leadSource = $originProspect ?: $this->fieldValue($fields, [
             'lead_source',
-            'medio_de_llegada',
-            'medio',
             'origen',
-        ]);
+        ]) ?: $utmSourceValue;
         $email = $submission->email ?: $this->fieldValue($fields, ['email', 'correo']) ?: null;
         $phone = $submission->phone ?: $this->fieldValue($fields, ['phone', 'telefono', 'fono', 'celular', 'whatsapp']);
         $includeDescription = $this->shouldIncludeDescription($settings);
@@ -106,14 +106,14 @@ class SalesforceCaseMapper
             'usoDepartamento__c' => $apartmentUsage,
             'estadoLaboral__c' => $employmentStatus,
             'comunaInversion__c' => $investmentCommune,
-            'Medio_de_Llegada__c' => $normalizedLeadSource,
+            'Medio_de_Llegada__c' => $arrivalMedium,
             'Nombre_de_la_Campa_a__c' => $utmCampaign,
             'Audiencia__c' => $utmMedium,
             'Pieza_Grafica__c' => $utmContent,
             'wsp_owner__c' => $wspOwnerPhone,
             'Telefono_owner__c' => $telefonoOwnerPhone,
             'owner_phone__c' => $ownerPhone,
-            'utm_source__c' => $originProspect ?: $technicalUtmSource,
+            'utm_source__c' => $arrivalMedium,
             'utm_medium__c' => $utmMedium,
             'utm_campaign__c' => $utmCampaign,
             'utm_content__c' => $utmContent,
@@ -122,7 +122,7 @@ class SalesforceCaseMapper
 
         $payload = $this->normalizeLegacyCustomFieldsInPayload($payload);
 
-        return array_filter($payload, static fn(mixed $value): bool => $value !== null && $value !== '');
+        return array_filter($payload, static fn (mixed $value): bool => $value !== null && $value !== '');
     }
 
     /**
@@ -200,9 +200,9 @@ class SalesforceCaseMapper
 
         if (is_array($value)) {
             $items = array_values(array_filter(array_map(
-                static fn(mixed $item): string => trim((string) $item),
+                static fn (mixed $item): string => trim((string) $item),
                 $value
-            ), static fn(string $item): bool => $item !== ''));
+            ), static fn (string $item): bool => $item !== ''));
 
             return $items === [] ? null : implode(', ', $items);
         }
@@ -247,7 +247,7 @@ class SalesforceCaseMapper
                 ->title()
                 ->toString();
 
-            return 'UTM ' . $suffix;
+            return 'UTM '.$suffix;
         }
 
         return Str::of($key)
@@ -327,7 +327,7 @@ class SalesforceCaseMapper
         $asesores = $project->asesores;
 
         $advisor = $asesores
-            ->sortByDesc(static fn($asesor): int => $asesor->is_active ? 1 : 0)
+            ->sortByDesc(static fn ($asesor): int => $asesor->is_active ? 1 : 0)
             ->first();
 
         return $this->normalizePhone($advisor?->whatsapp_owner);

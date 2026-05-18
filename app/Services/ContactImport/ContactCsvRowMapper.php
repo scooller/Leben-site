@@ -234,7 +234,6 @@ class ContactCsvRowMapper
         }
 
         $utmAliasCandidates = [
-            'utm_source' => ['medio_de_llegada', 'medio_llegada', 'lead_source'],
             'utm_campaign' => ['campana', 'nombre_de_la_campana'],
             'utm_content' => ['pieza_grafica'],
             'utm_medium' => ['audiencia'],
@@ -276,8 +275,8 @@ class ContactCsvRowMapper
             'phone' => ['telefono', 'celular'],
             'en_que_rango_se_encuentra_tu_renta_liquida' => ['rango_renta'],
             'tienes_la_posibilidad_de_complementar_tu_renta' => ['codeudor'],
-            'medio_de_llegada' => ['medio_llegada', 'utm_source', 'lead_source'],
-            'medio_llegada' => ['medio_de_llegada', 'utm_source', 'lead_source'],
+            'medio_de_llegada' => ['medio_llegada'],
+            'medio_llegada' => ['medio_de_llegada'],
             'nombre_de_la_campana' => ['campana', 'utm_campaign'],
             'campana' => ['nombre_de_la_campana', 'utm_campaign'],
             'pieza_grafica' => ['utm_content'],

@@ -21,7 +21,7 @@ class ContactCsvRowMapperTest extends TestCase
         ]);
 
         $bySource = collect($mappings)
-            ->mapWithKeys(static fn(array $mapping): array => [
+            ->mapWithKeys(static fn (array $mapping): array => [
                 (string) $mapping['source_column'] => (string) $mapping['target_field'],
             ])
             ->all();
@@ -151,10 +151,32 @@ class ContactCsvRowMapperTest extends TestCase
         $mapped = $mapper->mapRow($row, $mappings, true);
 
         $this->assertSame('Meta', $mapped['fields']['medio_llegada']);
-        $this->assertSame('Meta', $mapped['fields']['utm_source']);
-        $this->assertSame('Meta', $mapped['fields']['lead_source']);
+        $this->assertArrayNotHasKey('utm_source', $mapped['fields']);
+        $this->assertArrayNotHasKey('lead_source', $mapped['fields']);
         $this->assertSame('Viveelsur', $mapped['fields']['campana']);
         $this->assertSame('Viveelsur', $mapped['fields']['utm_campaign']);
+    }
+
+    public function test_map_row_keeps_origen_prospecto_separate_from_medio_de_llegada(): void
+    {
+        $mapper = app(ContactCsvRowMapper::class);
+
+        $row = [
+            'Origen del prospecto' => 'Leben | Vive el sur | Edificio Inn | ICON | Brochure | Febrero 2026',
+            'Medio de llegada' => 'Meta',
+        ];
+
+        $mappings = [
+            ['source_column' => 'Origen del prospecto', 'target_field' => 'fields.origen_prospecto'],
+            ['source_column' => 'Medio de llegada', 'target_field' => 'fields.medio_llegada'],
+        ];
+
+        $mapped = $mapper->mapRow($row, $mappings, true);
+
+        $this->assertSame('Leben | Vive el sur | Edificio Inn | ICON | Brochure | Febrero 2026', $mapped['fields']['origen_prospecto']);
+        $this->assertSame('Meta', $mapped['fields']['medio_llegada']);
+        $this->assertArrayNotHasKey('utm_source', $mapped['fields']);
+        $this->assertArrayNotHasKey('lead_source', $mapped['fields']);
     }
 
     public function test_map_row_preserves_source_signature_for_each_explicit_mapping(): void
