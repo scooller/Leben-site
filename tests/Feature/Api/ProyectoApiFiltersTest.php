@@ -4,6 +4,7 @@ namespace Tests\Feature\Api;
 
 use App\Models\Plant;
 use App\Models\Proyecto;
+use App\Models\SiteSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
@@ -136,5 +137,57 @@ class ProyectoApiFiltersTest extends TestCase
         $response
             ->assertOk()
             ->assertJsonPath('plantas.0.name', '102');
+    }
+
+    public function test_it_exposes_project_discount_when_project_source_is_configured(): void
+    {
+        SiteSetting::current()->update([
+            'extra_settings' => [
+                'salesforce_discount_source' => 'project',
+            ],
+        ]);
+
+        Proyecto::factory()->create([
+            'name' => 'Proyecto Fuente Proyecto',
+            'descuento_maximo_unidad' => 22,
+        ]);
+
+        $response = $this->getJson('/api/v1/proyectos?campos=id,name,descuento_defecto_cotizacion_web');
+
+        $response->assertOk();
+        $response->assertJsonPath('data.0.descuento_defecto_cotizacion_web', 22);
+    }
+
+    public function test_it_exposes_plant_discount_when_plant_source_is_configured_with_project_fallback(): void
+    {
+        SiteSetting::current()->update([
+            'extra_settings' => [
+                'salesforce_discount_source' => 'plant',
+            ],
+        ]);
+
+        $project = Proyecto::factory()->create([
+            'name' => 'Proyecto Fuente Planta',
+            'descuento_maximo_unidad' => 35,
+        ]);
+
+        Plant::query()->create([
+            'salesforce_product_id' => (string) Str::uuid(),
+            'salesforce_proyecto_id' => $project->salesforce_id,
+            'name' => 'A-101',
+            'product_code' => 'PLANT-A101',
+            'programa' => '2 dormitorios',
+            'programa2' => '2 baños',
+            'precio_base' => 5000,
+            'precio_lista' => 5500,
+            'porcentaje_maximo_unidad' => null,
+            'is_active' => true,
+            'last_synced_at' => now(),
+        ]);
+
+        $response = $this->getJson('/api/v1/proyectos?campos=id,name,descuento_defecto_cotizacion_web');
+
+        $response->assertOk();
+        $response->assertJsonPath('data.0.descuento_defecto_cotizacion_web', 35);
     }
 }

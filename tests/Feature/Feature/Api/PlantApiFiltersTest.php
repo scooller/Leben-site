@@ -919,6 +919,60 @@ class PlantApiFiltersTest extends TestCase
         $withSaleResponse->assertJsonPath('precio_final', 180);
     }
 
+    public function test_it_uses_project_discount_source_for_api_price_and_project_payload_when_configured(): void
+    {
+        SiteSetting::current()->update([
+            'extra_settings' => [
+                'salesforce_discount_source' => 'project',
+            ],
+        ]);
+
+        $project = Proyecto::factory()->create([
+            'is_active' => true,
+            'descuento_maximo_unidad' => 30,
+        ]);
+
+        $plant = $this->createPlant($project->salesforce_id, true, [
+            'precio_base' => 100,
+            'precio_lista' => 200,
+            'porcentaje_maximo_unidad' => 10,
+            'unidad_sale' => true,
+        ]);
+
+        $response = $this->getJson('/api/v1/plantas/'.$plant->id.'?evento_sale=1');
+
+        $response->assertOk();
+        $response->assertJsonPath('precio_final', 140);
+        $response->assertJsonPath('proyecto.descuento_defecto_cotizacion_web', 30);
+    }
+
+    public function test_it_falls_back_to_project_discount_when_plant_discount_is_missing_and_plant_source_is_configured(): void
+    {
+        SiteSetting::current()->update([
+            'extra_settings' => [
+                'salesforce_discount_source' => 'plant',
+            ],
+        ]);
+
+        $project = Proyecto::factory()->create([
+            'is_active' => true,
+            'descuento_maximo_unidad' => 35,
+        ]);
+
+        $plant = $this->createPlant($project->salesforce_id, true, [
+            'precio_base' => 100,
+            'precio_lista' => 200,
+            'porcentaje_maximo_unidad' => null,
+            'unidad_sale' => true,
+        ]);
+
+        $response = $this->getJson('/api/v1/plantas/'.$plant->id.'?evento_sale=1');
+
+        $response->assertOk();
+        $response->assertJsonPath('precio_final', 130);
+        $response->assertJsonPath('proyecto.descuento_defecto_cotizacion_web', 35);
+    }
+
     private function createPlant(string $salesforceProyectoId, bool $isActive, array $attributes = []): Plant
     {
         return Plant::query()->create(array_merge([

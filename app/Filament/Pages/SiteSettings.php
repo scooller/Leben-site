@@ -221,7 +221,7 @@ class SiteSettings extends Page implements HasForms
                                         CuratorPicker::make('logo_sale_id')
                                             ->label('Logo Sale')
                                             ->helperText('Logo usado en el grid y en el detalle de planta cuando Evento Sale está activo.')
-                                            ->visible(fn(Get $get): bool => (bool) $get('evento_sale')),
+                                            ->visible(fn (Get $get): bool => (bool) $get('evento_sale')),
 
                                         Repeater::make('footer_menu')
                                             ->label('Menú del Footer')
@@ -288,29 +288,29 @@ class SiteSettings extends Page implements HasForms
                                         CuratorPicker::make('extra_settings.home_hero_image_desktop_id')
                                             ->label('Imagen Desktop Hero Home')
                                             ->helperText('Se usará en pantallas grandes cuando el tipo sea Imagen.')
-                                            ->visible(fn(Get $get): bool => ($get('extra_settings.home_hero_type') ?? 'video') === 'image'),
+                                            ->visible(fn (Get $get): bool => ($get('extra_settings.home_hero_type') ?? 'video') === 'image'),
 
                                         CuratorPicker::make('extra_settings.home_hero_image_mobile_id')
                                             ->label('Imagen Mobile Hero Home')
                                             ->helperText('Se usará en pantallas pequeñas cuando el tipo sea Imagen.')
-                                            ->visible(fn(Get $get): bool => ($get('extra_settings.home_hero_type') ?? 'video') === 'image'),
+                                            ->visible(fn (Get $get): bool => ($get('extra_settings.home_hero_type') ?? 'video') === 'image'),
 
                                         TextInput::make('extra_settings.home_hero_video_desktop_url')
                                             ->label('URL Video Desktop')
                                             ->url()
                                             ->placeholder('https://.../banner-desktop.mp4')
-                                            ->visible(fn(Get $get): bool => ($get('extra_settings.home_hero_type') ?? 'video') === 'video'),
+                                            ->visible(fn (Get $get): bool => ($get('extra_settings.home_hero_type') ?? 'video') === 'video'),
 
                                         TextInput::make('extra_settings.home_hero_video_mobile_url')
                                             ->label('URL Video Mobile')
                                             ->url()
                                             ->placeholder('https://.../banner-mobile.mp4')
-                                            ->visible(fn(Get $get): bool => ($get('extra_settings.home_hero_type') ?? 'video') === 'video'),
+                                            ->visible(fn (Get $get): bool => ($get('extra_settings.home_hero_type') ?? 'video') === 'video'),
 
                                         CuratorPicker::make('extra_settings.home_hero_video_poster_id')
                                             ->label('Poster del video Hero Home')
                                             ->helperText('Imagen usada mientras carga el video o si no puede reproducirse.')
-                                            ->visible(fn(Get $get): bool => ($get('extra_settings.home_hero_type') ?? 'video') === 'video'),
+                                            ->visible(fn (Get $get): bool => ($get('extra_settings.home_hero_type') ?? 'video') === 'video'),
                                     ])
                                     ->columns(1),
 
@@ -708,12 +708,12 @@ class SiteSettings extends Page implements HasForms
                                         ColorPicker::make('extra_settings.qr.gradient_form')
                                             ->label('Degradado desde')
                                             ->default((string) ($qrDefaults['gradient_form'] ?? 'rgb(69, 179, 157)'))
-                                            ->visible(fn(Get $get): bool => (bool) $get('extra_settings.qr.hasGradient')),
+                                            ->visible(fn (Get $get): bool => (bool) $get('extra_settings.qr.hasGradient')),
 
                                         ColorPicker::make('extra_settings.qr.gradient_to')
                                             ->label('Degradado hasta')
                                             ->default((string) ($qrDefaults['gradient_to'] ?? 'rgb(241, 148, 138)'))
-                                            ->visible(fn(Get $get): bool => (bool) $get('extra_settings.qr.hasGradient')),
+                                            ->visible(fn (Get $get): bool => (bool) $get('extra_settings.qr.hasGradient')),
 
                                         Select::make('extra_settings.qr.gradient_type')
                                             ->label('Tipo de degradado')
@@ -725,7 +725,7 @@ class SiteSettings extends Page implements HasForms
                                                 'radial' => 'Radial',
                                             ])
                                             ->default((string) ($qrDefaults['gradient_type'] ?? 'vertical'))
-                                            ->visible(fn(Get $get): bool => (bool) $get('extra_settings.qr.hasGradient')),
+                                            ->visible(fn (Get $get): bool => (bool) $get('extra_settings.qr.hasGradient')),
 
                                         Toggle::make('extra_settings.qr.hasEyeColor')
                                             ->label('Usar color en cuadrados')
@@ -735,12 +735,12 @@ class SiteSettings extends Page implements HasForms
                                         ColorPicker::make('extra_settings.qr.eye_color_inner')
                                             ->label('Color interior del ojo')
                                             ->default((string) ($qrDefaults['eye_color_inner'] ?? 'rgb(241, 148, 138)'))
-                                            ->visible(fn(Get $get): bool => (bool) $get('extra_settings.qr.hasEyeColor')),
+                                            ->visible(fn (Get $get): bool => (bool) $get('extra_settings.qr.hasEyeColor')),
 
                                         ColorPicker::make('extra_settings.qr.eye_color_outer')
                                             ->label('Color exterior del ojo')
                                             ->default((string) ($qrDefaults['eye_color_outer'] ?? 'rgb(69, 179, 157)'))
-                                            ->visible(fn(Get $get): bool => (bool) $get('extra_settings.qr.hasEyeColor')),
+                                            ->visible(fn (Get $get): bool => (bool) $get('extra_settings.qr.hasEyeColor')),
 
                                         Select::make('extra_settings.qr.eye_style')
                                             ->label('Estilo de ojos')
@@ -749,7 +749,7 @@ class SiteSettings extends Page implements HasForms
                                                 'circle' => 'Circle',
                                             ])
                                             ->default((string) ($qrDefaults['eye_style'] ?? 'square'))
-                                            ->visible(fn(Get $get): bool => (bool) $get('extra_settings.qr.hasEyeColor')),
+                                            ->visible(fn (Get $get): bool => (bool) $get('extra_settings.qr.hasEyeColor')),
                                     ])
                                     ->columns(2),
 
@@ -852,7 +852,7 @@ class SiteSettings extends Page implements HasForms
                                                     ->multiple()
                                                     ->searchable()
                                                     ->preload()
-                                                    ->visible(fn(Get $get): bool => $get('type') !== 'select')
+                                                    ->visible(fn (Get $get): bool => $get('type') !== 'select')
                                                     ->helperText('Opcional. Si seleccionas proyectos, este campo solo se mostrará cuando el proyecto seleccionado pertenezca a alguno de ellos.'),
 
                                                 TextInput::make('placeholder')
@@ -881,7 +881,7 @@ class SiteSettings extends Page implements HasForms
                                                             ->columnSpanFull()
                                                             ->helperText('Opcional. Si seleccionas proyectos, esta opción solo se usará para esos proyectos.'),
                                                     ])
-                                                    ->visible(fn(Get $get): bool => $get('type') === 'select')
+                                                    ->visible(fn (Get $get): bool => $get('type') === 'select')
                                                     ->defaultItems(0)
                                                     ->reorderable()
                                                     ->collapsible()
@@ -1052,6 +1052,21 @@ class SiteSettings extends Page implements HasForms
                                     ])
                                     ->columns(1),
 
+                                Section::make('Descuento expuesto en API')
+                                    ->description('Define desde qué entidad se toma el porcentaje de descuento para la API pública.')
+                                    ->schema([
+                                        Select::make('extra_settings.salesforce_discount_source')
+                                            ->label('Fuente de descuento para API')
+                                            ->helperText('Project: usa descuento del proyecto. Plant: usa porcentaje de la planta. Si el origen elegido no tiene valor, se usa el otro como fallback.')
+                                            ->options([
+                                                'project' => 'Proyecto',
+                                                'plant' => 'Planta',
+                                            ])
+                                            ->default('project')
+                                            ->searchable(),
+                                    ])
+                                    ->columns(1),
+
                                 Section::make('Sincronización Automática de Plantas')
                                     ->description('Configura cada cuánto se sincronizan automáticamente las plantas y qué tipos se incluirán.')
                                     ->schema([
@@ -1089,12 +1104,12 @@ class SiteSettings extends Page implements HasForms
                                                 $details = $this->salesforceOauthConnectionDetails();
 
                                                 $listItems = [
-                                                    '<li><strong>Conexión actual:</strong> ' . e($details['current_connection_status']) . '</li>',
-                                                    '<li><strong>Última conexión:</strong> ' . e($details['last_connection_at']) . '</li>',
-                                                    '<li><strong>Método OAuth:</strong> ' . e($details['auth_method']) . '</li>',
+                                                    '<li><strong>Conexión actual:</strong> '.e($details['current_connection_status']).'</li>',
+                                                    '<li><strong>Última conexión:</strong> '.e($details['last_connection_at']).'</li>',
+                                                    '<li><strong>Método OAuth:</strong> '.e($details['auth_method']).'</li>',
                                                 ];
 
-                                                return new HtmlString('<ul class="list-disc ps-5 space-y-1">' . implode('', $listItems) . '</ul>');
+                                                return new HtmlString('<ul class="list-disc ps-5 space-y-1">'.implode('', $listItems).'</ul>');
                                             }),
                                     ])
                                     ->columns(1),
@@ -1116,7 +1131,7 @@ class SiteSettings extends Page implements HasForms
                                             ->helperText('Activa para editar el mensaje directamente en HTML')
                                             ->default(false)
                                             ->live()
-                                            ->visible(fn($get) => $get('maintenance_mode')),
+                                            ->visible(fn ($get) => $get('maintenance_mode')),
 
                                         RichEditor::make('maintenance_message')
                                             ->label('Mensaje de Mantenimiento')
@@ -1140,8 +1155,8 @@ class SiteSettings extends Page implements HasForms
                                             ->plugins([
                                                 AttachCuratorMediaPlugin::make(),
                                             ])
-                                            ->visible(fn($get) => $get('maintenance_mode') && ! $get('maintenance_use_html'))
-                                            ->dehydrated(fn($get) => ! $get('maintenance_use_html'))
+                                            ->visible(fn ($get) => $get('maintenance_mode') && ! $get('maintenance_use_html'))
+                                            ->dehydrated(fn ($get) => ! $get('maintenance_use_html'))
                                             ->columnSpanFull(),
 
                                         Textarea::make('maintenance_message_html')
@@ -1161,7 +1176,7 @@ class SiteSettings extends Page implements HasForms
 
                                                 return null; // No guardar en maintenance_message_html
                                             })
-                                            ->visible(fn($get) => $get('maintenance_mode') && $get('maintenance_use_html'))
+                                            ->visible(fn ($get) => $get('maintenance_mode') && $get('maintenance_use_html'))
                                             ->columnSpanFull(),
                                     ])
                                     ->columns(1),

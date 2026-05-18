@@ -79,4 +79,18 @@ class SiteSettingsSalesforceSyncConfigTest extends TestCase
         $this->assertSame('H', $options['correction']);
         $this->assertSame('square', $options['eye_style']);
     }
+
+    public function test_it_persists_salesforce_discount_source_in_extra_settings(): void
+    {
+        SiteSetting::current()->update([
+            'extra_settings' => [
+                'salesforce_discount_source' => 'plant',
+            ],
+        ]);
+
+        $settings = SiteSetting::current()->fresh();
+        $extra = is_array($settings?->extra_settings) ? $settings->extra_settings : [];
+
+        $this->assertSame('plant', $extra['salesforce_discount_source'] ?? null);
+    }
 }

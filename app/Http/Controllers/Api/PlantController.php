@@ -41,6 +41,7 @@ class PlantController extends Controller
         $regionValues = $this->normalizeInputValues($request->input('region'));
         $entregaValues = $this->normalizeEtapaValues($request->input('entrega'));
         $eventoSale = $this->resolveEventoSaleActive($request);
+        $discountSource = $this->resolveSalesforceDiscountSource();
         $available = $this->normalizeBoolean($request->input('disponible', $request->input('available')));
 
         // Filtros
@@ -207,16 +208,23 @@ class PlantController extends Controller
         $perPage = (int) $request->input('perPage', $defaultPerPage);
         $perPage = max(1, min($perPage, 100));
 
-        $orderByDiscountExpression = $eventoSale === true
-            ? 'porcentaje_maximo_unidad'
-            : 'COALESCE((SELECT p.descuento_defecto_cotizacion_web FROM proyectos p WHERE p.salesforce_id = plants.salesforce_proyecto_id LIMIT 1), 0)';
+        $projectDiscountExpression = '(SELECT p.descuento_maximo_unidad FROM proyectos p WHERE p.salesforce_id = plants.salesforce_proyecto_id LIMIT 1)';
+        $legacyProjectDiscountExpression = '(SELECT p.descuento_defecto_cotizacion_web FROM proyectos p WHERE p.salesforce_id = plants.salesforce_proyecto_id LIMIT 1)';
+
+        $orderByDiscountExpression = match ($discountSource) {
+            'project' => "COALESCE({$projectDiscountExpression}, porcentaje_maximo_unidad, 0)",
+            'plant' => "COALESCE(porcentaje_maximo_unidad, {$projectDiscountExpression}, 0)",
+            default => $eventoSale === true
+                ? 'COALESCE(porcentaje_maximo_unidad, 0)'
+                : "COALESCE({$legacyProjectDiscountExpression}, 0)",
+        };
 
         $query->orderByRaw(
             "COALESCE(CASE WHEN {$orderByDiscountExpression} > 0 AND precio_lista > 0 THEN CASE WHEN (precio_lista - ((precio_lista * {$orderByDiscountExpression}) / 100)) < 0 THEN 0 ELSE (precio_lista - ((precio_lista * {$orderByDiscountExpression}) / 100)) END ELSE precio_base END, 999999999999) ASC"
         )->orderBy('id');
 
-        $plants = $query->paginate($perPage)->through(function (Plant $plant) use ($eventoSale): array {
-            return $this->plantPayload($plant, $eventoSale);
+        $plants = $query->paginate($perPage)->through(function (Plant $plant) use ($eventoSale, $discountSource): array {
+            return $this->plantPayload($plant, $eventoSale, $discountSource);
         });
 
         return $this->noStoreJson($plants);
@@ -303,7 +311,7 @@ class PlantController extends Controller
             })
             ->findOrFail($id);
 
-        return $this->noStoreJson($this->plantPayload($plant, $eventoSale));
+        return $this->noStoreJson($this->plantPayload($plant, $eventoSale, $this->resolveSalesforceDiscountSource()));
     }
 
     public function showByProjectSlugAndUnitName(Request $request, string $projectSlug, string $unitName): JsonResponse
@@ -327,7 +335,7 @@ class PlantController extends Controller
             })
             ->firstOrFail();
 
-        return $this->noStoreJson($this->plantPayload($plant, $eventoSale));
+        return $this->noStoreJson($this->plantPayload($plant, $eventoSale, $this->resolveSalesforceDiscountSource()));
     }
 
     public function locationFilters(): JsonResponse
@@ -437,10 +445,11 @@ class PlantController extends Controller
         ]);
     }
 
-    private function plantPayload(Plant $plant, bool $eventoSale): array
+    private function plantPayload(Plant $plant, bool $eventoSale, ?string $discountSource): array
     {
         $payload = $plant->toArray();
         $defaultAdvisorAvatarUrl = $this->getDefaultAdvisorAvatarUrl();
+        $apiDiscountPercentage = $this->resolveApiDiscountPercentage($plant, $eventoSale, $discountSource);
 
         unset($payload['cover_image_id'], $payload['interior_image_id']);
 
@@ -449,7 +458,7 @@ class PlantController extends Controller
         $payload['cover_image_url'] = $plant->coverImageMedia?->url;
         $payload['interior_image_url'] = $plant->interiorImageMedia?->url ?: $plant->salesforce_interior_image_url;
         $payload['salesforce_interior_image_url'] = $plant->salesforce_interior_image_url;
-        $payload['proyecto'] = $this->projectPayload($plant->proyecto);
+        $payload['proyecto'] = $this->projectPayload($plant->proyecto, $plant, $eventoSale, $discountSource);
         $payload['asesores'] = $this->resolvePlantAdvisors($plant, $defaultAdvisorAvatarUrl);
         $payload['projectLogoUrl'] = $this->resolveProjectLogoUrl($plant);
         $payload['proyectoImageUrl'] = $plant->proyecto?->image_url;
@@ -459,7 +468,7 @@ class PlantController extends Controller
         $payload['is_available'] = $plant->activeReservation === null
             && $plant->completedReservation === null
             && $plant->completedPayment === null;
-        $payload['precio_final'] = $plant->resolveFinalPrice($eventoSale);
+        $payload['precio_final'] = $this->resolveApiFinalPrice($plant, $apiDiscountPercentage);
 
         return $payload;
     }
@@ -473,6 +482,46 @@ class PlantController extends Controller
         }
 
         return (bool) (SiteSetting::current()->evento_sale ?? false);
+    }
+
+    private function resolveSalesforceDiscountSource(): ?string
+    {
+        $settings = SiteSetting::current();
+        $extraSettings = is_array($settings->extra_settings ?? null) ? $settings->extra_settings : [];
+        $source = strtolower(trim((string) data_get($extraSettings, 'salesforce_discount_source', '')));
+
+        return in_array($source, ['project', 'plant'], true) ? $source : null;
+    }
+
+    private function resolveApiDiscountPercentage(Plant $plant, bool $eventoSale, ?string $discountSource): float
+    {
+        if ($discountSource === 'project') {
+            return (float) ($plant->proyecto?->descuento_maximo_unidad ?? $plant->porcentaje_maximo_unidad ?? 0);
+        }
+
+        if ($discountSource === 'plant') {
+            return (float) ($plant->porcentaje_maximo_unidad ?? $plant->proyecto?->descuento_maximo_unidad ?? 0);
+        }
+
+        $projectDiscount = $plant->proyecto?->descuento_defecto_cotizacion_web;
+
+        return $eventoSale
+            ? (float) ($plant->porcentaje_maximo_unidad ?? 0)
+            : (float) ($projectDiscount ?? 0);
+    }
+
+    private function resolveApiFinalPrice(Plant $plant, float $discountPercentage): float
+    {
+        $precioLista = (float) ($plant->precio_lista ?? 0);
+        $precioBase = (float) ($plant->precio_base ?? 0);
+
+        if ($precioLista > 0 && $discountPercentage > 0) {
+            $precioConDescuento = $precioLista - (($precioLista * $discountPercentage) / 100);
+
+            return max(0, $precioConDescuento);
+        }
+
+        return max(0, $precioBase);
     }
 
     /**
@@ -559,13 +608,16 @@ class PlantController extends Controller
         ];
     }
 
-    private function projectPayload(?Proyecto $proyecto): ?array
+    private function projectPayload(?Proyecto $proyecto, Plant $plant, bool $eventoSale, ?string $discountSource): ?array
     {
         if (! $proyecto) {
             return null;
         }
 
         $defaultAdvisorAvatarUrl = $this->getDefaultAdvisorAvatarUrl();
+        $projectDiscountForApi = $discountSource === null
+            ? $proyecto->descuento_defecto_cotizacion_web
+            : $this->resolveApiDiscountPercentage($plant, $eventoSale, $discountSource);
 
         return [
             'id' => $proyecto->id,
@@ -585,7 +637,7 @@ class PlantController extends Controller
             'salesforce_logo_url' => $proyecto->salesforce_logo_url,
             'valor_reserva_exigido_defecto_peso' => $proyecto->valor_reserva_exigido_defecto_peso,
             'valor_reserva_exigido_min_peso' => $proyecto->valor_reserva_exigido_min_peso,
-            'descuento_defecto_cotizacion_web' => $proyecto->descuento_defecto_cotizacion_web,
+            'descuento_defecto_cotizacion_web' => $projectDiscountForApi,
             'asesores' => $proyecto->asesores
                 ->where('is_active', true)
                 ->values()
