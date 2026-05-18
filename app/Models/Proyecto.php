@@ -74,7 +74,6 @@ class Proyecto extends Model
         'valor_reserva_exigido_defecto_peso',
         'valor_reserva_exigido_min_peso',
         'descuento_defecto_cotizacion_web',
-        'descuento_maximo_cotizacion_web',
         'entrega_inmediata',
         // Transbank Mall
         'transbank_commerce_code',
@@ -90,7 +89,6 @@ class Proyecto extends Model
         'valor_reserva_exigido_defecto_peso' => 'decimal:2',
         'valor_reserva_exigido_min_peso' => 'decimal:2',
         'descuento_defecto_cotizacion_web' => 'decimal:2',
-        'descuento_maximo_cotizacion_web' => 'decimal:2',
         'entrega_inmediata' => 'boolean',
         'is_active' => 'boolean',
         'manual_payment_bank_accounts' => 'array',
@@ -228,8 +226,8 @@ class Proyecto extends Model
     protected function etapa(): Attribute
     {
         return Attribute::make(
-            get: fn(?string $value): ?string => self::normalizeEtapa($value) ?? $value,
-            set: fn(mixed $value): ?string => self::normalizeEtapa($value) ?? ($this->normalizeRawString($value)),
+            get: fn (?string $value): ?string => self::normalizeEtapa($value) ?? $value,
+            set: fn (mixed $value): ?string => self::normalizeEtapa($value) ?? ($this->normalizeRawString($value)),
         );
     }
 
@@ -254,7 +252,7 @@ class Proyecto extends Model
      */
     protected function imageUrl(): Attribute
     {
-        return Attribute::get(fn(): string => ProjectImageService::getProjectImageUrl($this));
+        return Attribute::get(fn (): string => ProjectImageService::getProjectImageUrl($this));
     }
 
     /**
