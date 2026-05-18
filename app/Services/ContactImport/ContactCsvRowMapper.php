@@ -30,6 +30,8 @@ class ContactCsvRowMapper
         $directMap = [
             'nombre' => 'name',
             'name' => 'name',
+            'apellidos' => 'fields.apellido',
+            'apellido' => 'fields.apellido',
             'correo' => 'email',
             'email' => 'email',
             'celular' => 'phone',
@@ -51,6 +53,8 @@ class ContactCsvRowMapper
             'origen_del_prospecto' => 'fields.origen_prospecto',
             'medio_de_llegada' => 'fields.medio_llegada',
             'nombre_de_la_campana' => 'fields.campana',
+            'en_que_rango_se_encuentra_tu_renta_liquida' => 'fields.rango_renta',
+            'tienes_la_posibilidad_de_complementar_tu_renta' => 'fields.codeudor',
         ];
 
         if (array_key_exists($signature, $directMap)) {
@@ -92,16 +96,16 @@ class ContactCsvRowMapper
             }
 
             $mappedColumns[] = $sourceColumn;
+            $sourceSignature = $this->headerSignature($sourceColumn);
+
+            if ($sourceSignature !== '' && ! isset($result['fields'][$sourceSignature])) {
+                $result['fields'][$sourceSignature] = $value;
+            }
+
+            $this->applyFieldAliases($result['fields'], $sourceSignature, $value);
 
             if (in_array($targetField, ['name', 'email', 'phone', 'rut'], true)) {
                 $result[$targetField] = $value;
-
-                // Mirror to fields[] using the column's signature as key so that
-                // dynamic table columns (which read from fields.{key}) also show the value.
-                $mirrorKey = $this->headerSignature($sourceColumn);
-                if ($mirrorKey !== '' && ! isset($result['fields'][$mirrorKey])) {
-                    $result['fields'][$mirrorKey] = $value;
-                }
 
                 continue;
             }
@@ -132,6 +136,7 @@ class ContactCsvRowMapper
                 }
 
                 $result['fields'][$signature] = $cleanValue;
+                $this->applyFieldAliases($result['fields'], $signature, $cleanValue);
             }
         }
 
@@ -158,6 +163,28 @@ class ContactCsvRowMapper
         }
 
         return $result;
+    }
+
+    /**
+     * @param  array<string, string>  $fields
+     */
+    private function applyFieldAliases(array &$fields, string $sourceKey, string $value): void
+    {
+        $aliasesBySource = [
+            'apellidos' => ['apellido'],
+            'apellido' => ['apellidos'],
+            'celular' => ['telefono', 'phone'],
+            'telefono' => ['celular', 'phone'],
+            'fono' => ['telefono', 'phone'],
+            'en_que_rango_se_encuentra_tu_renta_liquida' => ['rango_renta', 'rango_de_renta'],
+            'tienes_la_posibilidad_de_complementar_tu_renta' => ['codeudor'],
+        ];
+
+        foreach ($aliasesBySource[$sourceKey] ?? [] as $aliasKey) {
+            if (! isset($fields[$aliasKey])) {
+                $fields[$aliasKey] = $value;
+            }
+        }
     }
 
     public function headerSignature(string $header): string
