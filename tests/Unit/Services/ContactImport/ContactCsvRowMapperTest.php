@@ -21,7 +21,7 @@ class ContactCsvRowMapperTest extends TestCase
         ]);
 
         $bySource = collect($mappings)
-            ->mapWithKeys(static fn (array $mapping): array => [
+            ->mapWithKeys(static fn(array $mapping): array => [
                 (string) $mapping['source_column'] => (string) $mapping['target_field'],
             ])
             ->all();

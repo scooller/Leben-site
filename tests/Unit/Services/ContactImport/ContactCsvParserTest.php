@@ -12,9 +12,9 @@ class ContactCsvParserTest extends TestCase
     {
         Storage::disk('local')->put(
             'imports/test-contact-parser.csv',
-            "Nombre;email;Proyecto\n".
-            "Juan Perez;juan@example.com;ICON\n".
-            "Ana Soto;ana@example.com;ZEN\n"
+            "Nombre;email;Proyecto\n" .
+                "Juan Perez;juan@example.com;ICON\n" .
+                "Ana Soto;ana@example.com;ZEN\n"
         );
 
         $parsed = app(ContactCsvParser::class)->parseFile(

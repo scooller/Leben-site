@@ -9,13 +9,27 @@ class ContactCsvParser
     /**
      * @return array{headers: array<int, string>, rows: array<int, array<string, string>>, preview: array<int, array<string, string>>, delimiter: string, total_rows: int, error: string|null}
      */
-    public function parseFile(string $filePath, ?string $delimiter = null, bool $hasHeader = true, int $maxRows = 500): array
+    public function parseFile(string $filePath, ?string $delimiter = null, bool $hasHeader = true, int $maxRows = 500, string $disk = 'local'): array
     {
-        if (! Storage::disk('local')->exists($filePath)) {
+        if (! Storage::disk($disk)->exists($filePath)) {
             return $this->errorResult('No se encontró el archivo CSV cargado.');
         }
 
-        $content = (string) Storage::disk('local')->get($filePath);
+        $content = (string) Storage::disk($disk)->get($filePath);
+
+        return $this->parseContent(
+            content: $content,
+            delimiter: $delimiter,
+            hasHeader: $hasHeader,
+            maxRows: $maxRows,
+        );
+    }
+
+    /**
+     * @return array{headers: array<int, string>, rows: array<int, array<string, string>>, preview: array<int, array<string, string>>, delimiter: string, total_rows: int, error: string|null}
+     */
+    public function parseContent(string $content, ?string $delimiter = null, bool $hasHeader = true, int $maxRows = 500): array
+    {
         $lines = preg_split('/\r\n|\n|\r/', $content) ?: [];
         $firstLine = (string) ($lines[0] ?? '');
         $detectedDelimiter = $delimiter ?: $this->detectDelimiter($firstLine);
@@ -36,7 +50,7 @@ class ContactCsvParser
             }
 
             $columns = array_values(array_map(
-                static fn (mixed $column): string => trim((string) $column),
+                static fn(mixed $column): string => trim((string) $column),
                 $columns,
             ));
 
@@ -136,14 +150,14 @@ class ContactCsvParser
         return array_map(function (string $header, int $index) use (&$used): string {
             $baseHeader = trim($header);
             if ($baseHeader === '') {
-                $baseHeader = 'columna_'.($index + 1);
+                $baseHeader = 'columna_' . ($index + 1);
             }
 
             $candidate = $baseHeader;
             $suffix = 2;
 
             while (in_array(mb_strtolower($candidate), $used, true)) {
-                $candidate = $baseHeader.'_'.$suffix;
+                $candidate = $baseHeader . '_' . $suffix;
                 $suffix++;
             }
 
@@ -161,7 +175,7 @@ class ContactCsvParser
         $headers = [];
 
         for ($i = 1; $i <= max($count, 1); $i++) {
-            $headers[] = 'columna_'.$i;
+            $headers[] = 'columna_' . $i;
         }
 
         return $headers;

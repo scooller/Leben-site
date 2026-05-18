@@ -9,6 +9,7 @@ use App\Models\SiteSetting;
 use App\Services\ContactImport\ContactCsvParser;
 use App\Services\ContactImport\ContactCsvRowMapper;
 use App\Services\ContactImport\ContactTextHomologationService;
+use Awcodes\Curator\Models\Media;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
@@ -21,7 +22,9 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Components\Wizard\Step;
 use Illuminate\Support\Facades\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 class ImportContactSubmissionsCsvAction
 {
@@ -38,15 +41,37 @@ class ImportContactSubmissionsCsvAction
                 Step::make('Archivo')
                     ->description('Sube el archivo CSV y revisa una vista previa.')
                     ->schema([
+                        Select::make('csv_source')
+                            ->label('Origen del CSV')
+                            ->options([
+                                'upload' => 'Subir archivo',
+                                'files' => 'Elegir desde Archivos',
+                            ])
+                            ->default('upload')
+                            ->live()
+                            ->required(),
                         FileUpload::make('csv_file')
                             ->label('Archivo CSV')
                             ->disk('local')
                             ->directory('imports/contact-submissions')
                             ->acceptedFileTypes(['text/csv', 'text/plain', 'application/vnd.ms-excel'])
+                            ->visible(fn(Get $get): bool => (string) ($get('csv_source') ?? 'upload') === 'upload')
+                            ->required(fn(Get $get): bool => (string) ($get('csv_source') ?? 'upload') === 'upload')
                             ->afterStateUpdated(function (Get $get, Set $set): void {
                                 self::prefillSuggestedMappings($get, $set);
                             })
-                            ->required(),
+                            ->live(),
+                        Select::make('curator_media_id')
+                            ->label('Archivo CSV desde Archivos')
+                            ->options(fn(): array => self::csvMediaOptions())
+                            ->searchable()
+                            ->preload()
+                            ->visible(fn(Get $get): bool => (string) ($get('csv_source') ?? 'upload') === 'files')
+                            ->required(fn(Get $get): bool => (string) ($get('csv_source') ?? 'upload') === 'files')
+                            ->live()
+                            ->afterStateUpdated(function (Get $get, Set $set): void {
+                                self::prefillSuggestedMappings($get, $set);
+                            }),
                         Select::make('delimiter')
                             ->label('Delimitador')
                             ->options([
@@ -74,24 +99,24 @@ class ImportContactSubmissionsCsvAction
                             ->disabled()
                             ->dehydrated(false)
                             ->formatStateUsing(function (Get $get): string {
-                                $csvFile = self::resolveCsvFilePath($get('csv_file'));
-
-                                if ($csvFile === null) {
-                                    return 'Sube un CSV para ver la vista previa.';
-                                }
-
-                                $parsed = app(ContactCsvParser::class)->parseFile(
-                                    filePath: $csvFile,
+                                $parsed = self::parseCsvState(
+                                    csvSource: (string) ($get('csv_source') ?? 'upload'),
+                                    csvState: $get('csv_file'),
+                                    curatorMediaId: $get('curator_media_id'),
                                     delimiter: self::normalizeDelimiter((string) $get('delimiter')),
                                     hasHeader: (bool) ($get('has_header') ?? true),
                                 );
 
+                                if (($parsed['error'] ?? null) === 'missing_file') {
+                                    return 'Sube un CSV para ver la vista previa.';
+                                }
+
                                 if (filled($parsed['error'] ?? null)) {
-                                    return 'Error al leer CSV: '.$parsed['error'];
+                                    return 'Error al leer CSV: ' . $parsed['error'];
                                 }
 
                                 $lines = [];
-                                $lines[] = 'Encabezados: '.implode(' | ', $parsed['headers']);
+                                $lines[] = 'Encabezados: ' . implode(' | ', $parsed['headers']);
                                 $lines[] = '';
                                 $lines[] = 'Primeras filas:';
 
@@ -110,6 +135,10 @@ class ImportContactSubmissionsCsvAction
                             ->content(function (Get $get): string {
                                 $csvFile = self::resolveCsvFilePath($get('csv_file'));
 
+                                if ((string) ($get('csv_source') ?? 'upload') === 'files') {
+                                    $csvFile = filled($get('curator_media_id')) ? 'from-media' : null;
+                                }
+
                                 if ($csvFile === null) {
                                     return 'Sube un CSV en el paso Archivo para aplicar sugerencias de mapeo automático.';
                                 }
@@ -122,10 +151,10 @@ class ImportContactSubmissionsCsvAction
                                     $get('map_comuna'),
                                     $get('map_proyecto'),
                                     $get('map_message'),
-                                ])->filter(static fn (mixed $value): bool => filled($value))->count();
+                                ])->filter(static fn(mixed $value): bool => filled($value))->count();
 
                                 $customMappingsCount = collect((array) ($get('custom_mappings') ?? []))
-                                    ->filter(static fn (array $mapping): bool => filled($mapping['source_column'] ?? null) && filled($mapping['target_field'] ?? null))
+                                    ->filter(static fn(array $mapping): bool => filled($mapping['source_column'] ?? null) && filled($mapping['target_field'] ?? null))
                                     ->count();
 
                                 $totalMappings = $mappedSimpleFields + $customMappingsCount;
@@ -139,43 +168,43 @@ class ImportContactSubmissionsCsvAction
                             ->columnSpanFull(),
                         Select::make('map_name')
                             ->label('Nombre')
-                            ->options(fn (Get $get): array => self::csvHeaderOptions($get))
+                            ->options(fn(Get $get): array => self::csvHeaderOptions($get))
                             ->searchable(),
                         Select::make('map_email')
                             ->label('Email')
-                            ->options(fn (Get $get): array => self::csvHeaderOptions($get))
+                            ->options(fn(Get $get): array => self::csvHeaderOptions($get))
                             ->searchable(),
                         Select::make('map_phone')
                             ->label('Teléfono / Celular')
-                            ->options(fn (Get $get): array => self::csvHeaderOptions($get))
+                            ->options(fn(Get $get): array => self::csvHeaderOptions($get))
                             ->searchable(),
                         Select::make('map_rut')
                             ->label('RUT')
-                            ->options(fn (Get $get): array => self::csvHeaderOptions($get))
+                            ->options(fn(Get $get): array => self::csvHeaderOptions($get))
                             ->searchable(),
                         Select::make('map_comuna')
                             ->label('Comuna')
-                            ->options(fn (Get $get): array => self::csvHeaderOptions($get))
+                            ->options(fn(Get $get): array => self::csvHeaderOptions($get))
                             ->searchable(),
                         Select::make('map_proyecto')
                             ->label('Proyecto')
-                            ->options(fn (Get $get): array => self::csvHeaderOptions($get))
+                            ->options(fn(Get $get): array => self::csvHeaderOptions($get))
                             ->searchable(),
                         Select::make('map_message')
                             ->label('Comentario / Mensaje')
-                            ->options(fn (Get $get): array => self::csvHeaderOptions($get))
+                            ->options(fn(Get $get): array => self::csvHeaderOptions($get))
                             ->searchable(),
                         Repeater::make('custom_mappings')
                             ->label('Mapeos adicionales')
                             ->schema([
                                 Select::make('source_column')
                                     ->label('Columna CSV')
-                                    ->options(fn (Get $get): array => self::csvHeaderOptions($get))
+                                    ->options(fn(Get $get): array => self::csvHeaderOptions($get))
                                     ->required()
                                     ->searchable(),
                                 Select::make('target_field')
                                     ->label('Campo destino')
-                                    ->options(fn (): array => self::targetFieldOptions())
+                                    ->options(fn(): array => self::targetFieldOptions())
                                     ->required()
                                     ->searchable(),
                             ])
@@ -191,7 +220,7 @@ class ImportContactSubmissionsCsvAction
                     ->schema([
                         Select::make('contact_channel_id')
                             ->label('Canal de contacto')
-                            ->options(fn (): array => ContactChannel::query()
+                            ->options(fn(): array => ContactChannel::query()
                                 ->where('is_active', true)
                                 ->orderBy('name')
                                 ->pluck('name', 'id')
@@ -220,12 +249,12 @@ class ImportContactSubmissionsCsvAction
                                 $headers = array_keys(self::csvHeaderOptions($get));
 
                                 $lines = [
-                                    'Columnas detectadas: '.implode(', ', $headers),
-                                    'Canal seleccionado ID: '.(string) ($get('contact_channel_id') ?? '-'),
-                                    'Sync Salesforce: '.((bool) ($get('sync_to_salesforce') ?? true) ? 'Si' : 'No'),
-                                    'Homologar comuna: '.((bool) ($get('homologate_comuna') ?? true) ? 'Si' : 'No'),
-                                    'Homologar proyecto: '.((bool) ($get('homologate_proyecto') ?? true) ? 'Si' : 'No'),
-                                    'Auto-map columnas restantes: '.((bool) ($get('auto_map_unmapped') ?? true) ? 'Si' : 'No'),
+                                    'Columnas detectadas: ' . implode(', ', $headers),
+                                    'Canal seleccionado ID: ' . (string) ($get('contact_channel_id') ?? '-'),
+                                    'Sync Salesforce: ' . ((bool) ($get('sync_to_salesforce') ?? true) ? 'Si' : 'No'),
+                                    'Homologar comuna: ' . ((bool) ($get('homologate_comuna') ?? true) ? 'Si' : 'No'),
+                                    'Homologar proyecto: ' . ((bool) ($get('homologate_proyecto') ?? true) ? 'Si' : 'No'),
+                                    'Auto-map columnas restantes: ' . ((bool) ($get('auto_map_unmapped') ?? true) ? 'Si' : 'No'),
                                 ];
 
                                 return implode("\n", $lines);
@@ -233,12 +262,22 @@ class ImportContactSubmissionsCsvAction
                     ]),
             ])
             ->action(function (array $data): void {
-                $csvFile = self::resolveCsvFilePath($data['csv_file'] ?? null);
+                $csvSource = (string) ($data['csv_source'] ?? 'upload');
 
-                if ($csvFile === null) {
+                if ($csvSource === 'upload' && self::resolveCsvFilePath($data['csv_file'] ?? null) === null) {
                     Notification::make()
                         ->title('CSV requerido')
                         ->body('Debes subir un archivo CSV antes de importar.')
+                        ->danger()
+                        ->send();
+
+                    return;
+                }
+
+                if ($csvSource === 'files' && blank($data['curator_media_id'] ?? null)) {
+                    Notification::make()
+                        ->title('CSV requerido')
+                        ->body('Debes elegir un CSV desde Archivos antes de importar.')
                         ->danger()
                         ->send();
 
@@ -260,8 +299,10 @@ class ImportContactSubmissionsCsvAction
                     return;
                 }
 
-                $parsed = app(ContactCsvParser::class)->parseFile(
-                    filePath: $csvFile,
+                $parsed = self::parseCsvState(
+                    csvSource: $csvSource,
+                    csvState: $data['csv_file'] ?? null,
+                    curatorMediaId: $data['curator_media_id'] ?? null,
                     delimiter: self::normalizeDelimiter((string) ($data['delimiter'] ?? ',')),
                     hasHeader: (bool) ($data['has_header'] ?? true),
                 );
@@ -274,6 +315,14 @@ class ImportContactSubmissionsCsvAction
                         ->send();
 
                     return;
+                }
+
+                if ($csvSource === 'upload') {
+                    $csvFile = self::resolveCsvFilePath($data['csv_file'] ?? null);
+
+                    if (is_string($csvFile) && $csvFile !== '') {
+                        self::storeImportedCsvInCurator($csvFile);
+                    }
                 }
 
                 $mappings = self::resolveMappings($data);
@@ -310,7 +359,7 @@ class ImportContactSubmissionsCsvAction
 
                     if (blank($fields['comuna'] ?? null) || blank($fields['proyecto'] ?? null)) {
                         $failed++;
-                        $errorMessages[] = 'Fila '.($lineIndex + 2).': Comuna y Proyecto son obligatorios.';
+                        $errorMessages[] = 'Fila ' . ($lineIndex + 2) . ': Comuna y Proyecto son obligatorios.';
 
                         continue;
                     }
@@ -318,7 +367,7 @@ class ImportContactSubmissionsCsvAction
                     $email = trim((string) ($mapped['email'] ?? ''));
                     if ($email !== '' && Validator::make(['email' => $email], ['email' => ['email']])->fails()) {
                         $failed++;
-                        $errorMessages[] = 'Fila '.($lineIndex + 2).': email inválido.';
+                        $errorMessages[] = 'Fila ' . ($lineIndex + 2) . ': email inválido.';
 
                         continue;
                     }
@@ -346,7 +395,7 @@ class ImportContactSubmissionsCsvAction
                 $body = "Creados: {$created}. Errores: {$failed}. Warnings: {$warnings}.";
 
                 if ($failed > 0) {
-                    $body .= "\n".collect($errorMessages)->take(3)->implode("\n");
+                    $body .= "\n" . collect($errorMessages)->take(3)->implode("\n");
                 }
 
                 $notification = Notification::make()
@@ -368,24 +417,24 @@ class ImportContactSubmissionsCsvAction
      */
     private static function csvHeaderOptions(Get $get): array
     {
-        $csvFile = self::resolveCsvFilePath($get('csv_file'));
-
-        if ($csvFile === null) {
-            return [];
-        }
-
-        $parsed = app(ContactCsvParser::class)->parseFile(
-            filePath: $csvFile,
+        $parsed = self::parseCsvState(
+            csvSource: (string) ($get('csv_source') ?? 'upload'),
+            csvState: $get('csv_file'),
+            curatorMediaId: $get('curator_media_id'),
             delimiter: self::normalizeDelimiter((string) $get('delimiter')),
             hasHeader: (bool) ($get('has_header') ?? true),
         );
+
+        if (($parsed['error'] ?? null) === 'missing_file') {
+            return [];
+        }
 
         if (filled($parsed['error'] ?? null)) {
             return [];
         }
 
         return collect($parsed['headers'])
-            ->mapWithKeys(static fn (string $header): array => [$header => $header])
+            ->mapWithKeys(static fn(string $header): array => [$header => $header])
             ->all();
     }
 
@@ -409,7 +458,7 @@ class ImportContactSubmissionsCsvAction
         ];
 
         $dynamicFields = collect(SiteSetting::current()->contact_form_fields ?? [])
-            ->filter(static fn (mixed $field): bool => is_array($field) && filled($field['key'] ?? null))
+            ->filter(static fn(mixed $field): bool => is_array($field) && filled($field['key'] ?? null))
             ->mapWithKeys(static function (array $field): array {
                 $key = trim((string) $field['key']);
                 $label = trim((string) ($field['label'] ?? $key));
@@ -467,7 +516,7 @@ class ImportContactSubmissionsCsvAction
         }
 
         return collect($mappings)
-            ->unique(static fn (array $mapping): string => $mapping['source_column'].'::'.$mapping['target_field'])
+            ->unique(static fn(array $mapping): string => $mapping['source_column'] . '::' . $mapping['target_field'])
             ->values()
             ->all();
     }
@@ -489,17 +538,17 @@ class ImportContactSubmissionsCsvAction
 
     private static function prefillSuggestedMappings(Get $get, Set $set): void
     {
-        $csvFile = self::resolveCsvFilePath($get('csv_file'));
-
-        if ($csvFile === null) {
-            return;
-        }
-
-        $parsed = app(ContactCsvParser::class)->parseFile(
-            filePath: $csvFile,
+        $parsed = self::parseCsvState(
+            csvSource: (string) ($get('csv_source') ?? 'upload'),
+            csvState: $get('csv_file'),
+            curatorMediaId: $get('curator_media_id'),
             delimiter: self::normalizeDelimiter((string) $get('delimiter')),
             hasHeader: (bool) ($get('has_header') ?? true),
         );
+
+        if (($parsed['error'] ?? null) === 'missing_file') {
+            return;
+        }
 
         if (filled($parsed['error'] ?? null)) {
             return;
@@ -551,18 +600,129 @@ class ImportContactSubmissionsCsvAction
         ];
 
         $customMappings = collect($suggestedMappings)
-            ->filter(static fn (array $mapping): bool => in_array((string) ($mapping['target_field'] ?? ''), $extraSuggestedTargets, true))
-            ->map(static fn (array $mapping): array => [
+            ->filter(static fn(array $mapping): bool => in_array((string) ($mapping['target_field'] ?? ''), $extraSuggestedTargets, true))
+            ->map(static fn(array $mapping): array => [
                 'source_column' => (string) ($mapping['source_column'] ?? ''),
                 'target_field' => (string) ($mapping['target_field'] ?? ''),
             ])
-            ->filter(static fn (array $mapping): bool => filled($mapping['source_column']) && filled($mapping['target_field']))
+            ->filter(static fn(array $mapping): bool => filled($mapping['source_column']) && filled($mapping['target_field']))
             ->values()
             ->all();
 
         if ($customMappings !== []) {
             $set('custom_mappings', $customMappings);
         }
+    }
+
+    /**
+     * @return array{headers: array<int, string>, rows: array<int, array<string, string>>, preview: array<int, array<string, string>>, delimiter: string, total_rows: int, error: string|null}
+     */
+    private static function parseCsvState(string $csvSource, mixed $csvState, mixed $curatorMediaId, ?string $delimiter, bool $hasHeader): array
+    {
+        if ($csvSource === 'files') {
+            $media = Media::query()->find((int) $curatorMediaId);
+
+            if ($media === null) {
+                return [
+                    'headers' => [],
+                    'rows' => [],
+                    'preview' => [],
+                    'delimiter' => $delimiter ?? ',',
+                    'total_rows' => 0,
+                    'error' => 'missing_file',
+                ];
+            }
+
+            return app(ContactCsvParser::class)->parseFile(
+                filePath: (string) $media->path,
+                delimiter: $delimiter,
+                hasHeader: $hasHeader,
+                disk: (string) $media->disk,
+            );
+        }
+
+        if ($csvState instanceof TemporaryUploadedFile) {
+            $realPath = $csvState->getRealPath();
+
+            if (is_string($realPath) && $realPath !== '' && file_exists($realPath)) {
+                $content = file_get_contents($realPath);
+
+                if (is_string($content) && $content !== '') {
+                    return app(ContactCsvParser::class)->parseContent(
+                        content: $content,
+                        delimiter: $delimiter,
+                        hasHeader: $hasHeader,
+                    );
+                }
+            }
+        }
+
+        $csvFile = self::resolveCsvFilePath($csvState);
+
+        if ($csvFile === null) {
+            return [
+                'headers' => [],
+                'rows' => [],
+                'preview' => [],
+                'delimiter' => $delimiter ?? ',',
+                'total_rows' => 0,
+                'error' => 'missing_file',
+            ];
+        }
+
+        return app(ContactCsvParser::class)->parseFile(
+            filePath: $csvFile,
+            delimiter: $delimiter,
+            hasHeader: $hasHeader,
+        );
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private static function csvMediaOptions(): array
+    {
+        return Media::query()
+            ->whereIn('ext', ['csv', 'txt'])
+            ->where('directory', 'like', 'imports/contact-submissions%')
+            ->orderByDesc('created_at')
+            ->limit(200)
+            ->get(['id', 'name', 'ext', 'directory', 'path', 'size', 'created_at'])
+            ->mapWithKeys(static function (Media $media): array {
+                $label = trim((string) ($media->name ?? 'archivo'));
+                $ext = trim((string) ($media->ext ?? 'csv'));
+                $directory = trim((string) ($media->directory ?? ''));
+                $size = self::formatFileSize((int) ($media->size ?? 0));
+                $createdAt = $media->created_at?->format('d/m/Y H:i') ?? '-';
+
+                if ($directory !== '') {
+                    $label .= ".{$ext} ({$directory})";
+                } else {
+                    $label .= ".{$ext}";
+                }
+
+                $label .= " - {$size} - {$createdAt}";
+
+                return [$media->id => $label];
+            })
+            ->all();
+    }
+
+    private static function formatFileSize(int $bytes): string
+    {
+        if ($bytes <= 0) {
+            return '0 B';
+        }
+
+        if ($bytes < 1024) {
+            return $bytes . ' B';
+        }
+
+        if ($bytes < 1024 * 1024) {
+            return number_format($bytes / 1024, 1) . ' KB';
+        }
+
+        return number_format($bytes / (1024 * 1024), 2) . ' MB';
     }
 
     private static function resolveCsvFilePath(mixed $state): ?string
@@ -584,5 +744,46 @@ class ImportContactSubmissionsCsvAction
         }
 
         return null;
+    }
+
+    private static function storeImportedCsvInCurator(string $sourcePath): void
+    {
+        if (! Storage::disk('local')->exists($sourcePath)) {
+            return;
+        }
+
+        $directory = 'imports/contact-submissions';
+        $filename = basename($sourcePath);
+        $targetPath = trim($directory . '/' . $filename, '/');
+
+        if (! Storage::disk('curator')->exists($targetPath)) {
+            Storage::disk('curator')->put(
+                $targetPath,
+                (string) Storage::disk('local')->get($sourcePath),
+            );
+        }
+
+        $existingMedia = Media::query()
+            ->where('disk', 'curator')
+            ->where('path', $targetPath)
+            ->first();
+
+        if ($existingMedia !== null) {
+            return;
+        }
+
+        $extension = strtolower((string) pathinfo($filename, PATHINFO_EXTENSION));
+        $name = (string) pathinfo($filename, PATHINFO_FILENAME);
+
+        Media::query()->create([
+            'disk' => 'curator',
+            'directory' => $directory,
+            'visibility' => 'public',
+            'name' => $name,
+            'path' => $targetPath,
+            'size' => Storage::disk('curator')->size($targetPath),
+            'type' => 'text/csv',
+            'ext' => $extension !== '' ? $extension : 'csv',
+        ]);
     }
 }

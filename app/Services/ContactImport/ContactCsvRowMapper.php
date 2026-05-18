@@ -57,7 +57,7 @@ class ContactCsvRowMapper
             return $directMap[$signature];
         }
 
-        return 'fields.'.$signature;
+        return 'fields.' . $signature;
     }
 
     /**
