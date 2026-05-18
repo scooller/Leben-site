@@ -354,7 +354,9 @@ class ImportContactSubmissionsCsvAction
                     message: 'Importación encolada. Se inició el procesamiento de filas.',
                 );
 
-                RunContactCsvImportJob::dispatch(
+                // dispatchSync ejecuta el job en el mismo request (sin necesitar queue worker),
+                // preserva el usuario autenticado como causer en los activity logs.
+                RunContactCsvImportJob::dispatchSync(
                     importId: $importId,
                     rows: $parsed['rows'],
                     mappings: $mappings,

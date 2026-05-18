@@ -3,16 +3,23 @@
 namespace App\Filament\Pages;
 
 use App\Services\ContactImport\ContactImportProgressTracker;
+use BackedEnum;
 use Filament\Pages\Page;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Request;
+use UnitEnum;
 
 class ContactImportProgress extends Page
 {
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedArrowUpTray;
+
     protected static ?string $title = 'Progreso de Importación';
 
     protected static ?string $navigationLabel = 'Progreso Importación';
 
-    protected static ?int $navigationSort = 99;
+    protected static string|UnitEnum|null $navigationGroup = 'Contenido';
+
+    protected static ?int $navigationSort = 5;
 
     protected string $view = 'filament.pages.contact-import-progress';
 
