@@ -40,6 +40,18 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ### 🔄 Cambios
 
+#### Importación CSV de Contactos
+- Flujo del wizard ajustado para seleccionar `canal` antes de definir mapeos de columnas.
+- Página de progreso de importación registrada en Filament y navegación del panel.
+- Mapeo CSV robustecido con normalización de llaves y aliases:
+  - `rango_renta` como llave canónica (con limpieza de aliases legacy).
+  - `apellido` como llave canónica única (sin duplicar `apellidos`).
+  - Teléfonos normalizados a solo dígitos (sin `+` ni espacios).
+  - Normalización de texto con reemplazo de `_` por espacios para campos no email.
+- Enriquecimiento de UTMs durante importación y sincronización (`utm_source`, `utm_campaign`, `utm_content`, `utm_medium`, `utm_term`) desde aliases de marketing.
+- Comando histórico `contact:normalize-rango-renta-key` con soporte `--dry-run` para normalizar registros existentes.
+- Cobertura de pruebas actualizada para mapper CSV, normalización histórica y flujo del job de importación.
+
 #### Curator y Tests
 - Ajuste de estilo en `MediaForm` (closures y concatenación) para mantener consistencia de formato.
 - Normalización de concatenación en test de QR short link para mayor legibilidad.

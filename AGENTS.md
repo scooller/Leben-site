@@ -26,6 +26,10 @@ La aplicación soporta:
 - ✅ **Normalización de Etapas**: Conversión de etapas de proyectos (proyecto_etapa)
 - ✅ **Website Preview**: Links de vista previa y normalización de URLs
 - ✅ **Settings dinámicos**: Configuración de plantas por página en API
+- ✅ **Importación CSV de contactos**: Progreso en panel, mapeo por canal y trazabilidad del proceso
+- ✅ **Normalización canónica de importación**: `rango_renta` y `apellido` unificados con limpieza de aliases legacy
+- ✅ **Normalización de telefonía**: Persistencia de teléfonos en formato solo dígitos
+- ✅ **UTM mapping robusto**: Aliases de marketing homologados hacia campos UTM y payload Salesforce
 
 ### Módulos Activos
 1. **Salesforce Integration** - Sincronización de leads/casos, OAuth, caché
@@ -245,8 +249,9 @@ php artisan test --compact --filter=testName  # Por test
 - Validación por canal (sale, info, etc.)
 - Sincronización automática a Salesforce
 - Rate limiting (throttle:10,1)
-- **[WIP]** Integración de `channel` como parámetro de query string en frontend
-- **[WIP]** Refactorización del flujo de contactos con validación mejorada
+- Importación CSV con selección de canal previa al mapeo
+- Mapeo dinámico de columnas con aliases históricos y normalización consistente
+- Comando de normalización histórica `contact:normalize-rango-renta-key` con `--dry-run`
 
 ### Plantas & Proyectos
 - Normalización de etapas (proyecto_etapa)
@@ -263,34 +268,21 @@ php artisan test --compact --filter=testName  # Por test
 
 ---
 
-## Trabajos en Progreso (WIP)
+## Estado Operativo Actual
 
-### Contact Submissions - Integración de Canales
-**Estado**: 80% completado, pendiente commit
+### Contact Submissions - Importación CSV
+**Estado**: Implementado y validado con pruebas focalizadas
 
-**Cambios**:
-- Frontend (Contact.jsx): Lectura de parámetro `channel` desde query string, fallback a 'sale'
-- Service (contactSubmissions.js): Actualizado para pasar canal al backend
-- Backend (StoreContactSubmissionRequest.php): Validación mejorada del canal
-- Tests (ContactSubmissionApiTest.php): Nuevo test para validar endpoint
+**Cobertura funcional activa**:
+- Wizard de importación con canal seleccionado antes del mapeo
+- Página de progreso de importación en panel administrativo
+- Dry-run para validación previa sin persistencia
+- Normalización de campos canónicos (`rango_renta`, `apellido`, `phone`)
+- Mapeo y enriquecimiento UTM para integraciones de marketing/Salesforce
 
-**Archivos modificados sin commit**:
-- `frontend/src/pages/Contact.jsx`
-- `frontend/src/services/contactSubmissions.js`
-- `app/Http/Requests/StoreContactSubmissionRequest.php`
-- `tests/Feature/ContactSubmissionApiTest.php` (nuevo)
-- `agente/memoria-contact-submit-canales.md` (documentación actualizada)
-
-**Próximos pasos**:
-1. Completar tests unitarios
-2. Validar flujo end-to-end (frontend → backend → Salesforce)
-3. Hacer commit con mensaje descriptivo
-4. Deployment a staging para validar
-
-**Referencias**:
-- Documentación: `agente/memoria-contact-submit-canales.md`
-- API endpoint: `POST /api/v1/contact-submissions`
-- Rate limit: `throttle:10,1` (10 requests/minuto por IP)
+**Comando operativo**:
+- `php artisan contact:normalize-rango-renta-key --dry-run`
+- `php artisan contact:normalize-rango-renta-key`
 
 ---
 

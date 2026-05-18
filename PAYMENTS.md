@@ -4,7 +4,7 @@ Sistema completo para múltiples pasarelas de pago con Laravel 12 + Filament 5.
 
 ## 📦 Instalado
 
-- ✅ **Transbank SDK**: `transbank/transbank-sdk` v2.x
+- ✅ **Transbank SDK**: `transbank/transbank-sdk` v5.x
 - ✅ **Mercado Pago SDK**: `mercadopago/dx-php` v3.x
 - ✅ **PaymentWebhookController**: Manejo de retornos y webhooks
 - ✅ **Vistas de resultado**: success, failed, pending

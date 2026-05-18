@@ -64,6 +64,7 @@ frontend/
 - ✅ **Integración con Salesforce** - Proyectos y plantas se sincronizan desde Salesforce; el formulario de contacto crea Leads con reintentos automáticos
 - ✅ **Preservación de datos locales** - La sincronización evita sobrescribir atributos locales sensibles cuando el dato debe mantenerse en la base local
 - ✅ **Procesamiento asíncrono** - Exportaciones y notificaciones soportadas sobre cola `database` con notificaciones persistidas en Filament
+- ✅ **Importación CSV de contactos** - Wizard con selección de canal previa al mapeo, progreso en panel, mapeo dinámico y normalización canónica de datos
 
 ### Panel Administrativo (Filament)
 - ✅ **Autenticación** - Laravel Sanctum + sessions + Spatie permissions
@@ -139,6 +140,8 @@ frontend/
 - **Facturación** — Campos de facturación y página pública de resultado de pago
 - **GTM y Facebook Pixel** — Integración configurable desde SiteSettings con deduplicación de eventos
 - **FinMail** — Notificaciones de email transaccional integradas al flujo de negocio
+- **Importación de contactos** — Normalización de `rango_renta`, `apellido` canónico, teléfono en solo dígitos y aliases UTM alineados con Salesforce
+- **Normalización histórica** — Comando `contact:normalize-rango-renta-key` con modo `--dry-run`
 
 ## 🛠️ Comandos Útiles
 
@@ -166,6 +169,16 @@ php artisan db:seed
 
 # Ver estado de migraciones
 php artisan migrate:status
+```
+
+### Normalización de contactos
+
+```bash
+# Simular normalización histórica (sin persistir cambios)
+php artisan contact:normalize-rango-renta-key --dry-run
+
+# Ejecutar normalización histórica
+php artisan contact:normalize-rango-renta-key
 ```
 
 ### Sincronización Salesforce
