@@ -35,14 +35,32 @@ class SalesforceCaseMapper
             ?: 'Sin Apellido';
 
         $projectName = $this->fieldValue($fields, ['nombre_proyecto', 'proyecto', 'project_name', 'proyecto_formulario']);
-        $utmSource = $this->fieldValue($fields, ['utm_source', 'medio_de_llegada', 'medio_llegada', 'lead_source', 'origen_del_prospecto']);
+        $utmSource = $this->fieldValue($fields, [
+            'utm_source',
+            'medio_de_llegada',
+            'medio_llegada',
+            'lead_source',
+            'origen_del_prospecto',
+            'origen_prospecto',
+            'origen del prospecto',
+            'origen-del-prospecto',
+        ]);
         $website = $this->resolveWebsiteSource($fields, $utmSource);
         $utmMedium = $this->fieldValue($fields, ['utm_medium', 'audiencia']);
         $utmCampaignDefault = $this->normalizeFieldValue(data_get($settings->extra_settings, 'utm_campaign_default'));
         $utmCampaign = $this->resolveUtmCampaign($fields, $utmCampaignDefault);
         $utmContent = $this->fieldValue($fields, ['utm_content', 'pieza_grafica']);
         $utmTerm = $this->fieldValue($fields, ['utm_term', 'audiencia']);
-        $leadSource = $utmSource ?: $this->fieldValue($fields, ['lead_source', 'medio_de_llegada', 'medio', 'origen']);
+        $leadSource = $utmSource ?: $this->fieldValue($fields, [
+            'lead_source',
+            'medio_de_llegada',
+            'medio',
+            'origen',
+            'origen_del_prospecto',
+            'origen_prospecto',
+            'origen del prospecto',
+            'origen-del-prospecto',
+        ]);
         $email = $submission->email ?: $this->fieldValue($fields, ['email', 'correo']) ?: null;
         $phone = $submission->phone ?: $this->fieldValue($fields, ['phone', 'telefono', 'fono', 'celular', 'whatsapp']);
         $includeDescription = $this->shouldIncludeDescription($settings);

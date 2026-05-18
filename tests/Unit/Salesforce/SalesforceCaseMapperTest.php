@@ -328,4 +328,35 @@ class SalesforceCaseMapperTest extends TestCase
 
         $this->assertSame('005U100000CAG4bIAH', $payload['OwnerId'] ?? null);
     }
+
+    public function test_it_maps_origen_prospecto_to_lead_source_and_utm_source(): void
+    {
+        config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');
+        config()->set('services.salesforce.lead_status', 'En Contacto');
+
+        SiteSetting::current()->update([
+            'site_name' => 'iLeben',
+            'contact_form_fields' => [
+                ['key' => 'name', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
+                ['key' => 'origen_prospecto', 'label' => 'Origen del prospecto', 'type' => 'text', 'required' => false],
+            ],
+        ]);
+
+        $submission = ContactSubmission::query()->create([
+            'name' => 'Cesar Test',
+            'email' => 'cesar.test@example.com',
+            'phone' => '56911111111',
+            'fields' => [
+                'name' => 'Cesar Test',
+                'apellido' => 'Mapper',
+                'origen_prospecto' => 'facebook ads',
+            ],
+            'submitted_at' => now(),
+        ]);
+
+        $payload = app(SalesforceCaseMapper::class)->mapLead($submission);
+
+        $this->assertSame('Facebook ads', $payload['LeadSource'] ?? null);
+        $this->assertSame('facebook ads', $payload['utm_source__c'] ?? null);
+    }
 }

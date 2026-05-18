@@ -38,11 +38,11 @@ class ProyectoForm
                                 Action::make('openSalesforceProject')
                                     ->label('Ver en Salesforce')
                                     ->icon('heroicon-m-arrow-top-right-on-square')
-                                    ->url(fn (?Proyecto $record): ?string => filled($record?->salesforce_id)
+                                    ->url(fn(?Proyecto $record): ?string => filled($record?->salesforce_id)
                                         ? "https://leben.lightning.force.com/lightning/r/Proyecto__c/{$record->salesforce_id}/view"
                                         : null)
                                     ->openUrlInNewTab()
-                                    ->visible(fn (?Proyecto $record): bool => filled($record?->salesforce_id))
+                                    ->visible(fn(?Proyecto $record): bool => filled($record?->salesforce_id))
                             ),
 
                         Textarea::make('descripcion')
@@ -104,13 +104,13 @@ class ProyectoForm
                                 Action::make('openProjectWebsite')
                                     ->label('Ver página')
                                     ->icon('heroicon-m-arrow-top-right-on-square')
-                                    ->url(fn (?Proyecto $record): ?string => filled($record?->pagina_web)
+                                    ->url(fn(?Proyecto $record): ?string => filled($record?->pagina_web)
                                         ? (str_starts_with($record->pagina_web, 'http://') || str_starts_with($record->pagina_web, 'https://')
                                             ? $record->pagina_web
                                             : "https://{$record->pagina_web}")
                                         : null)
                                     ->openUrlInNewTab()
-                                    ->visible(fn (?Proyecto $record): bool => filled($record?->pagina_web))
+                                    ->visible(fn(?Proyecto $record): bool => filled($record?->pagina_web))
                             ),
 
                         DatePicker::make('fecha_inicio_ventas')
@@ -140,7 +140,7 @@ class ProyectoForm
                             ->relationship(
                                 name: 'asesores',
                                 titleAttribute: 'email',
-                                modifyQueryUsing: fn (Builder $query): Builder => $query
+                                modifyQueryUsing: fn(Builder $query): Builder => $query
                                     ->orderBy('first_name')
                                     ->orderBy('last_name')
                             )
@@ -174,9 +174,9 @@ class ProyectoForm
                                     ->suffixAction(
                                         Action::make('openSalesforcePortada')
                                             ->icon('heroicon-m-arrow-top-right-on-square')
-                                            ->url(fn (?Proyecto $record): ?string => $record?->salesforce_portada_url)
+                                            ->url(fn(?Proyecto $record): ?string => $record?->salesforce_portada_url)
                                             ->openUrlInNewTab()
-                                            ->visible(fn (?Proyecto $record): bool => filled($record?->salesforce_portada_url))
+                                            ->visible(fn(?Proyecto $record): bool => filled($record?->salesforce_portada_url))
                                     ),
 
                                 TextInput::make('salesforce_logo_url')
@@ -186,9 +186,9 @@ class ProyectoForm
                                     ->suffixAction(
                                         Action::make('openSalesforceLogo')
                                             ->icon('heroicon-m-arrow-top-right-on-square')
-                                            ->url(fn (?Proyecto $record): ?string => $record?->salesforce_logo_url)
+                                            ->url(fn(?Proyecto $record): ?string => $record?->salesforce_logo_url)
                                             ->openUrlInNewTab()
-                                            ->visible(fn (?Proyecto $record): bool => filled($record?->salesforce_logo_url))
+                                            ->visible(fn(?Proyecto $record): bool => filled($record?->salesforce_logo_url))
                                     ),
 
                                 Placeholder::make('salesforce_branding_hint')
@@ -295,6 +295,11 @@ class ProyectoForm
                                     ->label('Descuento por Defecto Cotización Web (%)')
                                     ->numeric()
                                     ->disabled()
+                                    ->suffix('%'),
+
+                                TextInput::make('descuento_maximo_cotizacion_web')
+                                    ->label('Descuento Máximo Cotización Web (%)')
+                                    ->numeric()
                                     ->suffix('%'),
                             ])
                             ->columns(2),
