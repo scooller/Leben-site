@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\ContactSubmission;
 use Illuminate\Console\Command;
+use Illuminate\Support\Str;
 
 class NormalizeContactRangoRentaKey extends Command
 {
@@ -33,10 +34,11 @@ class NormalizeContactRangoRentaKey extends Command
                     $fields = is_array($record->fields) ? $record->fields : [];
 
                     [$normalizedFields, $fieldsChanged] = $this->normalizeRangoRentaFields($fields);
+                    [$normalizedFields, $phoneFieldsChanged] = $this->normalizePhoneFields($normalizedFields);
                     $normalizedPhone = $this->normalizePhone($record->phone);
                     $phoneChanged = $normalizedPhone !== $record->phone;
 
-                    if (! $fieldsChanged && ! $phoneChanged) {
+                    if (! $fieldsChanged && ! $phoneFieldsChanged && ! $phoneChanged) {
                         continue;
                     }
 
@@ -125,5 +127,43 @@ class NormalizeContactRangoRentaKey extends Command
         $normalized = (string) preg_replace('/\s+/', ' ', $normalized);
 
         return trim($normalized);
+    }
+
+    /**
+     * @param  array<string, mixed>  $fields
+     * @return array{0: array<string, mixed>, 1: bool}
+     */
+    private function normalizePhoneFields(array $fields): array
+    {
+        $changed = false;
+        $phoneSignatures = ['phone', 'telefono', 'celular', 'fono', 'whatsapp'];
+
+        foreach ($fields as $key => $rawValue) {
+            $normalizedKey = Str::of((string) $key)
+                ->ascii()
+                ->lower()
+                ->replaceMatches('/[^a-z0-9]+/', '_')
+                ->trim('_')
+                ->toString();
+
+            if (! in_array($normalizedKey, $phoneSignatures, true)) {
+                continue;
+            }
+
+            if ($rawValue === null) {
+                continue;
+            }
+
+            $normalized = $this->normalizePhone($rawValue);
+
+            if ($normalized === null || $normalized === (string) $rawValue) {
+                continue;
+            }
+
+            $fields[$key] = $normalized;
+            $changed = true;
+        }
+
+        return [$fields, $changed];
     }
 }

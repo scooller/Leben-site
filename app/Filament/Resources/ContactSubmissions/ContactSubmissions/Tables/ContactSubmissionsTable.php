@@ -30,7 +30,7 @@ class ContactSubmissionsTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn(Builder $query): Builder => $query->with(['channel:id,name,slug_badge_color']))
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['channel:id,name,slug_badge_color']))
             ->columns(self::columns())
             ->defaultSort('submitted_at', 'desc')
             ->searchable()
@@ -39,7 +39,7 @@ class ContactSubmissionsTable
                 SelectFilter::make('contact_channel_id')
                     ->label('Canal')
                     ->options(
-                        fn(): array => ContactChannel::query()
+                        fn (): array => ContactChannel::query()
                             ->where('is_active', true)
                             ->orderBy('name')
                             ->pluck('name', 'id')
@@ -137,7 +137,7 @@ class ContactSubmissionsTable
 
                 return TextColumn::make("fields.{$key}")
                     ->label($label)
-                    ->state(fn($record): string => self::formatDynamicValue(self::resolveDynamicFieldValue($record->fields, $key), $field))
+                    ->state(fn ($record): string => self::formatDynamicValue(self::resolveDynamicFieldValue($record->fields, $key), $field))
                     ->placeholder('-')
                     ->wrap()
                     ->limit(60)
@@ -151,7 +151,7 @@ class ContactSubmissionsTable
             $dynamicColumns = [
                 TextColumn::make('fields_summary')
                     ->label('Campos')
-                    ->state(fn($record): string => self::summarizeDynamicFields($record->fields))
+                    ->state(fn ($record): string => self::summarizeDynamicFields($record->fields))
                     ->placeholder('-')
                     ->wrap()
                     ->toggleable(),
@@ -166,7 +166,7 @@ class ContactSubmissionsTable
                 ->label('Canal')
                 ->placeholder('Sin canal')
                 ->badge()
-                ->color(fn($record): array => self::resolveBadgeColor($record->channel?->slug_badge_color))
+                ->color(fn ($record): array => self::resolveBadgeColor($record->channel?->slug_badge_color))
                 ->sortable()
                 ->toggleable(),
             // TextColumn::make('rut')
@@ -182,21 +182,21 @@ class ContactSubmissionsTable
             // sincronizado con salesforce
             TextColumn::make('salesforce_synced_at')
                 ->label('Sincronizado con Salesforce')
-                ->state(fn($record) => $record->salesforceSyncedAt())
+                ->state(fn ($record) => $record->salesforceSyncedAt())
                 ->dateTime()
                 ->placeholder('No disponible')
                 ->sortable(),
             IconColumn::make('salesforce_synced')
                 ->label('Salesforce')
-                ->state(fn($record): bool => filled($record->salesforce_case_id))
+                ->state(fn ($record): bool => filled($record->salesforce_case_id))
                 ->boolean()
                 ->trueIcon('heroicon-o-check-circle')
                 ->falseIcon('heroicon-o-x-circle')
                 ->trueColor('success')
                 ->falseColor('danger')
-                ->tooltip(fn($record): string => filled($record->salesforce_case_id)
-                    ? 'Lead ID: ' . $record->salesforce_case_id
-                    : (filled($record->salesforce_case_error) ? 'Error: ' . $record->salesforce_case_error : 'No sincronizado'))
+                ->tooltip(fn ($record): string => filled($record->salesforce_case_id)
+                    ? 'Lead ID: '.$record->salesforce_case_id
+                    : (filled($record->salesforce_case_error) ? 'Error: '.$record->salesforce_case_error : 'No sincronizado'))
                 ->toggleable(),
         ];
     }
@@ -222,9 +222,43 @@ class ContactSubmissionsTable
             return null;
         }
 
+        $normalizedFieldMap = [];
+
+        foreach ($fields as $key => $value) {
+            $normalizedKey = Str::of((string) $key)
+                ->ascii()
+                ->lower()
+                ->replaceMatches('/[^a-z0-9]+/', '_')
+                ->trim('_')
+                ->toString();
+
+            if ($normalizedKey === '' || array_key_exists($normalizedKey, $normalizedFieldMap)) {
+                continue;
+            }
+
+            $normalizedFieldMap[$normalizedKey] = $value;
+        }
+
         foreach (self::fieldLookupKeys($fieldKey) as $lookupKey) {
             if (! array_key_exists($lookupKey, $fields)) {
-                continue;
+                $normalizedLookupKey = Str::of($lookupKey)
+                    ->ascii()
+                    ->lower()
+                    ->replaceMatches('/[^a-z0-9]+/', '_')
+                    ->trim('_')
+                    ->toString();
+
+                if ($normalizedLookupKey === '' || ! array_key_exists($normalizedLookupKey, $normalizedFieldMap)) {
+                    continue;
+                }
+
+                $value = $normalizedFieldMap[$normalizedLookupKey];
+
+                if (is_string($value) && trim($value) === '') {
+                    continue;
+                }
+
+                return $value;
             }
 
             $value = $fields[$lookupKey];
@@ -260,9 +294,18 @@ class ContactSubmissionsTable
             'rango_renta' => [
                 'rango_de_renta',
                 'en_que_rango_se_encuentra_tu_renta_liquida',
+                'income_range',
+                'renta_liquida',
             ],
             'rango_de_renta' => [
                 'rango_renta',
+                'en_que_rango_se_encuentra_tu_renta_liquida',
+                'income_range',
+                'renta_liquida',
+            ],
+            'income_range' => [
+                'rango_renta',
+                'rango_de_renta',
                 'en_que_rango_se_encuentra_tu_renta_liquida',
             ],
             'codeudor' => [
@@ -280,7 +323,7 @@ class ContactSubmissionsTable
             $aliases[] = $alias;
         }
 
-        return array_values(array_unique(array_filter($aliases, static fn(string $key): bool => $key !== '')));
+        return array_values(array_unique(array_filter($aliases, static fn (string $key): bool => $key !== '')));
     }
 
     /**
@@ -289,8 +332,8 @@ class ContactSubmissionsTable
     private static function fieldDefinitions(): array
     {
         return collect(SiteSetting::current()->contact_form_fields ?? [])
-            ->filter(fn(mixed $field): bool => is_array($field) && filled($field['key'] ?? null))
-            ->mapWithKeys(fn(array $field): array => [((string) $field['key']) => $field])
+            ->filter(fn (mixed $field): bool => is_array($field) && filled($field['key'] ?? null))
+            ->mapWithKeys(fn (array $field): array => [((string) $field['key']) => $field])
             ->union([
                 'comuna' => [
                     'key' => 'comuna',

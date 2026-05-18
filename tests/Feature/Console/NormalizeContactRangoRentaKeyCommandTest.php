@@ -24,6 +24,7 @@ class NormalizeContactRangoRentaKeyCommandTest extends TestCase
                 'rango_de_renta' => 'entre_$4.500.000_a_$6.500.000',
                 'en_que_rango_se_encuentra_tu_renta_liquida' => 'deprecated_value',
                 'codeudor' => 'Si',
+                'telefono' => '+56 9 8156 03212',
             ],
             'submitted_at' => now(),
         ]);
@@ -37,6 +38,7 @@ class NormalizeContactRangoRentaKeyCommandTest extends TestCase
         $this->assertArrayNotHasKey('rango_de_renta', $submission->fields);
         $this->assertArrayNotHasKey('en_que_rango_se_encuentra_tu_renta_liquida', $submission->fields);
         $this->assertSame('Si', $submission->fields['codeudor'] ?? null);
+        $this->assertSame('569815603212', $submission->fields['telefono'] ?? null);
         $this->assertSame('56982021604', $submission->phone);
     }
 
