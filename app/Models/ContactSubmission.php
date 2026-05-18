@@ -34,6 +34,18 @@ class ContactSubmission extends Model
         'salesforce_synced_at' => 'datetime',
     ];
 
+    public function setPhoneAttribute(mixed $value): void
+    {
+        if ($value === null) {
+            $this->attributes['phone'] = null;
+
+            return;
+        }
+
+        $normalized = (string) preg_replace('/\D+/', '', (string) $value);
+        $this->attributes['phone'] = $normalized !== '' ? $normalized : null;
+    }
+
     public function channel(): BelongsTo
     {
         return $this->belongsTo(ContactChannel::class, 'contact_channel_id');

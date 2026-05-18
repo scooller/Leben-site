@@ -53,6 +53,7 @@ class ContactCsvRowMapper
             'origen_del_prospecto' => 'fields.origen_prospecto',
             'medio_de_llegada' => 'fields.medio_llegada',
             'nombre_de_la_campana' => 'fields.campana',
+            'rango_de_renta' => 'fields.rango_renta',
             'en_que_rango_se_encuentra_tu_renta_liquida' => 'fields.rango_renta',
             'tienes_la_posibilidad_de_complementar_tu_renta' => 'fields.codeudor',
         ];
@@ -173,7 +174,46 @@ class ContactCsvRowMapper
             $result['rut'] = (string) $result['fields']['rut'];
         }
 
+        $result['fields'] = $this->canonicalizeFields($result['fields']);
+
         return $result;
+    }
+
+    /**
+     * @param  array<string, string>  $fields
+     * @return array<string, string>
+     */
+    private function canonicalizeFields(array $fields): array
+    {
+        $rangoAliases = [
+            'rango_de_renta',
+            'en_que_rango_se_encuentra_tu_renta_liquida',
+        ];
+
+        $canonicalRango = trim((string) ($fields['rango_renta'] ?? ''));
+
+        if ($canonicalRango === '') {
+            foreach ($rangoAliases as $aliasKey) {
+                $aliasValue = trim((string) ($fields[$aliasKey] ?? ''));
+
+                if ($aliasValue === '') {
+                    continue;
+                }
+
+                $canonicalRango = $aliasValue;
+                break;
+            }
+        }
+
+        foreach ($rangoAliases as $aliasKey) {
+            unset($fields[$aliasKey]);
+        }
+
+        if ($canonicalRango !== '') {
+            $fields['rango_renta'] = $canonicalRango;
+        }
+
+        return $fields;
     }
 
     /**
@@ -188,7 +228,7 @@ class ContactCsvRowMapper
             'telefono' => ['celular', 'phone'],
             'fono' => ['telefono', 'phone'],
             'phone' => ['telefono', 'celular'],
-            'en_que_rango_se_encuentra_tu_renta_liquida' => ['rango_renta', 'rango_de_renta'],
+            'en_que_rango_se_encuentra_tu_renta_liquida' => ['rango_renta'],
             'tienes_la_posibilidad_de_complementar_tu_renta' => ['codeudor'],
             'codeudor' => ['tienes_la_posibilidad_de_complementar_tu_renta'],
             'medio_de_llegada' => ['medio_llegada', 'utm_source', 'lead_source'],
@@ -235,7 +275,14 @@ class ContactCsvRowMapper
             return $this->normalizeYesNoValue($normalized);
         }
 
-        return $normalized;
+        $isEmailTarget = in_array($targetField, ['email', 'fields.email'], true);
+        $isEmailSource = in_array($sourceKey, ['email', 'correo'], true);
+
+        if ($isEmailTarget || $isEmailSource) {
+            return $normalized;
+        }
+
+        return $this->normalizeTextValue($normalized);
     }
 
     private function normalizePhoneNumber(string $value): string
@@ -261,6 +308,14 @@ class ContactCsvRowMapper
         }
 
         return $value;
+    }
+
+    private function normalizeTextValue(string $value): string
+    {
+        $normalized = str_replace('_', ' ', $value);
+        $normalized = (string) preg_replace('/\s+/', ' ', $normalized);
+
+        return trim($normalized);
     }
 
     public function headerSignature(string $header): string

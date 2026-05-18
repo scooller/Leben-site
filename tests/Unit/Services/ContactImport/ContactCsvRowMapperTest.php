@@ -128,7 +128,9 @@ class ContactCsvRowMapperTest extends TestCase
         $this->assertSame('Moreno marmor', $mapped['fields']['apellidos']);
         $this->assertSame('56982021604', $mapped['fields']['telefono']);
         $this->assertSame('56982021604', $mapped['fields']['phone']);
-        $this->assertSame('entre_$4.500.000_a_$6.500.000', $mapped['fields']['rango_renta']);
+        $this->assertSame('entre $4.500.000 a $6.500.000', $mapped['fields']['rango_renta']);
+        $this->assertArrayNotHasKey('rango_de_renta', $mapped['fields']);
+        $this->assertArrayNotHasKey('en_que_rango_se_encuentra_tu_renta_liquida', $mapped['fields']);
         $this->assertSame('Si', $mapped['fields']['codeudor']);
     }
 
