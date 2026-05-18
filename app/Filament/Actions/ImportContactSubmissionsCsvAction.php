@@ -488,6 +488,8 @@ class ImportContactSubmissionsCsvAction
             'fields.comuna' => 'Campo dinámico: Comuna',
             'fields.proyecto' => 'Campo dinámico: Proyecto',
             'fields.mensaje' => 'Campo dinámico: Mensaje',
+            'fields.rango_renta' => 'Campo dinámico: Rango renta',
+            'fields.codeudor' => 'Campo dinámico: Codeudor / Complementa renta',
             'fields.campana' => 'Campo dinámico: Campaña',
             'fields.medio_llegada' => 'Campo dinámico: Medio de llegada',
             'fields.origen_prospecto' => 'Campo dinámico: Origen del prospecto',
@@ -760,6 +762,8 @@ class ImportContactSubmissionsCsvAction
         $availableTargets = array_fill_keys(array_keys(self::targetFieldOptions($get)), true);
 
         $extraSuggestedTargets = [
+            'fields.rango_renta',
+            'fields.codeudor',
             'fields.medio_llegada',
             'fields.origen_prospecto',
             'fields.campana',
