@@ -11,6 +11,23 @@ class ContactTextHomologationServiceTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_homologate_resolves_proyecto_by_salesforce_id_with_name_fallback(): void
+    {
+        Proyecto::factory()->create([
+            'salesforce_id' => 'a0J8c00000sdxCZEAY',
+            'name' => 'Edificio Inn',
+            'comuna' => 'Puerto Varas',
+        ]);
+
+        $result = app(ContactTextHomologationService::class)->homologate([
+            'comuna' => 'Puerto Varas',
+            'proyecto' => 'a0J8c00000sdxCZEAY',
+        ]);
+
+        $this->assertSame('Edificio Inn', $result['fields']['proyecto']);
+        $this->assertSame([], $result['warnings']);
+    }
+
     public function test_homologate_resolves_comuna_and_proyecto(): void
     {
         Proyecto::factory()->create([
