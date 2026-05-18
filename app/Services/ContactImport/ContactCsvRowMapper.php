@@ -96,6 +96,13 @@ class ContactCsvRowMapper
             if (in_array($targetField, ['name', 'email', 'phone', 'rut'], true)) {
                 $result[$targetField] = $value;
 
+                // Mirror to fields[] using the column's signature as key so that
+                // dynamic table columns (which read from fields.{key}) also show the value.
+                $mirrorKey = $this->headerSignature($sourceColumn);
+                if ($mirrorKey !== '' && ! isset($result['fields'][$mirrorKey])) {
+                    $result['fields'][$mirrorKey] = $value;
+                }
+
                 continue;
             }
 

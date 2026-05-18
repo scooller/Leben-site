@@ -71,5 +71,10 @@ class ContactCsvRowMapperTest extends TestCase
         $this->assertSame('ICON', $mapped['fields']['proyecto']);
         $this->assertSame('Nunoa', $mapped['fields']['comuna']);
         $this->assertSame('Valor X', $mapped['fields']['columna_extra']);
+
+        // Model-level fields should also be mirrored into fields[] using the column signature
+        // so that dynamic table columns (fields.nombre, fields.email, etc.) display correctly.
+        $this->assertSame('Juan Perez', $mapped['fields']['nombre']);
+        $this->assertSame('juan@example.com', $mapped['fields']['email']);
     }
 }
