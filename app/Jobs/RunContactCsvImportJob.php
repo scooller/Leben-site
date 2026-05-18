@@ -89,20 +89,32 @@ class RunContactCsvImportJob implements ShouldQueue
                 }
             }
 
+            $email = trim((string) ($mapped['email'] ?? ''));
+
             if (blank($fields['comuna'] ?? null) || blank($fields['proyecto'] ?? null)) {
                 $tracker->increment($this->importId, 'failed');
                 $tracker->increment($this->importId, 'processed');
-                $tracker->addLog($this->importId, "Fila {$rowNumber}: Comuna y Proyecto son obligatorios.");
+                $tracker->addLog($this->importId, $this->buildRowSummary(
+                    rowNumber: $rowNumber,
+                    prefix: 'Comuna y Proyecto son obligatorios.',
+                    mapped: $mapped,
+                    email: $email,
+                    fields: $fields,
+                ));
 
                 continue;
             }
 
-            $email = trim((string) ($mapped['email'] ?? ''));
-
             if ($email !== '' && Validator::make(['email' => $email], ['email' => ['email']])->fails()) {
                 $tracker->increment($this->importId, 'failed');
                 $tracker->increment($this->importId, 'processed');
-                $tracker->addLog($this->importId, "Fila {$rowNumber}: email inválido.");
+                $tracker->addLog($this->importId, $this->buildRowSummary(
+                    rowNumber: $rowNumber,
+                    prefix: 'email inválido.',
+                    mapped: $mapped,
+                    email: $email,
+                    fields: $fields,
+                ));
 
                 continue;
             }
@@ -111,7 +123,13 @@ class RunContactCsvImportJob implements ShouldQueue
 
             if ($this->dryRun) {
                 $tracker->increment($this->importId, 'processed');
-                $tracker->addLog($this->importId, "Fila {$rowNumber}: válida para importar.");
+                $tracker->addLog($this->importId, $this->buildRowSummary(
+                    rowNumber: $rowNumber,
+                    prefix: 'válida para importar.',
+                    mapped: $mapped,
+                    email: $email,
+                    fields: $fields,
+                ));
 
                 continue;
             }
@@ -129,16 +147,16 @@ class RunContactCsvImportJob implements ShouldQueue
                 'submitted_at' => now(),
             ]);
 
-            if ($this->syncToSalesforce) {
-                $syncError = rescue(
-                    callback: function () use ($submission): null {
-                        CreateSalesforceCaseJob::dispatchSync($submission, 'manual');
+            $tracker->addLog($this->importId, $this->buildRowSummary(
+                rowNumber: $rowNumber,
+                prefix: 'contacto creado.',
+                mapped: $mapped,
+                email: $email,
+                fields: $fields,
+            ));
 
-                        return null;
-                    },
-                    rescue: static fn(mixed $exception): mixed => $exception,
-                    report: false,
-                );
+            if ($this->syncToSalesforce) {
+                $syncError = $this->dispatchSalesforceSync($submission);
 
                 if ($syncError !== null) {
                     $syncErrorMessage = is_string($syncError)
@@ -146,7 +164,13 @@ class RunContactCsvImportJob implements ShouldQueue
                         : 'Error de sync Salesforce.';
 
                     $tracker->increment($this->importId, 'sync_failed');
-                    $tracker->addLog($this->importId, "Fila {$rowNumber}: error de sync Salesforce - {$syncErrorMessage}");
+                    $tracker->addLog($this->importId, $this->buildRowSummary(
+                        rowNumber: $rowNumber,
+                        prefix: 'error de sync Salesforce - ' . $syncErrorMessage,
+                        mapped: $mapped,
+                        email: $email,
+                        fields: $fields,
+                    ));
                 } else {
                     $tracker->increment($this->importId, 'synced');
                     $tracker->addLog($this->importId, "Fila {$rowNumber}: sincronizada en Salesforce.");
@@ -172,5 +196,43 @@ class RunContactCsvImportJob implements ShouldQueue
             : 'Fallo inesperado en job de importación.';
 
         app(ContactImportProgressTracker::class)->markFailed($this->importId, $message);
+    }
+
+    private function displayValue(mixed $value): string
+    {
+        $text = trim((string) ($value ?? ''));
+
+        return $text !== '' ? $text : '-';
+    }
+
+    protected function dispatchSalesforceSync(ContactSubmission $submission): mixed
+    {
+        return rescue(
+            callback: function () use ($submission): null {
+                CreateSalesforceCaseJob::dispatchSync($submission, 'manual');
+
+                return null;
+            },
+            rescue: static fn(mixed $exception): mixed => $exception,
+            report: false,
+        );
+    }
+
+    /**
+     * @param  array{name: string|null, email: string|null, phone: string|null, rut: string|null, fields: array<string, string>}  $mapped
+     * @param  array<string, string>  $fields
+     */
+    private function buildRowSummary(int $rowNumber, string $prefix, array $mapped, string $email, array $fields): string
+    {
+        return sprintf(
+            'Fila %d: %s Nombre: %s | Email: %s | Teléfono: %s | Proyecto: %s | Comuna: %s',
+            $rowNumber,
+            $prefix,
+            $this->displayValue($mapped['name'] ?? null),
+            $this->displayValue($email),
+            $this->displayValue($mapped['phone'] ?? null),
+            $this->displayValue($fields['proyecto'] ?? null),
+            $this->displayValue($fields['comuna'] ?? null),
+        );
     }
 }

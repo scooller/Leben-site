@@ -465,8 +465,8 @@ class ImportContactSubmissionsCsvAction
 
         return new HtmlString(
             '<pre style="margin:0; padding:12px 14px; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.03); white-space:pre-wrap; font-size:.92rem; line-height:1.5;">'
-            .e(implode("\n", $lines))
-            .'</pre>'
+                .e(implode("\n", $lines))
+                .'</pre>'
         );
     }
 
