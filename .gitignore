@@ -33,3 +33,4 @@ auth.json
 /.github
 /frontend/public/webawesome
 bootstrap/cache
+/.codegraph
