@@ -34,6 +34,7 @@ class RunContactCsvImportJob implements ShouldQueue
         public bool $homologateComuna,
         public bool $homologateProyecto,
         public bool $syncToSalesforce,
+        public bool $dryRun,
         public bool $hasHeader,
         public ?string $ipAddress,
         public ?string $userAgent,
@@ -55,7 +56,12 @@ class RunContactCsvImportJob implements ShouldQueue
             return;
         }
 
-        $tracker->addLog($this->importId, 'Inicio de importación en background.');
+        $tracker->addLog(
+            $this->importId,
+            $this->dryRun
+                ? 'Inicio de simulación de importación.'
+                : 'Inicio de importación.'
+        );
 
         foreach ($this->rows as $lineIndex => $row) {
             $rowNumber = $lineIndex + ($this->hasHeader ? 2 : 1);
@@ -101,6 +107,15 @@ class RunContactCsvImportJob implements ShouldQueue
                 continue;
             }
 
+            $tracker->increment($this->importId, 'created');
+
+            if ($this->dryRun) {
+                $tracker->increment($this->importId, 'processed');
+                $tracker->addLog($this->importId, "Fila {$rowNumber}: válida para importar.");
+
+                continue;
+            }
+
             $submission = ContactSubmission::query()->create([
                 'contact_channel_id' => $channel->id,
                 'name' => $mapped['name'],
@@ -114,8 +129,6 @@ class RunContactCsvImportJob implements ShouldQueue
                 'submitted_at' => now(),
             ]);
 
-            $tracker->increment($this->importId, 'created');
-
             if ($this->syncToSalesforce) {
                 $syncError = rescue(
                     callback: function () use ($submission): null {
@@ -123,7 +136,7 @@ class RunContactCsvImportJob implements ShouldQueue
 
                         return null;
                     },
-                    rescue: static fn(mixed $exception): mixed => $exception,
+                    rescue: static fn (mixed $exception): mixed => $exception,
                     report: false,
                 );
 
@@ -144,7 +157,12 @@ class RunContactCsvImportJob implements ShouldQueue
         }
 
         $tracker->markCompleted($this->importId);
-        $tracker->addLog($this->importId, 'Importación finalizada.');
+        $tracker->addLog(
+            $this->importId,
+            $this->dryRun
+                ? 'Simulación finalizada. No se crearon contactos ni se ejecutó sync con Salesforce.'
+                : 'Importación finalizada.'
+        );
     }
 
     public function failed(mixed $exception): void

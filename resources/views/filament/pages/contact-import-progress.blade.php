@@ -9,6 +9,7 @@
                 <div style="display:flex; justify-content:space-between; gap:.75rem; flex-wrap:wrap;">
                     <strong>Estado: {{ strtoupper((string) ($this->snapshot['status'] ?? 'running')) }}</strong>
                     <span>Canal: {{ (string) ($this->snapshot['channel_name'] ?? '-') }}</span>
+                    <span>Modo: {{ (bool) ($this->snapshot['dry_run'] ?? false) ? 'Dry-run' : 'Importación real' }}</span>
                     <span>Salesforce: {{ (bool) ($this->snapshot['sync_to_salesforce'] ?? false) ? 'Sí' : 'No' }}</span>
                 </div>
 
@@ -22,7 +23,7 @@
                 </div>
 
                 <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap:.5rem; font-size:.9rem;">
-                    <div>Creados: <strong>{{ (int) ($this->snapshot['created'] ?? 0) }}</strong></div>
+                    <div>{{ (bool) ($this->snapshot['dry_run'] ?? false) ? 'Válidos' : 'Creados' }}: <strong>{{ (int) ($this->snapshot['created'] ?? 0) }}</strong></div>
                     <div>Fallidos: <strong>{{ (int) ($this->snapshot['failed'] ?? 0) }}</strong></div>
                     <div>Warnings: <strong>{{ (int) ($this->snapshot['warnings'] ?? 0) }}</strong></div>
                     <div>Sync OK: <strong>{{ (int) ($this->snapshot['synced'] ?? 0) }}</strong></div>

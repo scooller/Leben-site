@@ -8,7 +8,7 @@ class ContactImportProgressTracker
 {
     private const TTL_SECONDS = 21600;
 
-    public function initialize(string $importId, int $totalRows, string $channelName, bool $syncToSalesforce): void
+    public function initialize(string $importId, int $totalRows, string $channelName, bool $syncToSalesforce, bool $dryRun = false): void
     {
         Cache::put($this->metaKey($importId), [
             'import_id' => $importId,
@@ -16,6 +16,7 @@ class ContactImportProgressTracker
             'total_rows' => max(0, $totalRows),
             'channel_name' => $channelName,
             'sync_to_salesforce' => $syncToSalesforce,
+            'dry_run' => $dryRun,
             'started_at' => now()->toDateTimeString(),
             'finished_at' => null,
             'error' => null,
@@ -43,7 +44,7 @@ class ContactImportProgressTracker
     public function addLog(string $importId, string $message): void
     {
         $logs = (array) Cache::get($this->logsKey($importId), []);
-        $logs[] = '[' . now()->format('H:i:s') . '] ' . $message;
+        $logs[] = '['.now()->format('H:i:s').'] '.$message;
 
         if (count($logs) > 200) {
             $logs = array_slice($logs, -200);
@@ -69,7 +70,7 @@ class ContactImportProgressTracker
         $meta['finished_at'] = now()->toDateTimeString();
 
         Cache::put($this->metaKey($importId), $meta, self::TTL_SECONDS);
-        $this->addLog($importId, 'Error fatal: ' . $error);
+        $this->addLog($importId, 'Error fatal: '.$error);
     }
 
     /**
@@ -93,6 +94,7 @@ class ContactImportProgressTracker
                 'logs' => [],
                 'channel_name' => '-',
                 'sync_to_salesforce' => false,
+                'dry_run' => false,
                 'started_at' => null,
                 'finished_at' => null,
                 'error' => null,
@@ -118,6 +120,7 @@ class ContactImportProgressTracker
             'logs' => (array) Cache::get($this->logsKey($importId), []),
             'channel_name' => (string) ($meta['channel_name'] ?? '-'),
             'sync_to_salesforce' => (bool) ($meta['sync_to_salesforce'] ?? false),
+            'dry_run' => (bool) ($meta['dry_run'] ?? false),
             'started_at' => $meta['started_at'] ?? null,
             'finished_at' => $meta['finished_at'] ?? null,
             'error' => $meta['error'] ?? null,
