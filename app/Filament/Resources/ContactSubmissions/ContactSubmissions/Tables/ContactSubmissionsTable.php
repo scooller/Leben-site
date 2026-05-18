@@ -128,11 +128,20 @@ class ContactSubmissionsTable
      */
     private static function columns(): array
     {
+        // Labels de columnas fijas para evitar duplicados
+        $fixedLabels = [
+            'rango de renta',
+            // Agrega aquí otros labels fijos si agregas más columnas robustas
+        ];
+
         $dynamicColumns = collect(self::fieldDefinitions())
-            ->filter(function (array $field): bool {
+            ->filter(function (array $field) use ($fixedLabels) {
                 $key = (string) $field['key'];
-                // Omitir las columnas de rango de renta, se agregan manualmente
-                return !in_array($key, ['rango_renta', 'rango de renta', 'rango_de_renta', 'income_range', 'renta_liquida']);
+                $label = filled($field['label'] ?? null)
+                    ? (string) $field['label']
+                    : Str::headline($key);
+                // Omitir cualquier campo cuyo label (case-insensitive) ya esté en las columnas fijas
+                return !in_array(Str::lower($label), $fixedLabels, true);
             })
             ->map(function (array $field): TextColumn {
                 $key = (string) $field['key'];
@@ -140,20 +149,14 @@ class ContactSubmissionsTable
                     ? (string) $field['label']
                     : Str::headline($key);
 
-                // Si el label es exactamente 'Rango de renta', la columna se oculta del selector
                 $column = TextColumn::make("fields.{$key}")
                     ->label($label)
                     ->state(fn($record): string => self::formatDynamicValue(self::resolveDynamicFieldValue($record->fields, $key), $field))
                     ->placeholder('-')
                     ->wrap()
                     ->limit(60)
-                    ->sortable();
-
-                if (Str::lower($label) === 'rango de renta') {
-                    $column = $column->toggleable(isToggledHiddenByDefault: true);
-                } else {
-                    $column = $column->toggleable();
-                }
+                    ->sortable()
+                    ->toggleable();
 
                 return $column;
             })
