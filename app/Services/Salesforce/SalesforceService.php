@@ -882,6 +882,7 @@ class SalesforceService
      *               'valor_reserva_exigido_defecto_peso' => float|null,
      *               'valor_reserva_exigido_min_peso' => float|null,
      *               'descuento_defecto_cotizacion_web' => float|null,
+     *               'descuento_maximo_unidad' => float|null,
      *               'entrega_inmediata' => bool
      *               ]
      */
@@ -901,7 +902,7 @@ class SalesforceService
             .'Fecha_Inicio_Ventas__c, Fecha_Recepcion_Municipal__c, Etapa__c, Horario_Atencion__c, '
             .'Asesor_Responsable__c, Asesor_1__c, Asesor_2__c, '
             .'Valor_Reserva_Exigido_Defecto_Peso__c, Valor_Reserva_Exigido_Min_Peso__c, '
-            .'Descuento_por_Defecto_Cotizaci_n_Web__c, Entrega_Inmediata__c '
+            .'Descuento_por_Defecto_Cotizaci_n_Web__c, Dscto_M_x_Prod_Principal_Porc__c, Entrega_Inmediata__c '
             .'FROM Proyecto__c '
             ."WHERE IsDeleted = false AND Activo__c = true AND Tipo_Producto__c = 'DEPARTAMENTO' "
             .'ORDER BY Name '
@@ -944,6 +945,10 @@ class SalesforceService
                             && $entry['Descuento_por_Defecto_Cotizaci_n_Web__c'] !== null
                             ? (float) $entry['Descuento_por_Defecto_Cotizaci_n_Web__c']
                             : null,
+                        'descuento_maximo_unidad' => array_key_exists('Dscto_M_x_Prod_Principal_Porc__c', $entry)
+                            && $entry['Dscto_M_x_Prod_Principal_Porc__c'] !== null
+                            ? (float) $entry['Dscto_M_x_Prod_Principal_Porc__c']
+                            : null,
                         'entrega_inmediata' => (bool) ($entry['Entrega_Inmediata__c'] ?? false),
                     ];
                 }, $entries);
@@ -980,6 +985,10 @@ class SalesforceService
                         'descuento_defecto_cotizacion_web' => array_key_exists('Descuento_por_Defecto_Cotizaci_n_Web__c', $entry)
                             && $entry['Descuento_por_Defecto_Cotizaci_n_Web__c'] !== null
                             ? (float) $entry['Descuento_por_Defecto_Cotizaci_n_Web__c']
+                            : null,
+                        'descuento_maximo_unidad' => array_key_exists('Dscto_M_x_Prod_Principal_Porc__c', $entry)
+                            && $entry['Dscto_M_x_Prod_Principal_Porc__c'] !== null
+                            ? (float) $entry['Dscto_M_x_Prod_Principal_Porc__c']
                             : null,
                         'entrega_inmediata' => (bool) ($entry['Entrega_Inmediata__c'] ?? false),
                     ];

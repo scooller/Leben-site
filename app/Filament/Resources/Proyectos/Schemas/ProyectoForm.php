@@ -303,7 +303,10 @@ class ProyectoForm
                                     ->disabled()
                                     ->dehydrated(false)
                                     ->afterStateHydrated(function (TextInput $component, ?Proyecto $record): void {
-                                        $component->state($record?->plantas()->max('porcentaje_maximo_unidad'));
+                                        $component->state(
+                                            $record?->descuento_maximo_unidad
+                                            ?? $record?->plantas()->max('porcentaje_maximo_unidad')
+                                        );
                                     })
                                     ->suffix('%'),
                             ])
