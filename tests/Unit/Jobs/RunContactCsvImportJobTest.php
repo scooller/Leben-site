@@ -224,7 +224,7 @@ class RunContactCsvImportJobTest extends TestCase
         $this->assertStringContainsString('contacto creado.', $logs);
         $this->assertStringContainsString('Nombre: Jane Doe', $logs);
         $this->assertStringContainsString('Email: jane@example.com', $logs);
-        $this->assertStringContainsString('Teléfono: +56911111111', $logs);
+        $this->assertStringContainsString('Teléfono: 56911111111', $logs);
         $this->assertStringContainsString('Proyecto: Edificio Inn', $logs);
         $this->assertStringContainsString('Comuna: Puerto Varas', $logs);
     }
@@ -292,7 +292,7 @@ class RunContactCsvImportJobTest extends TestCase
 
         $this->assertStringContainsString('Nombre: Jane Doe', $logs);
         $this->assertStringContainsString('Email: jane@example.com', $logs);
-        $this->assertStringContainsString('Teléfono: +56911111111', $logs);
+        $this->assertStringContainsString('Teléfono: 56911111111', $logs);
         $this->assertStringContainsString('Proyecto: Edificio Inn', $logs);
         $this->assertStringContainsString('Comuna: Puerto Varas', $logs);
         $this->assertStringContainsString('No se crearon contactos', $logs);

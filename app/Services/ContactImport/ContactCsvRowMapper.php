@@ -61,7 +61,7 @@ class ContactCsvRowMapper
             return $directMap[$signature];
         }
 
-        return 'fields.' . $signature;
+        return 'fields.'.$signature;
     }
 
     /**
@@ -89,14 +89,19 @@ class ContactCsvRowMapper
                 continue;
             }
 
-            $value = trim((string) ($row[$sourceColumn] ?? ''));
+            $rawValue = trim((string) ($row[$sourceColumn] ?? ''));
 
-            if ($value === '') {
+            if ($rawValue === '') {
                 continue;
             }
 
             $mappedColumns[] = $sourceColumn;
             $sourceSignature = $this->headerSignature($sourceColumn);
+            $value = $this->normalizeMappedValue($rawValue, $sourceSignature, $targetField);
+
+            if ($value === '') {
+                continue;
+            }
 
             if ($sourceSignature !== '' && ! isset($result['fields'][$sourceSignature])) {
                 $result['fields'][$sourceSignature] = $value;
@@ -135,8 +140,14 @@ class ContactCsvRowMapper
                     continue;
                 }
 
-                $result['fields'][$signature] = $cleanValue;
-                $this->applyFieldAliases($result['fields'], $signature, $cleanValue);
+                $normalizedValue = $this->normalizeMappedValue($cleanValue, $signature, 'fields.'.$signature);
+
+                if ($normalizedValue === '') {
+                    continue;
+                }
+
+                $result['fields'][$signature] = $normalizedValue;
+                $this->applyFieldAliases($result['fields'], $signature, $normalizedValue);
             }
         }
 
@@ -176,8 +187,18 @@ class ContactCsvRowMapper
             'celular' => ['telefono', 'phone'],
             'telefono' => ['celular', 'phone'],
             'fono' => ['telefono', 'phone'],
+            'phone' => ['telefono', 'celular'],
             'en_que_rango_se_encuentra_tu_renta_liquida' => ['rango_renta', 'rango_de_renta'],
             'tienes_la_posibilidad_de_complementar_tu_renta' => ['codeudor'],
+            'codeudor' => ['tienes_la_posibilidad_de_complementar_tu_renta'],
+            'medio_de_llegada' => ['medio_llegada', 'utm_source', 'lead_source'],
+            'medio_llegada' => ['medio_de_llegada', 'utm_source', 'lead_source'],
+            'nombre_de_la_campana' => ['campana', 'utm_campaign'],
+            'campana' => ['nombre_de_la_campana', 'utm_campaign'],
+            'pieza_grafica' => ['utm_content'],
+            'informacion_cotizacion' => ['project_name', 'nombre_proyecto'],
+            'origen_del_prospecto' => ['origen_prospecto'],
+            'origen_prospecto' => ['origen_del_prospecto'],
         ];
 
         foreach ($aliasesBySource[$sourceKey] ?? [] as $aliasKey) {
@@ -185,6 +206,61 @@ class ContactCsvRowMapper
                 $fields[$aliasKey] = $value;
             }
         }
+    }
+
+    private function normalizeMappedValue(string $value, string $sourceKey, string $targetField): string
+    {
+        $normalized = trim($value);
+
+        if ($normalized === '') {
+            return '';
+        }
+
+        $isPhoneTarget = in_array($targetField, ['phone', 'fields.phone', 'fields.telefono', 'fields.celular'], true);
+        $isPhoneSource = in_array($sourceKey, ['phone', 'telefono', 'celular', 'fono', 'whatsapp'], true);
+
+        if ($isPhoneTarget || $isPhoneSource) {
+            return $this->normalizePhoneNumber($normalized);
+        }
+
+        $isCodeudorTarget = $targetField === 'fields.codeudor';
+        $isCodeudorSource = in_array($sourceKey, [
+            'codeudor',
+            'tienes_la_posibilidad_de_complementar_tu_renta',
+            'complementa_renta',
+            'complementarenta',
+        ], true);
+
+        if ($isCodeudorTarget || $isCodeudorSource) {
+            return $this->normalizeYesNoValue($normalized);
+        }
+
+        return $normalized;
+    }
+
+    private function normalizePhoneNumber(string $value): string
+    {
+        return (string) preg_replace('/\D+/', '', $value);
+    }
+
+    private function normalizeYesNoValue(string $value): string
+    {
+        $normalized = Str::of($value)
+            ->ascii()
+            ->lower()
+            ->replaceMatches('/[^a-z0-9]+/', '_')
+            ->trim('_')
+            ->toString();
+
+        if (str_contains($normalized, 'no_puedo') || str_starts_with($normalized, 'no')) {
+            return 'No';
+        }
+
+        if (str_contains($normalized, 'puedo') || str_starts_with($normalized, 'si') || str_starts_with($normalized, 'yes')) {
+            return 'Si';
+        }
+
+        return $value;
     }
 
     public function headerSignature(string $header): string

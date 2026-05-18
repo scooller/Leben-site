@@ -21,7 +21,7 @@ class ContactCsvRowMapperTest extends TestCase
         ]);
 
         $bySource = collect($mappings)
-            ->mapWithKeys(static fn(array $mapping): array => [
+            ->mapWithKeys(static fn (array $mapping): array => [
                 (string) $mapping['source_column'] => (string) $mapping['target_field'],
             ])
             ->all();
@@ -46,6 +46,29 @@ class ContactCsvRowMapperTest extends TestCase
         $this->assertSame('fields.rango_renta', $mapper->suggestTargetField('¿en_qué_rango_se_encuentra_tu_renta_líquida?_'));
         $this->assertSame('fields.codeudor', $mapper->suggestTargetField('¿tienes_la_posibilidad_de_complementar_tu_renta?'));
         $this->assertSame('fields.origen_prospecto', $mapper->suggestTargetField('Origen del prospecto'));
+    }
+
+    public function test_map_row_normalizes_phone_and_codeudor_values(): void
+    {
+        $mapper = app(ContactCsvRowMapper::class);
+
+        $row = [
+            'Celular' => '+56 9 9490 3805',
+            '¿tienes_la_posibilidad_de_complementar_tu_renta?' => 'sí,_puedo_complementar.',
+        ];
+
+        $mappings = [
+            ['source_column' => 'Celular', 'target_field' => 'phone'],
+            ['source_column' => '¿tienes_la_posibilidad_de_complementar_tu_renta?', 'target_field' => 'fields.codeudor'],
+        ];
+
+        $mapped = $mapper->mapRow($row, $mappings, true);
+
+        $this->assertSame('56994903805', $mapped['phone']);
+        $this->assertSame('56994903805', $mapped['fields']['celular']);
+        $this->assertSame('56994903805', $mapped['fields']['telefono']);
+        $this->assertSame('56994903805', $mapped['fields']['phone']);
+        $this->assertSame('Si', $mapped['fields']['codeudor']);
     }
 
     public function test_map_row_maps_known_and_unmapped_columns(): void
@@ -106,7 +129,30 @@ class ContactCsvRowMapperTest extends TestCase
         $this->assertSame('56982021604', $mapped['fields']['telefono']);
         $this->assertSame('56982021604', $mapped['fields']['phone']);
         $this->assertSame('entre_$4.500.000_a_$6.500.000', $mapped['fields']['rango_renta']);
-        $this->assertSame('sí,_puedo_complementar.', $mapped['fields']['codeudor']);
+        $this->assertSame('Si', $mapped['fields']['codeudor']);
+    }
+
+    public function test_map_row_adds_marketing_aliases_for_medio_y_campana(): void
+    {
+        $mapper = app(ContactCsvRowMapper::class);
+
+        $row = [
+            'Medio de llegada' => 'Meta',
+            'Nombre de la Campaña' => 'Viveelsur',
+        ];
+
+        $mappings = [
+            ['source_column' => 'Medio de llegada', 'target_field' => 'fields.medio_llegada'],
+            ['source_column' => 'Nombre de la Campaña', 'target_field' => 'fields.campana'],
+        ];
+
+        $mapped = $mapper->mapRow($row, $mappings, true);
+
+        $this->assertSame('Meta', $mapped['fields']['medio_llegada']);
+        $this->assertSame('Meta', $mapped['fields']['utm_source']);
+        $this->assertSame('Meta', $mapped['fields']['lead_source']);
+        $this->assertSame('Viveelsur', $mapped['fields']['campana']);
+        $this->assertSame('Viveelsur', $mapped['fields']['utm_campaign']);
     }
 
     public function test_map_row_preserves_source_signature_for_each_explicit_mapping(): void
