@@ -55,7 +55,7 @@ class ImportContactSubmissionsCsvAction
                                 "\t" => 'Tabulador',
                                 '|' => 'Pipe (|)',
                             ])
-                            ->default(';')
+                            ->default(',')
                             ->live()
                             ->afterStateUpdated(function (Get $get, Set $set): void {
                                 self::prefillSuggestedMappings($get, $set);
@@ -74,9 +74,9 @@ class ImportContactSubmissionsCsvAction
                             ->disabled()
                             ->dehydrated(false)
                             ->formatStateUsing(function (Get $get): string {
-                                $csvFile = $get('csv_file');
+                                $csvFile = self::resolveCsvFilePath($get('csv_file'));
 
-                                if (! is_string($csvFile) || trim($csvFile) === '') {
+                                if ($csvFile === null) {
                                     return 'Sube un CSV para ver la vista previa.';
                                 }
 
@@ -108,9 +108,9 @@ class ImportContactSubmissionsCsvAction
                         Placeholder::make('mapping_autofill_hint')
                             ->hiddenLabel()
                             ->content(function (Get $get): string {
-                                $csvFile = $get('csv_file');
+                                $csvFile = self::resolveCsvFilePath($get('csv_file'));
 
-                                if (! is_string($csvFile) || trim($csvFile) === '') {
+                                if ($csvFile === null) {
                                     return 'Sube un CSV en el paso Archivo para aplicar sugerencias de mapeo automático.';
                                 }
 
@@ -233,9 +233,9 @@ class ImportContactSubmissionsCsvAction
                     ]),
             ])
             ->action(function (array $data): void {
-                $csvFile = trim((string) ($data['csv_file'] ?? ''));
+                $csvFile = self::resolveCsvFilePath($data['csv_file'] ?? null);
 
-                if ($csvFile === '') {
+                if ($csvFile === null) {
                     Notification::make()
                         ->title('CSV requerido')
                         ->body('Debes subir un archivo CSV antes de importar.')
@@ -262,7 +262,7 @@ class ImportContactSubmissionsCsvAction
 
                 $parsed = app(ContactCsvParser::class)->parseFile(
                     filePath: $csvFile,
-                    delimiter: self::normalizeDelimiter((string) ($data['delimiter'] ?? ';')),
+                    delimiter: self::normalizeDelimiter((string) ($data['delimiter'] ?? ',')),
                     hasHeader: (bool) ($data['has_header'] ?? true),
                 );
 
@@ -368,9 +368,9 @@ class ImportContactSubmissionsCsvAction
      */
     private static function csvHeaderOptions(Get $get): array
     {
-        $csvFile = $get('csv_file');
+        $csvFile = self::resolveCsvFilePath($get('csv_file'));
 
-        if (! is_string($csvFile) || trim($csvFile) === '') {
+        if ($csvFile === null) {
             return [];
         }
 
@@ -489,9 +489,9 @@ class ImportContactSubmissionsCsvAction
 
     private static function prefillSuggestedMappings(Get $get, Set $set): void
     {
-        $csvFile = $get('csv_file');
+        $csvFile = self::resolveCsvFilePath($get('csv_file'));
 
-        if (! is_string($csvFile) || trim($csvFile) === '') {
+        if ($csvFile === null) {
             return;
         }
 
@@ -563,5 +563,26 @@ class ImportContactSubmissionsCsvAction
         if ($customMappings !== []) {
             $set('custom_mappings', $customMappings);
         }
+    }
+
+    private static function resolveCsvFilePath(mixed $state): ?string
+    {
+        if (is_string($state)) {
+            $path = trim($state);
+
+            return $path !== '' ? $path : null;
+        }
+
+        if (is_array($state)) {
+            foreach ($state as $value) {
+                $resolved = self::resolveCsvFilePath($value);
+
+                if ($resolved !== null) {
+                    return $resolved;
+                }
+            }
+        }
+
+        return null;
     }
 }
