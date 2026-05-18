@@ -129,6 +129,11 @@ class ContactSubmissionsTable
     private static function columns(): array
     {
         $dynamicColumns = collect(self::fieldDefinitions())
+            ->filter(function (array $field): bool {
+                $key = (string) $field['key'];
+                // Omitir las columnas de rango de renta, se agregan manualmente
+                return !in_array($key, ['rango_renta', 'rango de renta', 'rango_de_renta', 'income_range', 'renta_liquida']);
+            })
             ->map(function (array $field): TextColumn {
                 $key = (string) $field['key'];
                 $label = filled($field['label'] ?? null)
@@ -146,6 +151,41 @@ class ContactSubmissionsTable
             })
             ->values()
             ->all();
+
+        // Columna robusta para Rango de renta (siempre visible)
+        $rangoRentaColumn = TextColumn::make('rango_renta')
+            ->label('Rango de renta')
+            ->state(function ($record) {
+                $fields = $record->fields ?? [];
+                $aliases = [
+                    'rango_renta', 'rango de renta', 'rango_de_renta', 'en_que_rango_se_encuentra_tu_renta_liquida', 'income_range', 'renta_liquida', 'renta', 'rango', 'renta_aprox', 'renta_aproximada'
+                ];
+                foreach ($aliases as $alias) {
+                    foreach ($fields as $key => $value) {
+                        if (stripos($key, $alias) !== false && !empty($value)) {
+                            return $value;
+                        }
+                    }
+                }
+                // fallback: buscar por normalización
+                foreach ($fields as $key => $value) {
+                    $normalized = Str::of($key)
+                        ->ascii()
+                        ->lower()
+                        ->replaceMatches('/[^a-z0-9]+/', '_')
+                        ->trim('_')
+                        ->toString();
+                    if (in_array($normalized, $aliases) && !empty($value)) {
+                        return $value;
+                    }
+                }
+                return '-';
+            })
+            ->placeholder('-')
+            ->wrap()
+            ->limit(60)
+            ->sortable()
+            ->toggleable();
 
         if ($dynamicColumns === []) {
             $dynamicColumns = [
@@ -174,6 +214,7 @@ class ContactSubmissionsTable
             //     ->placeholder('-')
             //     ->searchable()
             //     ->toggleable(isToggledHiddenByDefault: true),
+            $rangoRentaColumn,
             ...$dynamicColumns,
             TextColumn::make('submitted_at')
                 ->label('Enviado')
