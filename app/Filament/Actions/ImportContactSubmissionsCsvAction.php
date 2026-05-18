@@ -11,12 +11,14 @@ use App\Services\ContactImport\ContactCsvRowMapper;
 use App\Services\ContactImport\ContactTextHomologationService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Components\Wizard\Step;
 use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\Validator;
@@ -41,6 +43,9 @@ class ImportContactSubmissionsCsvAction
                             ->disk('local')
                             ->directory('imports/contact-submissions')
                             ->acceptedFileTypes(['text/csv', 'text/plain', 'application/vnd.ms-excel'])
+                            ->afterStateUpdated(function (Get $get, Set $set): void {
+                                self::prefillSuggestedMappings($get, $set);
+                            })
                             ->required(),
                         Select::make('delimiter')
                             ->label('Delimitador')
@@ -51,9 +56,17 @@ class ImportContactSubmissionsCsvAction
                                 '|' => 'Pipe (|)',
                             ])
                             ->default(';')
+                            ->live()
+                            ->afterStateUpdated(function (Get $get, Set $set): void {
+                                self::prefillSuggestedMappings($get, $set);
+                            })
                             ->required(),
                         Toggle::make('has_header')
                             ->label('El CSV contiene encabezados en la primera fila')
+                            ->live()
+                            ->afterStateUpdated(function (Get $get, Set $set): void {
+                                self::prefillSuggestedMappings($get, $set);
+                            })
                             ->default(true),
                         Textarea::make('preview')
                             ->label('Vista previa')
@@ -92,6 +105,38 @@ class ImportContactSubmissionsCsvAction
                 Step::make('Mapeo')
                     ->description('Define qué columna del CSV se guarda en cada campo.')
                     ->schema([
+                        Placeholder::make('mapping_autofill_hint')
+                            ->hiddenLabel()
+                            ->content(function (Get $get): string {
+                                $csvFile = $get('csv_file');
+
+                                if (! is_string($csvFile) || trim($csvFile) === '') {
+                                    return 'Sube un CSV en el paso Archivo para aplicar sugerencias de mapeo automático.';
+                                }
+
+                                $mappedSimpleFields = collect([
+                                    $get('map_name'),
+                                    $get('map_email'),
+                                    $get('map_phone'),
+                                    $get('map_rut'),
+                                    $get('map_comuna'),
+                                    $get('map_proyecto'),
+                                    $get('map_message'),
+                                ])->filter(static fn (mixed $value): bool => filled($value))->count();
+
+                                $customMappingsCount = collect((array) ($get('custom_mappings') ?? []))
+                                    ->filter(static fn (array $mapping): bool => filled($mapping['source_column'] ?? null) && filled($mapping['target_field'] ?? null))
+                                    ->count();
+
+                                $totalMappings = $mappedSimpleFields + $customMappingsCount;
+
+                                if ($totalMappings === 0) {
+                                    return 'No se detectaron sugerencias automáticas para los encabezados actuales. Puedes mapear manualmente.';
+                                }
+
+                                return "Sugerencias automáticas aplicadas: {$totalMappings} mapeo(s). Puedes ajustarlos manualmente antes de importar.";
+                            })
+                            ->columnSpanFull(),
                         Select::make('map_name')
                             ->label('Nombre')
                             ->options(fn (Get $get): array => self::csvHeaderOptions($get))
@@ -440,5 +485,83 @@ class ImportContactSubmissionsCsvAction
         }
 
         return $cleaned;
+    }
+
+    private static function prefillSuggestedMappings(Get $get, Set $set): void
+    {
+        $csvFile = $get('csv_file');
+
+        if (! is_string($csvFile) || trim($csvFile) === '') {
+            return;
+        }
+
+        $parsed = app(ContactCsvParser::class)->parseFile(
+            filePath: $csvFile,
+            delimiter: self::normalizeDelimiter((string) $get('delimiter')),
+            hasHeader: (bool) ($get('has_header') ?? true),
+        );
+
+        if (filled($parsed['error'] ?? null)) {
+            return;
+        }
+
+        $suggestedMappings = app(ContactCsvRowMapper::class)->buildSuggestedMappings($parsed['headers']);
+
+        $stateMapByTarget = [
+            'name' => 'map_name',
+            'email' => 'map_email',
+            'phone' => 'map_phone',
+            'rut' => 'map_rut',
+            'fields.comuna' => 'map_comuna',
+            'fields.proyecto' => 'map_proyecto',
+            'fields.mensaje' => 'map_message',
+        ];
+
+        foreach ($suggestedMappings as $suggestedMapping) {
+            $target = (string) ($suggestedMapping['target_field'] ?? '');
+            $source = (string) ($suggestedMapping['source_column'] ?? '');
+
+            if ($target === '' || $source === '') {
+                continue;
+            }
+
+            $statePath = $stateMapByTarget[$target] ?? null;
+
+            if ($statePath === null) {
+                continue;
+            }
+
+            if (filled($get($statePath))) {
+                continue;
+            }
+
+            $set($statePath, $source);
+        }
+
+        $existingCustomMappings = collect((array) ($get('custom_mappings') ?? []));
+
+        if ($existingCustomMappings->isNotEmpty()) {
+            return;
+        }
+
+        $extraSuggestedTargets = [
+            'fields.medio_llegada',
+            'fields.origen_prospecto',
+            'fields.campana',
+        ];
+
+        $customMappings = collect($suggestedMappings)
+            ->filter(static fn (array $mapping): bool => in_array((string) ($mapping['target_field'] ?? ''), $extraSuggestedTargets, true))
+            ->map(static fn (array $mapping): array => [
+                'source_column' => (string) ($mapping['source_column'] ?? ''),
+                'target_field' => (string) ($mapping['target_field'] ?? ''),
+            ])
+            ->filter(static fn (array $mapping): bool => filled($mapping['source_column']) && filled($mapping['target_field']))
+            ->values()
+            ->all();
+
+        if ($customMappings !== []) {
+            $set('custom_mappings', $customMappings);
+        }
     }
 }

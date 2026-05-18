@@ -7,6 +7,33 @@ use Tests\TestCase;
 
 class ContactCsvRowMapperTest extends TestCase
 {
+    public function test_build_suggested_mappings_returns_expected_targets_for_known_headers(): void
+    {
+        $mapper = app(ContactCsvRowMapper::class);
+
+        $mappings = $mapper->buildSuggestedMappings([
+            'Nombre',
+            'email',
+            'Celular',
+            'COMUNA',
+            'Proyecto',
+            'Medio de llegada',
+        ]);
+
+        $bySource = collect($mappings)
+            ->mapWithKeys(static fn (array $mapping): array => [
+                (string) $mapping['source_column'] => (string) $mapping['target_field'],
+            ])
+            ->all();
+
+        $this->assertSame('name', $bySource['Nombre']);
+        $this->assertSame('email', $bySource['email']);
+        $this->assertSame('phone', $bySource['Celular']);
+        $this->assertSame('fields.comuna', $bySource['COMUNA']);
+        $this->assertSame('fields.proyecto', $bySource['Proyecto']);
+        $this->assertSame('fields.medio_llegada', $bySource['Medio de llegada']);
+    }
+
     public function test_suggest_target_field_uses_expected_aliases(): void
     {
         $mapper = app(ContactCsvRowMapper::class);
