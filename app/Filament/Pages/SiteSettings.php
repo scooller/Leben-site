@@ -1014,6 +1014,16 @@ class SiteSettings extends Page implements HasForms
                         Tabs\Tab::make('Salesforce')
                             ->icon('heroicon-o-arrow-path')
                             ->schema([
+                                Section::make('Leads')
+                                    ->description('Configura qué datos se envían en el payload de Lead hacia Salesforce.')
+                                    ->schema([
+                                        Toggle::make('extra_settings.salesforce_include_description')
+                                            ->label('Incluir todos los campos en Description')
+                                            ->helperText('Si está activo, el campo Description del Lead incluirá el detalle completo de los campos enviados. Si está desactivado, no se enviará Description.')
+                                            ->default(true),
+                                    ])
+                                    ->columns(1),
+
                                 Section::make('Proyectos')
                                     ->description('Selecciona los campos de proyectos que no se deben actualizar al sincronizar desde Salesforce.')
                                     ->schema([

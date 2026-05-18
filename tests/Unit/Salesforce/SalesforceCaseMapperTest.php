@@ -258,6 +258,49 @@ class SalesforceCaseMapperTest extends TestCase
         $this->assertSame('BlackInmobiliario', $payload['utm_campaign__c'] ?? null);
     }
 
+    public function test_it_omits_description_when_disabled_in_site_settings(): void
+    {
+        config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');
+        config()->set('services.salesforce.lead_status', 'En Contacto');
+
+        SiteSetting::current()->update([
+            'site_name' => 'iLeben',
+            'extra_settings' => [
+                'salesforce_include_description' => false,
+            ],
+            'contact_form_fields' => [
+                ['key' => 'name', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
+                ['key' => 'project_name', 'label' => 'Proyecto', 'type' => 'text', 'required' => false],
+            ],
+        ]);
+
+        Proyecto::query()->create([
+            'salesforce_id' => 'a0J8c00000sdxGGEAY',
+            'name' => 'Edificio Description Off',
+            'slug' => 'edificio-description-off',
+            'is_active' => true,
+        ]);
+
+        $submission = ContactSubmission::query()->create([
+            'name' => 'Cesar',
+            'email' => 'cesar@example.com',
+            'phone' => '321654987',
+            'rut' => '11.111.111-1',
+            'fields' => [
+                'name' => 'Cesar',
+                'lastname' => 'Test',
+                'project_name' => 'Edificio Description Off',
+                'comuna' => 'Ñuñoa',
+                'utm_source' => 'direct',
+            ],
+            'submitted_at' => now(),
+        ]);
+
+        $payload = app(SalesforceCaseMapper::class)->mapLead($submission);
+
+        $this->assertArrayNotHasKey('Description', $payload);
+    }
+
     public function test_it_falls_back_to_case_owner_when_lead_owner_id_is_invalid(): void
     {
         config()->set('services.salesforce.lead_owner_id', 'owner-invalido');

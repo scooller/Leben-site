@@ -45,6 +45,7 @@ class SalesforceCaseMapper
         $leadSource = $utmSource ?: $this->fieldValue($fields, ['lead_source', 'medio_de_llegada', 'medio', 'origen']);
         $email = $submission->email ?: $this->fieldValue($fields, ['email', 'correo']) ?: null;
         $phone = $submission->phone ?: $this->fieldValue($fields, ['phone', 'telefono', 'fono', 'celular', 'whatsapp']);
+        $includeDescription = $this->shouldIncludeDescription($settings);
         $commune = $this->fieldValue($fields, ['comuna', 'commune']);
         $incomeRange = $this->fieldValue($fields, ['rango', 'renta', 'renta_liquida', 'income_range']);
         $complementIncome = $this->fieldValue($fields, ['complementarenta', 'complementa_renta', 'complementa_renta_liquida', 'codeudor']);
@@ -74,7 +75,9 @@ class SalesforceCaseMapper
             'Status' => (string) config('services.salesforce.lead_status', 'En Contacto'),
             'OwnerId' => $ownerId,
             'LeadSource' => $normalizedLeadSource,
-            'Description' => $this->buildDescription($fields, $fieldLabels),
+            'Description' => $includeDescription
+                ? $this->buildDescription($fields, $fieldLabels)
+                : null,
             'Tipo_Ingreso__c' => 'Online',
             'Proyecto__c' => $projectSalesforceId,
             'ID_Proyecto__c' => $projectSalesforceId,
@@ -156,6 +159,17 @@ class SalesforceCaseMapper
         }
 
         return implode("\n", $lines);
+    }
+
+    private function shouldIncludeDescription(SiteSetting $settings): bool
+    {
+        $configured = data_get($settings->extra_settings, 'salesforce_include_description');
+
+        if ($configured === null) {
+            return true;
+        }
+
+        return (bool) $configured;
     }
 
     private function normalizeFieldValue(mixed $value): ?string
