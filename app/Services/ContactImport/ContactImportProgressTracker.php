@@ -44,7 +44,7 @@ class ContactImportProgressTracker
     public function addLog(string $importId, string $message): void
     {
         $logs = (array) Cache::get($this->logsKey($importId), []);
-        $logs[] = '['.now()->format('H:i:s').'] '.$message;
+        $logs[] = '[' . now()->format('H:i:s') . '] ' . $message;
 
         if (count($logs) > 200) {
             $logs = array_slice($logs, -200);
@@ -70,7 +70,7 @@ class ContactImportProgressTracker
         $meta['finished_at'] = now()->toDateTimeString();
 
         Cache::put($this->metaKey($importId), $meta, self::TTL_SECONDS);
-        $this->addLog($importId, 'Error fatal: '.$error);
+        $this->addLog($importId, 'Error fatal: ' . $error);
     }
 
     /**

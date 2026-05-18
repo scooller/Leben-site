@@ -136,7 +136,7 @@ class RunContactCsvImportJob implements ShouldQueue
 
                         return null;
                     },
-                    rescue: static fn (mixed $exception): mixed => $exception,
+                    rescue: static fn(mixed $exception): mixed => $exception,
                     report: false,
                 );
 
