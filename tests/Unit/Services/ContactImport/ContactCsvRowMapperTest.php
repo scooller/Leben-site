@@ -125,7 +125,7 @@ class ContactCsvRowMapperTest extends TestCase
         $mapped = $mapper->mapRow($row, $mappings, true);
 
         $this->assertSame('Moreno marmor', $mapped['fields']['apellido']);
-        $this->assertSame('Moreno marmor', $mapped['fields']['apellidos']);
+        $this->assertArrayNotHasKey('apellidos', $mapped['fields']);
         $this->assertSame('56982021604', $mapped['fields']['telefono']);
         $this->assertSame('56982021604', $mapped['fields']['phone']);
         $this->assertSame('entre $4.500.000 a $6.500.000', $mapped['fields']['rango_renta']);
@@ -176,6 +176,6 @@ class ContactCsvRowMapperTest extends TestCase
         $this->assertSame('Me interesa agendar visita', $mapped['fields']['mensaje']);
         $this->assertSame('Me interesa agendar visita', $mapped['fields']['comentario_cliente']);
         $this->assertSame('Perez Soto', $mapped['fields']['apellido']);
-        $this->assertSame('Perez Soto', $mapped['fields']['apellidos']);
+        $this->assertArrayNotHasKey('apellidos', $mapped['fields']);
     }
 }

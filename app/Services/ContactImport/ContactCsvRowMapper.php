@@ -53,6 +53,9 @@ class ContactCsvRowMapper
             'origen_del_prospecto' => 'fields.origen_prospecto',
             'medio_de_llegada' => 'fields.medio_llegada',
             'nombre_de_la_campana' => 'fields.campana',
+            'campana' => 'fields.campana',
+            'audiencia' => 'fields.utm_medium',
+            'pieza_grafica' => 'fields.utm_content',
             'rango_de_renta' => 'fields.rango_renta',
             'en_que_rango_se_encuentra_tu_renta_liquida' => 'fields.rango_renta',
             'tienes_la_posibilidad_de_complementar_tu_renta' => 'fields.codeudor',
@@ -132,11 +135,13 @@ class ContactCsvRowMapper
                 }
 
                 $cleanValue = trim((string) $value);
+
                 if ($cleanValue === '') {
                     continue;
                 }
 
                 $signature = $this->headerSignature((string) $header);
+
                 if ($signature === '') {
                     continue;
                 }
@@ -185,16 +190,31 @@ class ContactCsvRowMapper
      */
     private function canonicalizeFields(array $fields): array
     {
+        $normalized = $fields;
+
+        $canonicalApellido = trim((string) ($normalized['apellido'] ?? ''));
+        $apellidosValue = trim((string) ($normalized['apellidos'] ?? ''));
+
+        if ($canonicalApellido === '' && $apellidosValue !== '') {
+            $canonicalApellido = $apellidosValue;
+        }
+
+        unset($normalized['apellidos']);
+
+        if ($canonicalApellido !== '') {
+            $normalized['apellido'] = $canonicalApellido;
+        }
+
         $rangoAliases = [
             'rango_de_renta',
             'en_que_rango_se_encuentra_tu_renta_liquida',
         ];
 
-        $canonicalRango = trim((string) ($fields['rango_renta'] ?? ''));
+        $canonicalRango = trim((string) ($normalized['rango_renta'] ?? ''));
 
         if ($canonicalRango === '') {
             foreach ($rangoAliases as $aliasKey) {
-                $aliasValue = trim((string) ($fields[$aliasKey] ?? ''));
+                $aliasValue = trim((string) ($normalized[$aliasKey] ?? ''));
 
                 if ($aliasValue === '') {
                     continue;
@@ -206,14 +226,41 @@ class ContactCsvRowMapper
         }
 
         foreach ($rangoAliases as $aliasKey) {
-            unset($fields[$aliasKey]);
+            unset($normalized[$aliasKey]);
         }
 
         if ($canonicalRango !== '') {
-            $fields['rango_renta'] = $canonicalRango;
+            $normalized['rango_renta'] = $canonicalRango;
         }
 
-        return $fields;
+        $utmAliasCandidates = [
+            'utm_source' => ['medio_de_llegada', 'medio_llegada', 'lead_source'],
+            'utm_campaign' => ['campana', 'nombre_de_la_campana'],
+            'utm_content' => ['pieza_grafica'],
+            'utm_medium' => ['audiencia'],
+            'utm_term' => ['audiencia'],
+        ];
+
+        foreach ($utmAliasCandidates as $utmKey => $aliases) {
+            $utmValue = trim((string) ($normalized[$utmKey] ?? ''));
+
+            if ($utmValue !== '') {
+                continue;
+            }
+
+            foreach ($aliases as $aliasKey) {
+                $aliasValue = trim((string) ($normalized[$aliasKey] ?? ''));
+
+                if ($aliasValue === '') {
+                    continue;
+                }
+
+                $normalized[$utmKey] = $aliasValue;
+                break;
+            }
+        }
+
+        return $normalized;
     }
 
     /**
@@ -223,19 +270,18 @@ class ContactCsvRowMapper
     {
         $aliasesBySource = [
             'apellidos' => ['apellido'],
-            'apellido' => ['apellidos'],
             'celular' => ['telefono', 'phone'],
             'telefono' => ['celular', 'phone'],
             'fono' => ['telefono', 'phone'],
             'phone' => ['telefono', 'celular'],
             'en_que_rango_se_encuentra_tu_renta_liquida' => ['rango_renta'],
             'tienes_la_posibilidad_de_complementar_tu_renta' => ['codeudor'],
-            'codeudor' => ['tienes_la_posibilidad_de_complementar_tu_renta'],
             'medio_de_llegada' => ['medio_llegada', 'utm_source', 'lead_source'],
             'medio_llegada' => ['medio_de_llegada', 'utm_source', 'lead_source'],
             'nombre_de_la_campana' => ['campana', 'utm_campaign'],
             'campana' => ['nombre_de_la_campana', 'utm_campaign'],
             'pieza_grafica' => ['utm_content'],
+            'audiencia' => ['utm_medium', 'utm_term'],
             'informacion_cotizacion' => ['project_name', 'nombre_proyecto'],
             'origen_del_prospecto' => ['origen_prospecto'],
             'origen_prospecto' => ['origen_del_prospecto'],

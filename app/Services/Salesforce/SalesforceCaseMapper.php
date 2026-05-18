@@ -35,19 +35,19 @@ class SalesforceCaseMapper
             ?: 'Sin Apellido';
 
         $projectName = $this->fieldValue($fields, ['nombre_proyecto', 'proyecto', 'project_name', 'proyecto_formulario']);
-        $utmSource = $this->fieldValue($fields, ['utm_source']);
+        $utmSource = $this->fieldValue($fields, ['utm_source', 'medio_de_llegada', 'medio_llegada', 'lead_source', 'origen_del_prospecto']);
         $website = $this->resolveWebsiteSource($fields, $utmSource);
-        $utmMedium = $this->fieldValue($fields, ['utm_medium']);
+        $utmMedium = $this->fieldValue($fields, ['utm_medium', 'audiencia']);
         $utmCampaignDefault = $this->normalizeFieldValue(data_get($settings->extra_settings, 'utm_campaign_default'));
         $utmCampaign = $this->resolveUtmCampaign($fields, $utmCampaignDefault);
-        $utmContent = $this->fieldValue($fields, ['utm_content']);
-        $utmTerm = $this->fieldValue($fields, ['utm_term']);
+        $utmContent = $this->fieldValue($fields, ['utm_content', 'pieza_grafica']);
+        $utmTerm = $this->fieldValue($fields, ['utm_term', 'audiencia']);
         $leadSource = $utmSource ?: $this->fieldValue($fields, ['lead_source', 'medio_de_llegada', 'medio', 'origen']);
         $email = $submission->email ?: $this->fieldValue($fields, ['email', 'correo']) ?: null;
         $phone = $submission->phone ?: $this->fieldValue($fields, ['phone', 'telefono', 'fono', 'celular', 'whatsapp']);
         $includeDescription = $this->shouldIncludeDescription($settings);
         $commune = $this->fieldValue($fields, ['comuna', 'commune']);
-        $incomeRange = $this->fieldValue($fields, ['rango', 'renta', 'renta_liquida', 'income_range']);
+        $incomeRange = $this->fieldValue($fields, ['rango_renta', 'rango_de_renta', 'en_que_rango_se_encuentra_tu_renta_liquida', 'rango', 'renta', 'renta_liquida', 'income_range']);
         $complementIncome = $this->fieldValue($fields, ['complementarenta', 'complementa_renta', 'complementa_renta_liquida', 'codeudor']);
         $incomeValidation = $this->fieldValue($fields, ['validacion_renta', 'validacion_de_renta', 'validacionrenta', 'validaci_n_renta']);
         $apartmentUsage = $this->fieldValue($fields, ['uso_departamento', 'usodepartamento', 'uso_departamento_inversion', 'buscas']);
@@ -106,7 +106,7 @@ class SalesforceCaseMapper
 
         $payload = $this->normalizeLegacyCustomFieldsInPayload($payload);
 
-        return array_filter($payload, static fn(mixed $value): bool => $value !== null && $value !== '');
+        return array_filter($payload, static fn (mixed $value): bool => $value !== null && $value !== '');
     }
 
     /**
@@ -184,9 +184,9 @@ class SalesforceCaseMapper
 
         if (is_array($value)) {
             $items = array_values(array_filter(array_map(
-                static fn(mixed $item): string => trim((string) $item),
+                static fn (mixed $item): string => trim((string) $item),
                 $value
-            ), static fn(string $item): bool => $item !== ''));
+            ), static fn (string $item): bool => $item !== ''));
 
             return $items === [] ? null : implode(', ', $items);
         }
@@ -231,7 +231,7 @@ class SalesforceCaseMapper
                 ->title()
                 ->toString();
 
-            return 'UTM ' . $suffix;
+            return 'UTM '.$suffix;
         }
 
         return Str::of($key)
@@ -311,7 +311,7 @@ class SalesforceCaseMapper
         $asesores = $project->asesores;
 
         $advisor = $asesores
-            ->sortByDesc(static fn($asesor): int => $asesor->is_active ? 1 : 0)
+            ->sortByDesc(static fn ($asesor): int => $asesor->is_active ? 1 : 0)
             ->first();
 
         return $this->normalizePhone($advisor?->whatsapp_owner);
