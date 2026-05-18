@@ -39,8 +39,25 @@ class ImportContactSubmissionsCsvAction
             ->modalWidth('7xl')
             ->steps([
                 Step::make('Archivo')
-                    ->description('Sube el archivo CSV y configura cómo se leerá.')
+                    ->description('Selecciona canal, sube el archivo CSV y configura cómo se leerá.')
                     ->schema([
+                        Select::make('contact_channel_id')
+                            ->label('Canal de contacto (obligatorio)')
+                            ->options(fn (): array => ContactChannel::query()
+                                ->where('is_active', true)
+                                ->orderBy('name')
+                                ->pluck('name', 'id')
+                                ->all())
+                            ->searchable()
+                            ->live()
+                            ->afterStateUpdated(function (Get $get, Set $set): void {
+                                self::sanitizeMappingsForSelectedChannel($get, $set);
+                                self::prefillSuggestedMappings($get, $set);
+                            })
+                            ->validationMessages([
+                                'required' => 'Selecciona un canal de contacto para la importación.',
+                            ])
+                            ->required(),
                         Select::make('csv_source')
                             ->label('Origen del CSV')
                             ->options([
@@ -110,7 +127,7 @@ class ImportContactSubmissionsCsvAction
                             ->default(true),
                     ]),
                 Step::make('Mapeo')
-                    ->description('Define qué columna del CSV se guarda en cada campo.')
+                    ->description('Define qué columna del CSV se guarda en cada campo del canal seleccionado.')
                     ->schema([
                         Placeholder::make('mapping_autofill_hint')
                             ->hiddenLabel()
@@ -215,7 +232,7 @@ class ImportContactSubmissionsCsvAction
                                     ->searchable(),
                                 Select::make('target_field')
                                     ->label('Campo destino')
-                                    ->options(fn (): array => self::targetFieldOptions())
+                                    ->options(fn (Get $get): array => self::targetFieldOptions($get))
                                     ->required()
                                     ->validationMessages([
                                         'required' => 'Selecciona un campo destino para este mapeo adicional.',
@@ -231,21 +248,8 @@ class ImportContactSubmissionsCsvAction
                             ->default(true),
                     ]),
                 Step::make('Opciones')
-                    ->description('Configura canal, homologación y sincronización.')
+                    ->description('Configura homologación y sincronización.')
                     ->schema([
-                        Select::make('contact_channel_id')
-                            ->label('Canal de contacto (obligatorio)')
-                            ->options(fn (): array => ContactChannel::query()
-                                ->where('is_active', true)
-                                ->orderBy('name')
-                                ->pluck('name', 'id')
-                                ->all())
-                            ->searchable()
-                            ->live()
-                            ->validationMessages([
-                                'required' => 'Selecciona un canal de contacto para la importación.',
-                            ])
-                            ->required(),
                         Toggle::make('sync_to_salesforce')
                             ->label('Sincronizar en Salesforce al importar')
                             ->live()
@@ -473,7 +477,7 @@ class ImportContactSubmissionsCsvAction
     /**
      * @return array<string, string>
      */
-    private static function targetFieldOptions(): array
+    private static function targetFieldOptions(Get $get): array
     {
         $baseOptions = [
             'skip' => 'No importar',
@@ -489,7 +493,22 @@ class ImportContactSubmissionsCsvAction
             'fields.origen_prospecto' => 'Campo dinámico: Origen del prospecto',
         ];
 
-        $dynamicFields = collect(SiteSetting::current()->contact_form_fields ?? [])
+        $selectedChannelId = (int) self::resolveWizardStateValue($get, 'contact_channel_id', 0);
+
+        $selectedChannel = $selectedChannelId > 0
+            ? ContactChannel::query()
+                ->whereKey($selectedChannelId)
+                ->where('is_active', true)
+                ->first()
+            : null;
+
+        $dynamicFieldDefinitions = $selectedChannel?->effectiveFormFields();
+
+        if (! is_array($dynamicFieldDefinitions)) {
+            $dynamicFieldDefinitions = SiteSetting::current()->contact_form_fields ?? [];
+        }
+
+        $dynamicFields = collect($dynamicFieldDefinitions)
             ->filter(static fn (mixed $field): bool => is_array($field) && filled($field['key'] ?? null))
             ->mapWithKeys(static function (array $field): array {
                 $key = trim((string) $field['key']);
@@ -631,13 +650,13 @@ class ImportContactSubmissionsCsvAction
         }
 
         if ($tableRows === '') {
-            return new HtmlString('<div style="opacity:.8;">Selecciona columnas para ver una tabla resumen de mapeo con valores de ejemplo.</div><div style="margin-top:6px; font-size:.85rem; opacity:.85;">Campos obligatorios: Nombre, Email, Comuna y Proyecto. El Canal de contacto también es obligatorio y se define en el paso Opciones.</div>');
+            return new HtmlString('<div style="opacity:.8;">Selecciona columnas para ver una tabla resumen de mapeo con valores de ejemplo.</div><div style="margin-top:6px; font-size:.85rem; opacity:.85;">Campos obligatorios: Nombre, Email, Comuna y Proyecto. El Canal de contacto también es obligatorio y se define en el paso Archivo.</div>');
         }
 
         return new HtmlString(
             '<div style="margin:4px 0 10px;">'
                 .'<div style="font-size:.92rem; margin-bottom:6px; opacity:.9;">Resumen rápido de mapeo (con ejemplo por columna)</div>'
-                .'<div style="font-size:.85rem; margin-bottom:8px; opacity:.85;">Campos obligatorios: Nombre, Email, Comuna y Proyecto. El Canal de contacto también es obligatorio y se define en el paso Opciones.</div>'
+                .'<div style="font-size:.85rem; margin-bottom:8px; opacity:.85;">Campos obligatorios: Nombre, Email, Comuna y Proyecto. El Canal de contacto también es obligatorio y se define en el paso Archivo.</div>'
                 .'<table style="width:100%; border-collapse:collapse; font-size:.88rem;">'
                 .'<thead><tr>'
                 .'<th style="text-align:left; padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.18);">Campo</th>'
@@ -738,6 +757,8 @@ class ImportContactSubmissionsCsvAction
             return;
         }
 
+        $availableTargets = array_fill_keys(array_keys(self::targetFieldOptions($get)), true);
+
         $extraSuggestedTargets = [
             'fields.medio_llegada',
             'fields.origen_prospecto',
@@ -746,6 +767,7 @@ class ImportContactSubmissionsCsvAction
 
         $customMappings = collect($suggestedMappings)
             ->filter(static fn (array $mapping): bool => in_array((string) ($mapping['target_field'] ?? ''), $extraSuggestedTargets, true))
+            ->filter(static fn (array $mapping): bool => isset($availableTargets[(string) ($mapping['target_field'] ?? '')]))
             ->map(static fn (array $mapping): array => [
                 'source_column' => (string) ($mapping['source_column'] ?? ''),
                 'target_field' => (string) ($mapping['target_field'] ?? ''),
@@ -757,6 +779,36 @@ class ImportContactSubmissionsCsvAction
         if ($customMappings !== []) {
             $set('custom_mappings', $customMappings);
         }
+    }
+
+    private static function sanitizeMappingsForSelectedChannel(Get $get, Set $set): void
+    {
+        $allowedTargets = array_fill_keys(array_keys(self::targetFieldOptions($get)), true);
+        $customMappings = (array) ($get('custom_mappings') ?? []);
+
+        $sanitizedCustomMappings = collect($customMappings)
+            ->map(static function (array $mapping) use ($allowedTargets): ?array {
+                $sourceColumn = trim((string) ($mapping['source_column'] ?? ''));
+                $targetField = trim((string) ($mapping['target_field'] ?? ''));
+
+                if ($sourceColumn === '' && $targetField === '') {
+                    return null;
+                }
+
+                if ($targetField !== '' && ! isset($allowedTargets[$targetField])) {
+                    return null;
+                }
+
+                return [
+                    'source_column' => $sourceColumn,
+                    'target_field' => $targetField,
+                ];
+            })
+            ->filter(static fn (?array $mapping): bool => is_array($mapping))
+            ->values()
+            ->all();
+
+        $set('custom_mappings', $sanitizedCustomMappings);
     }
 
     /**
