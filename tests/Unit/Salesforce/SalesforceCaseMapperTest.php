@@ -3,6 +3,7 @@
 namespace Tests\Unit\Salesforce;
 
 use App\Models\Asesor;
+use App\Models\ContactChannel;
 use App\Models\ContactSubmission;
 use App\Models\Proyecto;
 use App\Models\SiteSetting;
@@ -358,5 +359,78 @@ class SalesforceCaseMapperTest extends TestCase
 
         $this->assertSame('Facebook ads', $payload['LeadSource'] ?? null);
         $this->assertSame('facebook ads', $payload['utm_source__c'] ?? null);
+    }
+
+    public function test_it_prefers_origen_prospecto_over_utm_source_for_lead_source(): void
+    {
+        config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');
+        config()->set('services.salesforce.lead_status', 'En Contacto');
+
+        SiteSetting::current()->update([
+            'site_name' => 'iLeben',
+            'contact_form_fields' => [
+                ['key' => 'name', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
+                ['key' => 'origen_prospecto', 'label' => 'Origen del prospecto', 'type' => 'text', 'required' => false],
+                ['key' => 'medio_de_llegada', 'label' => 'Medio de llegada', 'type' => 'text', 'required' => false],
+            ],
+        ]);
+
+        $submission = ContactSubmission::query()->create([
+            'name' => 'Cesar Test',
+            'email' => 'cesar.test@example.com',
+            'phone' => '56911111111',
+            'fields' => [
+                'name' => 'Cesar Test',
+                'origen_prospecto' => 'Leben | Vive el sur | Edificio Inn | ICON | Brochure | Febrero 2026',
+                'medio_de_llegada' => 'Meta',
+                'utm_source' => 'Meta',
+            ],
+            'submitted_at' => now(),
+        ]);
+
+        $payload = app(SalesforceCaseMapper::class)->mapLead($submission);
+
+        $this->assertSame('Leben | vive el sur | edificio inn | icon | brochure | febrero 2026', $payload['LeadSource'] ?? null);
+        $this->assertSame('Leben | Vive el sur | Edificio Inn | ICON | Brochure | Febrero 2026', $payload['utm_source__c'] ?? null);
+    }
+
+    public function test_it_uses_channel_domain_for_website_when_available(): void
+    {
+        config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');
+        config()->set('services.salesforce.lead_status', 'En Contacto');
+
+        SiteSetting::current()->update([
+            'site_name' => 'iLeben',
+            'contact_form_fields' => [
+                ['key' => 'name', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
+                ['key' => 'project_name', 'label' => 'Proyecto', 'type' => 'text', 'required' => false],
+            ],
+        ]);
+
+        $channel = ContactChannel::query()->create([
+            'slug' => 'sale-web-website-test',
+            'name' => 'Sale Web Website Test',
+            'is_active' => true,
+            'is_default' => false,
+            'domain_patterns' => ['sale.ileben.cl', '*.sale.ileben.cl'],
+        ]);
+
+        $submission = ContactSubmission::query()->create([
+            'contact_channel_id' => $channel->id,
+            'name' => 'Cesar Test',
+            'email' => 'cesar.test@example.com',
+            'phone' => '56911111111',
+            'fields' => [
+                'name' => 'Cesar Test',
+                'project_name' => 'Edificio Inn',
+                'utm_site' => 'meta.ileben.cl',
+                'utm_source' => 'Meta',
+            ],
+            'submitted_at' => now(),
+        ]);
+
+        $payload = app(SalesforceCaseMapper::class)->mapLead($submission->load('channel'));
+
+        $this->assertSame('sale.ileben.cl', $payload['Website'] ?? null);
     }
 }

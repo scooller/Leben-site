@@ -35,31 +35,29 @@ class SalesforceCaseMapper
             ?: 'Sin Apellido';
 
         $projectName = $this->fieldValue($fields, ['nombre_proyecto', 'proyecto', 'project_name', 'proyecto_formulario']);
-        $utmSource = $this->fieldValue($fields, [
+        $technicalUtmSource = $this->fieldValue($fields, [
             'utm_source',
             'medio_de_llegada',
             'medio_llegada',
             'lead_source',
+        ]);
+        $originProspect = $this->fieldValue($fields, [
             'origen_del_prospecto',
             'origen_prospecto',
             'origen del prospecto',
             'origen-del-prospecto',
         ]);
-        $website = $this->resolveWebsiteSource($fields, $utmSource);
+        $website = $this->resolveWebsiteSource($submission, $fields, $technicalUtmSource);
         $utmMedium = $this->fieldValue($fields, ['utm_medium', 'audiencia']);
         $utmCampaignDefault = $this->normalizeFieldValue(data_get($settings->extra_settings, 'utm_campaign_default'));
         $utmCampaign = $this->resolveUtmCampaign($fields, $utmCampaignDefault);
         $utmContent = $this->fieldValue($fields, ['utm_content', 'pieza_grafica']);
         $utmTerm = $this->fieldValue($fields, ['utm_term', 'audiencia']);
-        $leadSource = $utmSource ?: $this->fieldValue($fields, [
+        $leadSource = $originProspect ?: $technicalUtmSource ?: $this->fieldValue($fields, [
             'lead_source',
             'medio_de_llegada',
             'medio',
             'origen',
-            'origen_del_prospecto',
-            'origen_prospecto',
-            'origen del prospecto',
-            'origen-del-prospecto',
         ]);
         $email = $submission->email ?: $this->fieldValue($fields, ['email', 'correo']) ?: null;
         $phone = $submission->phone ?: $this->fieldValue($fields, ['phone', 'telefono', 'fono', 'celular', 'whatsapp']);
@@ -115,7 +113,7 @@ class SalesforceCaseMapper
             'wsp_owner__c' => $wspOwnerPhone,
             'Telefono_owner__c' => $telefonoOwnerPhone,
             'owner_phone__c' => $ownerPhone,
-            'utm_source__c' => $utmSource,
+            'utm_source__c' => $originProspect ?: $technicalUtmSource,
             'utm_medium__c' => $utmMedium,
             'utm_campaign__c' => $utmCampaign,
             'utm_content__c' => $utmContent,
@@ -414,8 +412,14 @@ class SalesforceCaseMapper
     /**
      * @param  array<string, mixed>  $fields
      */
-    private function resolveWebsiteSource(array $fields, ?string $utmSource): ?string
+    private function resolveWebsiteSource(ContactSubmission $submission, array $fields, ?string $utmSource): ?string
     {
+        $channelWebsite = $this->resolveChannelWebsite($submission);
+
+        if ($channelWebsite !== null) {
+            return $channelWebsite;
+        }
+
         return $this->fieldValue($fields, [
             'utm_site',
             'website',
@@ -427,6 +431,39 @@ class SalesforceCaseMapper
             'origin_site',
             'referrer',
         ]) ?: $utmSource;
+    }
+
+    private function resolveChannelWebsite(ContactSubmission $submission): ?string
+    {
+        $channel = $submission->channel;
+
+        if ($channel === null) {
+            return null;
+        }
+
+        foreach ((array) ($channel->domain_patterns ?? []) as $pattern) {
+            $normalized = $this->normalizeDomainPattern((string) $pattern);
+
+            if ($normalized !== null) {
+                return $normalized;
+            }
+        }
+
+        return null;
+    }
+
+    private function normalizeDomainPattern(string $pattern): ?string
+    {
+        $normalized = strtolower(trim($pattern));
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        $normalized = str_replace(['*.', '*'], '', $normalized);
+        $normalized = ltrim($normalized, '.');
+
+        return $normalized !== '' ? $normalized : null;
     }
 
     /**
