@@ -22,7 +22,7 @@ class ContactTextHomologationService
             if ($homologatedComuna !== null) {
                 $fields['comuna'] = $homologatedComuna;
             } else {
-                $warnings[] = 'No se pudo homologar la comuna: '.$inputComuna;
+                $warnings[] = 'No se pudo homologar la comuna: ' . $inputComuna;
             }
         }
 
@@ -33,7 +33,7 @@ class ContactTextHomologationService
             if ($homologatedProyecto !== null) {
                 $fields['proyecto'] = $homologatedProyecto;
             } else {
-                $warnings[] = 'No se pudo homologar el proyecto: '.$inputProyecto;
+                $warnings[] = 'No se pudo homologar el proyecto: ' . $inputProyecto;
             }
         }
 
@@ -92,8 +92,8 @@ class ContactTextHomologationService
         return Proyecto::query()
             ->where('comuna', '!=', null)
             ->pluck('comuna')
-            ->map(static fn (string $value): string => trim($value))
-            ->filter(static fn (string $value): bool => $value !== '')
+            ->map(static fn(string $value): string => trim($value))
+            ->filter(static fn(string $value): bool => $value !== '')
             ->unique()
             ->values()
             ->all();
@@ -106,8 +106,8 @@ class ContactTextHomologationService
     {
         return Proyecto::query()
             ->pluck('name')
-            ->map(static fn (string $value): string => trim($value))
-            ->filter(static fn (string $value): bool => $value !== '')
+            ->map(static fn(string $value): string => trim($value))
+            ->filter(static fn(string $value): bool => $value !== '')
             ->unique()
             ->values()
             ->all();

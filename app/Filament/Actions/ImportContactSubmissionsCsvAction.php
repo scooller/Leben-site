@@ -16,10 +16,8 @@ use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
-use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Components\Wizard\Step;
@@ -42,7 +40,7 @@ class ImportContactSubmissionsCsvAction
             ->modalWidth('7xl')
             ->steps([
                 Step::make('Archivo')
-                    ->description('Sube el archivo CSV y revisa una vista previa.')
+                    ->description('Sube el archivo CSV y configura cómo se leerá.')
                     ->schema([
                         Select::make('csv_source')
                             ->label('Origen del CSV')
@@ -61,19 +59,19 @@ class ImportContactSubmissionsCsvAction
                             ->disk('local')
                             ->directory('imports/contact-submissions')
                             ->acceptedFileTypes(['text/csv', 'text/plain', 'application/vnd.ms-excel'])
-                            ->visible(fn (Get $get): bool => (string) ($get('csv_source') ?? 'upload') === 'upload')
-                            ->required(fn (Get $get): bool => (string) ($get('csv_source') ?? 'upload') === 'upload')
+                            ->visible(fn(Get $get): bool => (string) ($get('csv_source') ?? 'upload') === 'upload')
+                            ->required(fn(Get $get): bool => (string) ($get('csv_source') ?? 'upload') === 'upload')
                             ->afterStateUpdated(function (Get $get, Set $set): void {
                                 self::prefillSuggestedMappings($get, $set);
                             })
                             ->live(),
                         Select::make('curator_media_id')
                             ->label('Archivo CSV desde Archivos')
-                            ->options(fn (): array => self::csvMediaOptions())
+                            ->options(fn(): array => self::csvMediaOptions())
                             ->searchable()
                             ->preload()
-                            ->visible(fn (Get $get): bool => (string) ($get('csv_source') ?? 'upload') === 'files')
-                            ->required(fn (Get $get): bool => (string) ($get('csv_source') ?? 'upload') === 'files')
+                            ->visible(fn(Get $get): bool => (string) ($get('csv_source') ?? 'upload') === 'files')
+                            ->required(fn(Get $get): bool => (string) ($get('csv_source') ?? 'upload') === 'files')
                             ->live()
                             ->afterStateUpdated(function (Get $get, Set $set): void {
                                 self::prefillSuggestedMappings($get, $set);
@@ -99,57 +97,6 @@ class ImportContactSubmissionsCsvAction
                                 self::prefillSuggestedMappings($get, $set);
                             })
                             ->default(true),
-                        Actions::make([
-                            Action::make('refresh_preview')
-                                ->label('Actualizar vista previa')
-                                ->icon('heroicon-o-arrow-path')
-                                ->color('gray')
-                                ->action(function (Get $get, Set $set): void {
-                                    self::prefillSuggestedMappings($get, $set);
-                                    $set('preview_refresh_key', now()->format('YmdHisv'));
-                                }),
-                        ])
-                            ->columnSpanFull(),
-                        TextInput::make('preview_refresh_key')
-                            ->hidden()
-                            ->dehydrated(false)
-                            ->default(''),
-                        Textarea::make('preview')
-                            ->label('Vista previa')
-                            ->rows(10)
-                            ->disabled()
-                            ->dehydrated(false)
-                            ->formatStateUsing(function (Get $get): string {
-                                // Force reactive recalculation when user clicks "Actualizar vista previa".
-                                $get('preview_refresh_key');
-
-                                $parsed = self::parseCsvState(
-                                    csvSource: (string) ($get('csv_source') ?? 'upload'),
-                                    csvState: $get('csv_file'),
-                                    curatorMediaId: $get('curator_media_id'),
-                                    delimiter: self::normalizeDelimiter((string) $get('delimiter')),
-                                    hasHeader: (bool) ($get('has_header') ?? true),
-                                );
-
-                                if (($parsed['error'] ?? null) === 'missing_file') {
-                                    return 'Sube un CSV para ver la vista previa.';
-                                }
-
-                                if (filled($parsed['error'] ?? null)) {
-                                    return 'Error al leer CSV: '.$parsed['error'];
-                                }
-
-                                $lines = [];
-                                $lines[] = 'Encabezados: '.implode(' | ', $parsed['headers']);
-                                $lines[] = '';
-                                $lines[] = 'Primeras filas:';
-
-                                foreach ($parsed['preview'] as $row) {
-                                    $lines[] = implode(' | ', collect($row)->values()->all());
-                                }
-
-                                return implode("\n", $lines);
-                            }),
                     ]),
                 Step::make('Mapeo')
                     ->description('Define qué columna del CSV se guarda en cada campo.')
@@ -170,7 +117,7 @@ class ImportContactSubmissionsCsvAction
                                 }
 
                                 if (filled($parsed['error'] ?? null)) {
-                                    return 'No se pudo leer el CSV para sugerencias: '.(string) $parsed['error'];
+                                    return 'No se pudo leer el CSV para sugerencias: ' . (string) $parsed['error'];
                                 }
 
                                 $mappedSimpleFields = collect([
@@ -181,10 +128,10 @@ class ImportContactSubmissionsCsvAction
                                     $get('map_comuna'),
                                     $get('map_proyecto'),
                                     $get('map_message'),
-                                ])->filter(static fn (mixed $value): bool => filled($value))->count();
+                                ])->filter(static fn(mixed $value): bool => filled($value))->count();
 
                                 $customMappingsCount = collect((array) ($get('custom_mappings') ?? []))
-                                    ->filter(static fn (array $mapping): bool => filled($mapping['source_column'] ?? null) && filled($mapping['target_field'] ?? null))
+                                    ->filter(static fn(array $mapping): bool => filled($mapping['source_column'] ?? null) && filled($mapping['target_field'] ?? null))
                                     ->count();
 
                                 $totalMappings = $mappedSimpleFields + $customMappingsCount;
@@ -198,54 +145,54 @@ class ImportContactSubmissionsCsvAction
                             ->columnSpanFull(),
                         Placeholder::make('mapping_sample_table')
                             ->hiddenLabel()
-                            ->content(fn (Get $get): HtmlString => self::mappingPreviewTable($get))
+                            ->content(fn(Get $get): HtmlString => self::mappingPreviewTable($get))
                             ->columnSpanFull(),
                         Select::make('map_name')
                             ->label('Nombre (obligatorio)')
-                            ->options(fn (Get $get): array => self::csvHeaderOptions($get))
-                            ->helperText(fn (Get $get): string => self::mappingHelperText($get, 'map_name'))
+                            ->options(fn(Get $get): array => self::csvHeaderOptions($get))
+                            ->helperText(fn(Get $get): string => self::mappingHelperText($get, 'map_name'))
                             ->searchable(),
                         Select::make('map_email')
                             ->label('Email (obligatorio)')
-                            ->options(fn (Get $get): array => self::csvHeaderOptions($get))
-                            ->helperText(fn (Get $get): string => self::mappingHelperText($get, 'map_email'))
+                            ->options(fn(Get $get): array => self::csvHeaderOptions($get))
+                            ->helperText(fn(Get $get): string => self::mappingHelperText($get, 'map_email'))
                             ->searchable(),
                         Select::make('map_phone')
                             ->label('Teléfono / Celular')
-                            ->options(fn (Get $get): array => self::csvHeaderOptions($get))
-                            ->helperText(fn (Get $get): string => self::mappingHelperText($get, 'map_phone'))
+                            ->options(fn(Get $get): array => self::csvHeaderOptions($get))
+                            ->helperText(fn(Get $get): string => self::mappingHelperText($get, 'map_phone'))
                             ->searchable(),
                         Select::make('map_rut')
                             ->label('RUT')
-                            ->options(fn (Get $get): array => self::csvHeaderOptions($get))
-                            ->helperText(fn (Get $get): string => self::mappingHelperText($get, 'map_rut'))
+                            ->options(fn(Get $get): array => self::csvHeaderOptions($get))
+                            ->helperText(fn(Get $get): string => self::mappingHelperText($get, 'map_rut'))
                             ->searchable(),
                         Select::make('map_comuna')
                             ->label('Comuna')
-                            ->options(fn (Get $get): array => self::csvHeaderOptions($get))
-                            ->helperText(fn (Get $get): string => self::mappingHelperText($get, 'map_comuna'))
+                            ->options(fn(Get $get): array => self::csvHeaderOptions($get))
+                            ->helperText(fn(Get $get): string => self::mappingHelperText($get, 'map_comuna'))
                             ->searchable(),
                         Select::make('map_proyecto')
                             ->label('Proyecto')
-                            ->options(fn (Get $get): array => self::csvHeaderOptions($get))
-                            ->helperText(fn (Get $get): string => self::mappingHelperText($get, 'map_proyecto', isProjectField: true))
+                            ->options(fn(Get $get): array => self::csvHeaderOptions($get))
+                            ->helperText(fn(Get $get): string => self::mappingHelperText($get, 'map_proyecto', isProjectField: true))
                             ->searchable(),
                         Select::make('map_message')
                             ->label('Comentario / Mensaje')
-                            ->options(fn (Get $get): array => self::csvHeaderOptions($get))
-                            ->helperText(fn (Get $get): string => self::mappingHelperText($get, 'map_message'))
+                            ->options(fn(Get $get): array => self::csvHeaderOptions($get))
+                            ->helperText(fn(Get $get): string => self::mappingHelperText($get, 'map_message'))
                             ->searchable(),
                         Repeater::make('custom_mappings')
                             ->label('Mapeos adicionales')
                             ->schema([
                                 Select::make('source_column')
                                     ->label('Columna CSV')
-                                    ->options(fn (Get $get): array => self::csvHeaderOptions($get))
+                                    ->options(fn(Get $get): array => self::csvHeaderOptions($get))
                                     ->required()
                                     ->searchable(),
                                 Select::make('target_field')
                                     ->label('Campo destino')
-                                    ->options(fn (): array => self::targetFieldOptions())
+                                    ->options(fn(): array => self::targetFieldOptions())
                                     ->required()
                                     ->searchable(),
                             ])
@@ -261,7 +208,7 @@ class ImportContactSubmissionsCsvAction
                     ->schema([
                         Select::make('contact_channel_id')
                             ->label('Canal de contacto (obligatorio)')
-                            ->options(fn (): array => ContactChannel::query()
+                            ->options(fn(): array => ContactChannel::query()
                                 ->where('is_active', true)
                                 ->orderBy('name')
                                 ->pluck('name', 'id')
@@ -290,12 +237,12 @@ class ImportContactSubmissionsCsvAction
                                 $headers = array_keys(self::csvHeaderOptions($get));
 
                                 $lines = [
-                                    'Columnas detectadas: '.implode(', ', $headers),
-                                    'Canal seleccionado ID: '.(string) ($get('contact_channel_id') ?? '-'),
-                                    'Sync Salesforce: '.((bool) ($get('sync_to_salesforce') ?? true) ? 'Si' : 'No'),
-                                    'Homologar comuna: '.((bool) ($get('homologate_comuna') ?? true) ? 'Si' : 'No'),
-                                    'Homologar proyecto: '.((bool) ($get('homologate_proyecto') ?? true) ? 'Si' : 'No'),
-                                    'Auto-map columnas restantes: '.((bool) ($get('auto_map_unmapped') ?? true) ? 'Si' : 'No'),
+                                    'Columnas detectadas: ' . implode(', ', $headers),
+                                    'Canal seleccionado ID: ' . (string) ($get('contact_channel_id') ?? '-'),
+                                    'Sync Salesforce: ' . ((bool) ($get('sync_to_salesforce') ?? true) ? 'Si' : 'No'),
+                                    'Homologar comuna: ' . ((bool) ($get('homologate_comuna') ?? true) ? 'Si' : 'No'),
+                                    'Homologar proyecto: ' . ((bool) ($get('homologate_proyecto') ?? true) ? 'Si' : 'No'),
+                                    'Auto-map columnas restantes: ' . ((bool) ($get('auto_map_unmapped') ?? true) ? 'Si' : 'No'),
                                 ];
 
                                 return implode("\n", $lines);
@@ -400,7 +347,7 @@ class ImportContactSubmissionsCsvAction
 
                     if (blank($fields['comuna'] ?? null) || blank($fields['proyecto'] ?? null)) {
                         $failed++;
-                        $errorMessages[] = 'Fila '.($lineIndex + 2).': Comuna y Proyecto son obligatorios.';
+                        $errorMessages[] = 'Fila ' . ($lineIndex + 2) . ': Comuna y Proyecto son obligatorios.';
 
                         continue;
                     }
@@ -408,7 +355,7 @@ class ImportContactSubmissionsCsvAction
                     $email = trim((string) ($mapped['email'] ?? ''));
                     if ($email !== '' && Validator::make(['email' => $email], ['email' => ['email']])->fails()) {
                         $failed++;
-                        $errorMessages[] = 'Fila '.($lineIndex + 2).': email inválido.';
+                        $errorMessages[] = 'Fila ' . ($lineIndex + 2) . ': email inválido.';
 
                         continue;
                     }
@@ -436,7 +383,7 @@ class ImportContactSubmissionsCsvAction
                 $body = "Creados: {$created}. Errores: {$failed}. Warnings: {$warnings}.";
 
                 if ($failed > 0) {
-                    $body .= "\n".collect($errorMessages)->take(3)->implode("\n");
+                    $body .= "\n" . collect($errorMessages)->take(3)->implode("\n");
                 }
 
                 $notification = Notification::make()
@@ -475,7 +422,7 @@ class ImportContactSubmissionsCsvAction
         }
 
         return collect($parsed['headers'])
-            ->mapWithKeys(static fn (string $header): array => [$header => $header])
+            ->mapWithKeys(static fn(string $header): array => [$header => $header])
             ->all();
     }
 
@@ -499,7 +446,7 @@ class ImportContactSubmissionsCsvAction
         ];
 
         $dynamicFields = collect(SiteSetting::current()->contact_form_fields ?? [])
-            ->filter(static fn (mixed $field): bool => is_array($field) && filled($field['key'] ?? null))
+            ->filter(static fn(mixed $field): bool => is_array($field) && filled($field['key'] ?? null))
             ->mapWithKeys(static function (array $field): array {
                 $key = trim((string) $field['key']);
                 $label = trim((string) ($field['label'] ?? $key));
@@ -557,7 +504,7 @@ class ImportContactSubmissionsCsvAction
         }
 
         return collect($mappings)
-            ->unique(static fn (array $mapping): string => $mapping['source_column'].'::'.$mapping['target_field'])
+            ->unique(static fn(array $mapping): string => $mapping['source_column'] . '::' . $mapping['target_field'])
             ->values()
             ->all();
     }
@@ -591,7 +538,7 @@ class ImportContactSubmissionsCsvAction
             return 'No se encontró un valor de ejemplo para esa columna.';
         }
 
-        $text = 'Ejemplo: '.$sample;
+        $text = 'Ejemplo: ' . $sample;
 
         if ($isProjectField && self::looksLikeSalesforceId($sample)) {
             $text .= ' (detectado como Salesforce ID; se intentará resolver por ID y, si no existe, por nombre).';
@@ -645,18 +592,18 @@ class ImportContactSubmissionsCsvAction
 
         return new HtmlString(
             '<div style="margin:4px 0 10px;">'
-            .'<div style="font-size:.92rem; margin-bottom:6px; opacity:.9;">Resumen rápido de mapeo (con ejemplo por columna)</div>'
-            .'<div style="font-size:.85rem; margin-bottom:8px; opacity:.85;">Campos obligatorios: Nombre y Email. El Canal de contacto también es obligatorio y se define en el paso Opciones.</div>'
-            .'<table style="width:100%; border-collapse:collapse; font-size:.88rem;">'
-            .'<thead><tr>'
-            .'<th style="text-align:left; padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.18);">Campo</th>'
-            .'<th style="text-align:left; padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.18);">Tipo</th>'
-            .'<th style="text-align:left; padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.18);">Columna CSV</th>'
-            .'<th style="text-align:left; padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.18);">Ejemplo</th>'
-            .'<th style="text-align:left; padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.18);">Nota</th>'
-            .'</tr></thead>'
-            .'<tbody>'.$tableRows.'</tbody>'
-            .'</table></div>'
+                . '<div style="font-size:.92rem; margin-bottom:6px; opacity:.9;">Resumen rápido de mapeo (con ejemplo por columna)</div>'
+                . '<div style="font-size:.85rem; margin-bottom:8px; opacity:.85;">Campos obligatorios: Nombre y Email. El Canal de contacto también es obligatorio y se define en el paso Opciones.</div>'
+                . '<table style="width:100%; border-collapse:collapse; font-size:.88rem;">'
+                . '<thead><tr>'
+                . '<th style="text-align:left; padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.18);">Campo</th>'
+                . '<th style="text-align:left; padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.18);">Tipo</th>'
+                . '<th style="text-align:left; padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.18);">Columna CSV</th>'
+                . '<th style="text-align:left; padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.18);">Ejemplo</th>'
+                . '<th style="text-align:left; padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.18);">Nota</th>'
+                . '</tr></thead>'
+                . '<tbody>' . $tableRows . '</tbody>'
+                . '</table></div>'
         );
     }
 
@@ -754,12 +701,12 @@ class ImportContactSubmissionsCsvAction
         ];
 
         $customMappings = collect($suggestedMappings)
-            ->filter(static fn (array $mapping): bool => in_array((string) ($mapping['target_field'] ?? ''), $extraSuggestedTargets, true))
-            ->map(static fn (array $mapping): array => [
+            ->filter(static fn(array $mapping): bool => in_array((string) ($mapping['target_field'] ?? ''), $extraSuggestedTargets, true))
+            ->map(static fn(array $mapping): array => [
                 'source_column' => (string) ($mapping['source_column'] ?? ''),
                 'target_field' => (string) ($mapping['target_field'] ?? ''),
             ])
-            ->filter(static fn (array $mapping): bool => filled($mapping['source_column']) && filled($mapping['target_field']))
+            ->filter(static fn(array $mapping): bool => filled($mapping['source_column']) && filled($mapping['target_field']))
             ->values()
             ->all();
 
@@ -869,14 +816,14 @@ class ImportContactSubmissionsCsvAction
         }
 
         if ($bytes < 1024) {
-            return $bytes.' B';
+            return $bytes . ' B';
         }
 
         if ($bytes < 1024 * 1024) {
-            return number_format($bytes / 1024, 1).' KB';
+            return number_format($bytes / 1024, 1) . ' KB';
         }
 
-        return number_format($bytes / (1024 * 1024), 2).' MB';
+        return number_format($bytes / (1024 * 1024), 2) . ' MB';
     }
 
     private static function resolveCsvFilePath(mixed $state): ?string
@@ -908,7 +855,7 @@ class ImportContactSubmissionsCsvAction
 
         $directory = 'imports/contact-submissions';
         $filename = basename($sourcePath);
-        $targetPath = trim($directory.'/'.$filename, '/');
+        $targetPath = trim($directory . '/' . $filename, '/');
 
         if (! Storage::disk('curator')->exists($targetPath)) {
             Storage::disk('curator')->put(
