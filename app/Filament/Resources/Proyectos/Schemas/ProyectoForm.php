@@ -296,6 +296,19 @@ class ProyectoForm
                                     ->numeric()
                                     ->disabled()
                                     ->suffix('%'),
+
+                                TextInput::make('descuento_maximo_unidad')
+                                    ->label('Descuento Máximo Unidad (%)')
+                                    ->numeric()
+                                    ->disabled()
+                                    ->dehydrated(false)
+                                    ->afterStateHydrated(function (TextInput $component, ?Proyecto $record): void {
+                                        $component->state(
+                                            $record?->descuento_maximo_unidad
+                                            ?? $record?->plantas()->max('porcentaje_maximo_unidad')
+                                        );
+                                    })
+                                    ->suffix('%'),
                             ])
                             ->columns(2),
 

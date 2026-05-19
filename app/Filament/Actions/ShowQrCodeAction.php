@@ -24,12 +24,27 @@ class ShowQrCodeAction
                 $url = value($urlResolver, $record);
                 $qrOptions = SiteSetting::current()->qrOptions();
                 $qrOptions['type'] = 'svg';
+                $qrSvg = (string) Qr::render(data: $url, options: $qrOptions, downloadable: false);
+                $qrDownloadSvg = self::extractSvgMarkup($qrSvg);
+                $recordKey = (string) ($record->getKey() ?? 'item');
+                $downloadName = sprintf('qr-%s.svg', $recordKey);
 
                 return view('filament.actions.show-qr-code', [
                     'url' => $url,
-                    'qrSvg' => Qr::render(data: $url, options: $qrOptions, downloadable: false),
+                    'qrSvg' => $qrSvg,
+                    'qrDownloadUrl' => 'data:image/svg+xml;base64,'.base64_encode($qrDownloadSvg),
+                    'qrDownloadName' => $downloadName,
                 ]);
             })
             ->action(static fn (): null => null);
+    }
+
+    public static function extractSvgMarkup(string $html): string
+    {
+        if (preg_match('/<svg\b[^>]*>.*<\/svg>/is', $html, $matches) === 1) {
+            return $matches[0];
+        }
+
+        return $html;
     }
 }

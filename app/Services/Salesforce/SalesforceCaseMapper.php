@@ -35,18 +35,35 @@ class SalesforceCaseMapper
             ?: 'Sin Apellido';
 
         $projectName = $this->fieldValue($fields, ['nombre_proyecto', 'proyecto', 'project_name', 'proyecto_formulario']);
-        $utmSource = $this->fieldValue($fields, ['utm_source']);
-        $website = $this->resolveWebsiteSource($fields, $utmSource);
-        $utmMedium = $this->fieldValue($fields, ['utm_medium']);
+        $utmSourceValue = $this->fieldValue($fields, [
+            'utm_source',
+            'lead_source',
+        ]);
+        $arrivalMedium = $this->fieldValue($fields, [
+            'medio_de_llegada',
+            'medio_llegada',
+        ]) ?: $utmSourceValue;
+        $originProspect = $this->fieldValue($fields, [
+            'origen_del_prospecto',
+            'origen_prospecto',
+            'origen del prospecto',
+            'origen-del-prospecto',
+        ]);
+        $website = $this->resolveWebsiteSource($submission, $fields, $utmSourceValue);
+        $utmMedium = $this->fieldValue($fields, ['utm_medium', 'audiencia']);
         $utmCampaignDefault = $this->normalizeFieldValue(data_get($settings->extra_settings, 'utm_campaign_default'));
         $utmCampaign = $this->resolveUtmCampaign($fields, $utmCampaignDefault);
-        $utmContent = $this->fieldValue($fields, ['utm_content']);
-        $utmTerm = $this->fieldValue($fields, ['utm_term']);
-        $leadSource = $utmSource ?: $this->fieldValue($fields, ['lead_source', 'medio_de_llegada', 'medio', 'origen']);
+        $utmContent = $this->fieldValue($fields, ['utm_content', 'pieza_grafica']);
+        $utmTerm = $this->fieldValue($fields, ['utm_term', 'audiencia']);
+        $leadSource = $originProspect ?: $this->fieldValue($fields, [
+            'lead_source',
+            'origen',
+        ]) ?: $utmSourceValue;
         $email = $submission->email ?: $this->fieldValue($fields, ['email', 'correo']) ?: null;
         $phone = $submission->phone ?: $this->fieldValue($fields, ['phone', 'telefono', 'fono', 'celular', 'whatsapp']);
+        $includeDescription = $this->shouldIncludeDescription($settings);
         $commune = $this->fieldValue($fields, ['comuna', 'commune']);
-        $incomeRange = $this->fieldValue($fields, ['rango', 'renta', 'renta_liquida', 'income_range']);
+        $incomeRange = $this->fieldValue($fields, ['rango_renta', 'rango_de_renta', 'en_que_rango_se_encuentra_tu_renta_liquida', 'rango', 'renta', 'renta_liquida', 'income_range']);
         $complementIncome = $this->fieldValue($fields, ['complementarenta', 'complementa_renta', 'complementa_renta_liquida', 'codeudor']);
         $incomeValidation = $this->fieldValue($fields, ['validacion_renta', 'validacion_de_renta', 'validacionrenta', 'validaci_n_renta']);
         $apartmentUsage = $this->fieldValue($fields, ['uso_departamento', 'usodepartamento', 'uso_departamento_inversion', 'buscas']);
@@ -64,7 +81,8 @@ class SalesforceCaseMapper
         $payload = [
             'FirstName' => $firstName,
             'LastName' => $lastName,
-            'Company' => (string) ($settings->site_name ?: config('app.name') ?: 'iLeben'),
+            // 'Company' => (string) ($settings->site_name ?: config('app.name') ?: 'iLeben'),
+            'Company' => '', // Campo "Company" obligatorio en Lead, pero lo dejamos vacío por ser un lead de consumidor final sin empresa asociada.
             'Phone' => $phone,
             'MobilePhone' => $phone,
             'Email' => $email,
@@ -74,12 +92,14 @@ class SalesforceCaseMapper
             'Status' => (string) config('services.salesforce.lead_status', 'En Contacto'),
             'OwnerId' => $ownerId,
             'LeadSource' => $normalizedLeadSource,
-            'Description' => $this->buildDescription($fields, $fieldLabels),
+            'Description' => $includeDescription
+                ? $this->buildDescription($fields, $fieldLabels)
+                : null,
             'Tipo_Ingreso__c' => 'Online',
             'Proyecto__c' => $projectSalesforceId,
             'ID_Proyecto__c' => $projectSalesforceId,
             'Informacion_Cotizacion__c' => $projectName,
-            'Proyect_ID__c' => $projectName,
+            // 'Proyect_ID__c' => $projectName,
             'Comuna__c' => $commune,
             'Rango_de_renta_liquida__c' => $incomeRange,
             'complementaRenta__c' => $complementIncome,
@@ -87,14 +107,14 @@ class SalesforceCaseMapper
             'usoDepartamento__c' => $apartmentUsage,
             'estadoLaboral__c' => $employmentStatus,
             'comunaInversion__c' => $investmentCommune,
-            'Medio_de_Llegada__c' => $normalizedLeadSource,
+            'Medio_de_Llegada__c' => $arrivalMedium,
             'Nombre_de_la_Campa_a__c' => $utmCampaign,
             'Audiencia__c' => $utmMedium,
             'Pieza_Grafica__c' => $utmContent,
             'wsp_owner__c' => $wspOwnerPhone,
             'Telefono_owner__c' => $telefonoOwnerPhone,
             'owner_phone__c' => $ownerPhone,
-            'utm_source__c' => $utmSource,
+            'utm_source__c' => $arrivalMedium,
             'utm_medium__c' => $utmMedium,
             'utm_campaign__c' => $utmCampaign,
             'utm_content__c' => $utmContent,
@@ -103,7 +123,13 @@ class SalesforceCaseMapper
 
         $payload = $this->normalizeLegacyCustomFieldsInPayload($payload);
 
-        return array_filter($payload, static fn(mixed $value): bool => $value !== null && $value !== '');
+        return array_filter(
+            $payload,
+            static fn(mixed $value, string $field): bool => $field === 'Company'
+                ? $value !== null
+                : $value !== null && $value !== '',
+            ARRAY_FILTER_USE_BOTH
+        );
     }
 
     /**
@@ -156,6 +182,17 @@ class SalesforceCaseMapper
         }
 
         return implode("\n", $lines);
+    }
+
+    private function shouldIncludeDescription(SiteSetting $settings): bool
+    {
+        $configured = data_get($settings->extra_settings, 'salesforce_include_description');
+
+        if ($configured === null) {
+            return true;
+        }
+
+        return (bool) $configured;
     }
 
     private function normalizeFieldValue(mixed $value): ?string
@@ -382,8 +419,14 @@ class SalesforceCaseMapper
     /**
      * @param  array<string, mixed>  $fields
      */
-    private function resolveWebsiteSource(array $fields, ?string $utmSource): ?string
+    private function resolveWebsiteSource(ContactSubmission $submission, array $fields, ?string $utmSource): ?string
     {
+        $channelWebsite = $this->resolveChannelWebsite($submission);
+
+        if ($channelWebsite !== null) {
+            return $channelWebsite;
+        }
+
         return $this->fieldValue($fields, [
             'utm_site',
             'website',
@@ -395,6 +438,39 @@ class SalesforceCaseMapper
             'origin_site',
             'referrer',
         ]) ?: $utmSource;
+    }
+
+    private function resolveChannelWebsite(ContactSubmission $submission): ?string
+    {
+        $channel = $submission->channel;
+
+        if ($channel === null) {
+            return null;
+        }
+
+        foreach ((array) ($channel->domain_patterns ?? []) as $pattern) {
+            $normalized = $this->normalizeDomainPattern((string) $pattern);
+
+            if ($normalized !== null) {
+                return $normalized;
+            }
+        }
+
+        return null;
+    }
+
+    private function normalizeDomainPattern(string $pattern): ?string
+    {
+        $normalized = strtolower(trim($pattern));
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        $normalized = str_replace(['*.', '*'], '', $normalized);
+        $normalized = ltrim($normalized, '.');
+
+        return $normalized !== '' ? $normalized : null;
     }
 
     /**

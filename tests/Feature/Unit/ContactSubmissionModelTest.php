@@ -107,4 +107,15 @@ class ContactSubmissionModelTest extends TestCase
         $this->assertTrue($syncedAt->equalTo($submission->salesforceSyncedAt()));
         $this->assertSame('Manual', $submission->salesforceSyncModeLabel());
     }
+
+    public function test_it_normalizes_phone_to_digits_only(): void
+    {
+        $submission = new ContactSubmission;
+        $submission->phone = '+56 9 8202 1604';
+
+        $this->assertSame('56982021604', $submission->phone);
+
+        $submission->phone = '---';
+        $this->assertNull($submission->phone);
+    }
 }

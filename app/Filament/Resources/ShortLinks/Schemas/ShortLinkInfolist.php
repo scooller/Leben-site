@@ -26,7 +26,7 @@ class ShortLinkInfolist
                             ->copyable(),
                         TextEntry::make('short_url')
                             ->label('URL corta')
-                            ->state(fn(ShortLink $record): string => $record->shortUrl())
+                            ->state(fn (ShortLink $record): string => $record->shortUrl())
                             ->copyable()
                             ->columnSpanFull(),
                         TextEntry::make('destination_url')
@@ -83,7 +83,12 @@ class ShortLinkInfolist
                     ->components([
                         KeyValueEntry::make('metadata')
                             ->label('Metadata')
-                            ->placeholder('Sin metadata'),
+                            ->placeholder('Sin metadata')
+                            ->state(
+                                fn (ShortLink $record): array => collect($record->metadata ?? [])
+                                    ->map(fn ($value) => is_array($value) ? json_encode($value, JSON_UNESCAPED_UNICODE) : (string) $value)
+                                    ->toArray()
+                            ),
                     ]),
             ]);
     }

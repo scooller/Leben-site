@@ -6,6 +6,7 @@ use AchyutN\FilamentLogViewer\FilamentLogViewer;
 use AlizHarb\ActivityLog\ActivityLogPlugin;
 use AlizHarb\ActivityLog\Widgets\ActivityChartWidget;
 use AlizHarb\ActivityLog\Widgets\LatestActivityWidget;
+use App\Filament\Pages\ContactImportProgress;
 use App\Filament\Pages\Dashboard;
 use App\Filament\Widgets\ApiMonitoringWidget;
 use App\Filament\Widgets\ApiUsageChartWidget;
@@ -148,6 +149,7 @@ class AdminPanelProvider extends PanelProvider
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->pages([
                 Dashboard::class,
+                ContactImportProgress::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets($widgets)

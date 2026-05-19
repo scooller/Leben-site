@@ -9,6 +9,7 @@ use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Text;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Str;
 
@@ -32,8 +33,15 @@ class ShortLinkForm
                             ->minLength(2)
                             ->maxLength(32)
                             ->alphaDash()
-                            ->unique(ignoreRecord: true)
-                            ->default(fn(): string => Str::lower(Str::random(2)))
+                            ->scopedUnique(ignoreRecord: true)
+                            ->validationMessages([
+                                'unique' => 'No disponible: este slug ya existe.',
+                            ])
+                            ->extraInputAttributes([
+                                'x-on:blur' => "console.log('[ShortLink.slug] blur', { value: \$event.target.value, name: \$event.target.name, id: \$event.target.id }); \$wire.checkSlugAvailability(\$event.target.value)",
+                                'x-on:focusout' => "console.log('[ShortLink.slug] focusout', { value: \$event.target.value, name: \$event.target.name, id: \$event.target.id });",
+                            ])
+                            ->default(fn (): string => Str::lower(Str::random(2)))
                             ->helperText('Se usa en la URL corta /s/{slug}.'),
                         Select::make('status')
                             ->label('Estado')
@@ -41,6 +49,11 @@ class ShortLinkForm
                             ->searchable()
                             ->required()
                             ->default(ShortLinkStatus::ACTIVE->value),
+                        Text::make(fn ($livewire): ?string => $livewire->slugAvailabilityMessage ?: null)
+                            ->key('slugAvailability')
+                            ->hidden(fn ($livewire): bool => blank($livewire->slugAvailabilityMessage))
+                            ->color(fn ($livewire): string => $livewire->slugAvailabilityColor ?: 'gray')
+                            ->weight('medium'),
                         TextInput::make('destination_url')
                             ->label('URL destino')
                             ->url()
@@ -53,7 +66,7 @@ class ShortLinkForm
                             ->placeholder('GTM-XXXXXXX')
                             ->maxLength(50)
                             ->regex('/^GTM-[A-Z0-9]+$/')
-                            ->default(fn(): ?string => SiteSetting::get('tag_manager_id') ?: null)
+                            ->default(fn (): ?string => SiteSetting::get('tag_manager_id') ?: null)
                             ->helperText('Si se deja vacio, usa el tag_manager_id global de Site Settings.'),
                         DateTimePicker::make('expires_at')
                             ->label('Expira en')

@@ -12,6 +12,8 @@ use App\Services\FinMail\FinMailNotificationService;
 use App\Services\Payment\PaymentGatewayManager;
 use App\Services\PlantReservationService;
 use Awcodes\Curator\Facades\Curator;
+use Filament\Support\Assets\Js;
+use Filament\Support\Facades\FilamentAsset;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Sanctum\Sanctum;
 
@@ -45,8 +47,19 @@ class AppServiceProvider extends ServiceProvider
         Curator::configure()
             ->acceptedFileTypes([
                 'image/*',
+                'image/gif',
                 'video/*',
                 'application/pdf',
+                'application/msword',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'application/vnd.ms-excel',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'application/vnd.ms-powerpoint',
+                'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                'application/xml',
+                'text/xml',
+                'text/plain',
+                'text/csv',
             ])
             ->maxSize(512000) // KB (~500 MB) para permitir videos
             ->disk((string) config('curator.default_disk', 'curator'))
@@ -62,5 +75,9 @@ class AppServiceProvider extends ServiceProvider
         if (class_exists(\BinaryBuilds\CommandRunner\Models\CommandRun::class)) {
             \BinaryBuilds\CommandRunner\Models\CommandRun::observe(CommandRunObserver::class);
         }
+
+        FilamentAsset::register([
+            Js::make('filament-dual-scroll', asset('js/filament-dual-scroll.js')),
+        ]);
     }
 }

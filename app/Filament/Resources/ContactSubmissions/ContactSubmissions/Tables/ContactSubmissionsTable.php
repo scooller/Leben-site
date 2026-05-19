@@ -128,24 +128,84 @@ class ContactSubmissionsTable
      */
     private static function columns(): array
     {
+        // Labels de columnas fijas para evitar duplicados
+        $fixedLabels = [
+            'rango de renta',
+            // Agrega aquí otros labels fijos si agregas más columnas robustas
+        ];
+
         $dynamicColumns = collect(self::fieldDefinitions())
+            ->filter(function (array $field) use ($fixedLabels) {
+                $key = (string) $field['key'];
+                $label = filled($field['label'] ?? null)
+                    ? (string) $field['label']
+                    : Str::headline($key);
+                // Omitir cualquier campo cuyo label (case-insensitive) ya esté en las columnas fijas
+                return !in_array(Str::lower($label), $fixedLabels, true);
+            })
             ->map(function (array $field): TextColumn {
                 $key = (string) $field['key'];
                 $label = filled($field['label'] ?? null)
                     ? (string) $field['label']
                     : Str::headline($key);
 
-                return TextColumn::make("fields.{$key}")
+                $column = TextColumn::make("fields.{$key}")
                     ->label($label)
-                    ->state(fn($record): string => self::formatDynamicValue($record->fields[$key] ?? null, $field))
+                    ->state(fn($record): string => self::formatDynamicValue(self::resolveDynamicFieldValue($record->fields, $key), $field))
                     ->placeholder('-')
                     ->wrap()
                     ->limit(60)
                     ->sortable()
                     ->toggleable();
+
+                return $column;
             })
             ->values()
             ->all();
+
+        // Columna robusta para Rango de renta (siempre visible)
+        $rangoRentaColumn = TextColumn::make('rango_renta')
+            ->label('Rango de renta')
+            ->state(function ($record) {
+                $fields = $record->fields ?? [];
+                $aliases = [
+                    'rango_renta',
+                    'rango de renta',
+                    'rango_de_renta',
+                    'en_que_rango_se_encuentra_tu_renta_liquida',
+                    'income_range',
+                    'renta_liquida',
+                    'renta',
+                    'rango',
+                    'renta_aprox',
+                    'renta_aproximada'
+                ];
+                foreach ($aliases as $alias) {
+                    foreach ($fields as $key => $value) {
+                        if (stripos($key, $alias) !== false && !empty($value)) {
+                            return $value;
+                        }
+                    }
+                }
+                // fallback: buscar por normalización
+                foreach ($fields as $key => $value) {
+                    $normalized = Str::of($key)
+                        ->ascii()
+                        ->lower()
+                        ->replaceMatches('/[^a-z0-9]+/', '_')
+                        ->trim('_')
+                        ->toString();
+                    if (in_array($normalized, $aliases) && !empty($value)) {
+                        return $value;
+                    }
+                }
+                return '-';
+            })
+            ->placeholder('-')
+            ->wrap()
+            ->limit(60)
+            ->sortable()
+            ->toggleable();
 
         if ($dynamicColumns === []) {
             $dynamicColumns = [
@@ -174,6 +234,7 @@ class ContactSubmissionsTable
             //     ->placeholder('-')
             //     ->searchable()
             //     ->toggleable(isToggledHiddenByDefault: true),
+            $rangoRentaColumn,
             ...$dynamicColumns,
             TextColumn::make('submitted_at')
                 ->label('Enviado')
@@ -214,6 +275,116 @@ class ContactSubmissionsTable
         }
 
         return implode(' | ', $items);
+    }
+
+    private static function resolveDynamicFieldValue(mixed $fields, string $fieldKey): mixed
+    {
+        if (! is_array($fields) || $fields === []) {
+            return null;
+        }
+
+        $normalizedFieldMap = [];
+
+        foreach ($fields as $key => $value) {
+            $normalizedKey = Str::of((string) $key)
+                ->ascii()
+                ->lower()
+                ->replaceMatches('/[^a-z0-9]+/', '_')
+                ->trim('_')
+                ->toString();
+
+            if ($normalizedKey === '' || array_key_exists($normalizedKey, $normalizedFieldMap)) {
+                continue;
+            }
+
+            $normalizedFieldMap[$normalizedKey] = $value;
+        }
+
+        foreach (self::fieldLookupKeys($fieldKey) as $lookupKey) {
+            if (! array_key_exists($lookupKey, $fields)) {
+                $normalizedLookupKey = Str::of($lookupKey)
+                    ->ascii()
+                    ->lower()
+                    ->replaceMatches('/[^a-z0-9]+/', '_')
+                    ->trim('_')
+                    ->toString();
+
+                if ($normalizedLookupKey === '' || ! array_key_exists($normalizedLookupKey, $normalizedFieldMap)) {
+                    continue;
+                }
+
+                $value = $normalizedFieldMap[$normalizedLookupKey];
+
+                if (is_string($value) && trim($value) === '') {
+                    continue;
+                }
+
+                return $value;
+            }
+
+            $value = $fields[$lookupKey];
+
+            if (is_string($value) && trim($value) === '') {
+                continue;
+            }
+
+            return $value;
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private static function fieldLookupKeys(string $fieldKey): array
+    {
+        $normalized = Str::of($fieldKey)
+            ->ascii()
+            ->lower()
+            ->replaceMatches('/[^a-z0-9]+/', '_')
+            ->trim('_')
+            ->toString();
+
+        $aliases = [
+            $fieldKey,
+            $normalized,
+        ];
+
+        $byAlias = [
+            'rango_renta' => [
+                'rango_de_renta',
+                'en_que_rango_se_encuentra_tu_renta_liquida',
+                'income_range',
+                'renta_liquida',
+            ],
+            'rango_de_renta' => [
+                'rango_renta',
+                'en_que_rango_se_encuentra_tu_renta_liquida',
+                'income_range',
+                'renta_liquida',
+            ],
+            'income_range' => [
+                'rango_renta',
+                'rango_de_renta',
+                'en_que_rango_se_encuentra_tu_renta_liquida',
+            ],
+            'codeudor' => [
+                'tienes_la_posibilidad_de_complementar_tu_renta',
+            ],
+            'origen_prospecto' => [
+                'origen_del_prospecto',
+            ],
+            'origen_del_prospecto' => [
+                'origen_prospecto',
+            ],
+        ];
+
+        foreach ($byAlias[$normalized] ?? [] as $alias) {
+            $aliases[] = $alias;
+        }
+
+        return array_values(array_unique(array_filter($aliases, static fn(string $key): bool => $key !== '')));
     }
 
     /**

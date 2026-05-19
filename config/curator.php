@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Filament\Curator\Schemas\MediaForm;
+
 return [
     'curation_formats' => Awcodes\Curator\Enums\PreviewableExtensions::toArray(),
     'default_disk' => env('CURATOR_DEFAULT_DISK', 'curator'),
@@ -18,9 +20,9 @@ return [
         ],
     ],
     'glide_token' => env('CURATOR_GLIDE_TOKEN'),
-    'model' => Awcodes\Curator\Models\Media::class,
+    'model' => App\Models\CuratorMedia::class,
     'path_generator' => null,
-    'url_provider' => Awcodes\Curator\Providers\GlideUrlProvider::class,
+    'url_provider' => 'App\\Filament\\Curator\\Providers\\GifSafeGlideUrlProvider',
     'resource' => [
         'label' => 'Media',
         'plural_label' => 'Media',
@@ -32,17 +34,17 @@ return [
             'should_register' => true,
             'should_show_badge' => false,
         ],
-        'resource' => Awcodes\Curator\Resources\Media\MediaResource::class,
+        'resource' => 'App\\Filament\\Curator\\MediaResource',
         'pages' => [
-            'create' => Awcodes\Curator\Resources\Media\Pages\CreateMedia::class,
-            'edit' => Awcodes\Curator\Resources\Media\Pages\EditMedia::class,
-            'index' => Awcodes\Curator\Resources\Media\Pages\ListMedia::class,
+            'create' => App\Filament\Curator\Pages\CreateMedia::class,
+            'edit' => App\Filament\Curator\Pages\EditMedia::class,
+            'index' => App\Filament\Curator\Pages\ListMedia::class,
         ],
         'schemas' => [
-            'form' => Awcodes\Curator\Resources\Media\Schemas\MediaForm::class,
+            'form' => MediaForm::class,
         ],
         'tables' => [
-            'table' => Awcodes\Curator\Resources\Media\Tables\MediaTable::class,
+            'table' => App\Filament\Curator\Tables\MediaTable::class,
         ],
     ],
 ];

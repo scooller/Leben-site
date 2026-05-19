@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Proyecto;
+use App\Models\SiteSetting;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -52,6 +53,7 @@ class ProyectoController extends Controller
         'fecha_entrega',
         'etapa',
         'horario_atencion',
+        'descuento_defecto_cotizacion_web',
         'is_active',
         'entrega_inmediata',
         'salesforce_logo_url',
@@ -67,6 +69,7 @@ class ProyectoController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = Proyecto::query()->where('is_active', true);
+        $discountSource = $this->resolveSalesforceDiscountSource();
 
         // Filtros opcionales
         if (filled($request->input('region'))) {
@@ -115,7 +118,16 @@ class ProyectoController extends Controller
 
         $requestedFields = $this->resolveRequestedFields($request);
         $computedFields = array_intersect(['image_url'], $requestedFields);
+        $requiresDiscountProjection = in_array('descuento_defecto_cotizacion_web', $requestedFields, true);
         $databaseFields = array_diff($requestedFields, $computedFields);
+
+        if ($requiresDiscountProjection) {
+            $query->withMax('plantas as descuento_maximo_unidad_fallback', 'porcentaje_maximo_unidad');
+
+            if (! in_array('descuento_maximo_unidad', $databaseFields, true)) {
+                $databaseFields[] = 'descuento_maximo_unidad';
+            }
+        }
 
         if (count($databaseFields) > 0) {
             $query->select($databaseFields);
@@ -125,14 +137,25 @@ class ProyectoController extends Controller
         $proyectos = $query->paginate(max(1, min($perPage, 100)));
 
         // Add computed fields to response if needed
-        if (count($computedFields) > 0) {
-            $proyectos->transform(function (Proyecto $proyecto) use ($computedFields): array {
+        if (count($computedFields) > 0 || $requiresDiscountProjection) {
+            $proyectos->transform(function (Proyecto $proyecto) use ($computedFields, $requiresDiscountProjection, $discountSource, $requestedFields): array {
                 $data = $proyecto->toArray();
+
                 foreach ($computedFields as $field) {
                     if ($field === 'image_url') {
                         $data['image_url'] = $proyecto->image_url;
                     }
                 }
+
+                if ($requiresDiscountProjection) {
+                    $data['descuento_defecto_cotizacion_web'] = $this->resolveProjectApiDiscount($proyecto, $discountSource);
+
+                    if (! in_array('descuento_maximo_unidad', $requestedFields, true)) {
+                        unset($data['descuento_maximo_unidad']);
+                    }
+                }
+
+                unset($data['descuento_maximo_unidad_fallback']);
 
                 return $data;
             });
@@ -147,18 +170,28 @@ class ProyectoController extends Controller
     public function show(string $id): JsonResponse
     {
         $query = Proyecto::query();
+        $discountSource = $this->resolveSalesforceDiscountSource();
         $includePlantas = $this->normalizeBoolean(request()->input('include_plantas')) === true;
         $hideSalesforceId = false;
 
         $requestedFields = $this->resolveRequestedFields(request());
+        $requiresDiscountProjection = in_array('descuento_defecto_cotizacion_web', $requestedFields, true);
 
         if ($includePlantas && ! in_array('salesforce_id', $requestedFields, true)) {
             $requestedFields[] = 'salesforce_id';
             $hideSalesforceId = true;
         }
 
+        if ($requiresDiscountProjection && ! in_array('descuento_maximo_unidad', $requestedFields, true)) {
+            $requestedFields[] = 'descuento_maximo_unidad';
+        }
+
         if (count($requestedFields) > 0) {
             $query->select($requestedFields);
+        }
+
+        if ($requiresDiscountProjection) {
+            $query->withMax('plantas as descuento_maximo_unidad_fallback', 'porcentaje_maximo_unidad');
         }
 
         if ($includePlantas) {
@@ -171,7 +204,47 @@ class ProyectoController extends Controller
             $proyecto->makeHidden('salesforce_id');
         }
 
-        return response()->json($proyecto);
+        $payload = $proyecto->toArray();
+
+        if ($requiresDiscountProjection) {
+            $payload['descuento_defecto_cotizacion_web'] = $this->resolveProjectApiDiscount($proyecto, $discountSource);
+        }
+
+        if ($hideSalesforceId) {
+            unset($payload['salesforce_id']);
+        }
+
+        unset($payload['descuento_maximo_unidad_fallback']);
+
+        return response()->json($payload);
+    }
+
+    private function resolveSalesforceDiscountSource(): ?string
+    {
+        $settings = SiteSetting::current();
+        $extraSettings = is_array($settings->extra_settings ?? null) ? $settings->extra_settings : [];
+        $source = strtolower(trim((string) data_get($extraSettings, 'salesforce_discount_source', '')));
+
+        return in_array($source, ['project', 'plant'], true) ? $source : null;
+    }
+
+    private function resolveProjectApiDiscount(Proyecto $proyecto, ?string $discountSource): ?float
+    {
+        if ($discountSource === 'project') {
+            $value = $proyecto->descuento_maximo_unidad ?? $proyecto->descuento_maximo_unidad_fallback;
+
+            return $value !== null ? (float) $value : null;
+        }
+
+        if ($discountSource === 'plant') {
+            $value = $proyecto->descuento_maximo_unidad_fallback ?? $proyecto->descuento_maximo_unidad;
+
+            return $value !== null ? (float) $value : null;
+        }
+
+        return $proyecto->descuento_defecto_cotizacion_web !== null
+            ? (float) $proyecto->descuento_defecto_cotizacion_web
+            : null;
     }
 
     /**
