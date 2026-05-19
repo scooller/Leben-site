@@ -81,7 +81,8 @@ class SalesforceCaseMapper
         $payload = [
             'FirstName' => $firstName,
             'LastName' => $lastName,
-            'Company' => (string) ($settings->site_name ?: config('app.name') ?: 'iLeben'),
+            // 'Company' => (string) ($settings->site_name ?: config('app.name') ?: 'iLeben'),
+            'Company' => '', // Campo "Company" obligatorio en Lead, pero lo dejamos vacío por ser un lead de consumidor final sin empresa asociada.
             'Phone' => $phone,
             'MobilePhone' => $phone,
             'Email' => $email,
@@ -122,7 +123,13 @@ class SalesforceCaseMapper
 
         $payload = $this->normalizeLegacyCustomFieldsInPayload($payload);
 
-        return array_filter($payload, static fn (mixed $value): bool => $value !== null && $value !== '');
+        return array_filter(
+            $payload,
+            static fn (mixed $value, string $field): bool => $field === 'Company'
+                ? $value !== null
+                : $value !== null && $value !== '',
+            ARRAY_FILTER_USE_BOTH
+        );
     }
 
     /**

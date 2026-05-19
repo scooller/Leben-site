@@ -87,7 +87,7 @@ class SalesforceCaseMapperTest extends TestCase
 
         $this->assertSame('Alejandro', $payload['FirstName'] ?? null);
         $this->assertSame('Reveco', $payload['LastName'] ?? null);
-        $this->assertSame('iLeben', $payload['Company'] ?? null);
+        $this->assertSame('', $payload['Company'] ?? null);
         $this->assertSame('992285134', $payload['Phone'] ?? null);
         $this->assertSame('992285134', $payload['MobilePhone'] ?? null);
         $this->assertSame('alejandro@example.com', $payload['Email'] ?? null);
