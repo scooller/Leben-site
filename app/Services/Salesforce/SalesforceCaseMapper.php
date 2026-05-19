@@ -99,7 +99,7 @@ class SalesforceCaseMapper
             'Proyecto__c' => $projectSalesforceId,
             'ID_Proyecto__c' => $projectSalesforceId,
             'Informacion_Cotizacion__c' => $projectName,
-            'Proyect_ID__c' => $projectName,
+            //'Proyect_ID__c' => $projectName,
             'Comuna__c' => $commune,
             'Rango_de_renta_liquida__c' => $incomeRange,
             'complementaRenta__c' => $complementIncome,
@@ -125,7 +125,7 @@ class SalesforceCaseMapper
 
         return array_filter(
             $payload,
-            static fn (mixed $value, string $field): bool => $field === 'Company'
+            static fn(mixed $value, string $field): bool => $field === 'Company'
                 ? $value !== null
                 : $value !== null && $value !== '',
             ARRAY_FILTER_USE_BOTH
@@ -207,9 +207,9 @@ class SalesforceCaseMapper
 
         if (is_array($value)) {
             $items = array_values(array_filter(array_map(
-                static fn (mixed $item): string => trim((string) $item),
+                static fn(mixed $item): string => trim((string) $item),
                 $value
-            ), static fn (string $item): bool => $item !== ''));
+            ), static fn(string $item): bool => $item !== ''));
 
             return $items === [] ? null : implode(', ', $items);
         }
@@ -254,7 +254,7 @@ class SalesforceCaseMapper
                 ->title()
                 ->toString();
 
-            return 'UTM '.$suffix;
+            return 'UTM ' . $suffix;
         }
 
         return Str::of($key)
@@ -334,7 +334,7 @@ class SalesforceCaseMapper
         $asesores = $project->asesores;
 
         $advisor = $asesores
-            ->sortByDesc(static fn ($asesor): int => $asesor->is_active ? 1 : 0)
+            ->sortByDesc(static fn($asesor): int => $asesor->is_active ? 1 : 0)
             ->first();
 
         return $this->normalizePhone($advisor?->whatsapp_owner);
