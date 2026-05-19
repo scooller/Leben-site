@@ -99,7 +99,7 @@ class SalesforceCaseMapper
             'Proyecto__c' => $projectSalesforceId,
             'ID_Proyecto__c' => $projectSalesforceId,
             'Informacion_Cotizacion__c' => $projectName,
-            //'Proyect_ID__c' => $projectName,
+            // 'Proyect_ID__c' => $projectName,
             'Comuna__c' => $commune,
             'Rango_de_renta_liquida__c' => $incomeRange,
             'complementaRenta__c' => $complementIncome,
