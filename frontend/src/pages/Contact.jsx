@@ -937,7 +937,7 @@ function Contact({ onNavigate, currentPath }) {
       <SiteHeader config={config} currentPath={currentPath} onNavigate={onNavigate} />
 
         {/* Hero section */}
-      <section className="contact-hero home-container">
+      <section className="contact-hero banner">
         {contactHeroDesktopImage ? (
           <picture className="contact-hero-picture">
             <source media="(max-width: 768px)" srcSet={contactHeroMobileImage || contactHeroDesktopImage} />
