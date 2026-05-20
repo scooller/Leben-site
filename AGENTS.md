@@ -30,16 +30,31 @@ La aplicación soporta:
 - ✅ **Normalización canónica de importación**: `rango_renta` y `apellido` unificados con limpieza de aliases legacy
 - ✅ **Normalización de telefonía**: Persistencia de teléfonos en formato solo dígitos
 - ✅ **UTM mapping robusto**: Aliases de marketing homologados hacia campos UTM y payload Salesforce
+- ✅ **Precios Dinámicos**: Implementación de descuentos máximos por unidad (descuento_maximo_unidad) con lógica de aplicación en API de Plantas y Proyectos
+- ✅ **Configuración de Descuentos**: Ajustes en `SiteSettings` para definir fuentes de descuento Salesforce para pricing de la API
+- ✅ **UX en Panel**: Implementación de `filament-dual-scroll` para tablas extensas y mejoras en visibilidad de columnas de contactos
+- ✅ **Mapeo Salesforce Extendido**: Soporte para `descuento_maximo_unidad` y refinamiento en `SalesforceCaseMapper` (resolución de sitio web por canal)
+- ✅ **Normalización de Proyectos**: Sincronización refinada de `Proyect_ID__c` y manejo de campos legacy
+- ✅ **Precios Dinámicos**: Implementación de descuentos máximos por unidad (descuento_maximo_unidad) con lógica de aplicación en API de Plantas y Proyectos
+- ✅ **Configuración de Descuentos**: Ajustes en `SiteSettings` para definir fuentes de descuento Salesforce para pricing de la API
+- ✅ **UX en Panel**: Implementación de `filament-dual-scroll` para tablas extensas y mejoras en visibilidad de columnas de contactos
+- ✅ **Mapeo Salesforce Extendido**: Soporte para `descuento_maximo_unidad` y refinamiento en `SalesforceCaseMapper` (resolución de sitio web por canal)
+- ✅ **Normalización de Proyectos**: Sincronización refinada de `Proyect_ID__c` y manejo de campos legacy
+- ✅ **Precios Dinámicos**: Implementación de descuentos máximos por unidad (descuento_maximo_unidad) con lógica de aplicación en API de Plantas y Proyectos
+- ✅ **Configuración de Descuentos**: Ajustes en SiteSettings para definir fuentes de descuento Salesforce para pricing de la API
+- ✅ **UX en Panel**: Implementación de filament-dual-scroll para tablas extensas y mejoras en visibilidad de columnas de contactos
+- ✅ **Mapeo Salesforce Extendido**: Soporte para descuento_maximo_unidad y refinamiento en SalesforceCaseMapper (resolución de sitio web por canal)
+- ✅ **Normalización de Proyectos**: Sincronización refinada de Proyect_ID__c y manejo de campos legacy
 
 ### Módulos Activos
 1. **Salesforce Integration** - Sincronización de leads/casos, OAuth, caché
-2. **Contact Submissions** - Formulario público con validación y canales
+2. **Contact Submissions** - Formulario público con validación, canales y sincronización Salesforce
 3. **Plant Management** - Plantas con filtros, precios y links
 4. **Asesor Management** - Asesores con avatares, WhatsApp, QR codes
-5. **Proyecto Management** - Proyectos con normalización de etapas
+5. **Proyecto Management** - Proyectos con normalización de etapas y relaciones
 6. **Short Links** - Links cortos con tracking y UTM
-7. **Payments** - Transbank y Mercado Pago
-8. **Activity Logging** - Registros de auditoría
+7. **Payments** - Transbank y Mercado Pago integrados con webhooks y estado de transacciones
+8. **Activity Logging** - Registros de auditoría y sincronización
 
 ---
 
@@ -315,12 +330,17 @@ The Laravel Boost guidelines are specifically curated by Laravel maintainers for
 
 This application is a Laravel application and its main Laravel ecosystems package & versions are below. You are an expert with them all. Ensure you abide by these specific packages & versions.
 
-- php - 8.2+
+- php - 8.4.16
 - filament/filament (FILAMENT) - v5
 - laravel/framework (LARAVEL) - v12
+- laravel/prompts (PROMPTS) - v0
 - laravel/sanctum (SANCTUM) - v4
 - livewire/livewire (LIVEWIRE) - v4
 - laravel/boost (BOOST) - v2
+- laravel/mcp (MCP) - v0
+- laravel/pail (PAIL) - v1
+- laravel/pint (PINT) - v1
+- laravel/sail (SAIL) - v1
 - phpunit/phpunit (PHPUNIT) - v11
 - tailwindcss (TAILWINDCSS) - v4
 
@@ -677,3 +697,6 @@ Authenticate before testing panel functionality. Filament uses Livewire, so use 
 - `Grid`, `Section`, and `Fieldset` no longer span all columns by default.
 
 </laravel-boost-guidelines>
+
+
+

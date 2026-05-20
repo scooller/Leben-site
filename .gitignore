@@ -34,3 +34,6 @@ auth.json
 /frontend/public/webawesome
 bootstrap/cache
 /.codegraph
+/.agents
+skills-lock.json
+/.vscode
