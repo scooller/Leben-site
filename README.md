@@ -14,7 +14,7 @@ Aplicación backend-first construida con Laravel 12, Filament 5, React 19 y Web 
 ### Frontend
 - **React 19** - UI library
 - **Vite** - Build tool
-- **Web Awesome 3.4.0** - Design system
+- **Web Awesome 3.5.0** - Design system
 - **Tailwind CSS 4** - Utility-first CSS
 - **GSAP** - Animaciones
 
@@ -142,6 +142,11 @@ frontend/
 - **FinMail** — Notificaciones de email transaccional integradas al flujo de negocio
 - **Importación de contactos** — Normalización de `rango_renta`, `apellido` canónico, teléfono en solo dígitos y aliases UTM alineados con Salesforce
 - **Normalización histórica** — Comando `contact:normalize-rango-renta-key` con modo `--dry-run`
+- **Pricing dinámico** — Soporte para `descuento_maximo_unidad` y `descuento_maximo_cotizacion_web` en proyectos, panel y API
+- **SiteSettings de descuentos** — Configuración de fuentes de descuento para cálculo de precios comerciales
+- **UX de tablas en panel** — Integración de dual-scroll para tablas extensas y mejoras de lectura operativa
+- **SalesforceCaseMapper** — Refinamientos de mapeo por canal y manejo robusto de campos legacy/canónicos (`Proyect_ID__c`)
+- **Métricas de brokers** — Scheduler y comando `salesforce:sync-broker-metrics` activos cada 15 minutos
 
 ## 🛠️ Comandos Útiles
 
@@ -838,5 +843,5 @@ Todos los derechos reservados - iLeben © 2026
 
 ---
 
-**Última actualización:** 30 Mar 2026  
-**Versión:** 1.0.0
+**Última actualización:** 20 May 2026  
+**Versión:** 1.9.0
