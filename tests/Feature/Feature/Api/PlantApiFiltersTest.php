@@ -429,6 +429,44 @@ class PlantApiFiltersTest extends TestCase
         $this->assertNotContains($departmentPlant->id, $responsePlantIds);
     }
 
+    public function test_it_filters_plants_by_tipo_producto_slug(): void
+    {
+        $project = Proyecto::factory()->create([
+            'is_active' => true,
+        ]);
+
+        $departmentPlant = $this->createPlant($project->salesforce_id, true, ['tipo_producto' => 'DEPARTAMENTO']);
+        $parkingPlant = $this->createPlant($project->salesforce_id, true, ['tipo_producto' => 'ESTACIONAMIENTO']);
+
+        $response = $this->getJson('/api/v1/plantas?tipo_producto_slug=estacionamiento');
+
+        $response->assertOk();
+        $responsePlantIds = collect($response->json('data'))->pluck('id')->all();
+
+        $this->assertContains($parkingPlant->id, $responsePlantIds);
+        $this->assertNotContains($departmentPlant->id, $responsePlantIds);
+    }
+
+    public function test_it_filters_plants_by_multiple_tipo_producto_slugs(): void
+    {
+        $project = Proyecto::factory()->create([
+            'is_active' => true,
+        ]);
+
+        $departmentPlant = $this->createPlant($project->salesforce_id, true, ['tipo_producto' => 'DEPARTAMENTO']);
+        $storagePlant = $this->createPlant($project->salesforce_id, true, ['tipo_producto' => 'BODEGA']);
+        $localPlant = $this->createPlant($project->salesforce_id, true, ['tipo_producto' => 'LOCAL']);
+
+        $response = $this->getJson('/api/v1/plantas?tipo_producto_slug=departamento,bodega');
+
+        $response->assertOk();
+        $responsePlantIds = collect($response->json('data'))->pluck('id')->all();
+
+        $this->assertContains($departmentPlant->id, $responsePlantIds);
+        $this->assertContains($storagePlant->id, $responsePlantIds);
+        $this->assertNotContains($localPlant->id, $responsePlantIds);
+    }
+
     public function test_it_filters_plants_by_entrega_stage(): void
     {
         $deliveryProject = Proyecto::factory()->create([
