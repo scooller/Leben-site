@@ -25,6 +25,61 @@ body {
   transition: color 0.3s ease, background-color 0.3s ease;
 }
 
+.home-container {
+  padding: 2rem 1rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+#menu-section {
+  scroll-margin-top: 6.5rem;
+}
+
+/* Hero Section */
+.hero-section {
+  text-align: center;
+  margin-bottom: 3rem;
+  padding: 2rem;
+  background: linear-gradient(
+    135deg,
+    rgba(var(--wa-color-primary-rgb), 0.1),
+    rgba(var(--wa-color-secondary-rgb), 0.1)
+  );
+  border-radius: 0.5rem;
+
+  .hero-logo {
+    max-width: 150px;
+    height: auto;
+    margin-bottom: 1rem;
+  }
+
+  h1 {
+    font-size: 2.5rem;
+    margin: 1rem 0 0.5rem;
+    color: var(--wa-color-text);
+  }
+
+  p {
+    font-size: 1.1rem;
+    color: var(--wa-color-text);
+    opacity: 0.8;
+  }
+}
+
+.validation-hint {
+  display: block;
+  margin-top: 2px;
+}
+
+.validation-hint.info {
+  color: var(--wa-color-text-quiet);
+}
+
+.validation-hint.error {
+  color: var(--wa-color-danger-on-quiet);
+  font-weight: var(--wa-font-weight-medium);
+}
+
 .wa-position-relative {
   position: relative!important;
 }
