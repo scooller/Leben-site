@@ -36,6 +36,7 @@ class PlantController extends Controller
         $pisoValues = $this->normalizeInputValues($request->input('piso'));
         $orientacionValues = $this->normalizeInputValues($request->input('orientacion'));
         $tipoProductoValues = $this->normalizeInputValues($request->input('tipo_producto'));
+        $tipoProductoSlugValues = $this->normalizeInputValues($request->input('tipo_producto_slug', $request->input('tipo_slug')));
         $comunaValues = $this->normalizeInputValues($request->input('comuna'));
         $provinciaValues = $this->normalizeInputValues($request->input('provincia'));
         $regionValues = $this->normalizeInputValues($request->input('region'));
@@ -165,6 +166,35 @@ class PlantController extends Controller
 
         if (count($orientacionValues) > 0) {
             $query->whereIn('orientacion', $orientacionValues);
+        }
+
+        if (count($tipoProductoSlugValues) > 0) {
+            $availablePlantTypes = Plant::query()
+                ->where('is_active', true)
+                ->whereHas('proyecto', function ($projectQuery) {
+                    $projectQuery->where('is_active', true);
+                })
+                ->pluck('tipo_producto')
+                ->map(static fn (mixed $tipoProducto): string => trim((string) $tipoProducto))
+                ->filter(static fn (string $tipoProducto): bool => $tipoProducto !== '')
+                ->unique()
+                ->values();
+
+            $matchedPlantTypes = [];
+
+            foreach ($tipoProductoSlugValues as $tipoProductoSlugValue) {
+                $normalizedTypeSlug = Str::slug($tipoProductoSlugValue);
+
+                foreach ($availablePlantTypes as $availablePlantType) {
+                    if (Str::slug($availablePlantType) === $normalizedTypeSlug) {
+                        $matchedPlantTypes[] = $availablePlantType;
+                    }
+                }
+            }
+
+            if (count($matchedPlantTypes) > 0) {
+                $tipoProductoValues = array_values(array_unique([...$tipoProductoValues, ...$matchedPlantTypes]));
+            }
         }
 
         if (count($tipoProductoValues) > 0) {

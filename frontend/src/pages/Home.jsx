@@ -18,6 +18,7 @@ const PaymentGatewayDialog = lazy(() => import('../components/PaymentGatewayDial
 
 const PLANT_DETAIL_BASE_PATH = '/p';
 const FILTER_BASE_PATH = '/f';
+const PLANT_TYPE_FILTER_OPTIONS = ['DEPARTAMENTO', 'ESTACIONAMIENTO', 'BODEGA', 'LOCAL'];
 
 const slugifySegment = (value) => (
   `${value ?? ''}`
@@ -55,6 +56,7 @@ const parseFilterPath = (pathname) => {
   const filters = {
     projectSlugs: [],
     comunaSlugs: [],
+    plantTypeSlugs: [],
   };
 
   for (let index = 0; index < segments.length; index += 2) {
@@ -76,6 +78,10 @@ const parseFilterPath = (pathname) => {
 
     if (key === 'comunas') {
       filters.comunaSlugs = values;
+    }
+
+    if (key === 'tipos' || key === 'tipo') {
+      filters.plantTypeSlugs = values;
     }
   }
 
@@ -152,6 +158,7 @@ function Home({ onNavigate, currentPath }) {
     return {
       projectSlugs: [],
       comunaSlugs: [],
+      plantTypeSlugs: [],
       legacySlug: parseLegacyCatalogPath(currentPath || '/')?.slug || null,
     };
   }, [currentPath]);
@@ -303,6 +310,18 @@ function Home({ onNavigate, currentPath }) {
   const routeComunaValues = useMemo(() => routeComunaSlugs
     .map((slug) => filteredComunaOptions.find((comuna) => slugifySegment(comuna) === slug) || null)
     .filter(Boolean), [filteredComunaOptions, routeComunaSlugs]);
+
+  const routeTipoProductoSlugs = useMemo(() => routeFilters.plantTypeSlugs || [], [routeFilters]);
+
+  const routeTipoProductoValue = useMemo(() => {
+    if (routeTipoProductoSlugs.length !== 1) {
+      return '';
+    }
+
+    const routeSlug = routeTipoProductoSlugs[0];
+
+    return PLANT_TYPE_FILTER_OPTIONS.find((value) => slugifySegment(value) === routeSlug) || '';
+  }, [routeTipoProductoSlugs]);
 
   const activeFilterCount = selectedProyecto.length
     + selectedDormitorios.length
@@ -520,7 +539,7 @@ function Home({ onNavigate, currentPath }) {
   }, [tempComuna, filteredComunaOptions]);
 
   useEffect(() => {
-    if (!routeFilters.legacySlug && routeProjectSlugs.length === 0 && routeComunaSlugs.length === 0) {
+    if (!routeFilters.legacySlug && routeProjectSlugs.length === 0 && routeComunaSlugs.length === 0 && routeTipoProductoSlugs.length === 0) {
       return;
     }
 
@@ -528,8 +547,12 @@ function Home({ onNavigate, currentPath }) {
     setSelectedProyecto(routeProjectValues);
     setTempComuna(routeComunaValues);
     setSelectedComuna(routeComunaValues);
+    if (routeTipoProductoValue) {
+      setTempTipoProducto(routeTipoProductoValue);
+      setSelectedTipoProducto(routeTipoProductoValue);
+    }
     setPage(1);
-  }, [routeComunaSlugs.length, routeComunaValues, routeFilters.legacySlug, routeProjectSlugs.length, routeProjectValues]);
+  }, [routeComunaSlugs.length, routeComunaValues, routeFilters.legacySlug, routeProjectSlugs.length, routeProjectValues, routeTipoProductoSlugs.length, routeTipoProductoValue]);
 
   const loadPlants = useCallback(async () => {
     if (canRenderPlantsCatalog === false) {
@@ -579,7 +602,9 @@ function Home({ onNavigate, currentPath }) {
         filters.orientacion = selectedOrientacion;
       }
 
-      if (selectedTipoProducto) {
+      if (routeTipoProductoSlugs.length > 0) {
+        filters.tipo_producto_slug = routeTipoProductoSlugs;
+      } else if (selectedTipoProducto) {
         filters.tipo_producto = selectedTipoProducto;
       }
 
@@ -663,6 +688,7 @@ function Home({ onNavigate, currentPath }) {
     routeComunaValues,
     routeFilters,
     routeProjectSlugs,
+    routeTipoProductoSlugs,
     selectedProyecto,
     selectedDormitorios,
     selectedBanos,
@@ -987,7 +1013,7 @@ function Home({ onNavigate, currentPath }) {
     };
   }, [configLoading]);
 
-  const syncCatalogUrl = useCallback((projectValues, comunaValues) => {
+  const syncCatalogUrl = useCallback((projectValues, comunaValues, plantTypeValue) => {
     const projectSlugs = (Array.isArray(projectValues) ? projectValues : [projectValues])
       .map((value) => proyectos.find((proyecto) => `${proyecto.salesforce_id}` === `${value}`))
       .map((proyecto) => slugifySegment(proyecto?.slug || proyecto?.name || ''))
@@ -997,10 +1023,18 @@ function Home({ onNavigate, currentPath }) {
       .map((value) => slugifySegment(value))
       .filter(Boolean);
 
+    const plantTypeSlugs = (Array.isArray(plantTypeValue) ? plantTypeValue : [plantTypeValue])
+      .map((value) => slugifySegment(value))
+      .filter(Boolean);
+
     const segments = [];
 
     if (projectSlugs.length > 0) {
       segments.push('proyectos', projectSlugs.join(','));
+    }
+
+    if (plantTypeSlugs.length > 0) {
+      segments.push('tipos', plantTypeSlugs.join(','));
     }
 
     if (comunaSlugs.length > 0) {
@@ -1032,7 +1066,7 @@ function Home({ onNavigate, currentPath }) {
     setSelectedPrecioMin(tempPrecioMin);
     setSelectedPrecioMax(tempPrecioMax);
     setPage(1); // Volver a la primera página al aplicar filtros
-    syncCatalogUrl(tempProyecto, tempComuna);
+    syncCatalogUrl(tempProyecto, tempComuna, tempTipoProducto);
   };
 
   // Limpiar filtros
