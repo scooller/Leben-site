@@ -3,9 +3,11 @@
         "copilot"
     ],
     "packages": [
-        "filament/filament"
+        "filament/filament",
+        "spatie/laravel-permission"
     ],
     "skills": [
-        "tailwindcss-development"
+        "tailwindcss-development",
+        "laravel-permission-development"
     ]
 }

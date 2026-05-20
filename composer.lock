@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "695e018daa241818faab527fcf7d1050",
+    "content-hash": "3bcf1ec727014b0baed80e8feef81209",
     "packages": [
         {
             "name": "achyutn/filament-log-viewer",
@@ -11859,6 +11859,77 @@
                 }
             ],
             "time": "2026-02-18T12:37:06+00:00"
+        },
+        {
+            "name": "revolution/laravel-boost-phpstorm-copilot",
+            "version": "2.0.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/invokable/laravel-boost-phpstorm-copilot.git",
+                "reference": "57ef8867491158cad3eb835c2cc2ec29d4c482a0"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/invokable/laravel-boost-phpstorm-copilot/zipball/57ef8867491158cad3eb835c2cc2ec29d4c482a0",
+                "reference": "57ef8867491158cad3eb835c2cc2ec29d4c482a0",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/support": "^12.30||^13.0",
+                "laravel/boost": "^2.0",
+                "php": "^8.3"
+            },
+            "require-dev": {
+                "laravel/pint": "^1.25",
+                "mockery/mockery": "^1.6",
+                "orchestra/testbench": "^10.6",
+                "pestphp/pest": "^4.1",
+                "pestphp/pest-plugin-laravel": "^4.0",
+                "revolution/laravel-boost-copilot-cli": "^2.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Revolution\\Laravel\\Boost\\PhpStormCopilotServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Revolution\\Laravel\\Boost\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "puklipo"
+                },
+                {
+                    "name": "kawax",
+                    "email": "kawaxbiz@gmail.com"
+                }
+            ],
+            "description": "Laravel Boost Custom Agent for PhpStorm with GitHub Copilot plugin",
+            "keywords": [
+                "boost",
+                "github-copilot",
+                "laravel",
+                "phpstorm"
+            ],
+            "support": {
+                "source": "https://github.com/invokable/laravel-boost-phpstorm-copilot/tree/2.0.2"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/invokable",
+                    "type": "github"
+                }
+            ],
+            "time": "2026-02-21T23:24:34+00:00"
         },
         {
             "name": "sebastian/cli-parser",
