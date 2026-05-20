@@ -4,6 +4,12 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+- Sin cambios
+
+---
+
+## [1.9.0] - 2026-05-20
+
 ### ✨ Agregado
 
 #### Permisos y Control de Acceso (Spatie)
@@ -38,6 +44,14 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 - Mejoras de descripción y formato en formularios/infolist de Short Links
 - Nuevo flujo de redirección WhatsApp para asesores con helpers UTM
 
+#### Salesforce - Métricas Comerciales de Brokers
+- Nuevo comando `salesforce:sync-broker-metrics` para recalcular métricas comerciales desde snapshots locales de oportunidades
+- Programación en scheduler cada 15 minutos con `withoutOverlapping()` para mantener datos de brokers actualizados
+
+#### Herramientas y Flujo de Agentes
+- Actualización de instrucciones y contexto operativo para agentes (`AGENTS.md` y `copilot-instructions.md`)
+- Ajustes de tooling de desarrollo para mejorar consistencia del flujo de asistencia en el repositorio
+
 ### 🔄 Cambios
 
 #### Importación CSV de Contactos
@@ -63,6 +77,19 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 - API y tablas del panel homologan representación de etapa (filtros, badges y payload)
 - Migración de backfill para normalizar valores históricos en `proyectos.etapa`
 - Tests unitarios y feature actualizados para cubrir normalización y casos legacy
+
+#### Pricing Dinámico de Proyectos
+- Incorporación de `descuento_maximo_unidad` y `descuento_maximo_cotizacion_web` en modelo, migraciones y recursos del panel
+- Ajustes de `SiteSettings` para definir fuentes de descuento usadas por el pricing de API
+- Cobertura de pruebas ajustada para validar persistencia, exposición y cálculo de descuentos
+
+#### UX de Panel Filament
+- Integración de script/asset para dual scroll en tablas extensas del panel
+- Ajustes de visibilidad de columnas en Contact Submissions para priorizar lectura operativa (por ejemplo, `rango_renta` oculto por defecto)
+
+#### Salesforce — Refinamiento de Mapeos
+- Refinamiento de `SalesforceCaseMapper` para resolver website por canal con reglas más robustas
+- Ajustes de mapeo para campos de proyecto legacy/canónicos, incluyendo manejo de `Proyect_ID__c`
 
 ---
 
