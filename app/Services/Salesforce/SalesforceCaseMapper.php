@@ -55,10 +55,7 @@ class SalesforceCaseMapper
         $utmCampaign = $this->resolveUtmCampaign($fields, $utmCampaignDefault);
         $utmContent = $this->fieldValue($fields, ['utm_content', 'pieza_grafica']);
         $utmTerm = $this->fieldValue($fields, ['utm_term', 'audiencia']);
-        $leadSource = $originProspect ?: $this->fieldValue($fields, [
-            'lead_source',
-            'origen',
-        ]) ?: $utmSourceValue;
+        $leadSource = $utmTerm;
         $email = $submission->email ?: $this->fieldValue($fields, ['email', 'correo']) ?: null;
         $phone = $submission->phone ?: $this->fieldValue($fields, ['phone', 'telefono', 'fono', 'celular', 'whatsapp']);
         $includeDescription = $this->shouldIncludeDescription($settings);
@@ -125,7 +122,7 @@ class SalesforceCaseMapper
 
         return array_filter(
             $payload,
-            static fn(mixed $value, string $field): bool => $field === 'Company'
+            static fn (mixed $value, string $field): bool => $field === 'Company'
                 ? $value !== null
                 : $value !== null && $value !== '',
             ARRAY_FILTER_USE_BOTH
@@ -207,9 +204,9 @@ class SalesforceCaseMapper
 
         if (is_array($value)) {
             $items = array_values(array_filter(array_map(
-                static fn(mixed $item): string => trim((string) $item),
+                static fn (mixed $item): string => trim((string) $item),
                 $value
-            ), static fn(string $item): bool => $item !== ''));
+            ), static fn (string $item): bool => $item !== ''));
 
             return $items === [] ? null : implode(', ', $items);
         }
@@ -254,7 +251,7 @@ class SalesforceCaseMapper
                 ->title()
                 ->toString();
 
-            return 'UTM ' . $suffix;
+            return 'UTM '.$suffix;
         }
 
         return Str::of($key)
@@ -334,7 +331,7 @@ class SalesforceCaseMapper
         $asesores = $project->asesores;
 
         $advisor = $asesores
-            ->sortByDesc(static fn($asesor): int => $asesor->is_active ? 1 : 0)
+            ->sortByDesc(static fn ($asesor): int => $asesor->is_active ? 1 : 0)
             ->first();
 
         return $this->normalizePhone($advisor?->whatsapp_owner);
