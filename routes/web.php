@@ -4,6 +4,8 @@ use App\Http\Controllers\AdvisorWhatsappRedirectController;
 use App\Http\Controllers\PaymentWebhookController;
 use App\Http\Controllers\ShortLinkRedirectController;
 use App\Models\Payment;
+use App\Models\Plant;
+use App\Models\SiteSetting;
 use Illuminate\Support\Facades\Route;
 
 // Rutas de preview para frontend (deben saltar mantenimiento)
@@ -16,6 +18,67 @@ Route::get('/preview-link/{token}', function ($token) {
     // Aquí deberías tener la lógica real de preview, placeholder por ahora
     return response()->json(['preview' => true, 'token' => $token]);
 })->middleware('bypass.maintenance.preview');
+
+Route::get('/sitemap.xml', function () {
+    $settings = SiteSetting::current();
+    $baseUrl = rtrim((string) ($settings->site_url ?: config('app.frontend_url', 'https://sale.ileben.cl')), '/');
+
+    $staticUrls = collect([
+        [
+            'loc' => $baseUrl . '/',
+            'changefreq' => 'daily',
+            'priority' => '1.0',
+            'lastmod' => now()->toDateString(),
+        ],
+        [
+            'loc' => $baseUrl . '/plantas',
+            'changefreq' => 'daily',
+            'priority' => '0.9',
+            'lastmod' => now()->toDateString(),
+        ],
+        [
+            'loc' => $baseUrl . '/f',
+            'changefreq' => 'daily',
+            'priority' => '0.8',
+            'lastmod' => now()->toDateString(),
+        ],
+    ]);
+
+    $plantUrls = collect();
+
+    if ((bool) ($settings->mostrar_plantas ?? true)) {
+        $plantUrls = Plant::query()
+            ->with(['proyecto:id,salesforce_id,slug,name,is_active'])
+            ->where('is_active', true)
+            ->whereHas('proyecto', fn($query) => $query->where('is_active', true))
+            ->whereDoesntHave('activeReservation')
+            ->whereDoesntHave('completedReservation')
+            ->whereDoesntHave('completedPayment')
+            ->get()
+            ->map(function (Plant $plant) use ($baseUrl): ?array {
+                $projectSlug = trim((string) ($plant->proyecto?->slug ?: ''));
+                $unitName = trim((string) ($plant->name ?? ''));
+
+                if ($projectSlug === '' || $unitName === '') {
+                    return null;
+                }
+
+                return [
+                    'loc' => $baseUrl . '/p/' . rawurlencode($projectSlug) . '/' . rawurlencode($unitName),
+                    'changefreq' => 'daily',
+                    'priority' => '0.7',
+                    'lastmod' => optional($plant->updated_at)->toDateString() ?? now()->toDateString(),
+                ];
+            })
+            ->filter();
+    }
+
+    $urls = $staticUrls->merge($plantUrls)->values();
+
+    return response()
+        ->view('sitemap.xml', ['urls' => $urls])
+        ->header('Content-Type', 'application/xml; charset=UTF-8');
+})->name('sitemap.xml');
 
 Route::get('/', function () {
     return redirect('/admin');
