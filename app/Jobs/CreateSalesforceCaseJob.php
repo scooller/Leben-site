@@ -2,12 +2,16 @@
 
 namespace App\Jobs;
 
+use App\Exceptions\SalesforceTokenExpiredException;
 use App\Models\ContactSubmission;
+use App\Models\SiteSetting;
 use App\Services\Salesforce\SalesforceCaseMapper;
 use App\Services\Salesforce\SalesforceService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Omniphx\Forrest\Exceptions\MissingResourceException;
 
@@ -82,6 +86,9 @@ class CreateSalesforceCaseJob implements ShouldQueue
                 'contact_submission_id' => $submission->id,
             ]);
 
+            $this->markSalesforceOAuthAsDisconnected('Token no disponible en cache (MissingResourceException).');
+            $this->notifySalesforceOAuthDisconnection($submission->id, 'Token no disponible en cache (MissingResourceException).');
+
             $submission->update([
                 'salesforce_case_error' => 'Token Salesforce expirado. Reconectar en panel admin.',
                 'salesforce_synced_at' => now(),
@@ -89,6 +96,20 @@ class CreateSalesforceCaseJob implements ShouldQueue
             ]);
 
             // No relanzar — no tiene sentido reintentar sin token
+        } catch (SalesforceTokenExpiredException $exception) {
+            Log::critical('CreateSalesforceCaseJob: Salesforce respondió invalid_grant. Reconecta en /admin/site-settings → "Conectar con Salesforce"', [
+                'contact_submission_id' => $submission->id,
+                'error' => $exception->getMessage(),
+            ]);
+
+            $this->markSalesforceOAuthAsDisconnected('invalid_grant: expired access/refresh token');
+            $this->notifySalesforceOAuthDisconnection($submission->id, 'invalid_grant: expired access/refresh token');
+
+            $submission->update([
+                'salesforce_case_error' => 'Token Salesforce revocado/expirado (invalid_grant). Reconectar en panel admin.',
+                'salesforce_synced_at' => now(),
+                'salesforce_sync_trigger' => $syncTrigger,
+            ]);
         } catch (\Throwable $exception) {
             $errorMessage = Str::limit($exception->getMessage(), 65535, '');
 
@@ -139,5 +160,72 @@ class CreateSalesforceCaseJob implements ShouldQueue
     private function normalizeSyncTrigger(string $syncTrigger): string
     {
         return $syncTrigger === 'manual' ? 'manual' : 'automatic';
+    }
+
+    private function markSalesforceOAuthAsDisconnected(string $reason): void
+    {
+        $siteSettings = SiteSetting::current();
+        $extraSettings = is_array($siteSettings->extra_settings) ? $siteSettings->extra_settings : [];
+
+        data_set($extraSettings, 'salesforce_oauth.connected', false);
+        data_set($extraSettings, 'salesforce_oauth.last_disconnected_at', now()->toIso8601String());
+        data_set($extraSettings, 'salesforce_oauth.last_error', $reason);
+
+        $siteSettings->update([
+            'extra_settings' => $extraSettings,
+        ]);
+    }
+
+    private function notifySalesforceOAuthDisconnection(int $contactSubmissionId, string $reason): void
+    {
+        $siteSettings = SiteSetting::current();
+        $recipient = $this->resolveSalesforceAlertRecipient($siteSettings);
+
+        if ($recipient === null) {
+            return;
+        }
+
+        $alertKey = sprintf('salesforce:oauth:disconnect-alert:%s', md5(strtolower($reason)));
+        $shouldSend = Cache::add($alertKey, now()->toIso8601String(), now()->addMinutes(30));
+
+        if (! $shouldSend) {
+            return;
+        }
+
+        $subject = 'Alerta Salesforce OAuth desconectado';
+        $message = implode("\n", [
+            'Se detectó desconexión OAuth con Salesforce.',
+            'Submission ID: ' . $contactSubmissionId,
+            'Motivo: ' . $reason,
+            'Acción requerida: reconectar en /admin/site-settings (Conectar con Salesforce).',
+        ]);
+
+        try {
+            Mail::raw($message, static function ($mail) use ($recipient, $subject): void {
+                $mail->to($recipient)->subject($subject);
+            });
+        } catch (\Throwable $exception) {
+            Log::warning('CreateSalesforceCaseJob: No se pudo enviar alerta de desconexión OAuth de Salesforce', [
+                'recipient' => $recipient,
+                'error' => $exception->getMessage(),
+            ]);
+        }
+    }
+
+    private function resolveSalesforceAlertRecipient(SiteSetting $siteSettings): ?string
+    {
+        $candidates = [
+            trim((string) $siteSettings->contact_notification_email),
+            trim((string) $siteSettings->contact_email),
+            trim((string) config('mail.from.address', '')),
+        ];
+
+        foreach ($candidates as $candidate) {
+            if ($candidate !== '' && filter_var($candidate, FILTER_VALIDATE_EMAIL) !== false) {
+                return $candidate;
+            }
+        }
+
+        return null;
     }
 }
