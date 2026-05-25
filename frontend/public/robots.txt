@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /frontend-preview/
+Disallow: /preview-link/
+Disallow: /*preview_token=
+
+Sitemap: https://sale.ileben.cl/sitemap.xml
