@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\Plants\Pages\ListPlants;
 use App\Filament\Resources\Plants\PlantResource;
 use App\Filament\Resources\Plants\Schemas\PlantForm;
 use App\Models\Plant;
@@ -14,6 +15,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Contracts\TranslatableContentDriver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Component as LivewireComponent;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class PlantResourceTest extends TestCase
@@ -95,6 +97,39 @@ class PlantResourceTest extends TestCase
         $this->assertArrayNotHasKey('opportunity_id', $components);
         $this->assertArrayNotHasKey('superficie_vendible', $components);
         $this->assertArrayHasKey('unidad_sale', $components);
+    }
+
+    public function test_plants_bulk_actions_include_activate_and_deactivate_sale(): void
+    {
+        $this->user->update(['user_type' => 'admin']);
+
+        Livewire::test(ListPlants::class)
+            ->assertTableBulkActionExists('activateSelected')
+            ->assertTableBulkActionHasLabel('activateSelected', 'Activar')
+            ->assertTableBulkActionExists('deactivateSaleSelected')
+            ->assertTableBulkActionHasLabel('deactivateSaleSelected', 'Desactivar en sale');
+    }
+
+    public function test_plants_bulk_actions_activate_and_deactivate_sale_update_records(): void
+    {
+        $this->user->update(['user_type' => 'admin']);
+
+        $plants = Plant::factory()->count(2)->create([
+            'is_active' => false,
+            'unidad_sale' => true,
+        ]);
+
+        Livewire::test(ListPlants::class)
+            ->callTableBulkAction('activateSelected', $plants)
+            ->callTableBulkAction('deactivateSaleSelected', $plants);
+
+        foreach ($plants as $plant) {
+            $this->assertDatabaseHas('plants', [
+                'id' => $plant->id,
+                'is_active' => true,
+                'unidad_sale' => false,
+            ]);
+        }
     }
 
     private function makeSchemaHost(): HasSchemas

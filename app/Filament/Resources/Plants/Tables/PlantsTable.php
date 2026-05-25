@@ -216,6 +216,17 @@ class PlantsTable
                     ->icon('heroicon-o-document-arrow-up')
                     ->exporter(PlantExporter::class),
                 BulkActionGroup::make([
+                    BulkAction::make('activateSelected')
+                        ->label('Activar')
+                        ->icon('heroicon-o-check-circle')
+                        ->color('success')
+                        ->requiresConfirmation()
+                        ->action(function (Collection $records): void {
+                            $records->each->update([
+                                'is_active' => true,
+                            ]);
+                        })
+                        ->successNotificationTitle('Plantas activadas'),
                     BulkAction::make('deactivateSelected')
                         ->label('Desactivar seleccionadas')
                         ->icon('heroicon-o-x-circle')
@@ -228,7 +239,7 @@ class PlantsTable
                         })
                         ->successNotificationTitle('Plantas desactivadas'),
                     // activateSelected Sale
-                    BulkAction::make('activateSelected')
+                    BulkAction::make('activateSaleSelected')
                         ->label('Activar en sale')
                         ->icon('heroicon-o-check-circle')
                         ->color('success')
@@ -239,6 +250,17 @@ class PlantsTable
                             ]);
                         })
                         ->successNotificationTitle('Plantas Sale'),
+                    BulkAction::make('deactivateSaleSelected')
+                        ->label('Desactivar en sale')
+                        ->icon('heroicon-o-x-circle')
+                        ->color('warning')
+                        ->requiresConfirmation()
+                        ->action(function (Collection $records): void {
+                            $records->each->update([
+                                'unidad_sale' => false,
+                            ]);
+                        })
+                        ->successNotificationTitle('Plantas fuera de Sale'),
                     DeleteBulkAction::make(),
                 ]),
             ]);
