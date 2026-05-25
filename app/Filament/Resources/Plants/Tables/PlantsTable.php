@@ -198,6 +198,15 @@ class PlantsTable
 						'is_active' => ! $record->is_active,
 					]))
 					->successNotificationTitle('Estado actualizado'),
+				// activar o desactivar unidad sale
+				Action::make('toggleUnidadSale')
+					->label(fn(Plant $record): string => $record->unidad_sale ? 'Desactivar en Sale' : 'Activar en Sale')
+					->icon(fn(Plant $record): string => $record->unidad_sale ? 'heroicon-o-bookmark-slash' : 'heroicon-o-bookmark')
+					->color(fn(Plant $record): string => $record->unidad_sale ? 'warning' : 'success')
+					->action(fn(Plant $record): bool => $record->update([
+						'unidad_sale' => ! $record->unidad_sale,
+					]))
+					->successNotificationTitle('Unidad Sale actualizada'),
 				Action::make('viewInSalesforce')
 					->label('Ver en Salesforce')
 					->icon('heroicon-o-arrow-top-right-on-square')

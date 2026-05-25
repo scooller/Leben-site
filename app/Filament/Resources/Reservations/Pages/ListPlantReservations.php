@@ -27,7 +27,7 @@ class ListPlantReservations extends ListRecords
         return [
             Action::make('createManualReservation')
                 ->label('Agregar reserva manual')
-                ->icon('heroicon-o-plus-circle')
+                ->icon('heroicon-o-clock')
                 ->visible(fn (): bool => Auth::user()?->isAdmin() ?? false)
                 ->authorize(fn (): bool => Auth::user()?->isAdmin() ?? false)
                 ->modalHeading('Agregar unidad reservada manualmente')

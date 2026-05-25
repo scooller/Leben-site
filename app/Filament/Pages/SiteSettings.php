@@ -1192,6 +1192,7 @@ class SiteSettings extends Page implements HasForms
         return [
             Action::make('save')
                 ->label('Guardar Configuración')
+                ->icon('heroicon-o-cog-6-tooth')
                 ->submit('save'),
         ];
     }
@@ -1201,7 +1202,7 @@ class SiteSettings extends Page implements HasForms
         return [
             Action::make('connect_salesforce')
                 ->label('Conectar con Salesforce')
-                ->icon(Heroicon::OutlinedArrowUpRight)
+                ->icon('heroicon-o-cloud-arrow-up')
                 ->url(route('salesforce.oauth.connect'))
                 ->openUrlInNewTab()
                 ->tooltip('Abre el login de Salesforce para autorizar la integración'),

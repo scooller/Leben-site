@@ -117,11 +117,14 @@ class PlantResourceTest extends TestCase
 		$plants = Plant::factory()->count(2)->create([
 			'is_active' => false,
 			'unidad_sale' => true,
+			'tipo_producto' => 'DEPARTAMENTO',
 		]);
 
 		Livewire::test(ListPlants::class)
-			->callTableBulkAction('activateSelected', $plants)
-			->callTableBulkAction('deactivateSaleSelected', $plants);
+			->mountTableBulkAction('activateSelected', $plants)
+			->callMountedTableBulkAction()
+			->mountTableBulkAction('deactivateSaleSelected', $plants)
+			->callMountedTableBulkAction();
 
 		foreach ($plants as $plant) {
 			$this->assertDatabaseHas('plants', [
