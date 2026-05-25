@@ -10,6 +10,7 @@ use App\Filament\Pages\ContactImportProgress;
 use App\Filament\Pages\Dashboard;
 use App\Filament\Widgets\ApiMonitoringWidget;
 use App\Filament\Widgets\ApiUsageChartWidget;
+use App\Filament\Widgets\ContactSubmissionsStatsWidget;
 use App\Filament\Widgets\PaymentGatewayChartWidget;
 use App\Filament\Widgets\PaymentsChartWidget;
 use App\Filament\Widgets\PaymentStatusChartWidget;
@@ -21,6 +22,7 @@ use App\Filament\Widgets\UsersChartWidget;
 use App\Http\Middleware\EnsureMarketingPanelAccess;
 use App\Models\SiteSetting;
 use BinaryBuilds\CommandRunner\CommandRunnerPlugin;
+use Exception;
 use Filament\FontProviders\LocalFontProvider;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -40,7 +42,6 @@ use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
-use Throwable;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -52,6 +53,7 @@ class AdminPanelProvider extends PanelProvider
             AccountWidget::class,
             ApiMonitoringWidget::class,
             ApiUsageChartWidget::class,
+            ContactSubmissionsStatsWidget::class,
             UsersChartWidget::class,
             ActivityChartWidget::class,
             LatestActivityWidget::class,
@@ -68,7 +70,7 @@ class AdminPanelProvider extends PanelProvider
         $widgetOrder = is_array($widgetOrder) ? array_values($widgetOrder) : [];
 
         if (! empty($widgetOrder)) {
-            $ordered = array_values(array_filter($widgetOrder, fn(string $widget): bool => in_array($widget, $defaultWidgets, true)));
+            $ordered = array_values(array_filter($widgetOrder, fn (string $widget): bool => in_array($widget, $defaultWidgets, true)));
             $missing = array_values(array_diff($defaultWidgets, $ordered));
             $widgets = array_merge($ordered, $missing);
         } else {
@@ -97,7 +99,7 @@ class AdminPanelProvider extends PanelProvider
             ->brandLogoHeight('2.5rem')
             ->renderHook(
                 PanelsRenderHook::GLOBAL_SEARCH_AFTER,
-                fn(): \Illuminate\Contracts\View\View => view('filament.components.view-web-button'),
+                fn (): \Illuminate\Contracts\View\View => view('filament.components.view-web-button'),
             )
             ->colors([
                 'primary' => '#eb0029',
@@ -145,13 +147,13 @@ class AdminPanelProvider extends PanelProvider
                     ->navigationGroup('Monitoreo')
                     ->navigationSort(1),
                 FilamentLogViewer::make()
-                    ->authorize(fn(): bool => Auth::user()?->isAdmin() ?? false)
+                    ->authorize(fn (): bool => Auth::user()?->isAdmin() ?? false)
                     ->navigationGroup('Monitoreo')
                     ->navigationIcon('heroicon-o-document-text')
                     ->navigationLabel('Log Viewer')
                     ->navigationSort(2),
                 CommandRunnerPlugin::make()
-                    ->authorize(fn(): bool => Auth::user()?->isAdmin() ?? false)
+                    ->authorize(fn (): bool => Auth::user()?->isAdmin() ?? false)
                     ->navigationGroup('Herramientas')
                     ->navigationLabel('Command Runner')
                     ->navigationIcon('heroicon-o-command-line')
@@ -186,7 +188,7 @@ class AdminPanelProvider extends PanelProvider
             $settings->load(['faviconMedia', 'logoMedia', 'logoDarkMedia']);
 
             return $settings;
-        } catch (Throwable) {
+        } catch (Exception) {
             return null;
         }
     }
