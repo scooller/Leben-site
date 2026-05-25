@@ -11,6 +11,8 @@ import siteConfigService from '../services/siteConfig';
 import { isRetryableError } from '../utils/errorHandler';
 import { getConfiguredEntregaAliases, getProjectSlugsByAlias, getStageKeysByAlias } from '../utils/stageAlias';
 import { trackEvent, trackPageView } from '../utils/tagManager';
+import { resolveSeoPolicy } from '../utils/seoPolicy';
+import { removeStructuredData, setStructuredData } from '../utils/structuredData';
 import '../styles/home.scss' with { type: 'css' };
 
 const PlantsGrid = lazy(() => import('../components/PlantsGrid'));
@@ -323,6 +325,62 @@ function Home({ onNavigate, currentPath }) {
     return PLANT_TYPE_FILTER_OPTIONS.find((value) => slugifySegment(value) === routeSlug) || '';
   }, [routeTipoProductoSlugs]);
 
+  const preferredSiteUrl = useMemo(
+    () => `${config?.site_url || 'https://sale.ileben.cl'}`.trim().replace(/\/+$/, ''),
+    [config?.site_url]
+  );
+
+  const categoryProjectLinks = useMemo(() => proyectos
+    .slice(0, 8)
+    .map((proyecto) => ({
+      label: proyecto.name,
+      href: `${FILTER_BASE_PATH}/proyectos/${slugifySegment(proyecto.slug || proyecto.name || '')}`,
+    }))
+    .filter((link) => link.href !== `${FILTER_BASE_PATH}/proyectos/`), [proyectos]);
+
+  const categoryComunaLinks = useMemo(() => filteredComunaOptions
+    .slice(0, 8)
+    .map((comuna) => ({
+      label: comuna,
+      href: `${FILTER_BASE_PATH}/comunas/${slugifySegment(comuna)}`,
+    })), [filteredComunaOptions]);
+
+  const breadcrumbItems = useMemo(() => {
+    const baseItems = [{ label: 'Inicio', href: '/' }];
+
+    if (currentPath.startsWith('/p/') && selectedPlantDetail) {
+      const projectSlug = selectedPlantDetail.proyectoSlug || slugifySegment(selectedPlantDetail.proyectoNombre);
+      const projectName = selectedPlantDetail.proyectoNombre || selectedPlantDetail.proyecto?.name || 'Proyecto';
+
+      baseItems.push({ label: 'Plantas', href: '/plantas' });
+
+      if (projectSlug) {
+        baseItems.push({
+          label: projectName,
+          href: `${FILTER_BASE_PATH}/proyectos/${projectSlug}`,
+        });
+      }
+
+      baseItems.push({
+        label: `Unidad ${selectedPlantDetail.nombre || selectedPlantDetail.name || ''}`.trim(),
+        href: null,
+        current: true,
+      });
+
+      return baseItems;
+    }
+
+    if (currentPath === '/plantas' || currentPath === '/f' || currentPath.startsWith('/f/')) {
+      baseItems.push({ label: 'Plantas', href: currentPath === '/plantas' ? null : '/plantas', current: currentPath === '/plantas' });
+
+      if (currentPath.startsWith('/f/')) {
+        baseItems.push({ label: 'Resultados filtrados', href: null, current: true });
+      }
+    }
+
+    return baseItems;
+  }, [currentPath, selectedPlantDetail]);
+
   const activeFilterCount = selectedProyecto.length
     + selectedDormitorios.length
     + selectedBanos.length
@@ -350,7 +408,11 @@ function Home({ onNavigate, currentPath }) {
     const seoConfig = config?.seo || {};
     const siteName = config?.site_name || 'iLeben';
     const siteDescription = config?.site_description || 'Descubre departamentos inmobiliarios disponibles para compra en Chile.';
-    const siteUrl = (config?.site_url || window.location.origin || '').replace(/\/+$/, '');
+    const siteUrl = preferredSiteUrl;
+    const seoPolicy = resolveSeoPolicy({
+      pathname: currentPath,
+      search: window.location.search || '',
+    });
 
     const isListingPage = currentPath === '/plantas' || currentPath === '/f' || currentPath.startsWith('/f/');
     const isDetailPage = currentPath.startsWith('/p/') && Boolean(selectedPlantDetail);
@@ -394,6 +456,10 @@ function Home({ onNavigate, currentPath }) {
         ? `Explora ${totalPlants} unidades disponibles en venta. Filtra por proyecto, comuna y características para encontrar tu próximo departamento.`
         : 'Explora departamentos en venta y filtra por proyecto, comuna y características.';
       canonical = `${siteUrl || window.location.origin}${currentPath === '/plantas' ? '/f' : currentPath}`;
+
+      if (seoPolicy.isTemporaryFilterVariant) {
+        canonical = `${siteUrl || window.location.origin}/f`;
+      }
     }
 
     siteConfigService.applySeo({
@@ -402,7 +468,7 @@ function Home({ onNavigate, currentPath }) {
       keywords: seoConfig.meta_keywords,
       author: seoConfig.meta_author,
       canonical,
-      robots: seoConfig.robots_default || 'index,follow',
+      robots: seoPolicy.robots || seoConfig.robots_default || 'index,follow',
       ogImage: seoConfig.og_image,
       ogType,
       ogSiteName: siteName,
@@ -417,12 +483,108 @@ function Home({ onNavigate, currentPath }) {
     config?.site_name,
     config?.site_url,
     currentPath,
+    preferredSiteUrl,
     proyectos,
     selectedComuna,
     selectedPlantDetail,
     selectedProyecto,
     totalPlants,
   ]);
+
+  useEffect(() => {
+    if (!(currentPath.startsWith('/p/') && selectedPlantDetail)) {
+      removeStructuredData('product');
+      removeStructuredData('product-breadcrumb');
+      return;
+    }
+
+    const detailPath = buildPlantDetailPath(selectedPlantDetail);
+    const detailUrl = `${preferredSiteUrl}${detailPath}`;
+    const projectSlug = selectedPlantDetail.proyectoSlug || slugifySegment(selectedPlantDetail.proyectoNombre || selectedPlantDetail.proyecto?.name);
+    const projectName = selectedPlantDetail.proyectoNombre || selectedPlantDetail.proyecto?.name || 'Proyecto';
+    const productName = `Planta ${selectedPlantDetail.nombre || selectedPlantDetail.name || ''} - ${projectName}`;
+    const numericPrice = Number(selectedPlantDetail.precioFinal || selectedPlantDetail.precioBase || selectedPlantDetail.precioLista || 0);
+    const availability = selectedPlantDetail.isPaid || selectedPlantDetail.isReserved || selectedPlantDetail.isAvailable === false
+      ? 'https://schema.org/SoldOut'
+      : 'https://schema.org/InStock';
+
+    const productSchema = {
+      '@context': 'https://schema.org',
+      '@type': 'Product',
+      name: productName,
+      url: detailUrl,
+      category: selectedPlantDetail.tipoProducto || 'Inmobiliario',
+      sku: `${projectSlug || 'proyecto'}-${slugifySegment(selectedPlantDetail.nombre || selectedPlantDetail.name || '')}`,
+      image: selectedPlantDetail.imageUrl || selectedPlantDetail.coverImage || undefined,
+      brand: {
+        '@type': 'Brand',
+        name: config?.site_name || 'iLeben',
+      },
+      description: selectedPlantDetail.proyectoDescripcion || `Unidad ${selectedPlantDetail.nombre || selectedPlantDetail.name || ''} en ${projectName}`,
+      offers: {
+        '@type': 'Offer',
+        url: detailUrl,
+        availability,
+        priceCurrency: 'CLF',
+        price: Number.isFinite(numericPrice) && numericPrice > 0 ? numericPrice : undefined,
+        itemCondition: 'https://schema.org/NewCondition',
+      },
+    };
+
+    const breadcrumbSchema = {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        {
+          '@type': 'ListItem',
+          position: 1,
+          name: 'Inicio',
+          item: `${preferredSiteUrl}/`,
+        },
+        {
+          '@type': 'ListItem',
+          position: 2,
+          name: 'Plantas',
+          item: `${preferredSiteUrl}/plantas`,
+        },
+        {
+          '@type': 'ListItem',
+          position: 3,
+          name: projectName,
+          item: `${preferredSiteUrl}${FILTER_BASE_PATH}/proyectos/${projectSlug}`,
+        },
+        {
+          '@type': 'ListItem',
+          position: 4,
+          name: productName,
+          item: detailUrl,
+        },
+      ],
+    };
+
+    setStructuredData('product', productSchema);
+    setStructuredData('product-breadcrumb', breadcrumbSchema);
+
+    return () => {
+      removeStructuredData('product');
+      removeStructuredData('product-breadcrumb');
+    };
+  }, [
+    buildPlantDetailPath,
+    config?.site_name,
+    currentPath,
+    preferredSiteUrl,
+    selectedPlantDetail,
+  ]);
+
+  const handleInternalNavigationLink = useCallback((event, href) => {
+    if (!href || !href.startsWith('/')) {
+      return;
+    }
+
+    event.preventDefault();
+    onNavigate?.(href);
+  }, [onNavigate]);
 
   const mapPlant = useCallback((plant) => {
     const precioBase = Number(plant.precio_base) || 0;
@@ -1420,6 +1582,20 @@ function Home({ onNavigate, currentPath }) {
             <p>{config?.site_description}</p>
         </div>
 
+        <nav className="seo-breadcrumbs" aria-label="Breadcrumb">
+          <ol>
+            {breadcrumbItems.map((item, index) => (
+              <li key={`${item.label}-${index}`}>
+                {item.href && !item.current ? (
+                  <a href={item.href} onClick={(event) => handleInternalNavigationLink(event, item.href)}>{item.label}</a>
+                ) : (
+                  <span aria-current={item.current ? 'page' : undefined}>{item.label}</span>
+                )}
+              </li>
+            ))}
+          </ol>
+        </nav>
+
         {/* Filtros */}
         {canRenderPlantsCatalog ? (
         <>
@@ -1637,6 +1813,39 @@ function Home({ onNavigate, currentPath }) {
                     </div>
                 </wa-card>
         </wa-details>
+
+        <section className="seo-link-hub wa-stack wa-gap-s wa-mb-m" aria-label="Exploración por categorías">
+          <div className="wa-stack wa-gap-2xs">
+            <span className="wa-caption-s">Explora por proyecto</span>
+            <div className="wa-cluster wa-gap-2xs">
+              {categoryProjectLinks.map((item) => (
+                <a
+                  key={item.href}
+                  className="seo-link-chip"
+                  href={item.href}
+                  onClick={(event) => handleInternalNavigationLink(event, item.href)}
+                >
+                  {item.label}
+                </a>
+              ))}
+            </div>
+          </div>
+          <div className="wa-stack wa-gap-2xs">
+            <span className="wa-caption-s">Explora por comuna</span>
+            <div className="wa-cluster wa-gap-2xs">
+              {categoryComunaLinks.map((item) => (
+                <a
+                  key={item.href}
+                  className="seo-link-chip"
+                  href={item.href}
+                  onClick={(event) => handleInternalNavigationLink(event, item.href)}
+                >
+                  {item.label}
+                </a>
+              ))}
+            </div>
+          </div>
+        </section>
 
       {/* Plantas Grid */}
       <Suspense fallback={null}>

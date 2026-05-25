@@ -6,6 +6,8 @@ import { APP_HTTP_ERROR_EVENT } from './utils/errorHandler';
 import { trackPageView } from './utils/tagManager';
 import { captureUtmParamsFromUrl } from './utils/utmSession';
 import siteConfigService from './services/siteConfig';
+import { resolveSeoPolicy } from './utils/seoPolicy';
+import { removeStructuredData, setStructuredData } from './utils/structuredData';
 import './App.scss';
 import './styles/maintenance.scss';
 
@@ -149,6 +151,10 @@ function AppContent() {
   }, [pathname]);
 
   const currentPath = useMemo(() => normalizePathname(pathname), [pathname]);
+  const siteUrl = useMemo(
+    () => `${config?.site_url || 'https://sale.ileben.cl'}`.trim().replace(/\/+$/, ''),
+    [config?.site_url]
+  );
 
   useEffect(() => {
     captureUtmParamsFromUrl(window.location.search || '');
@@ -158,14 +164,19 @@ function AppContent() {
     const pageTitle = resolvePageTitle(currentPath, config?.site_name || 'iLeben');
     const description = resolvePageDescription(currentPath, config?.site_description || '');
     const seoConfig = config?.seo || {};
+    const seoPolicy = resolveSeoPolicy({
+      pathname: currentPath,
+      search: window.location.search || '',
+    });
+    const canonicalPath = currentPath === '/' ? '/' : currentPath;
 
     siteConfigService.applySeo({
       title: pageTitle,
       description,
       keywords: seoConfig.meta_keywords,
       author: seoConfig.meta_author,
-      canonical: `${window.location.origin}${currentPath}`,
-      robots: seoConfig.robots_default || 'index,follow',
+      canonical: `${siteUrl}${canonicalPath}`,
+      robots: seoPolicy.robots || seoConfig.robots_default || 'index,follow',
       ogImage: seoConfig.og_image,
       ogType: currentPath === '/pago' ? 'website' : 'website',
       ogSiteName: config?.site_name || 'iLeben',
@@ -187,7 +198,55 @@ function AppContent() {
     config?.seo?.tag_manager_id,
     config?.site_description,
     config?.site_name,
+    siteUrl,
     currentPath,
+  ]);
+
+  useEffect(() => {
+    const socialLinks = config?.social || {};
+    const sameAs = [
+      socialLinks.facebook,
+      socialLinks.instagram,
+      socialLinks.linkedin,
+      socialLinks.youtube,
+      socialLinks.twitter,
+    ].filter(Boolean);
+
+    const organizationSchema = {
+      '@context': 'https://schema.org',
+      '@type': 'Organization',
+      name: config?.site_name || 'iLeben',
+      url: siteUrl,
+      logo: config?.logo || config?.logo_dark || config?.favicon || undefined,
+      description: config?.site_description || undefined,
+      sameAs: sameAs.length > 0 ? sameAs : undefined,
+      contactPoint: config?.contact?.phone || config?.contact?.email
+        ? [{
+          '@type': 'ContactPoint',
+          telephone: config?.contact?.phone || undefined,
+          email: config?.contact?.email || undefined,
+          contactType: 'customer support',
+          areaServed: 'CL',
+          availableLanguage: ['es', 'en'],
+        }]
+        : undefined,
+    };
+
+    setStructuredData('organization', organizationSchema);
+
+    return () => {
+      removeStructuredData('organization');
+    };
+  }, [
+    config?.contact?.email,
+    config?.contact?.phone,
+    config?.favicon,
+    config?.logo,
+    config?.logo_dark,
+    config?.site_description,
+    config?.site_name,
+    config?.social,
+    siteUrl,
   ]);
 
   return (
