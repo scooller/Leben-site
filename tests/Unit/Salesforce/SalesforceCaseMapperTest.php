@@ -94,7 +94,7 @@ class SalesforceCaseMapperTest extends TestCase
         $this->assertSame('leben.cl', $payload['Website'] ?? null);
         $this->assertSame('alejandro@example.com', $payload['Email__c'] ?? null);
         $this->assertSame('11.455.798-6', $payload['RUT__c'] ?? null);
-        $this->assertSame('Direct', $payload['LeadSource'] ?? null);
+        $this->assertSame('Clientes-potenciales', $payload['LeadSource'] ?? null);
         $this->assertSame('En Contacto', $payload['Status'] ?? null);
         $this->assertSame('005U100000CAG4bIAH', $payload['OwnerId'] ?? null);
         $this->assertSame('Online', $payload['Tipo_Ingreso__c'] ?? null);
@@ -330,7 +330,7 @@ class SalesforceCaseMapperTest extends TestCase
         $this->assertSame('005U100000CAG4bIAH', $payload['OwnerId'] ?? null);
     }
 
-    public function test_it_maps_origen_prospecto_to_lead_source_and_utm_source(): void
+    public function test_it_maps_lead_source_from_utm_term(): void
     {
         config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');
         config()->set('services.salesforce.lead_status', 'En Contacto');
@@ -352,18 +352,19 @@ class SalesforceCaseMapperTest extends TestCase
                 'apellido' => 'Mapper',
                 'origen_prospecto' => 'facebook ads',
                 'medio_de_llegada' => 'Meta',
+                'utm_term' => 'trafico-meta',
             ],
             'submitted_at' => now(),
         ]);
 
         $payload = app(SalesforceCaseMapper::class)->mapLead($submission);
 
-        $this->assertSame('Facebook ads', $payload['LeadSource'] ?? null);
+        $this->assertSame('Trafico-meta', $payload['LeadSource'] ?? null);
         $this->assertSame('Meta', $payload['Medio_de_Llegada__c'] ?? null);
         $this->assertSame('Meta', $payload['utm_source__c'] ?? null);
     }
 
-    public function test_it_prefers_origen_prospecto_over_utm_source_for_lead_source(): void
+    public function test_it_uses_utm_term_over_origen_prospecto_for_lead_source(): void
     {
         config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');
         config()->set('services.salesforce.lead_status', 'En Contacto');
@@ -386,13 +387,14 @@ class SalesforceCaseMapperTest extends TestCase
                 'origen_prospecto' => 'Leben | Vive el sur | Edificio Inn | ICON | Brochure | Febrero 2026',
                 'medio_de_llegada' => 'Meta',
                 'utm_source' => 'Meta',
+                'utm_term' => 'campana-busqueda-2026',
             ],
             'submitted_at' => now(),
         ]);
 
         $payload = app(SalesforceCaseMapper::class)->mapLead($submission);
 
-        $this->assertSame('Leben | vive el sur | edificio inn | icon | brochure | febrero 2026', $payload['LeadSource'] ?? null);
+        $this->assertSame('Campana-busqueda-2026', $payload['LeadSource'] ?? null);
         $this->assertSame('Meta', $payload['Medio_de_Llegada__c'] ?? null);
         $this->assertSame('Meta', $payload['utm_source__c'] ?? null);
     }

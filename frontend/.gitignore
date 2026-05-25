@@ -20,7 +20,6 @@ dist-ssr
 *.suo
 
 # npm configuration with sensitive tokens
-.npmrc
 *.ntvs*
 *.njsproj
 *.sln
