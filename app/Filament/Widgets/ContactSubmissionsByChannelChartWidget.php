@@ -33,7 +33,7 @@ class ContactSubmissionsByChannelChartWidget extends ChartWidget
             'datasets' => [
                 [
                     'label' => 'Contactos',
-                    'data' => $rows->pluck('total')->map(fn ($total): int => (int) $total)->toArray(),
+                    'data' => $rows->pluck('total')->map(fn($total): int => (int) $total)->toArray(),
                     'backgroundColor' => [
                         'rgba(235, 0, 41, 0.85)',
                         'rgba(59, 130, 246, 0.85)',
@@ -43,7 +43,7 @@ class ContactSubmissionsByChannelChartWidget extends ChartWidget
                     ],
                 ],
             ],
-            'labels' => $rows->map(fn (ContactSubmission $submission): string => $submission->channel?->name ?? 'Sin canal')->toArray(),
+            'labels' => $rows->map(fn(ContactSubmission $submission): string => $submission->channel?->name ?? 'Sin canal')->toArray(),
         ];
     }
 
