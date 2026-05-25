@@ -10,7 +10,9 @@ use App\Filament\Pages\ContactImportProgress;
 use App\Filament\Pages\Dashboard;
 use App\Filament\Widgets\ApiMonitoringWidget;
 use App\Filament\Widgets\ApiUsageChartWidget;
+use App\Filament\Widgets\ContactSubmissionsByChannelChartWidget;
 use App\Filament\Widgets\ContactSubmissionsStatsWidget;
+use App\Filament\Widgets\ContactSubmissionsTrendChartWidget;
 use App\Filament\Widgets\PaymentGatewayChartWidget;
 use App\Filament\Widgets\PaymentsChartWidget;
 use App\Filament\Widgets\PaymentStatusChartWidget;
@@ -54,6 +56,8 @@ class AdminPanelProvider extends PanelProvider
             ApiMonitoringWidget::class,
             ApiUsageChartWidget::class,
             ContactSubmissionsStatsWidget::class,
+            ContactSubmissionsTrendChartWidget::class,
+            ContactSubmissionsByChannelChartWidget::class,
             UsersChartWidget::class,
             ActivityChartWidget::class,
             LatestActivityWidget::class,
