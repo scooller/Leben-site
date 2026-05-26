@@ -176,7 +176,7 @@ class SiteSettings extends Page implements HasForms
                                         Toggle::make('evento_sale')
                                             ->label('Evento Sale')
                                             ->live()
-                                            ->helperText('Cuando está activo, el frontend solo mostrará plantas con Porcentaje Máximo de Unidad y usará la etiqueta "Precio Sale".'),
+                                            ->helperText('Solo cambia la etiqueta visual a "Precio Sale" en el frontend. El porcentaje del precio final se define con el selector de Pasarelas de Pago.'),
 
                                         Toggle::make('mostrar_plantas')
                                             ->label('Mostrar plantas')
@@ -1022,6 +1022,16 @@ class SiteSettings extends Page implements HasForms
                                             ->default('final')
                                             ->required()
                                             ->helperText('El precio lista se mostrará siempre como referencia, independientemente del valor elegido aquí.'),
+
+                                        Select::make('extra_settings.price_percentage_source')
+                                            ->label('Fuente del porcentaje para precio final')
+                                            ->options([
+                                                'max_unit' => 'Porcentaje Máximo de Unidad',
+                                                'web_discount' => 'Descuento Web del proyecto',
+                                            ])
+                                            ->default('web_discount')
+                                            ->required()
+                                            ->helperText('Define de dónde se tomará el porcentaje aplicado al precio lista para calcular el precio final.'),
                                     ])
                                     ->columns(1),
                             ]),

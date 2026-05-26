@@ -141,6 +141,9 @@ function Home({ onNavigate, currentPath }) {
   const { config, loading: configLoading, colorMode, toggleColorMode } = useSiteConfig();
   const isSaleEventActive = Boolean(config?.evento_sale);
   const priceSource = config?.payment_gateways?.price_source === 'base' ? 'base' : 'final';
+  const pricePercentageSource = config?.payment_gateways?.price_percentage_source === 'max_unit'
+    ? 'max_unit'
+    : 'web_discount';
   const showPlants = Boolean(config?.mostrar_plantas ?? false);
   // Optimistic: while config is loading assume catalog is visible so all data fetches
   // fire immediately in parallel with the site-config request instead of waiting for it.
@@ -592,7 +595,7 @@ function Home({ onNavigate, currentPath }) {
     const precioLista = Number(plant.precio_lista) || 0;
     const porcentajeMaximoUnidad = Number(plant.porcentaje_maximo_unidad) || 0;
     const descuentoDefectoCotizacionWeb = Number(plant.proyecto?.descuento_defecto_cotizacion_web) || 0;
-    const porcentajeAplicado = isSaleEventActive ? porcentajeMaximoUnidad : descuentoDefectoCotizacionWeb;
+    const porcentajeAplicado = pricePercentageSource === 'max_unit' ? porcentajeMaximoUnidad : descuentoDefectoCotizacionWeb;
     const precioCalculadoPorPorcentaje = porcentajeAplicado > 0 && precioLista > 0
       ? Math.max(0, precioLista - ((precioLista * porcentajeAplicado) / 100))
       : 0;
@@ -652,7 +655,7 @@ function Home({ onNavigate, currentPath }) {
       isReserved: !!plant.active_reservation,
       tipoProducto: `${plant.tipo_producto ?? ''}`.trim().toUpperCase(),
     };
-  }, [isSaleEventActive, priceSource]);
+  }, [pricePercentageSource, priceSource]);
 
   useEffect(() => {
     if (!canRenderPlantsCatalog) {

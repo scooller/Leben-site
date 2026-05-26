@@ -412,6 +412,9 @@ class SiteSetting extends Model
                 'price_source' => in_array(($extraSettings['price_source'] ?? 'final'), ['final', 'base'], true)
                     ? $extraSettings['price_source']
                     : 'final',
+                'price_percentage_source' => in_array(($extraSettings['price_percentage_source'] ?? 'web_discount'), ['max_unit', 'web_discount'], true)
+                    ? $extraSettings['price_percentage_source']
+                    : 'web_discount',
                 'reservation_timeout_minutes' => $settings->gateway_reservation_timeout_minutes ?? 15,
             ],
         ];
