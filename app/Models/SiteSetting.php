@@ -300,6 +300,9 @@ class SiteSetting extends Model
         $homeHeroVideoPoster = Media::query()->find($extraSettings['home_hero_video_poster_id'] ?? null)?->url;
         $contactHeroDesktopImage = Media::query()->find($extraSettings['contact_hero_image_desktop_id'] ?? $extraSettings['contact_hero_image_id'] ?? null)?->url;
         $contactHeroMobileImage = Media::query()->find($extraSettings['contact_hero_image_mobile_id'] ?? $extraSettings['contact_hero_image_id'] ?? null)?->url;
+        $ogImageFromCurator = Media::query()->find($extraSettings['og_image_id'] ?? null)?->url;
+        $priceSource = $extraSettings['price_source'] ?? 'final';
+        $pricePercentageSource = $extraSettings['price_percentage_source'] ?? 'web_discount';
 
         return [
             'site_name' => $settings->site_name,
@@ -350,7 +353,7 @@ class SiteSetting extends Model
                 'site_locale' => is_string($extraSettings['site_locale'] ?? null)
                     ? trim((string) $extraSettings['site_locale'])
                     : 'es-CL',
-                'og_image' => $settings->og_image ? url($settings->og_image) : null,
+                'og_image' => $ogImageFromCurator ?? ($settings->og_image ? url($settings->og_image) : null),
                 'utm_campaign_default' => is_string($extraSettings['utm_campaign_default'] ?? null)
                     ? trim((string) $extraSettings['utm_campaign_default'])
                     : 'campaign',
@@ -409,11 +412,11 @@ class SiteSetting extends Model
                     'enabled' => $settings->gateway_manual_enabled,
                     'config' => $settings->gateway_manual_config ?? [],
                 ],
-                'price_source' => in_array(($extraSettings['price_source'] ?? 'final'), ['final', 'base'], true)
-                    ? $extraSettings['price_source']
+                'price_source' => in_array($priceSource, ['final', 'base'], true)
+                    ? $priceSource
                     : 'final',
-                'price_percentage_source' => in_array(($extraSettings['price_percentage_source'] ?? 'web_discount'), ['max_unit', 'web_discount'], true)
-                    ? $extraSettings['price_percentage_source']
+                'price_percentage_source' => in_array($pricePercentageSource, ['max_unit', 'web_discount'], true)
+                    ? $pricePercentageSource
                     : 'web_discount',
                 'reservation_timeout_minutes' => $settings->gateway_reservation_timeout_minutes ?? 15,
             ],

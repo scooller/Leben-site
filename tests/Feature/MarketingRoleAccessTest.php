@@ -6,6 +6,7 @@ use App\Filament\Resources\Asesores\AsesorResource;
 use App\Filament\Resources\ContactSubmissions\ContactSubmissions\ContactSubmissionResource;
 use App\Filament\Resources\Plants\PlantResource;
 use App\Filament\Resources\ShortLinks\ShortLinkResource;
+use App\Models\ShortLink;
 use App\Models\User;
 use Filament\Panel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -59,15 +60,18 @@ class MarketingRoleAccessTest extends TestCase
 
         $this->actingAs($marketing);
 
+        $shortLink = ShortLink::factory()->create();
+
         $this->assertTrue(PlantResource::canViewAny());
         $this->assertFalse(PlantResource::canCreate());
         $this->assertTrue(ContactSubmissionResource::canCreate());
         $this->assertTrue(ShortLinkResource::canCreate());
+        $this->assertFalse(ShortLinkResource::canDelete($shortLink));
     }
 
     public function test_cliente_cannot_access_marketing_resources(): void
     {
-        [, , $cliente] = $this->createUsers();
+        [,, $cliente] = $this->createUsers();
 
         $this->actingAs($cliente);
 

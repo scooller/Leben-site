@@ -30,6 +30,20 @@ class SiteSettingFrontendConfigTest extends TestCase
             'title' => 'Home poster',
         ]);
 
+        $ogMedia = Media::query()->create([
+            'disk' => 'curator',
+            'directory' => null,
+            'visibility' => 'public',
+            'name' => 'seo-og',
+            'path' => 'seo-og.jpg',
+            'width' => 1200,
+            'height' => 630,
+            'size' => 154320,
+            'type' => 'image/jpeg',
+            'ext' => 'jpg',
+            'title' => 'SEO Open Graph',
+        ]);
+
         SiteSetting::current()->update([
             'brand_color' => '#112233',
             'gateway_reservation_timeout_minutes' => 22,
@@ -68,6 +82,7 @@ class SiteSettingFrontendConfigTest extends TestCase
                 'default_meta_title' => 'iLeben | Departamentos en venta',
                 'default_og_title' => 'iLeben Inmobiliaria',
                 'default_og_description' => 'Encuentra departamentos en venta en Chile.',
+                'og_image_id' => $ogMedia->id,
                 'twitter_site' => '@ileben',
                 'robots_default' => 'index,follow',
                 'site_locale' => 'es-CL',
@@ -117,6 +132,7 @@ class SiteSettingFrontendConfigTest extends TestCase
         $this->assertSame('iLeben | Departamentos en venta', $payload['seo']['default_meta_title']);
         $this->assertSame('iLeben Inmobiliaria', $payload['seo']['default_og_title']);
         $this->assertSame('Encuentra departamentos en venta en Chile.', $payload['seo']['default_og_description']);
+        $this->assertStringContainsString('seo-og.jpg', (string) $payload['seo']['og_image']);
         $this->assertSame('@ileben', $payload['seo']['twitter_site']);
         $this->assertSame('index,follow', $payload['seo']['robots_default']);
         $this->assertSame('es-CL', $payload['seo']['site_locale']);

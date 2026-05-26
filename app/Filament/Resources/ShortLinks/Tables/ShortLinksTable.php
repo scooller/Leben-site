@@ -8,6 +8,7 @@ use App\Filament\Actions\ShowQrCodeAction;
 use App\Models\ShortLink;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
@@ -105,6 +106,11 @@ class ShortLinksTable
 				ShowQrCodeAction::make(fn(ShortLink $record): string => $record->shortUrl()),
 				ViewAction::make(),
 				EditAction::make(),
+				DeleteAction::make()
+					->label('Eliminar')
+					->modalHeading('Eliminar link corto')
+					->modalDescription('Esta accion eliminara el link corto de forma permanente.')
+					->successNotificationTitle('Link corto eliminado correctamente'),
 			])
 			->defaultSort('created_at', 'desc')
 			->toolbarActions([

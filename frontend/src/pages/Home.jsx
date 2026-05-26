@@ -141,9 +141,6 @@ function Home({ onNavigate, currentPath }) {
   const { config, loading: configLoading, colorMode, toggleColorMode } = useSiteConfig();
   const isSaleEventActive = Boolean(config?.evento_sale);
   const priceSource = config?.payment_gateways?.price_source === 'base' ? 'base' : 'final';
-  const pricePercentageSource = config?.payment_gateways?.price_percentage_source === 'max_unit'
-    ? 'max_unit'
-    : 'web_discount';
   const showPlants = Boolean(config?.mostrar_plantas ?? false);
   // Optimistic: while config is loading assume catalog is visible so all data fetches
   // fire immediately in parallel with the site-config request instead of waiting for it.
@@ -595,7 +592,7 @@ function Home({ onNavigate, currentPath }) {
     const precioLista = Number(plant.precio_lista) || 0;
     const porcentajeMaximoUnidad = Number(plant.porcentaje_maximo_unidad) || 0;
     const descuentoDefectoCotizacionWeb = Number(plant.proyecto?.descuento_defecto_cotizacion_web) || 0;
-    const porcentajeAplicado = pricePercentageSource === 'max_unit' ? porcentajeMaximoUnidad : descuentoDefectoCotizacionWeb;
+    const porcentajeAplicado = isSaleEventActive ? porcentajeMaximoUnidad : descuentoDefectoCotizacionWeb;
     const precioCalculadoPorPorcentaje = porcentajeAplicado > 0 && precioLista > 0
       ? Math.max(0, precioLista - ((precioLista * porcentajeAplicado) / 100))
       : 0;
@@ -655,7 +652,7 @@ function Home({ onNavigate, currentPath }) {
       isReserved: !!plant.active_reservation,
       tipoProducto: `${plant.tipo_producto ?? ''}`.trim().toUpperCase(),
     };
-  }, [pricePercentageSource, priceSource]);
+  }, [isSaleEventActive, priceSource]);
 
   useEffect(() => {
     if (!canRenderPlantsCatalog) {
@@ -1806,8 +1803,8 @@ function Home({ onNavigate, currentPath }) {
                             onClick={handleApplyFilters}
                         >
                             <wa-icon slot="start" name="filter"></wa-icon>
-                            Aplicar Filtros
-                        </wa-button>
+                        Aplicar Filtros
+                      </wa-button>
 
                         {activeFilterCount > 0 && (
                             <wa-button
@@ -1821,39 +1818,6 @@ function Home({ onNavigate, currentPath }) {
                     </div>
                 </wa-card>
         </wa-details>
-
-        <section className="seo-link-hub wa-stack wa-gap-s wa-mb-m" aria-label="Exploración por categorías">
-          <div className="wa-stack wa-gap-2xs">
-            <span className="wa-caption-s">Explora por proyecto</span>
-            <div className="wa-cluster wa-gap-2xs">
-              {categoryProjectLinks.map((item) => (
-                <a
-                  key={item.href}
-                  className="seo-link-chip"
-                  href={item.href}
-                  onClick={(event) => handleInternalNavigationLink(event, item.href)}
-                >
-                  {item.label}
-                </a>
-              ))}
-            </div>
-          </div>
-          <div className="wa-stack wa-gap-2xs">
-            <span className="wa-caption-s">Explora por comuna</span>
-            <div className="wa-cluster wa-gap-2xs">
-              {categoryComunaLinks.map((item) => (
-                <a
-                  key={item.href}
-                  className="seo-link-chip"
-                  href={item.href}
-                  onClick={(event) => handleInternalNavigationLink(event, item.href)}
-                >
-                  {item.label}
-                </a>
-              ))}
-            </div>
-          </div>
-        </section>
 
       {/* Plantas Grid */}
       <Suspense fallback={null}>
