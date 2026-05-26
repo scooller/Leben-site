@@ -47,6 +47,11 @@ class PlantsTable
 					->color('indigo')
 					->searchable()
 					->sortable(),
+				IconColumn::make('unidad_sale')
+					->label('Unidad Sale')
+					->boolean()
+					->color(fn(bool $state): string => $state ? 'warning' : 'gray')
+					->sortable(),
 				// TextColumn::make('product_code')
 				//     ->label('Código')
 				//     ->searchable()
@@ -54,7 +59,8 @@ class PlantsTable
 				TextColumn::make('programa')
 					->label('Programa')
 					->searchable()
-					->sortable(),
+					->sortable()
+					->toggleable(isToggledHiddenByDefault: true),
 				TextColumn::make('tipo_producto')
 					->label('Tipo')
 					->badge()
@@ -65,6 +71,7 @@ class PlantsTable
 						'LOCAL' => 'sky',
 						default => 'gray',
 					})
+					->toggleable(isToggledHiddenByDefault: true)
 					->searchable()
 					->sortable(),
 				// TextColumn::make('programa2')
@@ -73,9 +80,11 @@ class PlantsTable
 				//     ->sortable(),
 				TextColumn::make('piso')
 					->label('Piso')
-					->sortable(),
+					->sortable()
+					->toggleable(isToggledHiddenByDefault: true),
 				TextColumn::make('orientacion')
-					->label('Orientación'),
+					->label('Orientación')
+					->toggleable(isToggledHiddenByDefault: true),
 				TextColumn::make('precio_base')
 					->label('Precio Base')
 					->badge()
@@ -115,11 +124,6 @@ class PlantsTable
 					->color('teal')
 					->state(fn(Plant $record): mixed => $record->proyecto?->descuento_defecto_cotizacion_web)
 					->formatStateUsing(fn($state) => $state !== null ? number_format((float) $state, 2, ',', '.') . '%' : '-')
-					->sortable(),
-				IconColumn::make('unidad_sale')
-					->label('Unidad Sale')
-					->boolean()
-					->color(fn(bool $state): string => $state ? 'warning' : 'gray')
 					->sortable(),
 				// TextColumn::make('superficie_util')
 				//     ->label('Sup. Útil')
