@@ -436,10 +436,10 @@ function PlantsGrid({
                         )}
                     </div>
                 </div>
-                {(plant.precioFinal || plant.precioBase || plant.precioLista) && (
+                {(plant.precioSeleccionado || plant.precioFinal || plant.precioBase || plant.precioLista) && (
                 <div slot="footer" className="plant-price-wrapper">
                     <div className="price-detail">
-                        {(0 < plant.precioLista) && (plant.precioLista !== (plant.precioFinal || plant.precioBase)) && (
+                    {(0 < plant.precioLista) && (plant.precioLista !== (plant.precioSeleccionado || plant.precioFinal || plant.precioBase)) && (
                             <div className="prices-list">
                                 <span className="price-text">Precio lista:</span>
                                 <span className="price-label">
@@ -447,13 +447,11 @@ function PlantsGrid({
                                 </span>
                             </div>
                         )}
-                        {(0 < (plant.precioFinal || plant.precioBase)) && (
+                    {(0 < (plant.precioSeleccionado || plant.precioFinal || plant.precioBase)) && (
                             <div className="prices-sale">
-                                {(plant.precioFinal || plant.precioBase) < plant.precioLista && (
-                                    <span className="price-text wa-text-uppercase">{isSaleEventActive ? 'Precio Sale:' : 'Precio Base:'}</span>
-                                )}
+                        <span className="price-text wa-text-uppercase">{plant.precioSeleccionadoEtiqueta || (isSaleEventActive ? 'Precio Sale:' : 'Precio Base:')}</span>
                                 <span className="price-label wa-font-weight-bold">
-                                    UF {(plant.precioFinal || plant.precioBase).toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                          UF {(plant.precioSeleccionado || plant.precioFinal || plant.precioBase).toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                                 </span>
                             </div>
                         )}

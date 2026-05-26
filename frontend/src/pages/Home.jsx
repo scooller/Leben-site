@@ -140,6 +140,7 @@ const formatSeoPrice = (amount) => {
 function Home({ onNavigate, currentPath }) {
   const { config, loading: configLoading, colorMode, toggleColorMode } = useSiteConfig();
   const isSaleEventActive = Boolean(config?.evento_sale);
+  const priceSource = config?.payment_gateways?.price_source === 'base' ? 'base' : 'final';
   const showPlants = Boolean(config?.mostrar_plantas ?? false);
   // Optimistic: while config is loading assume catalog is visible so all data fetches
   // fire immediately in parallel with the site-config request instead of waiting for it.
@@ -426,7 +427,7 @@ function Home({ onNavigate, currentPath }) {
       const plantName = `${selectedPlantDetail?.nombre || selectedPlantDetail?.name || 'Planta'}`.trim();
       const projectName = `${selectedPlantDetail?.proyectoNombre || selectedPlantDetail?.proyecto?.name || ''}`.trim();
       const comunaName = `${selectedPlantDetail?.proyectoComuna || selectedPlantDetail?.proyecto?.comuna || ''}`.trim();
-      const price = formatSeoPrice(selectedPlantDetail?.precioFinal || selectedPlantDetail?.precioBase);
+      const price = formatSeoPrice(selectedPlantDetail?.precioSeleccionado || selectedPlantDetail?.precioFinal || selectedPlantDetail?.precioBase);
       const detailPath = buildPlantDetailPath(selectedPlantDetail);
 
       title = `${siteName} | ${plantName}${comunaName ? ` en ${comunaName}` : ''}`;
@@ -503,7 +504,7 @@ function Home({ onNavigate, currentPath }) {
     const projectSlug = selectedPlantDetail.proyectoSlug || slugifySegment(selectedPlantDetail.proyectoNombre || selectedPlantDetail.proyecto?.name);
     const projectName = selectedPlantDetail.proyectoNombre || selectedPlantDetail.proyecto?.name || 'Proyecto';
     const productName = `Planta ${selectedPlantDetail.nombre || selectedPlantDetail.name || ''} - ${projectName}`;
-    const numericPrice = Number(selectedPlantDetail.precioFinal || selectedPlantDetail.precioBase || selectedPlantDetail.precioLista || 0);
+    const numericPrice = Number(selectedPlantDetail.precioSeleccionado || selectedPlantDetail.precioFinal || selectedPlantDetail.precioBase || selectedPlantDetail.precioLista || 0);
     const availability = selectedPlantDetail.isPaid || selectedPlantDetail.isReserved || selectedPlantDetail.isAvailable === false
       ? 'https://schema.org/SoldOut'
       : 'https://schema.org/InStock';
@@ -599,12 +600,14 @@ function Home({ onNavigate, currentPath }) {
     const precioFinal = precioFinalApi > 0
       ? precioFinalApi
       : (precioCalculadoPorPorcentaje > 0 ? precioCalculadoPorPorcentaje : precioBase);
-    const discountPercentage = precioLista > 0 && precioFinal > 0 && precioFinal < precioLista
-      ? Math.max(0, Math.round(Math.abs(((precioLista - precioFinal) / precioLista) * 100)))
-      : 0;
-
-    const legacyDiscountPercentage = precioLista > 0 && precioBase > 0 && precioBase < precioLista
-      ? Math.max(0, Math.round(Math.abs(((precioLista - precioBase) / precioLista) * 100)))
+    const precioSeleccionado = priceSource === 'base'
+      ? precioBase
+      : (precioFinal > 0 ? precioFinal : precioBase);
+    const precioSeleccionadoEtiqueta = priceSource === 'base' || (priceSource !== 'base' && precioFinal <= 0)
+      ? 'Precio Base:'
+      : 'Precio Final:';
+    const discountPercentage = precioLista > 0 && precioSeleccionado > 0 && precioSeleccionado < precioLista
+      ? Math.max(0, Math.round(Math.abs(((precioLista - precioSeleccionado) / precioLista) * 100)))
       : 0;
 
     const advisorsSource = Array.isArray(plant.asesores) && plant.asesores.length > 0
@@ -621,9 +624,11 @@ function Home({ onNavigate, currentPath }) {
       precioBase,
       precioLista,
       precioFinal,
+      precioSeleccionado,
+      precioSeleccionadoEtiqueta,
       porcentajeMaximoUnidad,
       descuentoDefectoCotizacionWeb,
-      discountPercentage: discountPercentage || legacyDiscountPercentage,
+      discountPercentage,
       reservaExigidaPeso: Number(plant.proyecto?.valor_reserva_exigido_defecto_peso) || 0,
       proyectoNombre: plant.proyecto?.name,
       proyectoSlug: plant.proyecto?.slug || slugifySegment(plant.proyecto?.name),
@@ -647,7 +652,7 @@ function Home({ onNavigate, currentPath }) {
       isReserved: !!plant.active_reservation,
       tipoProducto: `${plant.tipo_producto ?? ''}`.trim().toUpperCase(),
     };
-  }, [isSaleEventActive]);
+  }, [isSaleEventActive, priceSource]);
 
   useEffect(() => {
     if (!canRenderPlantsCatalog) {
@@ -890,7 +895,7 @@ function Home({ onNavigate, currentPath }) {
       plant_name: plant.nombre || plant.name || null,
       project_name: plant.proyectoNombre || plant.proyecto?.name || null,
       product_type: plant.tipoProducto || null,
-      price: plant.precioFinal || plant.precioBase || null,
+      price: plant.precioSeleccionado || plant.precioFinal || plant.precioBase || null,
     });
 
     const currentUrl = getCurrentBrowserUrl();

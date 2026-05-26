@@ -60,6 +60,7 @@ class SiteSettingFrontendConfigTest extends TestCase
                 'home_hero_video_desktop_url' => 'https://cdn.example.com/home-desktop.mp4',
                 'home_hero_video_mobile_url' => 'https://cdn.example.com/home-mobile.mp4',
                 'home_hero_video_poster_id' => $posterMedia->id,
+                'price_source' => 'base',
                 'contact_hero_alt' => 'Hero contacto',
                 'catalogo_no_disponible_titulo' => 'Volvemos pronto',
                 'catalogo_no_disponible_mensaje' => 'Estamos actualizando nuestras plantas. Vuelve en breve.',
@@ -124,6 +125,7 @@ class SiteSettingFrontendConfigTest extends TestCase
         $this->assertArrayHasKey('footer_scripts', $payload);
         $this->assertSame('<script>window.footerTracking = true;</script>', $payload['footer_scripts']);
         $this->assertArrayHasKey('payment_gateways', $payload);
+        $this->assertSame('base', $payload['payment_gateways']['price_source']);
         $this->assertSame(22, $payload['payment_gateways']['reservation_timeout_minutes']);
         $this->assertArrayHasKey('hero', $payload);
         $this->assertSame('video', $payload['hero']['home']['type']);

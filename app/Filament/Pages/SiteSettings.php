@@ -1009,6 +1009,21 @@ class SiteSettings extends Page implements HasForms
                                             ->required(),
                                     ])
                                     ->columns(1),
+
+                                Section::make('Fuente de precio del frontend')
+                                    ->description('Define qué precio se mostrará como valor principal en el catálogo. El precio lista siempre se mantiene como referencia fija.')
+                                    ->schema([
+                                        Select::make('extra_settings.price_source')
+                                            ->label('Precio principal')
+                                            ->options([
+                                                'final' => 'Precio final',
+                                                'base' => 'Precio base',
+                                            ])
+                                            ->default('final')
+                                            ->required()
+                                            ->helperText('El precio lista se mostrará siempre como referencia, independientemente del valor elegido aquí.'),
+                                    ])
+                                    ->columns(1),
                             ]),
 
                         Tabs\Tab::make('Salesforce')

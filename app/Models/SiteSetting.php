@@ -409,6 +409,9 @@ class SiteSetting extends Model
                     'enabled' => $settings->gateway_manual_enabled,
                     'config' => $settings->gateway_manual_config ?? [],
                 ],
+                'price_source' => in_array(($extraSettings['price_source'] ?? 'final'), ['final', 'base'], true)
+                    ? $extraSettings['price_source']
+                    : 'final',
                 'reservation_timeout_minutes' => $settings->gateway_reservation_timeout_minutes ?? 15,
             ],
         ];
