@@ -23,16 +23,6 @@ const checks = [
     canonical: 'https://sale.ileben.cl/f',
     robots: 'index,follow',
   },
-  {
-    file: path.join(distDir, 'contacto', 'index.html'),
-    canonical: 'https://sale.ileben.cl/contacto',
-    robots: 'noindex,follow',
-  },
-  {
-    file: path.join(distDir, 'pago', 'index.html'),
-    canonical: 'https://sale.ileben.cl/pago',
-    robots: 'noindex,follow',
-  },
 ];
 
 const fail = (message) => {

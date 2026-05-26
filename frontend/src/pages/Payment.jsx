@@ -32,6 +32,8 @@ const RESULT_TEXT = {
   },
 };
 
+const EMPTY_TOKEN_MESSAGE = 'Token de estado vacío, revise el link e intente nuevamente.';
+
 const formatMoney = (amount, currency = 'CLP') => {
   const value = Number(amount || 0);
 
@@ -92,9 +94,7 @@ function Payment({ onNavigate, currentPath }) {
 
     const loadPaymentStatus = async () => {
       if (!queryParams.paymentId || !queryParams.statusToken) {
-        if (queryParams.message) {
-          setErrorMessage(queryParams.message);
-        }
+        setErrorMessage(queryParams.message || EMPTY_TOKEN_MESSAGE);
 
         return;
       }

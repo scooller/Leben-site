@@ -31,20 +31,6 @@ const routes = [
     canonical: `${siteUrl}/f`,
     robots: 'index,follow',
   },
-  {
-    path: '/contacto',
-    title: 'iLeben | Contacto',
-    description: 'Contacto comercial para asesoría inmobiliaria.',
-    canonical: `${siteUrl}/contacto`,
-    robots: 'noindex,follow',
-  },
-  {
-    path: '/pago',
-    title: 'iLeben | Pago',
-    description: 'Estado y resumen de pago de reserva inmobiliaria.',
-    canonical: `${siteUrl}/pago`,
-    robots: 'noindex,follow',
-  },
 ];
 
 const upsertTag = (html, pattern, replacement, fallbackInsert) => {
