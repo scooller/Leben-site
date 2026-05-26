@@ -32,6 +32,11 @@ class PlantsTable
 		return $table
 			->defaultSort('name', 'asc')
 			->columns([
+				TextColumn::make('last_synced_at')
+					->label('Sincronizado')
+					->badge()
+					->color('teal')
+					->dateTime(),
 				TextColumn::make('name')
 					->label('Nombre')
 					->searchable()
@@ -133,11 +138,6 @@ class PlantsTable
 					->label('Imagen de portada')
 					->circular()
 					->toggleable(isToggledHiddenByDefault: true),
-				TextColumn::make('last_synced_at')
-					->label('Sincronizado')
-					->badge()
-					->color('teal')
-					->dateTime(),
 				TextColumn::make('created_at')
 					->dateTime()
 					->sortable()
