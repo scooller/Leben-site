@@ -50,7 +50,7 @@ class ProductionSyncProgressTracker
     public function addLog(string $syncId, string $message): void
     {
         $logs = (array) Cache::get($this->logsKey($syncId), []);
-        $logs[] = '['.now()->format('H:i:s').'] '.$message;
+        $logs[] = '[' . now()->format('H:i:s') . '] ' . $message;
 
         if (count($logs) > 200) {
             $logs = array_slice($logs, -200);
@@ -76,7 +76,7 @@ class ProductionSyncProgressTracker
         $meta['finished_at'] = now()->toDateTimeString();
 
         Cache::put($this->metaKey($syncId), $meta, self::TTL_SECONDS);
-        $this->addLog($syncId, 'Error fatal: '.$error);
+        $this->addLog($syncId, 'Error fatal: ' . $error);
     }
 
     /**

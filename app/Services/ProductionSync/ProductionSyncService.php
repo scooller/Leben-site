@@ -36,7 +36,7 @@ class ProductionSyncService
                 'X-Authorized-Url' => $authorizedUrl,
             ])
             ->timeout((int) config('services.production_sync.timeout', 120))
-            ->get(rtrim($baseUrl, '/').'/api/v1/production-sync/export');
+            ->get(rtrim($baseUrl, '/') . '/api/v1/production-sync/export');
 
         if (! $response->successful()) {
             return [

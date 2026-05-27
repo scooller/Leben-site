@@ -272,8 +272,8 @@ class Proyecto extends Model
     protected function etapa(): Attribute
     {
         return Attribute::make(
-            get: fn (?string $value): ?string => self::normalizeEtapa($value) ?? $value,
-            set: fn (mixed $value): ?string => self::normalizeEtapa($value) ?? ($this->normalizeRawString($value)),
+            get: fn(?string $value): ?string => self::normalizeEtapa($value) ?? $value,
+            set: fn(mixed $value): ?string => self::normalizeEtapa($value) ?? ($this->normalizeRawString($value)),
         );
     }
 
@@ -298,7 +298,7 @@ class Proyecto extends Model
      */
     protected function imageUrl(): Attribute
     {
-        return Attribute::get(fn (): string => ProjectImageService::getProjectImageUrl($this));
+        return Attribute::get(fn(): string => ProjectImageService::getProjectImageUrl($this));
     }
 
     /**

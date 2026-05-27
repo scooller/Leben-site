@@ -21,13 +21,13 @@ class ProductionSyncController extends Controller
             'projects' => Proyecto::query()
                 ->orderBy('id', 'asc')
                 ->get()
-                ->map(static fn (Proyecto $project): array => $project->syncPayload())
+                ->map(static fn(Proyecto $project): array => $project->syncPayload())
                 ->values()
                 ->all(),
             'plants' => Plant::query()
                 ->orderBy('id', 'asc')
                 ->get()
-                ->map(static fn (Plant $plant): array => $plant->syncPayload())
+                ->map(static fn(Plant $plant): array => $plant->syncPayload())
                 ->values()
                 ->all(),
         ]);

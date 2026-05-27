@@ -17,7 +17,7 @@ class SyncFromProductionAction
             ->label('Sincronizar desde producción')
             ->icon('heroicon-o-cloud-arrow-down')
             ->color('warning')
-            ->visible(fn (): bool => self::isAvailable())
+            ->visible(fn(): bool => self::isAvailable())
             ->requiresConfirmation()
             ->modalHeading('Sincronizar desde producción')
             ->modalDescription('Se consumirá la API de producción con token Bearer. El proceso se ejecutará en segundo plano y podrás revisar el avance en una vista de progreso.')
