@@ -315,10 +315,10 @@ function PlantsGrid({
 
             <div slot="footer-actions" className="wa-cluster wa-gap-s">
               <wa-button-group label="Skeleton actions">
-                <wa-button size="small" disabled>
+                <wa-button size="s" disabled>
                   <wa-skeleton effect="pulse" style={{ height: '14px', width: '84px' }}></wa-skeleton>
                 </wa-button>
-                <wa-button size="small" variant="brand" disabled>
+                <wa-button size="s" variant="brand" disabled>
                   <wa-skeleton effect="pulse" style={{ height: '14px', width: '58px' }}></wa-skeleton>
                 </wa-button>
               </wa-button-group>
@@ -462,7 +462,7 @@ function PlantsGrid({
                 <div slot="footer-actions" className="wa-cluster wa-align-items-end wa-gap-s">
                   <wa-button-group label="Alignment">
                     <wa-button
-                      size="small"
+                      size="s"
                       disabled={plant.isReserved || plant.isPaid || plant.isAvailable === false}
                       {...(detailLoadingId === plant.id && { loading: true })}
                       onClick={() => openPlantDetail(plant)}
@@ -471,7 +471,7 @@ function PlantsGrid({
                       Ver Detalles
                     </wa-button>
                     <wa-button
-                      size="small"
+                      size="s"
                       variant="brand"
                       disabled={checkoutLoading || plant.isReserved || plant.isPaid || plant.isAvailable === false}
                       {...(checkoutLoading && { loading: true })}

@@ -54,7 +54,6 @@ function PaymentGatewayDialog({
   const [turnstileReady, setTurnstileReady] = useState(Boolean(window.turnstile));
   const [turnstileToken, setTurnstileToken] = useState('');
   const [turnstileError, setTurnstileError] = useState(null);
-  const trackedManualPaymentLink = appendSessionUtmsToExternalUrl(manualPaymentLink);
 
   const turnstileSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
   const isTurnstileEnabled = Boolean(turnstileSiteKey);
@@ -600,6 +599,7 @@ function PaymentGatewayDialog({
   const manualPaymentLink = typeof manualPayment?.payment_link === 'string'
     ? manualPayment.payment_link.trim()
     : '';
+  const trackedManualPaymentLink = appendSessionUtmsToExternalUrl(manualPaymentLink);
   const manualBankAccounts = Array.isArray(manualPayment?.bank_accounts)
     ? manualPayment.bank_accounts.filter((account) => {
       if (!account || typeof account !== 'object') {
@@ -698,7 +698,7 @@ function PaymentGatewayDialog({
                   label="Enviar comprobante"
                   hint="Formatos permitidos: JPG, PNG, GIF, WEBP, PDF, HEIC, HEIF. Máximo 5 MB."
                   accept="image/jpeg, image/png, image/gif, image/webp, application/pdf, image/heic, image/heif"
-                  size="small"
+                  size="s"
                   required
                 >
                 </wa-file-input>

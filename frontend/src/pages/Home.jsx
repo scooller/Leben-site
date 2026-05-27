@@ -1455,10 +1455,10 @@ function Home({ onNavigate, currentPath }) {
 
                 <div slot="footer-actions">
                   <wa-button-group label="Skeleton actions">
-                    <wa-button size="small" disabled>
+                    <wa-button size="s" disabled>
                       <wa-skeleton effect="pulse" style={{ height: '14px', width: '72px' }}></wa-skeleton>
                     </wa-button>
-                    <wa-button size="small" variant="brand" disabled>
+                    <wa-button size="s" variant="brand" disabled>
                       <wa-skeleton effect="pulse" style={{ height: '14px', width: '56px' }}></wa-skeleton>
                     </wa-button>
                   </wa-button-group>
@@ -1615,7 +1615,7 @@ function Home({ onNavigate, currentPath }) {
                     <div className="wa-grid wa-gap-m filters-inputs" style={{ '--min-column-size': '14rem' }}>
                         <wa-select
                             placeholder="Todos los proyectos"
-                            size="small"
+                            size="s"
                             value={tempProyecto}
                             onChange={(e) => {
                             const value = getMultiSelectValue(e);
@@ -1634,7 +1634,7 @@ function Home({ onNavigate, currentPath }) {
 
                         <wa-select
                             placeholder="Todos"
-                            size="small"
+                            size="s"
                             value={tempDormitorios}
                             onChange={(e) => {
                             const value = getMultiSelectValue(e);
@@ -1654,7 +1654,7 @@ function Home({ onNavigate, currentPath }) {
 
                         {/* <wa-select
                             placeholder="Todos"
-                            size="small"
+                            size="s"
                             value={tempBanos}
                             onChange={(e) => {
                             const value = getMultiSelectValue(e);
@@ -1673,7 +1673,7 @@ function Home({ onNavigate, currentPath }) {
                         {/* <wa-select
                             with-clear
                             placeholder="Todos"
-                            size="small"
+                            size="s"
                             value={tempPiso}
                             onChange={(e) => {
                             const value = getSingleSelectValue(e);
@@ -1693,7 +1693,7 @@ function Home({ onNavigate, currentPath }) {
                         <wa-select
                             with-clear
                             placeholder="Todos"
-                            size="small"
+                            size="s"
                             value={tempTipoProducto}
                             onChange={(e) => {
                             const value = getSingleSelectValue(e);
@@ -1711,7 +1711,7 @@ function Home({ onNavigate, currentPath }) {
                           <wa-select
                             with-clear
                             placeholder="Todas"
-                            size="small"
+                            size="s"
                             value={tempOrientacion}
                             onChange={(e) => {
                             const value = getSingleSelectValue(e);
@@ -1730,7 +1730,7 @@ function Home({ onNavigate, currentPath }) {
                           <wa-select
                             with-clear
                             placeholder="Todas"
-                            size="small"
+                            size="s"
                             value={tempEntrega}
                             onChange={(e) => {
                             const value = getSingleSelectValue(e);
@@ -1748,7 +1748,7 @@ function Home({ onNavigate, currentPath }) {
 
                         <wa-select
                             with-clear
-                            size="small"
+                            size="s"
                             placeholder="Todas"
                             value={tempComuna}
                             onChange={(e) => {
@@ -1771,7 +1771,7 @@ function Home({ onNavigate, currentPath }) {
                             placeholder="Desde UF"
                             value={tempPrecioMin}
                             max='9999'
-                            size="small"
+                            size="s"
                             onChange={(e) => {
                                 const value = e.target.value || '';
                                 setTempPrecioMin(value);
@@ -1785,7 +1785,7 @@ function Home({ onNavigate, currentPath }) {
                             type="number"
                             placeholder="Hasta UF"
                             max='9999'
-                            size="small"
+                            size="s"
                             value={tempPrecioMax}
                             onChange={(e) => {
                                 const value = e.target.value || '';

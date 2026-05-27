@@ -14,7 +14,7 @@ Aplicación backend-first construida con Laravel 12, Filament 5, React 19 y Web 
 ### Frontend
 - **React 19** - UI library
 - **Vite** - Build tool
-- **Web Awesome 3.5.0** - Design system
+- **Web Awesome Pro 3.7.0** - Design system
 - **Tailwind CSS 4** - Utility-first CSS
 - **GSAP** - Animaciones
 
@@ -269,6 +269,23 @@ php artisan test --compact
 # Ejecutar un archivo de tests especifico
 php artisan test --compact tests/Feature/ActivityLogAdminToolsTest.php
 ```
+
+### Frontend Web Awesome Pro
+
+```bash
+# Verificar version instalada
+cd frontend
+npm ls "@web.awesome.me/webawesome-pro" --depth=0
+```
+
+Autenticacion npm para Web Awesome Pro:
+- El scope `@web.awesome.me` se resuelve mediante `frontend/.npmrc`.
+- El token se inyecta via variable de entorno `WEBAWESOME_NPM_TOKEN`.
+- Si aparece `E401` en comandos npm (`view`, `outdated`, `install`), valida que la variable exista en la sesion activa de terminal.
+
+Compatibilidad de atributos `size`:
+- En Web Awesome 3.x los valores largos (`small`, `medium`, `large`) siguen funcionando, pero estan deprecados.
+- Usar siempre valores cortos: `s`, `m`, `l` (y `xs`, `xl` cuando aplique) para evitar warnings y preparar la migracion a la proxima major.
 
 ### Comandos peligrosos (usar con cuidado)
 

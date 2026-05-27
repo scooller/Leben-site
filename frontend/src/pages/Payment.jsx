@@ -158,7 +158,7 @@ function Payment({ onNavigate, currentPath }) {
                     Actualizado: {formatDate(payment?.updated_at)}
                   </span>
                 </div>
-                <wa-button appearance="outlined" size="small" pill onClick={() => onNavigate?.('/contacto')}>
+                <wa-button appearance="outlined" size="s" pill onClick={() => onNavigate?.('/contacto')}>
                   Necesito ayuda
                 </wa-button>
               </div>
