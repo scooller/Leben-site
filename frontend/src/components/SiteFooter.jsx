@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useSiteConfig } from '../contexts/SiteConfigContext';
 import { appendSessionUtmsToExternalUrl } from '../utils/externalLinks';
+import BlurBar from './BlurBar';
 
 const normalizeFooterMenu = (menuItems) => {
   if (!Array.isArray(menuItems)) {
@@ -82,6 +83,8 @@ function SiteFooter({ config, onNavigate }) {
   };
 
   return (
+    <>
+    <BlurBar />
     <footer className="site-footer wa-stack wa-gap-l wa-mt-3xl">
       {hasLegalText && (
         <wa-card appearance="filled">
@@ -161,6 +164,7 @@ function SiteFooter({ config, onNavigate }) {
         </section>
       </wa-card>
     </footer>
+    </>
   );
 }
 

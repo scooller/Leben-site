@@ -2,18 +2,8 @@
 
 namespace App\Filament\Pages;
 
-use AlizHarb\ActivityLog\Widgets\ActivityChartWidget;
-use AlizHarb\ActivityLog\Widgets\LatestActivityWidget;
 use App\Filament\Actions\SyncPlantsAction;
 use App\Filament\Actions\SyncProjectsAction;
-use App\Filament\Widgets\ApiMonitoringWidget;
-use App\Filament\Widgets\ApiUsageChartWidget;
-use App\Filament\Widgets\PaymentGatewayChartWidget;
-use App\Filament\Widgets\PaymentsChartWidget;
-use App\Filament\Widgets\PaymentStatusChartWidget;
-use App\Filament\Widgets\SyncPlantsWidget;
-use App\Filament\Widgets\SyncProjectsWidget;
-use App\Filament\Widgets\UsersChartWidget;
 use App\Models\Proyecto;
 use App\Models\SiteSetting;
 use Awcodes\Curator\Components\Forms\CuratorPicker;
@@ -82,25 +72,6 @@ class SiteSettings extends Page implements HasForms
 	protected static ?int $navigationSort = 1;
 
 	protected string $view = 'filament.pages.site-settings';
-
-	/**
-	 * Opciones de widgets disponibles para ordenar en el dashboard.
-	 */
-	protected static function dashboardWidgetOptions(): array
-	{
-		return [
-			ApiMonitoringWidget::class => 'API (Monitoreo)',
-			ApiUsageChartWidget::class => 'API (Uso 7 días)',
-			UsersChartWidget::class => 'Usuarios (Gráfico)',
-			ActivityChartWidget::class => 'Actividad (Gráfico)',
-			LatestActivityWidget::class => 'Actividad (Últimos)',
-			PaymentsChartWidget::class => 'Pagos (Gráfico)',
-			PaymentGatewayChartWidget::class => 'Pagos (Tipo)',
-			PaymentStatusChartWidget::class => 'Pagos (Estado)',
-			SyncPlantsWidget::class => 'Sync Plantas',
-			SyncProjectsWidget::class => 'Sync Proyectos',
-		];
-	}
 
 	public static function shouldRegisterNavigation(): bool
 	{
@@ -328,24 +299,6 @@ class SiteSettings extends Page implements HasForms
 											->label('Texto disclaimer para hero de contacto')
 											->placeholder('Ejemplo: "Porcentaje corresponde a la unidad X"')
 											->maxLength(255),
-									])
-									->columns(1),
-							]),
-
-						Tabs\Tab::make('Dashboard')
-							->icon('heroicon-o-chart-bar')
-							->schema([
-								Section::make('Orden de Widgets')
-									->description('Ordena los widgets del dashboard arrastrando las opciones')
-									->schema([
-										Select::make('dashboard_widget_order')
-											->label('Widgets del Dashboard')
-											->options(self::dashboardWidgetOptions())
-											->multiple()
-											->reorderable()
-											->searchable()
-											->default(array_keys(self::dashboardWidgetOptions()))
-											->helperText('Arrastra para reordenar. El orden se aplica al dashboard principal. Para ocultar, elimina el widget del selector.'),
 									])
 									->columns(1),
 							]),

@@ -70,17 +70,6 @@ class AdminPanelProvider extends PanelProvider
 			SyncProjectsWidget::class,
 		];
 
-		$widgetOrder = $settings?->dashboard_widget_order;
-		$widgetOrder = is_array($widgetOrder) ? array_values($widgetOrder) : [];
-
-		if (! empty($widgetOrder)) {
-			$ordered = array_values(array_filter($widgetOrder, fn(string $widget): bool => in_array($widget, $defaultWidgets, true)));
-			$missing = array_values(array_diff($defaultWidgets, $ordered));
-			$widgets = array_merge($ordered, $missing);
-		} else {
-			$widgets = $defaultWidgets;
-		}
-
 		$fontStylesheetUrl = filled($settings?->google_fonts_stylesheet)
 			? (string) $settings->google_fonts_stylesheet
 			: null;
@@ -137,7 +126,7 @@ class AdminPanelProvider extends PanelProvider
 				ContactImportProgress::class,
 			])
 			->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
-			->widgets($widgets)
+			->widgets($defaultWidgets)
 			->plugins([
 				\Awcodes\Curator\CuratorPlugin::make()
 					->label('Archivos')
