@@ -8,6 +8,21 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ---
 
+## [1.9.1] - 2026-05-27
+
+### 🔄 Cambios
+
+#### Salesforce OAuth — Duración y Reconexión de Token
+- Se incorporó configuración explícita de OAuth scope y prompt para robustecer la entrega de `refresh_token` en el flujo WebServer.
+- Nuevas variables de configuración para Salesforce OAuth:
+  - `SF_OAUTH_SCOPE` (default: `api refresh_token offline_access`)
+  - `SF_OAUTH_PROMPT` (default: `consent`)
+- `CreateSalesforceCaseJob` ahora evita reintentos cuando OAuth ya está marcado como desconectado en `SiteSettings`.
+- Se reduce ruido operativo por fallas repetidas `invalid_grant` y se mantiene la señal clara de reconexión manual requerida en panel admin.
+- Cobertura de tests actualizada para validar el nuevo comportamiento de omisión cuando OAuth está desconectado.
+
+---
+
 ## [1.9.0] - 2026-05-20
 
 ### ✨ Agregado

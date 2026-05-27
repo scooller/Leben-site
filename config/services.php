@@ -50,6 +50,8 @@ return [
         'consumer_secret' => env('SF_CONSUMER_SECRET'),
         'callback_uri' => env('SF_CALLBACK_URI'),
         'login_url' => env('SF_LOGIN_URL', 'https://login.salesforce.com'),
+        'oauth_scope' => env('SF_OAUTH_SCOPE', 'api refresh_token offline_access'),
+        'oauth_prompt' => env('SF_OAUTH_PROMPT', 'consent'),
         'username' => env('SF_USERNAME'),
         'password' => env('SF_PASSWORD'),
         'api_version' => env('SF_API_VERSION', '57.0'),

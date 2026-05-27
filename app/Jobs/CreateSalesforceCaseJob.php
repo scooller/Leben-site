@@ -53,6 +53,20 @@ class CreateSalesforceCaseJob implements ShouldQueue
             return;
         }
 
+        if ($this->isSalesforceOAuthMarkedDisconnected()) {
+            Log::warning('CreateSalesforceCaseJob: OAuth de Salesforce marcado como desconectado. Se omite envío hasta reconexión manual.', [
+                'contact_submission_id' => $submission->id,
+            ]);
+
+            $submission->update([
+                'salesforce_case_error' => 'OAuth Salesforce desconectado. Reconectar en panel admin antes de reintentar.',
+                'salesforce_synced_at' => now(),
+                'salesforce_sync_trigger' => $syncTrigger,
+            ]);
+
+            return;
+        }
+
         try {
             // WebServer flow: el token se obtiene vía OAuth interactivo desde el panel admin.
             // No llamar authenticate() aquí porque en WebServer flow intenta redirigir al navegador.
@@ -162,6 +176,17 @@ class CreateSalesforceCaseJob implements ShouldQueue
         return $syncTrigger === 'manual' ? 'manual' : 'automatic';
     }
 
+    private function isSalesforceOAuthMarkedDisconnected(): bool
+    {
+        $extraSettings = SiteSetting::current()->extra_settings;
+
+        if (! is_array($extraSettings)) {
+            return false;
+        }
+
+        return data_get($extraSettings, 'salesforce_oauth.connected') === false;
+    }
+
     private function markSalesforceOAuthAsDisconnected(string $reason): void
     {
         $siteSettings = SiteSetting::current();
@@ -195,8 +220,8 @@ class CreateSalesforceCaseJob implements ShouldQueue
         $subject = 'Alerta Salesforce OAuth desconectado';
         $message = implode("\n", [
             'Se detectó desconexión OAuth con Salesforce.',
-            'Submission ID: ' . $contactSubmissionId,
-            'Motivo: ' . $reason,
+            'Submission ID: '.$contactSubmissionId,
+            'Motivo: '.$reason,
             'Acción requerida: reconectar en /admin/site-settings (Conectar con Salesforce).',
         ]);
 
