@@ -2,6 +2,9 @@
 
 namespace App\Filament\Pages;
 
+use AlizHarb\ActivityLog\Widgets\ActivityChartWidget;
+use AlizHarb\ActivityLog\Widgets\LatestActivityWidget;
+use App\Filament\Actions\SyncFromProductionAction;
 use App\Filament\Actions\SyncPlantsAction;
 use App\Filament\Actions\SyncProjectsAction;
 use App\Models\Proyecto;
@@ -1174,6 +1177,7 @@ class SiteSettings extends Page implements HasForms
 	protected function getHeaderActions(): array
 	{
 		return [
+			SyncFromProductionAction::make(),
 			Action::make('connect_salesforce')
 				->label('Conectar con Salesforce')
 				->icon('heroicon-o-cloud-arrow-up')

@@ -37,3 +37,5 @@ bootstrap/cache
 /.agents
 skills-lock.json
 /.vscode
+frontend/.env.dev
+.env.testing
