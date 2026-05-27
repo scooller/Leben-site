@@ -17,13 +17,17 @@ class EnsureTokenOriginIsAuthorized
     public function handle(Request $request, Closure $next): Response
     {
         if (blank($request->bearerToken())) {
-            return $next($request);
+            return response()->json([
+                'message' => 'Token de acceso requerido.',
+            ], Response::HTTP_UNAUTHORIZED);
         }
 
         $token = $request->user()?->currentAccessToken();
 
         if (! $token instanceof PersonalAccessToken) {
-            return $next($request);
+            return response()->json([
+                'message' => 'Token de acceso inválido o expirado.',
+            ], Response::HTTP_UNAUTHORIZED);
         }
 
         $authorizedUrl = $this->normalizeUrl($token->authorized_url);
@@ -68,10 +72,10 @@ class EnsureTokenOriginIsAuthorized
             return null;
         }
 
-        $normalized = strtolower($parts['scheme']).'://'.strtolower($parts['host']);
+        $normalized = strtolower($parts['scheme']) . '://' . strtolower($parts['host']);
 
         if (filled($parts['port'] ?? null)) {
-            $normalized .= ':'.$parts['port'];
+            $normalized .= ':' . $parts['port'];
         }
 
         return rtrim($normalized, '/');
