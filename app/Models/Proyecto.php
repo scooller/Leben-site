@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 
 class Proyecto extends Model
@@ -167,6 +168,49 @@ class Proyecto extends Model
         }
 
         return self::ETAPA_OPTIONS[$normalized] ?? null;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function syncPayload(): array
+    {
+        return Arr::only($this->attributesToArray(), self::syncableFields());
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function syncableFields(): array
+    {
+        return [
+            'salesforce_id',
+            'name',
+            'slug',
+            'tipo',
+            'descripcion',
+            'direccion',
+            'comuna',
+            'provincia',
+            'region',
+            'email',
+            'telefono',
+            'pagina_web',
+            'razon_social',
+            'rut',
+            'fecha_inicio_ventas',
+            'fecha_entrega',
+            'etapa',
+            'horario_atencion',
+            'is_active',
+            'salesforce_logo_url',
+            'salesforce_portada_url',
+            'valor_reserva_exigido_defecto_peso',
+            'valor_reserva_exigido_min_peso',
+            'descuento_defecto_cotizacion_web',
+            'descuento_maximo_unidad',
+            'entrega_inmediata',
+        ];
     }
 
     private static function normalizeEtapaKey(string $value): string
