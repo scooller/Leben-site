@@ -288,6 +288,13 @@ class SiteSetting extends Model
 
         $isPreviewAuthorized = $request instanceof Request && FrontendPreviewLink::isAuthorizedForRequest($request);
 
+        $hasValidToken = false;
+        if ($request instanceof Request && filled($request->bearerToken())) {
+            $accessToken = \App\Models\PersonalAccessToken::findToken($request->bearerToken());
+            $hasValidToken = $accessToken instanceof \App\Models\PersonalAccessToken
+                && ($accessToken->expires_at === null || $accessToken->expires_at->isFuture());
+        }
+
         $mostrarPlantas = (bool) ($settings->mostrar_plantas ?? true);
 
         if (! $mostrarPlantas && $isPreviewAuthorized) {
@@ -402,22 +409,24 @@ class SiteSetting extends Model
             'payment_gateways' => [
                 'transbank' => [
                     'enabled' => $settings->gateway_transbank_enabled,
-                    'config' => $settings->gateway_transbank_config ?? [],
+                    ...($hasValidToken ? ['config' => $settings->gateway_transbank_config ?? []] : []),
                 ],
                 'mercadopago' => [
                     'enabled' => $settings->gateway_mercadopago_enabled,
-                    'config' => $settings->gateway_mercadopago_config ?? [],
+                    ...($hasValidToken ? ['config' => $settings->gateway_mercadopago_config ?? []] : []),
                 ],
                 'manual' => [
                     'enabled' => $settings->gateway_manual_enabled,
-                    'config' => $settings->gateway_manual_config ?? [],
+                    ...($hasValidToken ? ['config' => $settings->gateway_manual_config ?? []] : []),
                 ],
-                'price_source' => in_array($priceSource, ['final', 'base'], true)
-                    ? $priceSource
-                    : 'final',
-                'price_percentage_source' => in_array($pricePercentageSource, ['max_unit', 'web_discount'], true)
-                    ? $pricePercentageSource
-                    : 'web_discount',
+                ...($hasValidToken ? [
+                    'price_source' => in_array($priceSource, ['final', 'base'], true)
+                        ? $priceSource
+                        : 'final',
+                    'price_percentage_source' => in_array($pricePercentageSource, ['max_unit', 'web_discount'], true)
+                        ? $pricePercentageSource
+                        : 'web_discount',
+                ] : []),
                 'reservation_timeout_minutes' => $settings->gateway_reservation_timeout_minutes ?? 15,
             ],
         ];
