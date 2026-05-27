@@ -21,6 +21,16 @@ const PaymentGatewayDialog = lazy(() => import('../components/PaymentGatewayDial
 const PLANT_DETAIL_BASE_PATH = '/p';
 const FILTER_BASE_PATH = '/f';
 const PLANT_TYPE_FILTER_OPTIONS = ['DEPARTAMENTO', 'ESTACIONAMIENTO', 'BODEGA', 'LOCAL'];
+const plantNameCollator = new Intl.Collator('es-CL', { numeric: true, sensitivity: 'base' });
+
+const SORT_OPTIONS = {
+  NAME_ASC: 'name-asc',
+  NAME_DESC: 'name-desc',
+  PRICE_ASC: 'price-asc',
+  PRICE_DESC: 'price-desc',
+  OFFER_ASC: 'offer-asc',
+  OFFER_DESC: 'offer-desc',
+};
 
 const slugifySegment = (value) => (
   `${value ?? ''}`
@@ -202,6 +212,7 @@ function Home({ onNavigate, currentPath }) {
   const [selectedRegion, setSelectedRegion] = useState('');
   const [selectedPrecioMin, setSelectedPrecioMin] = useState('');
   const [selectedPrecioMax, setSelectedPrecioMax] = useState('');
+  const [selectedSort, setSelectedSort] = useState(null);
 
   // Estados temporales para filtros (antes de aplicar)
   const [tempProyecto, setTempProyecto] = useState([]);
@@ -269,6 +280,57 @@ function Home({ onNavigate, currentPath }) {
 
     return `${value}`;
   };
+
+  const sortedPlants = useMemo(() => {
+    if (!selectedSort) {
+      return plants;
+    }
+
+    const getPriceValue = (plant) => Number(plant.precioSeleccionado || plant.precioFinal || plant.precioBase || plant.precioLista || 0);
+    const getOfferValue = (plant) => {
+      const percentage = Number(plant.discountPercentage) || 0;
+      const savings = Math.max(0, (Number(plant.precioLista) || 0) - getPriceValue(plant));
+
+      return { percentage, savings };
+    };
+
+    const sorted = [...plants].sort((leftPlant, rightPlant) => {
+      switch (selectedSort) {
+        case SORT_OPTIONS.NAME_ASC:
+          return plantNameCollator.compare(leftPlant.nombre || leftPlant.name || '', rightPlant.nombre || rightPlant.name || '');
+        case SORT_OPTIONS.NAME_DESC:
+          return plantNameCollator.compare(rightPlant.nombre || rightPlant.name || '', leftPlant.nombre || leftPlant.name || '');
+        case SORT_OPTIONS.PRICE_ASC:
+          return getPriceValue(leftPlant) - getPriceValue(rightPlant);
+        case SORT_OPTIONS.PRICE_DESC:
+          return getPriceValue(rightPlant) - getPriceValue(leftPlant);
+        case SORT_OPTIONS.OFFER_ASC: {
+          const leftOffer = getOfferValue(leftPlant);
+          const rightOffer = getOfferValue(rightPlant);
+
+          if (leftOffer.percentage !== rightOffer.percentage) {
+            return leftOffer.percentage - rightOffer.percentage;
+          }
+
+          return leftOffer.savings - rightOffer.savings;
+        }
+        case SORT_OPTIONS.OFFER_DESC: {
+          const leftOffer = getOfferValue(leftPlant);
+          const rightOffer = getOfferValue(rightPlant);
+
+          if (leftOffer.percentage !== rightOffer.percentage) {
+            return rightOffer.percentage - leftOffer.percentage;
+          }
+
+          return rightOffer.savings - leftOffer.savings;
+        }
+        default:
+          return 0;
+      }
+    });
+
+    return sorted;
+  }, [plants, selectedSort]);
 
   const filteredComunaOptions = useMemo(() => comunaOptions, [comunaOptions]);
 
@@ -1819,10 +1881,89 @@ function Home({ onNavigate, currentPath }) {
                 </wa-card>
         </wa-details>
 
+      <div className="plants-toolbar">
+        <div className="plants-toolbar-summary">
+          <span className="plants-toolbar-summary-label">Plantas encontradas</span>
+          <strong>{totalPlants || plants.length}</strong>
+        </div>
+
+        <div className="plants-toolbar-sort">
+          <span className="plants-toolbar-sort-label">Ordenar por</span>
+
+          <div className="plants-toolbar-groups">
+            <div className="plants-sort-group">
+              <span className="plants-sort-group-title">Nombre</span>
+              <wa-button-group label="Ordenar por nombre">
+                <wa-button
+                  size="small"
+                  appearance={selectedSort === SORT_OPTIONS.NAME_ASC ? 'accent' : 'outlined'}
+                  variant={selectedSort === SORT_OPTIONS.NAME_ASC ? 'brand' : 'neutral'}
+                  onClick={() => setSelectedSort(SORT_OPTIONS.NAME_ASC)}
+                >
+                  ASC
+                </wa-button>
+                <wa-button
+                  size="small"
+                  appearance={selectedSort === SORT_OPTIONS.NAME_DESC ? 'accent' : 'outlined'}
+                  variant={selectedSort === SORT_OPTIONS.NAME_DESC ? 'brand' : 'neutral'}
+                  onClick={() => setSelectedSort(SORT_OPTIONS.NAME_DESC)}
+                >
+                  DESC
+                </wa-button>
+              </wa-button-group>
+            </div>
+
+            <div className="plants-sort-group">
+              <span className="plants-sort-group-title">Precio</span>
+              <wa-button-group label="Ordenar por precio">
+                <wa-button
+                  size="small"
+                  appearance={selectedSort === SORT_OPTIONS.PRICE_ASC ? 'accent' : 'outlined'}
+                  variant={selectedSort === SORT_OPTIONS.PRICE_ASC ? 'brand' : 'neutral'}
+                  onClick={() => setSelectedSort(SORT_OPTIONS.PRICE_ASC)}
+                >
+                  ASC
+                </wa-button>
+                <wa-button
+                  size="small"
+                  appearance={selectedSort === SORT_OPTIONS.PRICE_DESC ? 'accent' : 'outlined'}
+                  variant={selectedSort === SORT_OPTIONS.PRICE_DESC ? 'brand' : 'neutral'}
+                  onClick={() => setSelectedSort(SORT_OPTIONS.PRICE_DESC)}
+                >
+                  DESC
+                </wa-button>
+              </wa-button-group>
+            </div>
+
+            <div className="plants-sort-group">
+              <span className="plants-sort-group-title">Mejor oferta</span>
+              <wa-button-group label="Ordenar por mejor oferta">
+                <wa-button
+                  size="small"
+                  appearance={selectedSort === SORT_OPTIONS.OFFER_ASC ? 'accent' : 'outlined'}
+                  variant={selectedSort === SORT_OPTIONS.OFFER_ASC ? 'brand' : 'neutral'}
+                  onClick={() => setSelectedSort(SORT_OPTIONS.OFFER_ASC)}
+                >
+                  ASC
+                </wa-button>
+                <wa-button
+                  size="small"
+                  appearance={selectedSort === SORT_OPTIONS.OFFER_DESC ? 'accent' : 'outlined'}
+                  variant={selectedSort === SORT_OPTIONS.OFFER_DESC ? 'brand' : 'neutral'}
+                  onClick={() => setSelectedSort(SORT_OPTIONS.OFFER_DESC)}
+                >
+                  DESC
+                </wa-button>
+              </wa-button-group>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Plantas Grid */}
       <Suspense fallback={null}>
         <PlantsGrid
-          plants={plants}
+          plants={sortedPlants}
           isSaleEventActive={isSaleEventActive}
           saleLogoUrl={config?.logo_sale || null}
           loading={loading}

@@ -161,6 +161,89 @@ html.wa-light {
   }
 }
 
+.plants-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid rgba(var(--wa-color-neutral-fill-normal-rgb), 0.2);
+  border-radius: var(--wa-border-radius-l);
+  background:
+    linear-gradient(135deg, rgba(var(--wa-color-brand-fill-loud-rgb), 0.08), transparent 42%),
+    rgba(var(--wa-color-surface-raised-rgb), 0.92);
+  box-shadow: 0 18px 40px rgba(var(--wa-color-black-rgb), 0.08);
+}
+
+.plants-toolbar-summary {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 10rem;
+
+  strong {
+    font-size: clamp(1.6rem, 2vw, 2.2rem);
+    line-height: 1;
+    color: var(--wa-color-text);
+  }
+}
+
+.plants-toolbar-summary-label,
+.plants-toolbar-sort-label,
+.plants-sort-group-title {
+  color: var(--wa-color-text-quiet);
+  font-size: var(--wa-font-size-s);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.plants-toolbar-sort {
+  display: grid;
+  gap: 0.75rem;
+  justify-items: end;
+  flex: 1 1 40rem;
+}
+
+.plants-toolbar-groups {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.75rem 1rem;
+}
+
+.plants-sort-group {
+  display: grid;
+  gap: 0.35rem;
+}
+
+@media (max-width: 768px) {
+  .plants-toolbar {
+    padding: 1rem;
+  }
+
+  .plants-toolbar-sort {
+    justify-items: stretch;
+    flex-basis: 100%;
+  }
+
+  .plants-toolbar-groups {
+    justify-content: stretch;
+  }
+
+  .plants-sort-group {
+    width: 100%;
+  }
+
+  .plants-sort-group wa-button-group {
+    width: 100%;
+  }
+
+  .plants-sort-group wa-button {
+    flex: 1;
+  }
+}
+
 /* Plant Card 3D Perspective Tilt */
 .plant-card-tilt {
   position: relative;
