@@ -38,8 +38,8 @@ return [
         'display' => '',
         'immediate' => false,
         'state' => '',
-        'scope' => '',
-        'prompt' => '',
+        'scope' => config('services.salesforce.oauth_scope') ?? env('SF_OAUTH_SCOPE', 'api refresh_token offline_access'),
+        'prompt' => config('services.salesforce.oauth_prompt') ?? env('SF_OAUTH_PROMPT', 'consent'),
     ],
 
     /*

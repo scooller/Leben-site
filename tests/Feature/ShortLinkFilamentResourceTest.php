@@ -67,6 +67,17 @@ class ShortLinkFilamentResourceTest extends TestCase
             ->assertSee('Ver QR');
     }
 
+    public function test_short_link_index_shows_delete_action_for_admin(): void
+    {
+        ShortLink::factory()->create([
+            'created_by' => $this->admin->id,
+        ]);
+
+        $this->get(ShortLinkResource::getUrl('index'))
+            ->assertOk()
+            ->assertSee('Eliminar');
+    }
+
     public function test_frontend_preview_links_index_shows_qr_action(): void
     {
         FrontendPreviewLink::query()->create([

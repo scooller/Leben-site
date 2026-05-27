@@ -1,6 +1,7 @@
 <?php
 
 use App\Jobs\SyncPlantsJob;
+use App\Models\FrontendPreviewLink;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -9,17 +10,13 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-foreach (
-    [
-        static fn() => Schedule::command('reservations:expire')->everyMinute(),
-        static fn() => Schedule::job(new SyncPlantsJob)->everyFiveMinutes()->withoutOverlapping(),
-        static fn() => Schedule::command('salesforce:sync-opportunities')->hourly()->withoutOverlapping(),
-        static fn() => Schedule::command('salesforce:sync-broker-metrics')->everyFifteenMinutes()->withoutOverlapping(),
-    ] as $registerSchedule
-) {
-    try {
-        $registerSchedule();
-    } catch (\Throwable) {
-        // Allow first-time installs to run migrations before settings-backed packages are ready.
-    }
+try {
+    Schedule::command('reservations:expire')->everyMinute();
+    Schedule::command('model:prune', [
+        '--model' => [FrontendPreviewLink::class],
+    ])->daily();
+    Schedule::job(new SyncPlantsJob)->everyFiveMinutes()->withoutOverlapping();
+} catch (Throwable) {
+} catch (\Throwable) {
+    // Allow first-time installs to run migrations before settings-backed packages are ready.
 }

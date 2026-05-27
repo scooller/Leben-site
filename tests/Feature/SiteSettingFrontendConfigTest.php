@@ -30,6 +30,20 @@ class SiteSettingFrontendConfigTest extends TestCase
             'title' => 'Home poster',
         ]);
 
+        $ogMedia = Media::query()->create([
+            'disk' => 'curator',
+            'directory' => null,
+            'visibility' => 'public',
+            'name' => 'seo-og',
+            'path' => 'seo-og.jpg',
+            'width' => 1200,
+            'height' => 630,
+            'size' => 154320,
+            'type' => 'image/jpeg',
+            'ext' => 'jpg',
+            'title' => 'SEO Open Graph',
+        ]);
+
         SiteSetting::current()->update([
             'brand_color' => '#112233',
             'gateway_reservation_timeout_minutes' => 22,
@@ -60,12 +74,15 @@ class SiteSettingFrontendConfigTest extends TestCase
                 'home_hero_video_desktop_url' => 'https://cdn.example.com/home-desktop.mp4',
                 'home_hero_video_mobile_url' => 'https://cdn.example.com/home-mobile.mp4',
                 'home_hero_video_poster_id' => $posterMedia->id,
+                'price_source' => 'base',
+                'price_percentage_source' => 'max_unit',
                 'contact_hero_alt' => 'Hero contacto',
                 'catalogo_no_disponible_titulo' => 'Volvemos pronto',
                 'catalogo_no_disponible_mensaje' => 'Estamos actualizando nuestras plantas. Vuelve en breve.',
                 'default_meta_title' => 'iLeben | Departamentos en venta',
                 'default_og_title' => 'iLeben Inmobiliaria',
                 'default_og_description' => 'Encuentra departamentos en venta en Chile.',
+                'og_image_id' => $ogMedia->id,
                 'twitter_site' => '@ileben',
                 'robots_default' => 'index,follow',
                 'site_locale' => 'es-CL',
@@ -115,6 +132,7 @@ class SiteSettingFrontendConfigTest extends TestCase
         $this->assertSame('iLeben | Departamentos en venta', $payload['seo']['default_meta_title']);
         $this->assertSame('iLeben Inmobiliaria', $payload['seo']['default_og_title']);
         $this->assertSame('Encuentra departamentos en venta en Chile.', $payload['seo']['default_og_description']);
+        $this->assertStringContainsString('seo-og.jpg', (string) $payload['seo']['og_image']);
         $this->assertSame('@ileben', $payload['seo']['twitter_site']);
         $this->assertSame('index,follow', $payload['seo']['robots_default']);
         $this->assertSame('es-CL', $payload['seo']['site_locale']);
@@ -124,6 +142,8 @@ class SiteSettingFrontendConfigTest extends TestCase
         $this->assertArrayHasKey('footer_scripts', $payload);
         $this->assertSame('<script>window.footerTracking = true;</script>', $payload['footer_scripts']);
         $this->assertArrayHasKey('payment_gateways', $payload);
+        $this->assertSame('base', $payload['payment_gateways']['price_source']);
+        $this->assertSame('max_unit', $payload['payment_gateways']['price_percentage_source']);
         $this->assertSame(22, $payload['payment_gateways']['reservation_timeout_minutes']);
         $this->assertArrayHasKey('hero', $payload);
         $this->assertSame('video', $payload['hero']['home']['type']);

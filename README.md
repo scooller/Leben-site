@@ -14,7 +14,7 @@ Aplicación backend-first construida con Laravel 12, Filament 5, React 19 y Web 
 ### Frontend
 - **React 19** - UI library
 - **Vite** - Build tool
-- **Web Awesome 3.5.0** - Design system
+- **Web Awesome Pro 3.7.0** - Design system
 - **Tailwind CSS 4** - Utility-first CSS
 - **GSAP** - Animaciones
 
@@ -92,6 +92,7 @@ frontend/
 - ✅ **Leads** - Creación de Leads desde el formulario de contacto con reintentos automáticos ante campos inválidos
 - ✅ **Sincronización** - Proyectos, plantas, asesores, branding e imágenes sincronizados desde Salesforce
 - ✅ **Normalización** - Mapeo local de `is_active`, `tipo`, `tipo_producto` y campos comerciales
+- ✅ **OAuth endurecido** - Scope/prompt configurables para mejorar persistencia de refresh token y reconexión controlada ante `invalid_grant`
 - ✅ **Logging** - Registro y trazabilidad de operaciones de sincronización
 
 ### Pasarelas de Pago
@@ -147,6 +148,7 @@ frontend/
 - **UX de tablas en panel** — Integración de dual-scroll para tablas extensas y mejoras de lectura operativa
 - **SalesforceCaseMapper** — Refinamientos de mapeo por canal y manejo robusto de campos legacy/canónicos (`Proyect_ID__c`)
 - **Métricas de brokers** — Scheduler y comando `salesforce:sync-broker-metrics` activos cada 15 minutos
+- **OAuth token hardening** — Nuevos parámetros `SF_OAUTH_SCOPE` y `SF_OAUTH_PROMPT`; además, cuando OAuth queda desconectado el job de sync evita reintentos hasta reconexión manual
 
 ## 🛠️ Comandos Útiles
 
@@ -200,7 +202,23 @@ php artisan salesforce:sync-broker-metrics
 
 # Probar autenticación Salesforce
 php artisan salesforce:test-auth
+
+# Ajustes recomendados OAuth WebServer (refresh token)
+# SF_OAUTH_SCOPE="api refresh_token offline_access"
+# SF_OAUTH_PROMPT="consent"
 ```
+
+#### Procedimiento de reconexión OAuth (invalid_grant)
+
+Usar este flujo cuando aparezca `invalid_grant` o `expired access/refresh token` en logs.
+
+1. Confirmar en Salesforce Connected App que OAuth Scopes incluyen `api`, `refresh_token` y `offline_access`.
+2. Revisar OAuth Policies de la Connected App y dejar una política de refresh token compatible con operación continua (preferir vigencia hasta revocación cuando la política de seguridad de la organización lo permita).
+3. Verificar que las variables `SF_OAUTH_SCOPE` y `SF_OAUTH_PROMPT` estén definidas en el entorno de la app.
+4. Reconectar desde el panel en `/admin/site-settings` usando **Conectar con Salesforce**.
+5. Ejecutar una prueba de autenticación con `php artisan salesforce:test-auth`.
+6. Validar envío real de contacto y confirmar creación de Lead en Salesforce.
+7. Monitorear logs para asegurar que no reaparezca `invalid_grant`.
 
 #### Scheduler operativo (Laravel)
 
@@ -251,6 +269,23 @@ php artisan test --compact
 # Ejecutar un archivo de tests especifico
 php artisan test --compact tests/Feature/ActivityLogAdminToolsTest.php
 ```
+
+### Frontend Web Awesome Pro
+
+```bash
+# Verificar version instalada
+cd frontend
+npm ls "@web.awesome.me/webawesome-pro" --depth=0
+```
+
+Autenticacion npm para Web Awesome Pro:
+- El scope `@web.awesome.me` se resuelve mediante `frontend/.npmrc`.
+- El token se inyecta via variable de entorno `WEBAWESOME_NPM_TOKEN`.
+- Si aparece `E401` en comandos npm (`view`, `outdated`, `install`), valida que la variable exista en la sesion activa de terminal.
+
+Compatibilidad de atributos `size`:
+- En Web Awesome 3.x los valores largos (`small`, `medium`, `large`) siguen funcionando, pero estan deprecados.
+- Usar siempre valores cortos: `s`, `m`, `l` (y `xs`, `xl` cuando aplique) para evitar warnings y preparar la migracion a la proxima major.
 
 ### Comandos peligrosos (usar con cuidado)
 

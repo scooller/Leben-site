@@ -92,7 +92,7 @@ class CreateSalesforceCaseJobTokenExpiredTest extends TestCase
 
         $mapper = \Mockery::mock(SalesforceCaseMapper::class);
         $mapper->shouldReceive('mapLead')
-            ->twice()
+            ->once()
             ->andReturnUsing(function (ContactSubmission $model): array {
                 return [
                     'FirstName' => explode(' ', trim((string) $model->name))[0] ?? 'Nombre',
@@ -103,7 +103,7 @@ class CreateSalesforceCaseJobTokenExpiredTest extends TestCase
 
         $service = \Mockery::mock(SalesforceService::class);
         $service->shouldReceive('createLead')
-            ->twice()
+            ->once()
             ->andThrow(new SalesforceTokenExpiredException('Salesforce OAuth token expired or revoked. Manual reconnection required.'));
 
         Mail::shouldReceive('raw')
@@ -111,6 +111,42 @@ class CreateSalesforceCaseJobTokenExpiredTest extends TestCase
 
         (new CreateSalesforceCaseJob($firstSubmission))->handle($service, $mapper);
         (new CreateSalesforceCaseJob($secondSubmission))->handle($service, $mapper);
+    }
+
+    public function test_it_skips_sync_when_oauth_is_already_marked_as_disconnected(): void
+    {
+        config()->set('services.salesforce.lead_enabled', true);
+
+        SiteSetting::current()->update([
+            'extra_settings' => [
+                'salesforce_oauth' => [
+                    'connected' => false,
+                ],
+            ],
+        ]);
+
+        $submission = ContactSubmission::query()->create([
+            'name' => 'Camila Perez',
+            'email' => 'camila@example.com',
+            'fields' => ['source' => 'test'],
+            'submitted_at' => now(),
+        ]);
+
+        $mapper = \Mockery::mock(SalesforceCaseMapper::class);
+        $mapper->shouldReceive('mapLead')->never();
+
+        $service = \Mockery::mock(SalesforceService::class);
+        $service->shouldReceive('createLead')->never();
+
+        (new CreateSalesforceCaseJob($submission))->handle($service, $mapper);
+
+        $submission->refresh();
+
+        $this->assertSame(
+            'OAuth Salesforce desconectado. Reconectar en panel admin antes de reintentar.',
+            $submission->salesforce_case_error
+        );
+        $this->assertNotNull($submission->salesforce_synced_at);
     }
 
     private function alertCacheKeyFor(string $reason): string

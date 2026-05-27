@@ -315,10 +315,10 @@ function PlantsGrid({
 
             <div slot="footer-actions" className="wa-cluster wa-gap-s">
               <wa-button-group label="Skeleton actions">
-                <wa-button size="small" disabled>
+                <wa-button size="s" disabled>
                   <wa-skeleton effect="pulse" style={{ height: '14px', width: '84px' }}></wa-skeleton>
                 </wa-button>
-                <wa-button size="small" variant="brand" disabled>
+                <wa-button size="s" variant="brand" disabled>
                   <wa-skeleton effect="pulse" style={{ height: '14px', width: '58px' }}></wa-skeleton>
                 </wa-button>
               </wa-button-group>
@@ -436,10 +436,10 @@ function PlantsGrid({
                         )}
                     </div>
                 </div>
-                {(plant.precioFinal || plant.precioBase || plant.precioLista) && (
+                {(plant.precioSeleccionado || plant.precioFinal || plant.precioBase || plant.precioLista) && (
                 <div slot="footer" className="plant-price-wrapper">
                     <div className="price-detail">
-                        {(0 < plant.precioLista) && (plant.precioLista !== (plant.precioFinal || plant.precioBase)) && (
+                    {(0 < plant.precioLista) && (plant.precioLista !== (plant.precioSeleccionado || plant.precioFinal || plant.precioBase)) && (
                             <div className="prices-list">
                                 <span className="price-text">Precio lista:</span>
                                 <span className="price-label">
@@ -447,13 +447,11 @@ function PlantsGrid({
                                 </span>
                             </div>
                         )}
-                        {(0 < (plant.precioFinal || plant.precioBase)) && (
+                    {(0 < (plant.precioSeleccionado || plant.precioFinal || plant.precioBase)) && (
                             <div className="prices-sale">
-                                {(plant.precioFinal || plant.precioBase) < plant.precioLista && (
-                                    <span className="price-text wa-text-uppercase">{isSaleEventActive ? 'Precio Sale:' : 'Precio Base:'}</span>
-                                )}
+                        <span className="price-text wa-text-uppercase">{plant.precioSeleccionadoEtiqueta || (isSaleEventActive ? 'Precio Sale:' : 'Precio Base:')}</span>
                                 <span className="price-label wa-font-weight-bold">
-                                    UF {(plant.precioFinal || plant.precioBase).toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                          UF {(plant.precioSeleccionado || plant.precioFinal || plant.precioBase).toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                                 </span>
                             </div>
                         )}
@@ -464,7 +462,7 @@ function PlantsGrid({
                 <div slot="footer-actions" className="wa-cluster wa-align-items-end wa-gap-s">
                   <wa-button-group label="Alignment">
                     <wa-button
-                      size="small"
+                      size="s"
                       disabled={plant.isReserved || plant.isPaid || plant.isAvailable === false}
                       {...(detailLoadingId === plant.id && { loading: true })}
                       onClick={() => openPlantDetail(plant)}
@@ -473,7 +471,7 @@ function PlantsGrid({
                       Ver Detalles
                     </wa-button>
                     <wa-button
-                      size="small"
+                      size="s"
                       variant="brand"
                       disabled={checkoutLoading || plant.isReserved || plant.isPaid || plant.isAvailable === false}
                       {...(checkoutLoading && { loading: true })}

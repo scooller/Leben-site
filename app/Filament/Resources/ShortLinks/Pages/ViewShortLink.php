@@ -6,6 +6,7 @@ use App\Filament\Actions\ShowQrCodeAction;
 use App\Filament\Resources\ShortLinks\ShortLinkResource;
 use App\Models\ShortLink;
 use Filament\Actions\Action;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
 
@@ -19,9 +20,14 @@ class ViewShortLink extends ViewRecord
             Action::make('openShortUrl')
                 ->label('Abrir URL corta')
                 ->icon('heroicon-o-link')
-                ->url(fn (): string => $this->getRecord()->shortUrl(), true),
-            ShowQrCodeAction::make(fn (ShortLink $record): string => $record->shortUrl()),
+                ->url(fn(): string => $this->getRecord()->shortUrl(), true),
+            ShowQrCodeAction::make(fn(ShortLink $record): string => $record->shortUrl()),
             EditAction::make(),
+            DeleteAction::make()
+                ->label('Eliminar')
+                ->modalHeading('Eliminar link corto')
+                ->modalDescription('Esta accion eliminara el link corto de forma permanente.')
+                ->successNotificationTitle('Link corto eliminado correctamente'),
         ];
     }
 

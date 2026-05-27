@@ -45,6 +45,10 @@ La aplicación soporta:
 - ✅ **UX en Panel**: Implementación de filament-dual-scroll para tablas extensas y mejoras en visibilidad de columnas de contactos
 - ✅ **Mapeo Salesforce Extendido**: Soporte para descuento_maximo_unidad y refinamiento en SalesforceCaseMapper (resolución de sitio web por canal)
 - ✅ **Normalización de Proyectos**: Sincronización refinada de Proyect_ID__c y manejo de campos legacy
+- ✅ **OAuth Token Hardening**: Scope/prompt explícitos para WebServer OAuth y reducción de fallas repetidas `invalid_grant` por reconexión controlada
+- ✅ **Protección de Cola Salesforce**: `CreateSalesforceCaseJob` omite reintentos cuando OAuth está marcado como desconectado hasta reconexión manual en panel
+- ✅ **Seguridad API — token.origin**: Middleware corregido para rechazar tokens inválidos/ausentes; usa `PersonalAccessToken::findToken()` sin depender de sesión
+- ✅ **Seguridad API — site-config**: `payment_gateways.*.config`, `price_source` y `price_percentage_source` ocultos en respuesta pública; visibles solo con token válido
 
 ### Módulos Activos
 1. **Salesforce Integration** - Sincronización de leads/casos, OAuth, caché

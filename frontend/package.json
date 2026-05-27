@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node ./scripts/prerender-routes.mjs && node ./scripts/validate-seo.mjs",
+    "seo:validate": "node ./scripts/validate-seo.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "install:webawesome": "dotenv npm install"

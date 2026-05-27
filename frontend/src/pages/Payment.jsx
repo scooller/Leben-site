@@ -32,6 +32,8 @@ const RESULT_TEXT = {
   },
 };
 
+const EMPTY_TOKEN_MESSAGE = 'Token de estado vacío, revise el link e intente nuevamente.';
+
 const formatMoney = (amount, currency = 'CLP') => {
   const value = Number(amount || 0);
 
@@ -92,9 +94,7 @@ function Payment({ onNavigate, currentPath }) {
 
     const loadPaymentStatus = async () => {
       if (!queryParams.paymentId || !queryParams.statusToken) {
-        if (queryParams.message) {
-          setErrorMessage(queryParams.message);
-        }
+        setErrorMessage(queryParams.message || EMPTY_TOKEN_MESSAGE);
 
         return;
       }
@@ -158,7 +158,7 @@ function Payment({ onNavigate, currentPath }) {
                     Actualizado: {formatDate(payment?.updated_at)}
                   </span>
                 </div>
-                <wa-button appearance="outlined" size="small" pill onClick={() => onNavigate?.('/contacto')}>
+                <wa-button appearance="outlined" size="s" pill onClick={() => onNavigate?.('/contacto')}>
                   Necesito ayuda
                 </wa-button>
               </div>

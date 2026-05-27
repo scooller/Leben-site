@@ -8,6 +8,39 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ---
 
+## [1.9.2] - 2026-05-27
+
+### 🔒 Seguridad
+
+#### Endurecimiento de autenticación API (`token.origin`)
+- `EnsureTokenOriginIsAuthorized` ahora **rechaza requests sin bearer token** con 401 (antes los dejaba pasar).
+- Tokens inválidos o inexistentes en BD también retornan 401 en lugar de pasar silenciosamente.
+- Se corrigió el bug donde `$request->user()` era `null` en rutas sin `auth:sanctum`: el middleware ahora usa `PersonalAccessToken::findToken()` directamente, sin depender de sesión de usuario.
+- Import corregido a `App\Models\PersonalAccessToken` (modelo personalizado con `authorized_url` y scope `active`).
+- Verificación explícita de expiración de token (`expires_at`).
+
+#### Ocultamiento de datos sensibles en `/api/v1/site-config`
+- Los campos `payment_gateways.*.config`, `price_source` y `price_percentage_source` **ya no se exponen públicamente**.
+- Se muestran únicamente si el request incluye un bearer token válido y activo.
+- `SiteSetting::forFrontend()` recibe la variable `$hasValidToken` derivada del bearer token del request.
+
+---
+
+## [1.9.1] - 2026-05-27
+
+### 🔄 Cambios
+
+#### Salesforce OAuth — Duración y Reconexión de Token
+- Se incorporó configuración explícita de OAuth scope y prompt para robustecer la entrega de `refresh_token` en el flujo WebServer.
+- Nuevas variables de configuración para Salesforce OAuth:
+  - `SF_OAUTH_SCOPE` (default: `api refresh_token offline_access`)
+  - `SF_OAUTH_PROMPT` (default: `consent`)
+- `CreateSalesforceCaseJob` ahora evita reintentos cuando OAuth ya está marcado como desconectado en `SiteSettings`.
+- Se reduce ruido operativo por fallas repetidas `invalid_grant` y se mantiene la señal clara de reconexión manual requerida en panel admin.
+- Cobertura de tests actualizada para validar el nuevo comportamiento de omisión cuando OAuth está desconectado.
+
+---
+
 ## [1.9.0] - 2026-05-20
 
 ### ✨ Agregado

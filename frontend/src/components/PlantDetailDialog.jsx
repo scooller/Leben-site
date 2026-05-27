@@ -472,11 +472,11 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
             </div>
 
             <div slot="footer" className="wa-split wa-align-items-end">
-                {(plant.precioFinal || plant.precioBase || plant.precioLista) && (
+                {(plant.precioSeleccionado || plant.precioFinal || plant.precioBase || plant.precioLista) && (
                 <>
                 <div className="wa-stack wa-gap-xs price-detail wa-order-0 wa-order-mobile-1">
                     <div className="wa-cluster wa-caption-s wa-mt-m">
-                    {plant.precioLista && (plant.precioFinal || plant.precioBase) && plant.precioLista !== (plant.precioFinal || plant.precioBase) && (
+                    {plant.precioLista && (plant.precioSeleccionado || plant.precioFinal || plant.precioBase) && plant.precioLista !== (plant.precioSeleccionado || plant.precioFinal || plant.precioBase) && (
                         <div className="wa-split wa-gap-xs prices-list">
                             <span className='price-text'>Precio lista:</span>
                             <span className='price-label'>
@@ -485,9 +485,9 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
                         </div>
                     )}
                         <div className="wa-split wa-gap-xs prices-sale">
-                            <span className='wa-text-uppercase price-text wa-font-weight-bold'>{isSaleEventActive ? 'Precio Sale:' : 'Precio Base:'}</span>
+                            <span className='wa-text-uppercase price-text wa-font-weight-bold'>{plant.precioSeleccionadoEtiqueta || (isSaleEventActive ? 'Precio Sale:' : 'Precio Base:')}</span>
                             <span className="wa-font-weight-bold price-label">
-                                UF {(plant.precioFinal || plant.precioBase || plant.precioLista).toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                                UF {(plant.precioSeleccionado || plant.precioFinal || plant.precioBase || plant.precioLista).toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                             </span>
                         </div>
                     </div>

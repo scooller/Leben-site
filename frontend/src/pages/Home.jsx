@@ -11,6 +11,8 @@ import siteConfigService from '../services/siteConfig';
 import { isRetryableError } from '../utils/errorHandler';
 import { getConfiguredEntregaAliases, getProjectSlugsByAlias, getStageKeysByAlias } from '../utils/stageAlias';
 import { trackEvent, trackPageView } from '../utils/tagManager';
+import { resolveSeoPolicy } from '../utils/seoPolicy';
+import { removeStructuredData, setStructuredData } from '../utils/structuredData';
 import '../styles/home.scss' with { type: 'css' };
 
 const PlantsGrid = lazy(() => import('../components/PlantsGrid'));
@@ -138,6 +140,7 @@ const formatSeoPrice = (amount) => {
 function Home({ onNavigate, currentPath }) {
   const { config, loading: configLoading, colorMode, toggleColorMode } = useSiteConfig();
   const isSaleEventActive = Boolean(config?.evento_sale);
+  const priceSource = config?.payment_gateways?.price_source === 'base' ? 'base' : 'final';
   const showPlants = Boolean(config?.mostrar_plantas ?? false);
   // Optimistic: while config is loading assume catalog is visible so all data fetches
   // fire immediately in parallel with the site-config request instead of waiting for it.
@@ -323,6 +326,62 @@ function Home({ onNavigate, currentPath }) {
     return PLANT_TYPE_FILTER_OPTIONS.find((value) => slugifySegment(value) === routeSlug) || '';
   }, [routeTipoProductoSlugs]);
 
+  const preferredSiteUrl = useMemo(
+    () => `${config?.site_url || 'https://sale.ileben.cl'}`.trim().replace(/\/+$/, ''),
+    [config?.site_url]
+  );
+
+  const categoryProjectLinks = useMemo(() => proyectos
+    .slice(0, 8)
+    .map((proyecto) => ({
+      label: proyecto.name,
+      href: `${FILTER_BASE_PATH}/proyectos/${slugifySegment(proyecto.slug || proyecto.name || '')}`,
+    }))
+    .filter((link) => link.href !== `${FILTER_BASE_PATH}/proyectos/`), [proyectos]);
+
+  const categoryComunaLinks = useMemo(() => filteredComunaOptions
+    .slice(0, 8)
+    .map((comuna) => ({
+      label: comuna,
+      href: `${FILTER_BASE_PATH}/comunas/${slugifySegment(comuna)}`,
+    })), [filteredComunaOptions]);
+
+  const breadcrumbItems = useMemo(() => {
+    const baseItems = [{ label: 'Inicio', href: '/' }];
+
+    if (currentPath.startsWith('/p/') && selectedPlantDetail) {
+      const projectSlug = selectedPlantDetail.proyectoSlug || slugifySegment(selectedPlantDetail.proyectoNombre);
+      const projectName = selectedPlantDetail.proyectoNombre || selectedPlantDetail.proyecto?.name || 'Proyecto';
+
+      baseItems.push({ label: 'Plantas', href: '/plantas' });
+
+      if (projectSlug) {
+        baseItems.push({
+          label: projectName,
+          href: `${FILTER_BASE_PATH}/proyectos/${projectSlug}`,
+        });
+      }
+
+      baseItems.push({
+        label: `Unidad ${selectedPlantDetail.nombre || selectedPlantDetail.name || ''}`.trim(),
+        href: null,
+        current: true,
+      });
+
+      return baseItems;
+    }
+
+    if (currentPath === '/plantas' || currentPath === '/f' || currentPath.startsWith('/f/')) {
+      baseItems.push({ label: 'Plantas', href: currentPath === '/plantas' ? null : '/plantas', current: currentPath === '/plantas' });
+
+      if (currentPath.startsWith('/f/')) {
+        baseItems.push({ label: 'Resultados filtrados', href: null, current: true });
+      }
+    }
+
+    return baseItems;
+  }, [currentPath, selectedPlantDetail]);
+
   const activeFilterCount = selectedProyecto.length
     + selectedDormitorios.length
     + selectedBanos.length
@@ -350,7 +409,11 @@ function Home({ onNavigate, currentPath }) {
     const seoConfig = config?.seo || {};
     const siteName = config?.site_name || 'iLeben';
     const siteDescription = config?.site_description || 'Descubre departamentos inmobiliarios disponibles para compra en Chile.';
-    const siteUrl = (config?.site_url || window.location.origin || '').replace(/\/+$/, '');
+    const siteUrl = preferredSiteUrl;
+    const seoPolicy = resolveSeoPolicy({
+      pathname: currentPath,
+      search: window.location.search || '',
+    });
 
     const isListingPage = currentPath === '/plantas' || currentPath === '/f' || currentPath.startsWith('/f/');
     const isDetailPage = currentPath.startsWith('/p/') && Boolean(selectedPlantDetail);
@@ -364,7 +427,7 @@ function Home({ onNavigate, currentPath }) {
       const plantName = `${selectedPlantDetail?.nombre || selectedPlantDetail?.name || 'Planta'}`.trim();
       const projectName = `${selectedPlantDetail?.proyectoNombre || selectedPlantDetail?.proyecto?.name || ''}`.trim();
       const comunaName = `${selectedPlantDetail?.proyectoComuna || selectedPlantDetail?.proyecto?.comuna || ''}`.trim();
-      const price = formatSeoPrice(selectedPlantDetail?.precioFinal || selectedPlantDetail?.precioBase);
+      const price = formatSeoPrice(selectedPlantDetail?.precioSeleccionado || selectedPlantDetail?.precioFinal || selectedPlantDetail?.precioBase);
       const detailPath = buildPlantDetailPath(selectedPlantDetail);
 
       title = `${siteName} | ${plantName}${comunaName ? ` en ${comunaName}` : ''}`;
@@ -394,6 +457,10 @@ function Home({ onNavigate, currentPath }) {
         ? `Explora ${totalPlants} unidades disponibles en venta. Filtra por proyecto, comuna y características para encontrar tu próximo departamento.`
         : 'Explora departamentos en venta y filtra por proyecto, comuna y características.';
       canonical = `${siteUrl || window.location.origin}${currentPath === '/plantas' ? '/f' : currentPath}`;
+
+      if (seoPolicy.isTemporaryFilterVariant) {
+        canonical = `${siteUrl || window.location.origin}/f`;
+      }
     }
 
     siteConfigService.applySeo({
@@ -402,7 +469,7 @@ function Home({ onNavigate, currentPath }) {
       keywords: seoConfig.meta_keywords,
       author: seoConfig.meta_author,
       canonical,
-      robots: seoConfig.robots_default || 'index,follow',
+      robots: seoPolicy.robots || seoConfig.robots_default || 'index,follow',
       ogImage: seoConfig.og_image,
       ogType,
       ogSiteName: siteName,
@@ -417,12 +484,108 @@ function Home({ onNavigate, currentPath }) {
     config?.site_name,
     config?.site_url,
     currentPath,
+    preferredSiteUrl,
     proyectos,
     selectedComuna,
     selectedPlantDetail,
     selectedProyecto,
     totalPlants,
   ]);
+
+  useEffect(() => {
+    if (!(currentPath.startsWith('/p/') && selectedPlantDetail)) {
+      removeStructuredData('product');
+      removeStructuredData('product-breadcrumb');
+      return;
+    }
+
+    const detailPath = buildPlantDetailPath(selectedPlantDetail);
+    const detailUrl = `${preferredSiteUrl}${detailPath}`;
+    const projectSlug = selectedPlantDetail.proyectoSlug || slugifySegment(selectedPlantDetail.proyectoNombre || selectedPlantDetail.proyecto?.name);
+    const projectName = selectedPlantDetail.proyectoNombre || selectedPlantDetail.proyecto?.name || 'Proyecto';
+    const productName = `Planta ${selectedPlantDetail.nombre || selectedPlantDetail.name || ''} - ${projectName}`;
+    const numericPrice = Number(selectedPlantDetail.precioSeleccionado || selectedPlantDetail.precioFinal || selectedPlantDetail.precioBase || selectedPlantDetail.precioLista || 0);
+    const availability = selectedPlantDetail.isPaid || selectedPlantDetail.isReserved || selectedPlantDetail.isAvailable === false
+      ? 'https://schema.org/SoldOut'
+      : 'https://schema.org/InStock';
+
+    const productSchema = {
+      '@context': 'https://schema.org',
+      '@type': 'Product',
+      name: productName,
+      url: detailUrl,
+      category: selectedPlantDetail.tipoProducto || 'Inmobiliario',
+      sku: `${projectSlug || 'proyecto'}-${slugifySegment(selectedPlantDetail.nombre || selectedPlantDetail.name || '')}`,
+      image: selectedPlantDetail.imageUrl || selectedPlantDetail.coverImage || undefined,
+      brand: {
+        '@type': 'Brand',
+        name: config?.site_name || 'iLeben',
+      },
+      description: selectedPlantDetail.proyectoDescripcion || `Unidad ${selectedPlantDetail.nombre || selectedPlantDetail.name || ''} en ${projectName}`,
+      offers: {
+        '@type': 'Offer',
+        url: detailUrl,
+        availability,
+        priceCurrency: 'CLF',
+        price: Number.isFinite(numericPrice) && numericPrice > 0 ? numericPrice : undefined,
+        itemCondition: 'https://schema.org/NewCondition',
+      },
+    };
+
+    const breadcrumbSchema = {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        {
+          '@type': 'ListItem',
+          position: 1,
+          name: 'Inicio',
+          item: `${preferredSiteUrl}/`,
+        },
+        {
+          '@type': 'ListItem',
+          position: 2,
+          name: 'Plantas',
+          item: `${preferredSiteUrl}/plantas`,
+        },
+        {
+          '@type': 'ListItem',
+          position: 3,
+          name: projectName,
+          item: `${preferredSiteUrl}${FILTER_BASE_PATH}/proyectos/${projectSlug}`,
+        },
+        {
+          '@type': 'ListItem',
+          position: 4,
+          name: productName,
+          item: detailUrl,
+        },
+      ],
+    };
+
+    setStructuredData('product', productSchema);
+    setStructuredData('product-breadcrumb', breadcrumbSchema);
+
+    return () => {
+      removeStructuredData('product');
+      removeStructuredData('product-breadcrumb');
+    };
+  }, [
+    buildPlantDetailPath,
+    config?.site_name,
+    currentPath,
+    preferredSiteUrl,
+    selectedPlantDetail,
+  ]);
+
+  const handleInternalNavigationLink = useCallback((event, href) => {
+    if (!href || !href.startsWith('/')) {
+      return;
+    }
+
+    event.preventDefault();
+    onNavigate?.(href);
+  }, [onNavigate]);
 
   const mapPlant = useCallback((plant) => {
     const precioBase = Number(plant.precio_base) || 0;
@@ -437,12 +600,14 @@ function Home({ onNavigate, currentPath }) {
     const precioFinal = precioFinalApi > 0
       ? precioFinalApi
       : (precioCalculadoPorPorcentaje > 0 ? precioCalculadoPorPorcentaje : precioBase);
-    const discountPercentage = precioLista > 0 && precioFinal > 0 && precioFinal < precioLista
-      ? Math.max(0, Math.round(Math.abs(((precioLista - precioFinal) / precioLista) * 100)))
-      : 0;
-
-    const legacyDiscountPercentage = precioLista > 0 && precioBase > 0 && precioBase < precioLista
-      ? Math.max(0, Math.round(Math.abs(((precioLista - precioBase) / precioLista) * 100)))
+    const precioSeleccionado = priceSource === 'base'
+      ? precioBase
+      : (precioFinal > 0 ? precioFinal : precioBase);
+    const precioSeleccionadoEtiqueta = priceSource === 'base' || (priceSource !== 'base' && precioFinal <= 0)
+      ? 'Precio Base:'
+      : 'Precio Final:';
+    const discountPercentage = precioLista > 0 && precioSeleccionado > 0 && precioSeleccionado < precioLista
+      ? Math.max(0, Math.round(Math.abs(((precioLista - precioSeleccionado) / precioLista) * 100)))
       : 0;
 
     const advisorsSource = Array.isArray(plant.asesores) && plant.asesores.length > 0
@@ -459,9 +624,11 @@ function Home({ onNavigate, currentPath }) {
       precioBase,
       precioLista,
       precioFinal,
+      precioSeleccionado,
+      precioSeleccionadoEtiqueta,
       porcentajeMaximoUnidad,
       descuentoDefectoCotizacionWeb,
-      discountPercentage: discountPercentage || legacyDiscountPercentage,
+      discountPercentage,
       reservaExigidaPeso: Number(plant.proyecto?.valor_reserva_exigido_defecto_peso) || 0,
       proyectoNombre: plant.proyecto?.name,
       proyectoSlug: plant.proyecto?.slug || slugifySegment(plant.proyecto?.name),
@@ -485,7 +652,7 @@ function Home({ onNavigate, currentPath }) {
       isReserved: !!plant.active_reservation,
       tipoProducto: `${plant.tipo_producto ?? ''}`.trim().toUpperCase(),
     };
-  }, [isSaleEventActive]);
+  }, [isSaleEventActive, priceSource]);
 
   useEffect(() => {
     if (!canRenderPlantsCatalog) {
@@ -728,7 +895,7 @@ function Home({ onNavigate, currentPath }) {
       plant_name: plant.nombre || plant.name || null,
       project_name: plant.proyectoNombre || plant.proyecto?.name || null,
       product_type: plant.tipoProducto || null,
-      price: plant.precioFinal || plant.precioBase || null,
+      price: plant.precioSeleccionado || plant.precioFinal || plant.precioBase || null,
     });
 
     const currentUrl = getCurrentBrowserUrl();
@@ -1288,10 +1455,10 @@ function Home({ onNavigate, currentPath }) {
 
                 <div slot="footer-actions">
                   <wa-button-group label="Skeleton actions">
-                    <wa-button size="small" disabled>
+                    <wa-button size="s" disabled>
                       <wa-skeleton effect="pulse" style={{ height: '14px', width: '72px' }}></wa-skeleton>
                     </wa-button>
-                    <wa-button size="small" variant="brand" disabled>
+                    <wa-button size="s" variant="brand" disabled>
                       <wa-skeleton effect="pulse" style={{ height: '14px', width: '56px' }}></wa-skeleton>
                     </wa-button>
                   </wa-button-group>
@@ -1420,6 +1587,20 @@ function Home({ onNavigate, currentPath }) {
             <p>{config?.site_description}</p>
         </div>
 
+        <nav className="seo-breadcrumbs" aria-label="Breadcrumb">
+          <ol>
+            {breadcrumbItems.map((item, index) => (
+              <li key={`${item.label}-${index}`}>
+                {item.href && !item.current ? (
+                  <a href={item.href} onClick={(event) => handleInternalNavigationLink(event, item.href)}>{item.label}</a>
+                ) : (
+                  <span aria-current={item.current ? 'page' : undefined}>{item.label}</span>
+                )}
+              </li>
+            ))}
+          </ol>
+        </nav>
+
         {/* Filtros */}
         {canRenderPlantsCatalog ? (
         <>
@@ -1434,7 +1615,7 @@ function Home({ onNavigate, currentPath }) {
                     <div className="wa-grid wa-gap-m filters-inputs" style={{ '--min-column-size': '14rem' }}>
                         <wa-select
                             placeholder="Todos los proyectos"
-                            size="small"
+                            size="s"
                             value={tempProyecto}
                             onChange={(e) => {
                             const value = getMultiSelectValue(e);
@@ -1453,7 +1634,7 @@ function Home({ onNavigate, currentPath }) {
 
                         <wa-select
                             placeholder="Todos"
-                            size="small"
+                            size="s"
                             value={tempDormitorios}
                             onChange={(e) => {
                             const value = getMultiSelectValue(e);
@@ -1473,7 +1654,7 @@ function Home({ onNavigate, currentPath }) {
 
                         {/* <wa-select
                             placeholder="Todos"
-                            size="small"
+                            size="s"
                             value={tempBanos}
                             onChange={(e) => {
                             const value = getMultiSelectValue(e);
@@ -1492,7 +1673,7 @@ function Home({ onNavigate, currentPath }) {
                         {/* <wa-select
                             with-clear
                             placeholder="Todos"
-                            size="small"
+                            size="s"
                             value={tempPiso}
                             onChange={(e) => {
                             const value = getSingleSelectValue(e);
@@ -1512,7 +1693,7 @@ function Home({ onNavigate, currentPath }) {
                         <wa-select
                             with-clear
                             placeholder="Todos"
-                            size="small"
+                            size="s"
                             value={tempTipoProducto}
                             onChange={(e) => {
                             const value = getSingleSelectValue(e);
@@ -1530,7 +1711,7 @@ function Home({ onNavigate, currentPath }) {
                           <wa-select
                             with-clear
                             placeholder="Todas"
-                            size="small"
+                            size="s"
                             value={tempOrientacion}
                             onChange={(e) => {
                             const value = getSingleSelectValue(e);
@@ -1549,7 +1730,7 @@ function Home({ onNavigate, currentPath }) {
                           <wa-select
                             with-clear
                             placeholder="Todas"
-                            size="small"
+                            size="s"
                             value={tempEntrega}
                             onChange={(e) => {
                             const value = getSingleSelectValue(e);
@@ -1567,7 +1748,7 @@ function Home({ onNavigate, currentPath }) {
 
                         <wa-select
                             with-clear
-                            size="small"
+                            size="s"
                             placeholder="Todas"
                             value={tempComuna}
                             onChange={(e) => {
@@ -1590,7 +1771,7 @@ function Home({ onNavigate, currentPath }) {
                             placeholder="Desde UF"
                             value={tempPrecioMin}
                             max='9999'
-                            size="small"
+                            size="s"
                             onChange={(e) => {
                                 const value = e.target.value || '';
                                 setTempPrecioMin(value);
@@ -1604,7 +1785,7 @@ function Home({ onNavigate, currentPath }) {
                             type="number"
                             placeholder="Hasta UF"
                             max='9999'
-                            size="small"
+                            size="s"
                             value={tempPrecioMax}
                             onChange={(e) => {
                                 const value = e.target.value || '';
@@ -1622,8 +1803,8 @@ function Home({ onNavigate, currentPath }) {
                             onClick={handleApplyFilters}
                         >
                             <wa-icon slot="start" name="filter"></wa-icon>
-                            Aplicar Filtros
-                        </wa-button>
+                        Aplicar Filtros
+                      </wa-button>
 
                         {activeFilterCount > 0 && (
                             <wa-button
