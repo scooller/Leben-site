@@ -2,9 +2,9 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\PersonalAccessToken;
 use Closure;
 use Illuminate\Http\Request;
-use Laravel\Sanctum\PersonalAccessToken;
 use Symfony\Component\HttpFoundation\Response;
 
 class EnsureTokenOriginIsAuthorized
@@ -22,9 +22,15 @@ class EnsureTokenOriginIsAuthorized
             ], Response::HTTP_UNAUTHORIZED);
         }
 
-        $token = $request->user()?->currentAccessToken();
+        $token = PersonalAccessToken::findToken($request->bearerToken());
 
         if (! $token instanceof PersonalAccessToken) {
+            return response()->json([
+                'message' => 'Token de acceso inválido o expirado.',
+            ], Response::HTTP_UNAUTHORIZED);
+        }
+
+        if ($token->expires_at !== null && $token->expires_at->isPast()) {
             return response()->json([
                 'message' => 'Token de acceso inválido o expirado.',
             ], Response::HTTP_UNAUTHORIZED);
