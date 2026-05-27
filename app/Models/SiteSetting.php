@@ -406,29 +406,29 @@ class SiteSetting extends Model
                     'alt' => $extraSettings['contact_hero_alt'] ?? 'Contacto',
                 ],
             ],
-            'payment_gateways' => [
-                'transbank' => [
-                    'enabled' => $settings->gateway_transbank_enabled,
-                    ...($hasValidToken ? ['config' => $settings->gateway_transbank_config ?? []] : []),
-                ],
-                'mercadopago' => [
-                    'enabled' => $settings->gateway_mercadopago_enabled,
-                    ...($hasValidToken ? ['config' => $settings->gateway_mercadopago_config ?? []] : []),
-                ],
-                'manual' => [
-                    'enabled' => $settings->gateway_manual_enabled,
-                    ...($hasValidToken ? ['config' => $settings->gateway_manual_config ?? []] : []),
-                ],
-                ...($hasValidToken ? [
+            ...($hasValidToken ? [
+                'payment_gateways' => [
+                    'transbank' => [
+                        'enabled' => $settings->gateway_transbank_enabled,
+                        'config' => $settings->gateway_transbank_config ?? [],
+                    ],
+                    'mercadopago' => [
+                        'enabled' => $settings->gateway_mercadopago_enabled,
+                        'config' => $settings->gateway_mercadopago_config ?? [],
+                    ],
+                    'manual' => [
+                        'enabled' => $settings->gateway_manual_enabled,
+                        'config' => $settings->gateway_manual_config ?? [],
+                    ],
                     'price_source' => in_array($priceSource, ['final', 'base'], true)
                         ? $priceSource
                         : 'final',
                     'price_percentage_source' => in_array($pricePercentageSource, ['max_unit', 'web_discount'], true)
                         ? $pricePercentageSource
                         : 'web_discount',
-                ] : []),
-                'reservation_timeout_minutes' => $settings->gateway_reservation_timeout_minutes ?? 15,
-            ],
+                    'reservation_timeout_minutes' => $settings->gateway_reservation_timeout_minutes ?? 15,
+                ],
+            ] : []),
         ];
     }
 }

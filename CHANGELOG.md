@@ -8,6 +8,24 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ---
 
+## [1.9.2] - 2026-05-27
+
+### 🔒 Seguridad
+
+#### Endurecimiento de autenticación API (`token.origin`)
+- `EnsureTokenOriginIsAuthorized` ahora **rechaza requests sin bearer token** con 401 (antes los dejaba pasar).
+- Tokens inválidos o inexistentes en BD también retornan 401 en lugar de pasar silenciosamente.
+- Se corrigió el bug donde `$request->user()` era `null` en rutas sin `auth:sanctum`: el middleware ahora usa `PersonalAccessToken::findToken()` directamente, sin depender de sesión de usuario.
+- Import corregido a `App\Models\PersonalAccessToken` (modelo personalizado con `authorized_url` y scope `active`).
+- Verificación explícita de expiración de token (`expires_at`).
+
+#### Ocultamiento de datos sensibles en `/api/v1/site-config`
+- Los campos `payment_gateways.*.config`, `price_source` y `price_percentage_source` **ya no se exponen públicamente**.
+- Se muestran únicamente si el request incluye un bearer token válido y activo.
+- `SiteSetting::forFrontend()` recibe la variable `$hasValidToken` derivada del bearer token del request.
+
+---
+
 ## [1.9.1] - 2026-05-27
 
 ### 🔄 Cambios
