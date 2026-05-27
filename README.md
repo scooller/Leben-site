@@ -315,7 +315,34 @@ Recomendaciones de seguridad:
 - En produccion, evita ejecutar comandos destructivos sin respaldo previo.
 - Si necesitas limpiar caches en produccion, usa optimize:clear en lugar de comandos de migracion destructivos.
 
-## � API REST
+## ⚠️ Errores Conocidos
+
+### API devuelve "Token de acceso requerido." en entorno dev (401)
+
+**Síntoma:** El frontend en `sale.dev.ileben.cl` recibe `401 {"message":"Token de acceso requerido."}` al llamar a `dev.ileben.cl/api/v1/*`, incluso enviando un `Authorization: Bearer` válido. El mismo token funciona en producción.
+
+**Causa raíz:** El dominio `dev.ileben.cl` en cPanel tenía **PHP-FPM deshabilitado**, usando el handler legacy (DSO/CGI). Con ese handler, Apache no pasa el header `Authorization` a PHP, ni siquiera con las reglas `.htaccess` de `E=HTTP_AUTHORIZATION`.
+
+**Diagnóstico rápido:**
+1. Crea `public/debug-auth.php` en el servidor:
+   ```php
+   <?php
+   header('Content-Type: application/json');
+   echo json_encode([
+       'HTTP_AUTHORIZATION'          => $_SERVER['HTTP_AUTHORIZATION'] ?? 'NOT SET',
+       'REDIRECT_HTTP_AUTHORIZATION' => $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? 'NOT SET',
+   ], JSON_PRETTY_PRINT);
+   ```
+2. Prueba: `curl -H "Authorization: Bearer test" https://dev.ileben.cl/debug-auth.php`
+3. Si ambos campos son `NOT SET`, el handler no pasa el header.
+
+**Solución:** En cPanel → **MultiPHP Manager**, habilitar **PHP-FPM** para el dominio afectado.
+
+**Nota:** Si al agregar un nuevo dominio en cPanel el PHP-FPM no queda habilitado por defecto, hay que activarlo manualmente en MultiPHP Manager. Esto aplica especialmente a subdominios/addon domains del mismo usuario.
+
+---
+
+## 🌐 API REST
 
 Base URL: `/api/v1`
 
