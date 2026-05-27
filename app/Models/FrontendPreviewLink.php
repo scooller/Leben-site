@@ -4,12 +4,15 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Prunable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\IpUtils;
 
 class FrontendPreviewLink extends Model
 {
+    use Prunable;
+
     protected $fillable = [
         'name',
         'token',
@@ -32,6 +35,13 @@ class FrontendPreviewLink extends Model
             $builder->whereNull('expires_at')
                 ->orWhere('expires_at', '>', now());
         });
+    }
+
+    public function prunable(): Builder
+    {
+        return static::query()
+            ->whereNotNull('expires_at')
+            ->where('expires_at', '<', now()->subDay());
     }
 
     public static function isAuthorizedForRequest(Request $request): bool
@@ -65,8 +75,8 @@ class FrontendPreviewLink extends Model
         }
 
         $allowedIps = collect(preg_split('/[\s,]+/', (string) $this->allowed_ip) ?: [])
-            ->map(static fn (string $ip): string => trim($ip))
-            ->filter(static fn (string $ip): bool => $ip !== '')
+            ->map(static fn(string $ip): string => trim($ip))
+            ->filter(static fn(string $ip): bool => $ip !== '')
             ->values();
 
         foreach ($allowedIps as $allowedIp) {
@@ -89,7 +99,7 @@ class FrontendPreviewLink extends Model
         $previewPath = $previewPath === '' ? '/' : $previewPath;
 
         if (! str_starts_with($previewPath, '/')) {
-            $previewPath = '/'.$previewPath;
+            $previewPath = '/' . $previewPath;
         }
 
         return $previewPath;
@@ -101,6 +111,6 @@ class FrontendPreviewLink extends Model
         $previewPath = $this->normalizedPreviewPath();
         $separator = str_contains($previewPath, '?') ? '&' : '?';
 
-        return $baseUrl.$previewPath.$separator.'preview_token='.$this->token;
+        return $baseUrl . $previewPath . $separator . 'preview_token=' . $this->token;
     }
 }

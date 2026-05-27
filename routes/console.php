@@ -1,6 +1,7 @@
 <?php
 
 use App\Jobs\SyncPlantsJob;
+use App\Models\FrontendPreviewLink;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -11,6 +12,9 @@ Artisan::command('inspire', function () {
 
 try {
     Schedule::command('reservations:expire')->everyMinute();
+    Schedule::command('model:prune', [
+        '--model' => [FrontendPreviewLink::class],
+    ])->daily();
     Schedule::job(new SyncPlantsJob)->everyFiveMinutes()->withoutOverlapping();
 } catch (Throwable) {
 } catch (\Throwable) {
