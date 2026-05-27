@@ -25,7 +25,6 @@ use App\Filament\Widgets\UsersChartWidget;
 use App\Http\Middleware\EnsureMarketingPanelAccess;
 use App\Models\SiteSetting;
 use BinaryBuilds\CommandRunner\CommandRunnerPlugin;
-use Exception;
 use Filament\FontProviders\LocalFontProvider;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -185,7 +184,7 @@ class AdminPanelProvider extends PanelProvider
 
     private function resolveSiteSettings(): ?SiteSetting
     {
-        try {
+        return rescue(function (): ?SiteSetting {
             if (! Schema::hasTable('site_settings')) {
                 return null;
             }
@@ -194,8 +193,6 @@ class AdminPanelProvider extends PanelProvider
             $settings->load(['faviconMedia', 'logoMedia', 'logoDarkMedia']);
 
             return $settings;
-        } catch (Exception) {
-            return null;
-        }
+        }, null, report: false);
     }
 }
