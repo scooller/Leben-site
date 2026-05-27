@@ -161,6 +161,52 @@ html.wa-light {
   }
 }
 
+/* Plant Card 3D Perspective Tilt */
+.plant-card-tilt {
+  position: relative;
+  transition: transform 0.5s ease-out;
+  --plant-card-shimmer-core: rgba(var(--wa-color-white-rgb), 0.16);
+  --plant-card-shimmer-mid: rgba(var(--wa-color-white-rgb), 0.06);
+
+  &--active:hover {
+    transform: perspective(800px) rotateX(var(--x-rotation, 0deg)) rotateY(var(--y-rotation, 0deg)) scale(1.02);
+  }
+}
+
+html.wa-light {
+  .plant-card-tilt {
+    --plant-card-shimmer-core: rgba(var(--wa-color-black-rgb), 0.1);
+    --plant-card-shimmer-mid: rgba(var(--wa-color-black-rgb), 0.03);
+  }
+}
+
+html.wa-dark {
+  .plant-card-tilt {
+    --plant-card-shimmer-core: rgba(var(--wa-color-white-rgb), 0.2);
+    --plant-card-shimmer-mid: rgba(var(--wa-color-white-rgb), 0.08);
+  }
+}
+
+.plant-card-shimmer {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    at var(--x, 50%) var(--y, 50%),
+    var(--plant-card-shimmer-core) 18%,
+    var(--plant-card-shimmer-mid) 42%,
+    transparent 80%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 2;
+  border-radius: var(--wa-border-radius-l, 8px);
+
+  .plant-card-tilt--active:hover & {
+    opacity: 1;
+  }
+}
+
 /* Plants Grid */
 .plants-grid {
   --min-column-size: 50ch;
@@ -174,6 +220,7 @@ html.wa-light {
       scale: 1;
     }
     cursor: pointer;
+	height: 100%;
 
     .plant-price-wrapper {
       width: 40%;

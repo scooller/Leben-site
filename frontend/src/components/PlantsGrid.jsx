@@ -230,6 +230,27 @@ function PlantsGrid({
     onQuickCheckout(activePlant);
   };
 
+  const handleCardMouseMove = (ev) => {
+    const bounding = ev.currentTarget.getBoundingClientRect();
+    const x = ev.clientX - bounding.left;
+    const y = ev.clientY - bounding.top;
+    const xPercentage = x / bounding.width;
+    const yPercentage = y / bounding.height;
+    const xRotation = (xPercentage - 0.5) * 16;
+    const yRotation = (0.5 - yPercentage) * 16;
+    ev.currentTarget.style.transition = 'transform 0.05s linear';
+    ev.currentTarget.style.setProperty('--x-rotation', `${yRotation}deg`);
+    ev.currentTarget.style.setProperty('--y-rotation', `${xRotation}deg`);
+    ev.currentTarget.style.setProperty('--x', `${xPercentage * 100}%`);
+    ev.currentTarget.style.setProperty('--y', `${yPercentage * 100}%`);
+  };
+
+  const handleCardMouseLeave = (ev) => {
+    ev.currentTarget.style.transition = 'transform 0.5s ease-out';
+    ev.currentTarget.style.removeProperty('--x-rotation');
+    ev.currentTarget.style.removeProperty('--y-rotation');
+  };
+
   useEffect(() => {
     if (!dialogRef.current) {
       return;
@@ -347,9 +368,16 @@ function PlantsGrid({
           <div className="plants-count"><wa-icon name="city"></wa-icon> {totalPlants} planta{totalPlants === 1 ? '' : 's'}</div>
         )}
         <div id='plantas' className="plants-grid wa-grid wa-gap-2xl" ref={gridContainerRef}>
-          {plants.map((plant) => (
-            <wa-card
+          {plants.map((plant) => {
+            const isTiltable = !plant.isReserved && !plant.isPaid && plant.isAvailable !== false;
+            return (
+            <div
               key={plant.id}
+              className={`plant-card-tilt${isTiltable ? ' plant-card-tilt--active' : ''}`}
+              onMouseMove={isTiltable ? handleCardMouseMove : undefined}
+              onMouseLeave={isTiltable ? handleCardMouseLeave : undefined}
+            >
+            <wa-card
               className={`plant-card box-shadow-2 ${plant.isReserved || plant.isPaid ? 'plant-card--reserved' : 'plant-card--not-reserved'} ${isSaleEventActive && plant.discountPercentage > 0 ? 'plant-card--sale-unit' : 'plant-card--regular-unit'}`}
               appearance="filled"
             >
@@ -491,7 +519,9 @@ function PlantsGrid({
                   </wa-button-group>
                 </div>
               </wa-card>
-          ))}
+              {isTiltable && <div className="plant-card-shimmer" />}
+            </div>
+          )})}
         </div>
       </div>
 
