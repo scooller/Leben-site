@@ -80,6 +80,22 @@ function SiteHeader({ config, currentPath = '/', onNavigate, onMenuClick }) {
     window.requestAnimationFrame(closeMobileMenu);
   };
 
+  const goToMatch = () => {
+    if (!isCatalogEnabled) {
+      window.requestAnimationFrame(closeMobileMenu);
+      return;
+    }
+
+    if (currentPath === '/match') {
+      onMenuClick?.();
+      window.requestAnimationFrame(closeMobileMenu);
+      return;
+    }
+
+    onNavigate?.('/match');
+    window.requestAnimationFrame(closeMobileMenu);
+  };
+
   const contactHref = '/contacto';
 
   const handleContactClick = () => {
@@ -127,6 +143,11 @@ function SiteHeader({ config, currentPath = '/', onNavigate, onMenuClick }) {
                   <wa-icon name="city" slot="start"></wa-icon>
                   Plantas
                 </wa-button>
+
+                <wa-button appearance={currentPath === '/match' ? 'filled-outlined' : 'plain'} onClick={goToMatch}>
+                  <wa-icon name="champagne-glasses" slot="start"></wa-icon>
+                  Match
+                </wa-button>
                 </>
               )}
               <wa-button appearance={currentPath === '/contacto' ? 'filled-outlined' : 'plain'} href={contactHref} onClick={handleContactClick} variant="danger">
@@ -158,10 +179,17 @@ function SiteHeader({ config, currentPath = '/', onNavigate, onMenuClick }) {
                     Home
                 </wa-button>
                 {isCatalogEnabled && (
-                  <wa-button appearance={isPlantsActive ? 'filled-outlined' : 'plain'} onClick={goToPlants}>
-                    <wa-icon name="city" slot="start"></wa-icon>
-                    Plantas
-                  </wa-button>
+                  <>
+                    <wa-button appearance={isPlantsActive ? 'filled-outlined' : 'plain'} onClick={goToPlants}>
+                      <wa-icon name="city" slot="start"></wa-icon>
+                      Plantas
+                    </wa-button>
+
+                    <wa-button appearance={currentPath === '/match' ? 'filled-outlined' : 'plain'} onClick={goToMatch}>
+                      <wa-icon name="sparkles" slot="start"></wa-icon>
+                      Match
+                    </wa-button>
+                  </>
                 )}
                 <wa-button appearance={currentPath === '/contacto' ? 'filled-outlined' : 'plain'} href={contactHref} onClick={handleContactClick}>
                     <wa-icon name="envelope" slot="start"></wa-icon>

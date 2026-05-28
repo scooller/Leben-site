@@ -26,7 +26,10 @@ class PlantApiFiltersTest extends TestCase
     {
         parent::setUp();
 
-        Sanctum::actingAs(User::factory()->create());
+        $user = User::factory()->create();
+
+        Sanctum::actingAs($user);
+        $this->withToken($user->createToken('plant-api-filters-test', ['*'])->plainTextToken);
     }
 
     public function test_it_filters_plants_by_proyecto_id(): void
@@ -1009,6 +1012,48 @@ class PlantApiFiltersTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('precio_final', 130);
         $response->assertJsonPath('proyecto.descuento_defecto_cotizacion_web', 35);
+    }
+
+    public function test_it_keeps_global_price_base_order_across_pages(): void
+    {
+        $token = User::factory()->create()->createToken('plants-sorting-test')->plainTextToken;
+        $headers = [
+            'Authorization' => 'Bearer '.$token,
+        ];
+
+        $project = Proyecto::factory()->create([
+            'is_active' => true,
+        ]);
+
+        $highestPricePlant = $this->createPlant($project->salesforce_id, true, [
+            'name' => 'P3',
+            'precio_base' => 300,
+            'precio_lista' => 300,
+        ]);
+
+        $middlePricePlant = $this->createPlant($project->salesforce_id, true, [
+            'name' => 'P2',
+            'precio_base' => 200,
+            'precio_lista' => 200,
+        ]);
+
+        $lowestPricePlant = $this->createPlant($project->salesforce_id, true, [
+            'name' => 'P1',
+            'precio_base' => 100,
+            'precio_lista' => 100,
+        ]);
+
+        $pageOneResponse = $this->getJson('/api/v1/plantas?proyecto_id='.$project->id.'&sort_by=price_base&sort_direction=desc&perPage=1&page=1', $headers);
+        $pageOneResponse->assertOk();
+        $pageOneResponse->assertJsonPath('data.0.id', $highestPricePlant->id);
+
+        $pageTwoResponse = $this->getJson('/api/v1/plantas?proyecto_id='.$project->id.'&sort_by=price_base&sort_direction=desc&perPage=1&page=2', $headers);
+        $pageTwoResponse->assertOk();
+        $pageTwoResponse->assertJsonPath('data.0.id', $middlePricePlant->id);
+
+        $pageThreeResponse = $this->getJson('/api/v1/plantas?proyecto_id='.$project->id.'&sort_by=price_base&sort_direction=desc&perPage=1&page=3', $headers);
+        $pageThreeResponse->assertOk();
+        $pageThreeResponse->assertJsonPath('data.0.id', $lowestPricePlant->id);
     }
 
     private function createPlant(string $salesforceProyectoId, bool $isActive, array $attributes = []): Plant

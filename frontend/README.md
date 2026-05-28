@@ -34,4 +34,15 @@ If you are developing a production application, we recommend using TypeScript wi
 - El frontend usa `@web.awesome.me/webawesome-pro`.
 - La disponibilidad del catálogo debe consumir los flags `is_paid` e `is_available` entregados por `/api/v1/plantas`.
 - Una planta no disponible puede deberse a reserva activa, reserva completada o pago completado/autorizado asociado en backend.
+- Usar el comando npm run build:dev para generar el build de desarrollo, que incluye el flag `is_available` en el catálogo.
 
+.npmrc file at the root of your project
+@web.awesome.me:registry=https://npm.cloudsmith.io/fortawesome/webawesome-pro/
+//npm.cloudsmith.io/fortawesome/webawesome-pro/:_authToken=${WEBAWESOME_NPM_TOKEN}
+
+Install Your Project
+Replace [token] with your npm token in the following snippet. Then, run the command in your CLI to grab Web Awesome Pro and add it to your project dependencies.
+
+WEBAWESOME_NPM_TOKEN="[token]" npm install "@web.awesome.me/webawesome-pro@3.7.0"
+
+WEBAWESOME_NPM_TOKEN is an environment variable that holds your npm token. This allows you to keep your token secure and not hard-code it into your project files. Make sure to replace [token] with your actual npm token before running the command.

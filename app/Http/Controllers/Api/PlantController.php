@@ -240,6 +240,7 @@ class PlantController extends Controller
 
         $projectDiscountExpression = '(SELECT p.descuento_maximo_unidad FROM proyectos p WHERE p.salesforce_id = plants.salesforce_proyecto_id LIMIT 1)';
         $legacyProjectDiscountExpression = '(SELECT p.descuento_defecto_cotizacion_web FROM proyectos p WHERE p.salesforce_id = plants.salesforce_proyecto_id LIMIT 1)';
+        $projectNameExpression = '(SELECT p.name FROM proyectos p WHERE p.salesforce_id = plants.salesforce_proyecto_id LIMIT 1)';
 
         $orderByDiscountExpression = match ($discountSource) {
             'project' => "COALESCE({$projectDiscountExpression}, porcentaje_maximo_unidad, 0)",
@@ -249,9 +250,24 @@ class PlantController extends Controller
                 : "COALESCE({$legacyProjectDiscountExpression}, 0)",
         };
 
-        $query->orderByRaw(
-            "COALESCE(CASE WHEN {$orderByDiscountExpression} > 0 AND precio_lista > 0 THEN CASE WHEN (precio_lista - ((precio_lista * {$orderByDiscountExpression}) / 100)) < 0 THEN 0 ELSE (precio_lista - ((precio_lista * {$orderByDiscountExpression}) / 100)) END ELSE precio_base END, 999999999999) ASC"
-        )->orderBy('id');
+        $sortBy = (string) $request->input('sort_by', '');
+        $sortDirection = strtolower((string) $request->input('sort_direction', 'asc')) === 'desc' ? 'DESC' : 'ASC';
+
+        if ($sortBy === 'name_project_plant') {
+            $query
+                ->orderByRaw("LOWER(COALESCE({$projectNameExpression}, '')) {$sortDirection}")
+                ->orderByRaw("LOWER(COALESCE(name, '')) {$sortDirection}");
+        } elseif ($sortBy === 'price_base') {
+            $query->orderByRaw("COALESCE(precio_base, 999999999999) {$sortDirection}");
+        } elseif ($sortBy === 'offer_discount') {
+            $query->orderByRaw("COALESCE({$orderByDiscountExpression}, 0) {$sortDirection}");
+        } else {
+            $query->orderByRaw(
+                "COALESCE(CASE WHEN {$orderByDiscountExpression} > 0 AND precio_lista > 0 THEN CASE WHEN (precio_lista - ((precio_lista * {$orderByDiscountExpression}) / 100)) < 0 THEN 0 ELSE (precio_lista - ((precio_lista * {$orderByDiscountExpression}) / 100)) END ELSE precio_base END, 999999999999) ASC"
+            );
+        }
+
+        $query->orderBy('id');
 
         $plants = $query->paginate($perPage)->through(function (Plant $plant) use ($eventoSale, $discountSource): array {
             return $this->plantPayload($plant, $eventoSale, $discountSource);

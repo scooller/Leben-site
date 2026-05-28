@@ -21,7 +21,6 @@ const PaymentGatewayDialog = lazy(() => import('../components/PaymentGatewayDial
 const PLANT_DETAIL_BASE_PATH = '/p';
 const FILTER_BASE_PATH = '/f';
 const PLANT_TYPE_FILTER_OPTIONS = ['DEPARTAMENTO', 'ESTACIONAMIENTO', 'BODEGA', 'LOCAL'];
-const plantNameCollator = new Intl.Collator('es-CL', { numeric: true, sensitivity: 'base' });
 
 const SORT_OPTIONS = {
   NAME_ASC: 'name-asc',
@@ -30,6 +29,15 @@ const SORT_OPTIONS = {
   PRICE_DESC: 'price-desc',
   OFFER_ASC: 'offer-asc',
   OFFER_DESC: 'offer-desc',
+};
+
+const SORT_TO_API = {
+  [SORT_OPTIONS.NAME_ASC]: { sortBy: 'name_project_plant', sortDirection: 'asc' },
+  [SORT_OPTIONS.NAME_DESC]: { sortBy: 'name_project_plant', sortDirection: 'desc' },
+  [SORT_OPTIONS.PRICE_ASC]: { sortBy: 'price_base', sortDirection: 'asc' },
+  [SORT_OPTIONS.PRICE_DESC]: { sortBy: 'price_base', sortDirection: 'desc' },
+  [SORT_OPTIONS.OFFER_ASC]: { sortBy: 'offer_discount', sortDirection: 'asc' },
+  [SORT_OPTIONS.OFFER_DESC]: { sortBy: 'offer_discount', sortDirection: 'desc' },
 };
 
 const slugifySegment = (value) => (
@@ -281,56 +289,12 @@ function Home({ onNavigate, currentPath }) {
     return `${value}`;
   };
 
-  const sortedPlants = useMemo(() => {
-    if (!selectedSort) {
-      return plants;
-    }
+  const sortedPlants = useMemo(() => plants, [plants]);
 
-    const getPriceValue = (plant) => Number(plant.precioSeleccionado || plant.precioFinal || plant.precioBase || plant.precioLista || 0);
-    const getOfferValue = (plant) => {
-      const percentage = Number(plant.discountPercentage) || 0;
-      const savings = Math.max(0, (Number(plant.precioLista) || 0) - getPriceValue(plant));
-
-      return { percentage, savings };
-    };
-
-    const sorted = [...plants].sort((leftPlant, rightPlant) => {
-      switch (selectedSort) {
-        case SORT_OPTIONS.NAME_ASC:
-          return plantNameCollator.compare(leftPlant.nombre || leftPlant.name || '', rightPlant.nombre || rightPlant.name || '');
-        case SORT_OPTIONS.NAME_DESC:
-          return plantNameCollator.compare(rightPlant.nombre || rightPlant.name || '', leftPlant.nombre || leftPlant.name || '');
-        case SORT_OPTIONS.PRICE_ASC:
-          return getPriceValue(leftPlant) - getPriceValue(rightPlant);
-        case SORT_OPTIONS.PRICE_DESC:
-          return getPriceValue(rightPlant) - getPriceValue(leftPlant);
-        case SORT_OPTIONS.OFFER_ASC: {
-          const leftOffer = getOfferValue(leftPlant);
-          const rightOffer = getOfferValue(rightPlant);
-
-          if (leftOffer.percentage !== rightOffer.percentage) {
-            return leftOffer.percentage - rightOffer.percentage;
-          }
-
-          return leftOffer.savings - rightOffer.savings;
-        }
-        case SORT_OPTIONS.OFFER_DESC: {
-          const leftOffer = getOfferValue(leftPlant);
-          const rightOffer = getOfferValue(rightPlant);
-
-          if (leftOffer.percentage !== rightOffer.percentage) {
-            return rightOffer.percentage - leftOffer.percentage;
-          }
-
-          return rightOffer.savings - leftOffer.savings;
-        }
-        default:
-          return 0;
-      }
-    });
-
-    return sorted;
-  }, [plants, selectedSort]);
+  const handleSortChange = useCallback((sortOption) => {
+    setSelectedSort(sortOption);
+    setPage(1);
+  }, []);
 
   const filteredComunaOptions = useMemo(() => comunaOptions, [comunaOptions]);
 
@@ -805,6 +769,11 @@ function Home({ onNavigate, currentPath }) {
         // available: true,
       };
 
+      if (selectedSort && SORT_TO_API[selectedSort]) {
+        filters.sort_by = SORT_TO_API[selectedSort].sortBy;
+        filters.sort_direction = SORT_TO_API[selectedSort].sortDirection;
+      }
+
       if (routeFilters.legacySlug) {
         filters.catalog_slug = routeFilters.legacySlug;
       }
@@ -929,6 +898,7 @@ function Home({ onNavigate, currentPath }) {
     selectedRegion,
     selectedPrecioMin,
     selectedPrecioMax,
+    selectedSort,
     isSaleEventActive,
     canRenderPlantsCatalog,
     mapPlant,
@@ -1898,7 +1868,7 @@ function Home({ onNavigate, currentPath }) {
                   size="small"
                   appearance={selectedSort === SORT_OPTIONS.NAME_ASC ? 'accent' : 'outlined'}
                   variant={selectedSort === SORT_OPTIONS.NAME_ASC ? 'brand' : 'neutral'}
-                  onClick={() => setSelectedSort(SORT_OPTIONS.NAME_ASC)}
+                  onClick={() => handleSortChange(SORT_OPTIONS.NAME_ASC)}
                 >
                   ASC
                 </wa-button>
@@ -1906,7 +1876,7 @@ function Home({ onNavigate, currentPath }) {
                   size="small"
                   appearance={selectedSort === SORT_OPTIONS.NAME_DESC ? 'accent' : 'outlined'}
                   variant={selectedSort === SORT_OPTIONS.NAME_DESC ? 'brand' : 'neutral'}
-                  onClick={() => setSelectedSort(SORT_OPTIONS.NAME_DESC)}
+                  onClick={() => handleSortChange(SORT_OPTIONS.NAME_DESC)}
                 >
                   DESC
                 </wa-button>
@@ -1920,7 +1890,7 @@ function Home({ onNavigate, currentPath }) {
                   size="small"
                   appearance={selectedSort === SORT_OPTIONS.PRICE_ASC ? 'accent' : 'outlined'}
                   variant={selectedSort === SORT_OPTIONS.PRICE_ASC ? 'brand' : 'neutral'}
-                  onClick={() => setSelectedSort(SORT_OPTIONS.PRICE_ASC)}
+                  onClick={() => handleSortChange(SORT_OPTIONS.PRICE_ASC)}
                 >
                   ASC
                 </wa-button>
@@ -1928,7 +1898,7 @@ function Home({ onNavigate, currentPath }) {
                   size="small"
                   appearance={selectedSort === SORT_OPTIONS.PRICE_DESC ? 'accent' : 'outlined'}
                   variant={selectedSort === SORT_OPTIONS.PRICE_DESC ? 'brand' : 'neutral'}
-                  onClick={() => setSelectedSort(SORT_OPTIONS.PRICE_DESC)}
+                  onClick={() => handleSortChange(SORT_OPTIONS.PRICE_DESC)}
                 >
                   DESC
                 </wa-button>
@@ -1942,7 +1912,7 @@ function Home({ onNavigate, currentPath }) {
                   size="small"
                   appearance={selectedSort === SORT_OPTIONS.OFFER_ASC ? 'accent' : 'outlined'}
                   variant={selectedSort === SORT_OPTIONS.OFFER_ASC ? 'brand' : 'neutral'}
-                  onClick={() => setSelectedSort(SORT_OPTIONS.OFFER_ASC)}
+                  onClick={() => handleSortChange(SORT_OPTIONS.OFFER_ASC)}
                 >
                   ASC
                 </wa-button>
@@ -1950,7 +1920,7 @@ function Home({ onNavigate, currentPath }) {
                   size="small"
                   appearance={selectedSort === SORT_OPTIONS.OFFER_DESC ? 'accent' : 'outlined'}
                   variant={selectedSort === SORT_OPTIONS.OFFER_DESC ? 'brand' : 'neutral'}
-                  onClick={() => setSelectedSort(SORT_OPTIONS.OFFER_DESC)}
+                  onClick={() => handleSortChange(SORT_OPTIONS.OFFER_DESC)}
                 >
                   DESC
                 </wa-button>
