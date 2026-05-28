@@ -937,6 +937,89 @@ class PlantApiFiltersTest extends TestCase
         $this->assertSame(['LOW', 'MID', 'HIGH'], collect($response->json('data'))->pluck('name')->all());
     }
 
+    public function test_it_orders_plants_by_offer_discount_desc_using_final_price_source(): void
+    {
+        SiteSetting::current()->update([
+            'extra_settings' => [
+                'price_source' => 'final',
+            ],
+        ]);
+
+        $project = Proyecto::factory()->create([
+            'is_active' => true,
+            'descuento_defecto_cotizacion_web' => 0,
+        ]);
+
+        $this->createPlant($project->salesforce_id, true, [
+            'name' => 'LOW-DISCOUNT',
+            'precio_base' => 1000,
+            'precio_lista' => 1000,
+            'porcentaje_maximo_unidad' => 5,
+            'unidad_sale' => true,
+        ]);
+
+        $this->createPlant($project->salesforce_id, true, [
+            'name' => 'HIGH-DISCOUNT',
+            'precio_base' => 1000,
+            'precio_lista' => 1000,
+            'porcentaje_maximo_unidad' => 20,
+            'unidad_sale' => true,
+        ]);
+
+        $this->createPlant($project->salesforce_id, true, [
+            'name' => 'MID-DISCOUNT',
+            'precio_base' => 1000,
+            'precio_lista' => 1000,
+            'porcentaje_maximo_unidad' => 10,
+            'unidad_sale' => true,
+        ]);
+
+        $response = $this->getJson('/api/v1/plantas?project_slug='.$project->slug.'&perPage=50&evento_sale=1&sort_by=offer_discount&sort_direction=desc');
+
+        $response->assertOk();
+        $this->assertSame(['HIGH-DISCOUNT', 'MID-DISCOUNT', 'LOW-DISCOUNT'], collect($response->json('data'))->pluck('name')->all());
+    }
+
+    public function test_it_orders_plants_by_offer_discount_desc_using_base_price_source(): void
+    {
+        SiteSetting::current()->update([
+            'extra_settings' => [
+                'price_source' => 'base',
+            ],
+        ]);
+
+        $project = Proyecto::factory()->create([
+            'is_active' => true,
+            'descuento_defecto_cotizacion_web' => 0,
+        ]);
+
+        $this->createPlant($project->salesforce_id, true, [
+            'name' => 'TEN-PERCENT',
+            'precio_base' => 900,
+            'precio_lista' => 1000,
+            'porcentaje_maximo_unidad' => 0,
+        ]);
+
+        $this->createPlant($project->salesforce_id, true, [
+            'name' => 'THIRTY-PERCENT',
+            'precio_base' => 700,
+            'precio_lista' => 1000,
+            'porcentaje_maximo_unidad' => 0,
+        ]);
+
+        $this->createPlant($project->salesforce_id, true, [
+            'name' => 'TWENTY-PERCENT',
+            'precio_base' => 800,
+            'precio_lista' => 1000,
+            'porcentaje_maximo_unidad' => 0,
+        ]);
+
+        $response = $this->getJson('/api/v1/plantas?project_slug='.$project->slug.'&perPage=50&sort_by=offer_discount&sort_direction=desc');
+
+        $response->assertOk();
+        $this->assertSame(['THIRTY-PERCENT', 'TWENTY-PERCENT', 'TEN-PERCENT'], collect($response->json('data'))->pluck('name')->all());
+    }
+
     public function test_it_returns_precio_final_field_based_on_evento_sale_state(): void
     {
         $project = Proyecto::factory()->create([

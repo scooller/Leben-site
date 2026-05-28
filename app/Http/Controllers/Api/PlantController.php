@@ -241,6 +241,7 @@ class PlantController extends Controller
         $projectDiscountExpression = '(SELECT p.descuento_maximo_unidad FROM proyectos p WHERE p.salesforce_id = plants.salesforce_proyecto_id LIMIT 1)';
         $legacyProjectDiscountExpression = '(SELECT p.descuento_defecto_cotizacion_web FROM proyectos p WHERE p.salesforce_id = plants.salesforce_proyecto_id LIMIT 1)';
         $projectNameExpression = '(SELECT p.name FROM proyectos p WHERE p.salesforce_id = plants.salesforce_proyecto_id LIMIT 1)';
+        $priceSource = $this->resolvePriceSource();
 
         $orderByDiscountExpression = match ($discountSource) {
             'project' => "COALESCE({$projectDiscountExpression}, porcentaje_maximo_unidad, 0)",
@@ -249,6 +250,11 @@ class PlantController extends Controller
                 ? 'COALESCE(porcentaje_maximo_unidad, 0)'
                 : "COALESCE({$legacyProjectDiscountExpression}, 0)",
         };
+
+        $finalPriceExpression = "CASE WHEN {$orderByDiscountExpression} > 0 AND precio_lista > 0 THEN CASE WHEN (precio_lista - ((precio_lista * {$orderByDiscountExpression}) / 100)) < 0 THEN 0 ELSE (precio_lista - ((precio_lista * {$orderByDiscountExpression}) / 100)) END ELSE precio_base END";
+        $offerDiscountPercentageExpression = $priceSource === 'base'
+            ? 'CASE WHEN precio_lista > 0 AND COALESCE(precio_base, 0) > 0 AND COALESCE(precio_base, 0) < precio_lista THEN ((precio_lista - COALESCE(precio_base, 0)) * 100.0 / precio_lista) ELSE 0 END'
+            : "CASE WHEN precio_lista > 0 AND {$orderByDiscountExpression} > 0 THEN {$orderByDiscountExpression} ELSE 0 END";
 
         $sortBy = (string) $request->input('sort_by', '');
         $sortDirection = strtolower((string) $request->input('sort_direction', 'asc')) === 'desc' ? 'DESC' : 'ASC';
@@ -260,10 +266,10 @@ class PlantController extends Controller
         } elseif ($sortBy === 'price_base') {
             $query->orderByRaw("COALESCE(precio_base, 999999999999) {$sortDirection}");
         } elseif ($sortBy === 'offer_discount') {
-            $query->orderByRaw("COALESCE({$orderByDiscountExpression}, 0) {$sortDirection}");
+            $query->orderByRaw("{$offerDiscountPercentageExpression} {$sortDirection}");
         } else {
             $query->orderByRaw(
-                "COALESCE(CASE WHEN {$orderByDiscountExpression} > 0 AND precio_lista > 0 THEN CASE WHEN (precio_lista - ((precio_lista * {$orderByDiscountExpression}) / 100)) < 0 THEN 0 ELSE (precio_lista - ((precio_lista * {$orderByDiscountExpression}) / 100)) END ELSE precio_base END, 999999999999) ASC"
+                "COALESCE({$finalPriceExpression}, 999999999999) ASC"
             );
         }
 
@@ -537,6 +543,15 @@ class PlantController extends Controller
         $source = strtolower(trim((string) data_get($extraSettings, 'salesforce_discount_source', '')));
 
         return in_array($source, ['project', 'plant'], true) ? $source : null;
+    }
+
+    private function resolvePriceSource(): string
+    {
+        $settings = SiteSetting::current();
+        $extraSettings = is_array($settings->extra_settings ?? null) ? $settings->extra_settings : [];
+        $source = strtolower(trim((string) data_get($extraSettings, 'price_source', 'final')));
+
+        return in_array($source, ['base', 'final'], true) ? $source : 'final';
     }
 
     private function resolveApiDiscountPercentage(Plant $plant, bool $eventoSale, ?string $discountSource): float
