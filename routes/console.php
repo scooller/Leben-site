@@ -17,7 +17,6 @@ try {
     ])->daily();
     Schedule::job(new SyncPlantsJob)->everyFiveMinutes()->withoutOverlapping();
     Schedule::command('salesforce:refresh-token')->everyTwentyHours()->withoutOverlapping();
-} catch (Throwable) {
 } catch (\Throwable) {
     // Allow first-time installs to run migrations before settings-backed packages are ready.
 }
