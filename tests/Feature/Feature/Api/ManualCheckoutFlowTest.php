@@ -22,13 +22,14 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
-use Laravel\Sanctum\Sanctum;
 use Mockery;
+use Tests\Concerns\WithApiToken;
 use Tests\TestCase;
 
 class ManualCheckoutFlowTest extends TestCase
 {
     use RefreshDatabase;
+    use WithApiToken;
 
     private User $user;
 
@@ -42,7 +43,9 @@ class ManualCheckoutFlowTest extends TestCase
 
         $this->user = User::factory()->create();
 
-        Sanctum::actingAs($this->user);
+        // Crea un token real para $this->user: satisface EnsureTokenOriginIsAuthorized
+        // Y auth:sanctum autenticará al user propietario del token en cada request.
+        $this->setUpApiToken($this->user);
     }
 
     public function test_it_lists_manual_gateway_when_enabled(): void
@@ -82,7 +85,7 @@ class ManualCheckoutFlowTest extends TestCase
             ],
         ]);
 
-        $response = $this->getJson('/api/v1/payment-gateways?plant_id='.$plant->id);
+        $response = $this->getJson('/api/v1/payment-gateways?plant_id=' . $plant->id);
 
         $response->assertOk()
             ->assertJsonMissing([
@@ -113,7 +116,7 @@ class ManualCheckoutFlowTest extends TestCase
             ],
         ]);
 
-        $response = $this->getJson('/api/v1/payment-gateways?plant_id='.$plant->id);
+        $response = $this->getJson('/api/v1/payment-gateways?plant_id=' . $plant->id);
 
         $response->assertOk()
             ->assertJsonPath('count', 0)
@@ -148,7 +151,7 @@ class ManualCheckoutFlowTest extends TestCase
             'gateway_manual_enabled' => false,
         ]);
 
-        $response = $this->getJson('/api/v1/payment-gateways?plant_id='.$plant->id);
+        $response = $this->getJson('/api/v1/payment-gateways?plant_id=' . $plant->id);
 
         $response->assertOk()
             ->assertJsonPath('count', 0)
@@ -170,7 +173,7 @@ class ManualCheckoutFlowTest extends TestCase
             'gateway_manual_enabled' => false,
         ]);
 
-        $response = $this->getJson('/api/v1/payment-gateways?plant_id='.$plant->id);
+        $response = $this->getJson('/api/v1/payment-gateways?plant_id=' . $plant->id);
 
         $response->assertOk()
             ->assertJsonMissing([
@@ -312,7 +315,7 @@ class ManualCheckoutFlowTest extends TestCase
 
         $this->assertSame($this->user->id, Payment::query()->findOrFail($paymentId)->user_id);
 
-        $uploadResponse = $this->post('/api/v1/payments/'.$paymentId.'/manual-proof', [
+        $uploadResponse = $this->post('/api/v1/payments/' . $paymentId . '/manual-proof', [
             'proof' => UploadedFile::fake()->image('comprobante-checkout.jpg'),
             'notes' => 'Comprobante del flujo completo.',
         ]);
@@ -357,7 +360,7 @@ class ManualCheckoutFlowTest extends TestCase
             ],
         ]);
 
-        $response = $this->post('/api/v1/payments/'.$payment->id.'/manual-proof', [
+        $response = $this->post('/api/v1/payments/' . $payment->id . '/manual-proof', [
             'proof' => UploadedFile::fake()->image('comprobante.jpg'),
             'notes' => 'Transferencia realizada desde banco demo.',
         ]);
@@ -385,7 +388,7 @@ class ManualCheckoutFlowTest extends TestCase
             (string) data_get($notification->data, 'title')
         );
         $this->assertStringContainsString(
-            '/payments/'.$payment->id,
+            '/payments/' . $payment->id,
             (string) data_get($notification->data, 'body')
         );
     }
@@ -432,7 +435,7 @@ class ManualCheckoutFlowTest extends TestCase
             ],
         ]);
 
-        $this->post('/api/v1/payments/'.$payment->id.'/manual-proof', [
+        $this->post('/api/v1/payments/' . $payment->id . '/manual-proof', [
             'proof' => UploadedFile::fake()->image('comprobante-plant.jpg'),
         ])->assertOk();
 
@@ -481,7 +484,7 @@ class ManualCheckoutFlowTest extends TestCase
             ],
         ]);
 
-        $this->post('/api/v1/payments/'.$payment->id.'/manual-proof', [
+        $this->post('/api/v1/payments/' . $payment->id . '/manual-proof', [
             'proof' => UploadedFile::fake()->image('comprobante-project.jpg'),
         ])->assertOk();
 
@@ -515,7 +518,7 @@ class ManualCheckoutFlowTest extends TestCase
             'metadata' => [],
         ]);
 
-        $this->post('/api/v1/payments/'.$payment->id.'/manual-proof', [
+        $this->post('/api/v1/payments/' . $payment->id . '/manual-proof', [
             'proof' => UploadedFile::fake()->image('comprobante-transbank.jpg'),
             'notes' => 'Comprobante de pago no manual.',
         ])->assertOk();
@@ -550,12 +553,12 @@ class ManualCheckoutFlowTest extends TestCase
             ],
         ]);
 
-        $response = $this->post('/api/v1/payments/'.$payment->id.'/manual-proof', [
+        $response = $this->post('/api/v1/payments/' . $payment->id . '/manual-proof', [
             'proof' => UploadedFile::fake()->image('comprobante-ajeno.jpg'),
         ]);
 
         $response->assertNotFound()
-            ->assertJsonPath('message', 'No query results for model [App\\Models\\Payment] '.$payment->id);
+            ->assertJsonPath('message', 'No query results for model [App\\Models\\Payment] ' . $payment->id);
 
         Log::shouldHaveReceived('warning')
             ->once()
@@ -647,7 +650,7 @@ class ManualCheckoutFlowTest extends TestCase
             ],
         ]);
 
-        $response = $this->post('/api/v1/payments/'.$payment->id.'/manual-proof', [
+        $response = $this->post('/api/v1/payments/' . $payment->id . '/manual-proof', [
             'proof' => UploadedFile::fake()->image('comprobante.jpg'),
             'notes' => 'Transferencia con falla posterior.',
         ]);
@@ -828,7 +831,7 @@ class ManualCheckoutFlowTest extends TestCase
             ],
         ]);
 
-        $response = $this->post('/api/v1/payments/'.$payment->id.'/manual-proof', [
+        $response = $this->post('/api/v1/payments/' . $payment->id . '/manual-proof', [
             'proof' => UploadedFile::fake()->image('comprobante.jpg'),
         ]);
 

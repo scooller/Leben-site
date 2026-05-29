@@ -8,18 +8,19 @@ use App\Models\SiteSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
-use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\WithApiToken;
 use Tests\TestCase;
 
 class ProyectoApiFiltersTest extends TestCase
 {
     use RefreshDatabase;
+    use WithApiToken;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        Sanctum::actingAs(User::factory()->create());
+        $this->setUpApiToken();
     }
 
     public function test_it_filters_proyectos_by_region(): void
@@ -108,7 +109,7 @@ class ProyectoApiFiltersTest extends TestCase
             'last_synced_at' => now(),
         ]);
 
-        $response = $this->getJson('/api/v1/proyectos/'.$proyecto->id);
+        $response = $this->getJson('/api/v1/proyectos/' . $proyecto->id);
 
         $response
             ->assertOk()
@@ -132,7 +133,7 @@ class ProyectoApiFiltersTest extends TestCase
             'last_synced_at' => now(),
         ]);
 
-        $response = $this->getJson('/api/v1/proyectos/'.$proyecto->id.'?include_plantas=1');
+        $response = $this->getJson('/api/v1/proyectos/' . $proyecto->id . '?include_plantas=1');
 
         $response
             ->assertOk()
