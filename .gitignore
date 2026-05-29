@@ -38,3 +38,4 @@ bootstrap/cache
 skills-lock.json
 /.vscode
 frontend/.env.dev
+.env.testing

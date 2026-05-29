@@ -127,6 +127,8 @@ Route::prefix('v1')->group(function () {
 
 // Rutas protegidas (requieren autenticación)
 Route::prefix('v1')->middleware(['auth:sanctum', 'token.origin'])->group(function () {
+    Route::get('/production-sync/export', [App\Http\Controllers\Api\ProductionSyncController::class, 'export']);
+
     // Usuario autenticado
     Route::get('/me', function (Request $request) {
         return $request->user();

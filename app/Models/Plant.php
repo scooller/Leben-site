@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Arr;
 
 class Plant extends Model
 {
@@ -103,6 +104,44 @@ class Plant extends Model
     public function scopeByProgramaPiso($query, string $programa, string $piso)
     {
         return $query->where('programa', $programa)->where('piso', $piso);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function syncPayload(): array
+    {
+        return Arr::only($this->attributesToArray(), self::syncableFields());
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function syncableFields(): array
+    {
+        return [
+            'salesforce_product_id',
+            'salesforce_proyecto_id',
+            'name',
+            'product_code',
+            'tipo_producto',
+            'orientacion',
+            'programa',
+            'programa2',
+            'piso',
+            'precio_base',
+            'precio_lista',
+            'porcentaje_maximo_unidad',
+            'descuento_defecto_cotizacion_web',
+            'unidad_sale',
+            'superficie_total_principal',
+            'superficie_interior',
+            'superficie_util',
+            'superficie_terraza',
+            'salesforce_interior_image_url',
+            'is_active',
+            'last_synced_at',
+        ];
     }
 
     /**

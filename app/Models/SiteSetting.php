@@ -6,6 +6,7 @@ use App\Support\LogsModelActivity;
 use Awcodes\Curator\Models\Media;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use LaraZeus\Qr\Facades\Qr;
 
 class SiteSetting extends Model
@@ -276,6 +277,118 @@ class SiteSetting extends Model
     public static function allSettings(): array
     {
         return static::current()->toArray();
+    }
+
+    /**
+     * Obtener la configuración segura para sincronización desde producción.
+     *
+     * @return array<string, mixed>
+     */
+    public function syncPayload(): array
+    {
+        $payload = Arr::only($this->attributesToArray(), self::syncableFields());
+        $payload['extra_settings'] = $this->syncableExtraSettings();
+
+        return $payload;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function syncableFields(): array
+    {
+        return [
+            'site_name',
+            'site_description',
+            'evento_sale',
+            'mostrar_plantas',
+            'plants_per_page',
+            'footer_menu',
+            'footer_legal_text',
+            'webawesome_theme',
+            'webawesome_palette',
+            'brand_color',
+            'semantic_brand_color',
+            'semantic_neutral_color',
+            'semantic_success_color',
+            'semantic_warning_color',
+            'semantic_danger_color',
+            'icon_family',
+            'font_family_body',
+            'font_family_heading',
+            'google_fonts_stylesheet',
+            'meta_keywords',
+            'meta_author',
+            'contact_email',
+            'contact_phone',
+            'contact_address',
+            'contact_page_title',
+            'contact_page_subtitle',
+            'contact_page_content',
+            'contact_form_fields',
+            'custom_css',
+            'header_scripts',
+            'footer_scripts',
+            'maintenance_mode',
+            'maintenance_use_html',
+            'maintenance_message',
+            'gateway_transbank_enabled',
+            'gateway_mercadopago_enabled',
+            'gateway_manual_enabled',
+            'gateway_proof_contact_email',
+            'gateway_reservation_timeout_minutes',
+            'gateway_transbank_config',
+            'gateway_mercadopago_config',
+            'gateway_manual_config',
+            'dashboard_widget_order',
+            'salesforce_sync_interval_minutes',
+            'salesforce_sync_plant_types',
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function syncableExtraSettings(): array
+    {
+        $extraSettings = is_array($this->extra_settings) ? $this->extra_settings : [];
+
+        return $this->filterSyncableExtraSettings($extraSettings);
+    }
+
+    /**
+     * @param  array<string, mixed>  $extraSettings
+     * @return array<string, mixed>
+     */
+    private function filterSyncableExtraSettings(array $extraSettings): array
+    {
+        $filtered = [];
+
+        foreach ($extraSettings as $key => $value) {
+            $normalizedKey = strtolower((string) $key);
+
+            if ($normalizedKey === 'salesforce_oauth') {
+                continue;
+            }
+
+            if (str_contains($normalizedKey, 'url') || str_ends_with($normalizedKey, '_id')) {
+                continue;
+            }
+
+            if (is_array($value)) {
+                $nested = $this->filterSyncableExtraSettings($value);
+
+                if ($nested !== []) {
+                    $filtered[$key] = $nested;
+                }
+
+                continue;
+            }
+
+            $filtered[$key] = $value;
+        }
+
+        return $filtered;
     }
 
     /**

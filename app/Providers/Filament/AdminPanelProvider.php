@@ -8,6 +8,7 @@ use AlizHarb\ActivityLog\Widgets\ActivityChartWidget;
 use AlizHarb\ActivityLog\Widgets\LatestActivityWidget;
 use App\Filament\Pages\ContactImportProgress;
 use App\Filament\Pages\Dashboard;
+use App\Filament\Pages\ProductionSyncProgress;
 use App\Filament\Widgets\ApiMonitoringWidget;
 use App\Filament\Widgets\ApiUsageChartWidget;
 use App\Filament\Widgets\ContactSubmissionsByChannelChartWidget;
@@ -24,7 +25,6 @@ use App\Filament\Widgets\UsersChartWidget;
 use App\Http\Middleware\EnsureMarketingPanelAccess;
 use App\Models\SiteSetting;
 use BinaryBuilds\CommandRunner\CommandRunnerPlugin;
-use Exception;
 use Filament\FontProviders\LocalFontProvider;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -135,6 +135,7 @@ class AdminPanelProvider extends PanelProvider
 			->pages([
 				Dashboard::class,
 				ContactImportProgress::class,
+				ProductionSyncProgress::class,
 			])
 			->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
 			->widgets($widgets)
@@ -183,7 +184,7 @@ class AdminPanelProvider extends PanelProvider
 
 	private function resolveSiteSettings(): ?SiteSetting
 	{
-		try {
+		return rescue(function (): ?SiteSetting {
 			if (! Schema::hasTable('site_settings')) {
 				return null;
 			}
@@ -192,8 +193,6 @@ class AdminPanelProvider extends PanelProvider
 			$settings->load(['faviconMedia', 'logoMedia', 'logoDarkMedia']);
 
 			return $settings;
-		} catch (Exception) {
-			return null;
-		}
+		}, null, report: false);
 	}
 }

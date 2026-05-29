@@ -73,6 +73,13 @@ return [
         'whatsapp_owner_name' => env('SF_WHATSAPP_OWNER_NAME', 'ANDREA'),
     ],
 
+    'production_sync' => [
+        'base_url' => env('PRODUCTION_SYNC_BASE_URL'),
+        'token' => env('PRODUCTION_SYNC_TOKEN'),
+        'authorized_url' => env('PRODUCTION_SYNC_AUTHORIZED_URL', env('APP_URL')),
+        'timeout' => env('PRODUCTION_SYNC_TIMEOUT', 120),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),
