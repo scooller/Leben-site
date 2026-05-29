@@ -52,19 +52,24 @@ class SiteSettings extends Page implements HasForms
 	protected static function projectOptions(): array
 	{
 		return Proyecto::query()
-			->where('is_active', true)
+			->orderBy('is_active', 'desc')
 			->orderBy('name')
 			->orderBy('comuna')
-			->get(['name', 'comuna'])
+			->get(['name', 'comuna', 'is_active'])
 			->mapWithKeys(static function (Proyecto $proyecto): array {
 				$name = trim((string) $proyecto->name);
 				$comuna = trim((string) ($proyecto->comuna ?? ''));
+				$isActive = (bool) $proyecto->is_active;
 
 				if ($name === '') {
 					return [];
 				}
 
 				$label = $comuna !== '' ? "{$name} ({$comuna})" : $name;
+
+				if (! $isActive) {
+					$label = "[Inactivo] {$label}";
+				}
 
 				return [$name => $label];
 			})

@@ -48,6 +48,9 @@ class CreateSalesforceCaseJobTokenExpiredTest extends TestCase
             ]);
 
         $service = \Mockery::mock(SalesforceService::class);
+        $service->shouldReceive('tryAutoReconnect')
+            ->once()
+            ->andReturn(true);
         $service->shouldReceive('createLead')
             ->once()
             ->andThrow(new SalesforceTokenExpiredException('Salesforce OAuth token expired or revoked. Manual reconnection required.'));
@@ -102,6 +105,9 @@ class CreateSalesforceCaseJobTokenExpiredTest extends TestCase
             });
 
         $service = \Mockery::mock(SalesforceService::class);
+        $service->shouldReceive('tryAutoReconnect')
+            ->once()
+            ->andReturn(true);
         $service->shouldReceive('createLead')
             ->once()
             ->andThrow(new SalesforceTokenExpiredException('Salesforce OAuth token expired or revoked. Manual reconnection required.'));

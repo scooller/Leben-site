@@ -54,7 +54,7 @@ class SalesforceService
                 }
 
                 // Re-autenticar si el token expiró o no hay recursos disponibles
-                Log::debug('Salesforce: Re-autenticando debido a: '.$e->getMessage());
+                Log::debug('Salesforce: Re-autenticando debido a: ' . $e->getMessage());
                 $this->authenticate();
                 $result = Forrest::query($soql);
 
@@ -412,9 +412,9 @@ class SalesforceService
 
         if (is_array($cached) && $cached !== []) {
             return array_values(array_unique(array_filter(array_map(
-                static fn (mixed $field): string => trim((string) $field),
+                static fn(mixed $field): string => trim((string) $field),
                 $cached
-            ), static fn (string $field): bool => $field !== '')));
+            ), static fn(string $field): bool => $field !== '')));
         }
 
         try {
@@ -476,9 +476,9 @@ class SalesforceService
 
         $candidateFields = array_merge($candidateFields, $this->extractNonWritableLeadFields($exception));
         $candidateFields = array_values(array_unique(array_filter(array_map(
-            static fn (string $field): string => trim($field),
+            static fn(string $field): string => trim($field),
             $candidateFields
-        ), static fn (string $field): bool => $field !== '')));
+        ), static fn(string $field): bool => $field !== '')));
 
         $removedFields = [];
 
@@ -528,9 +528,9 @@ class SalesforceService
         }
 
         return array_values(array_unique(array_filter(array_map(
-            static fn (mixed $field): string => trim((string) $field),
+            static fn(mixed $field): string => trim((string) $field),
             $cached
-        ), static fn (string $field): bool => $field !== '')));
+        ), static fn(string $field): bool => $field !== '')));
     }
 
     /**
@@ -539,9 +539,9 @@ class SalesforceService
     private function rememberUnavailableLeadFields(array $fields): void
     {
         $normalized = array_values(array_unique(array_filter(array_map(
-            static fn (string $field): string => trim($field),
+            static fn(string $field): string => trim($field),
             $fields
-        ), static fn (string $field): bool => $field !== '')));
+        ), static fn(string $field): bool => $field !== '')));
 
         if ($normalized === []) {
             return;
@@ -602,7 +602,7 @@ class SalesforceService
             }
         }
 
-        return array_values(array_unique(array_filter($fields, static fn (string $field): bool => $field !== '')));
+        return array_values(array_unique(array_filter($fields, static fn(string $field): bool => $field !== '')));
     }
 
     /**
@@ -728,6 +728,102 @@ class SalesforceService
     }
 
     /**
+     * Intenta reconectar a Salesforce usando el refresh_token persistido en la DB,
+     * sin necesidad de intervención del usuario. Útil cuando el caché fue limpiado.
+     *
+     * Flujo:
+     *  1. Lee los blobs encriptados de Forrest guardados en SiteSetting
+     *  2. Los restaura al caché (forrest_token y forrest_refresh_token)
+     *  3. Llama Forrest::refresh() → Salesforce retorna nuevo access_token
+     *  4. Actualiza el backup en DB con el nuevo token
+     *
+     * @return bool True si la reconexión fue exitosa, false si falló (token verdaderamente expirado)
+     */
+    public function tryAutoReconnect(): bool
+    {
+        $siteSettings = SiteSetting::current();
+        $extraSettings = is_array($siteSettings->extra_settings) ? $siteSettings->extra_settings : [];
+        $oauthMeta = data_get($extraSettings, 'salesforce_oauth', []);
+
+        $tokenBackup = data_get($oauthMeta, 'token_cache_backup');
+        $refreshTokenBackup = data_get($oauthMeta, 'refresh_token_cache_backup');
+
+        if ($refreshTokenBackup === null) {
+            Log::warning('Salesforce: tryAutoReconnect - No hay refresh_token_cache_backup en DB. Reconexión manual requerida.');
+
+            return false;
+        }
+
+        $cachePath = config('forrest.storage.path', 'forrest_');
+
+        try {
+            // Restaurar los blobs encriptados de Forrest al caché
+            if ($tokenBackup !== null) {
+                Cache::forever($cachePath . 'token', $tokenBackup);
+            }
+
+            Cache::forever($cachePath . 'refresh_token', $refreshTokenBackup);
+
+            // Forrest::refresh() usa el refresh_token del caché para obtener un nuevo access_token
+            Forrest::refresh();
+
+            Log::info('Salesforce: tryAutoReconnect - Token renovado automáticamente sin intervención de usuario.');
+
+            // Actualizar el backup en DB con el nuevo forrest_token (access_token actualizado)
+            $this->updateTokenBackup();
+
+            // Marcar como conectado
+            data_set($extraSettings, 'salesforce_oauth.connected', true);
+            data_set($extraSettings, 'salesforce_oauth.last_connected_at', now()->toIso8601String());
+            data_set($extraSettings, 'salesforce_oauth.last_error', null);
+            $siteSettings->update(['extra_settings' => $extraSettings]);
+
+            return true;
+        } catch (\Omniphx\Forrest\Exceptions\MissingRefreshTokenException $e) {
+            Log::critical('Salesforce: tryAutoReconnect - MissingRefreshTokenException. El backup de refresh_token no pudo restaurarse correctamente.', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        } catch (\Throwable $e) {
+            if ($this->isRefreshTokenExpiredException($e)) {
+                Log::critical('Salesforce: tryAutoReconnect - invalid_grant: el refresh_token de Salesforce expiró o fue revocado. Reconexión manual requerida.', [
+                    ...$this->oauthTokenFailureContext($e, 'tryAutoReconnect'),
+                ]);
+
+                return false;
+            }
+
+            Log::error('Salesforce: tryAutoReconnect - Error inesperado al intentar renovar token.', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
+
+    /**
+     * Actualiza el backup del token en DB con el forrest_token actual del caché.
+     * Llamar después de operaciones Salesforce exitosas para mantener el backup actualizado.
+     */
+    public function updateTokenBackup(): void
+    {
+        $cachePath = config('forrest.storage.path', 'forrest_');
+        $newTokenBackup = Cache::get($cachePath . 'token');
+
+        if ($newTokenBackup === null) {
+            return;
+        }
+
+        $siteSettings = SiteSetting::current();
+        $extraSettings = is_array($siteSettings->extra_settings) ? $siteSettings->extra_settings : [];
+
+        data_set($extraSettings, 'salesforce_oauth.token_cache_backup', $newTokenBackup);
+
+        $siteSettings->update(['extra_settings' => $extraSettings]);
+    }
+
+    /**
      * Autenticar con Salesforce (útil para forzar refresh)
      */
     public function authenticate(): void
@@ -749,7 +845,7 @@ class SalesforceService
                 );
             }
 
-            Log::error('Salesforce: Error en autenticación - '.$e->getMessage());
+            Log::error('Salesforce: Error en autenticación - ' . $e->getMessage());
             throw $e;
         }
     }
@@ -870,7 +966,7 @@ class SalesforceService
      */
     protected function generateCacheKey(string $soql): string
     {
-        return 'salesforce:soql:'.md5($soql);
+        return 'salesforce:soql:' . md5($soql);
     }
 
     /**
@@ -912,7 +1008,7 @@ class SalesforceService
     {
         $productTypes = $this->getConfiguredPlantProductTypes();
         $productTypesInClause = implode(',', array_map(
-            static fn (string $type): string => "'".str_replace("'", "\\'", $type)."'",
+            static fn(string $type): string => "'" . str_replace("'", "\\'", $type) . "'",
             $productTypes
         ));
         $projectIds = $this->normalizeSalesforceIdList($projectSalesforceIds ?? []);
@@ -922,19 +1018,19 @@ class SalesforceService
         }
 
         $projectIdsInClause = implode(',', array_map(
-            static fn (string $id): string => "'".str_replace("'", "\\'", $id)."'",
+            static fn(string $id): string => "'" . str_replace("'", "\\'", $id) . "'",
             $projectIds
         ));
 
         // SOQL para obtener plantas desde Product2
         $soql = 'SELECT Id, Name, ProductCode, Orientacion2__c, Programa__c, Programa2__c, Modelo__r.Name, Modelo__r.Programa__c, Piso__c, '
-            .'Precio_Base__c, Precio_Lista__c, Porcentaje_maximo_de_unidad__c, '
-            .'Superficie_Total_Producto_Principal__c, Superficie_Interior__c, Superficie_Util__c, '
-            .'Superficie_Terraza__c, Proyecto__c, Tipo_Producto__c '
-            .'FROM Product2 '
-            ."WHERE IsActive = true AND Estado__c = 'Disponible' AND Tipo_Producto__c IN ({$productTypesInClause}) AND Proyecto__c IN ({$projectIdsInClause}) "
-            .'ORDER BY Name '
-            .'LIMIT 1000';
+            . 'Precio_Base__c, Precio_Lista__c, Porcentaje_maximo_de_unidad__c, '
+            . 'Superficie_Total_Producto_Principal__c, Superficie_Interior__c, Superficie_Util__c, '
+            . 'Superficie_Terraza__c, Proyecto__c, Tipo_Producto__c '
+            . 'FROM Product2 '
+            . "WHERE IsActive = true AND Estado__c = 'Disponible' AND Tipo_Producto__c IN ({$productTypesInClause}) AND Proyecto__c IN ({$projectIdsInClause}) "
+            . 'ORDER BY Name '
+            . 'LIMIT 1000';
 
         $ttl = $cacheTtl ?? $this->defaultCacheTtl;
         $cacheKey = $this->buildPlantsCacheKey($productTypes, $projectIds);
@@ -969,7 +1065,7 @@ class SalesforceService
                 }, $entries);
             } catch (\Throwable $e) {
                 // Re-autenticar si el token expiró o no hay recursos disponibles
-                Log::debug('Salesforce: Re-autenticando plantas debido a: '.$e->getMessage());
+                Log::debug('Salesforce: Re-autenticando plantas debido a: ' . $e->getMessage());
                 $this->authenticate();
                 $result = Forrest::query($soql);
                 $entries = $result['records'] ?? [];
@@ -1021,9 +1117,9 @@ class SalesforceService
         }
 
         $normalizedTypes = array_values(array_unique(array_filter(array_map(
-            static fn (mixed $type): string => strtoupper(trim((string) $type)),
+            static fn(mixed $type): string => strtoupper(trim((string) $type)),
             $configuredTypes
-        ), static fn (string $type): bool => $type !== '')));
+        ), static fn(string $type): bool => $type !== '')));
 
         return $normalizedTypes === [] ? ['DEPARTAMENTO'] : $normalizedTypes;
     }
@@ -1034,7 +1130,7 @@ class SalesforceService
      */
     private function buildPlantsCacheKey(array $productTypes, array $projectSalesforceIds): string
     {
-        return 'salesforce:plants:'.md5(implode('|', $productTypes).'::'.implode('|', $projectSalesforceIds));
+        return 'salesforce:plants:' . md5(implode('|', $productTypes) . '::' . implode('|', $projectSalesforceIds));
     }
 
     /**
@@ -1078,15 +1174,15 @@ class SalesforceService
         // SOQL para obtener proyectos desde Proyecto__c
         // Nota: Usamos Fecha_Recepcion_Municipal__c como proxy para fecha de entrega
         $soql = 'SELECT Id, Name, Descripci_n__c, Direccion__c, Comuna__c, Provincia__c, Region__c, '
-            .'Email__c, Telefono__c, Pagina_Web_Proyecto__c, Razon_Social__c, RUT__c, '
-            .'Fecha_Inicio_Ventas__c, Fecha_Recepcion_Municipal__c, Etapa__c, Horario_Atencion__c, '
-            .'Asesor_Responsable__c, Asesor_1__c, Asesor_2__c, '
-            .'Valor_Reserva_Exigido_Defecto_Peso__c, Valor_Reserva_Exigido_Min_Peso__c, '
-            .'Descuento_por_Defecto_Cotizaci_n_Web__c, Dscto_M_x_Prod_Principal_Porc__c, Entrega_Inmediata__c '
-            .'FROM Proyecto__c '
-            ."WHERE IsDeleted = false AND Activo__c = true AND Tipo_Producto__c = 'DEPARTAMENTO' "
-            .'ORDER BY Name '
-            .'LIMIT 1000';
+            . 'Email__c, Telefono__c, Pagina_Web_Proyecto__c, Razon_Social__c, RUT__c, '
+            . 'Fecha_Inicio_Ventas__c, Fecha_Recepcion_Municipal__c, Etapa__c, Horario_Atencion__c, '
+            . 'Asesor_Responsable__c, Asesor_1__c, Asesor_2__c, '
+            . 'Valor_Reserva_Exigido_Defecto_Peso__c, Valor_Reserva_Exigido_Min_Peso__c, '
+            . 'Descuento_por_Defecto_Cotizaci_n_Web__c, Dscto_M_x_Prod_Principal_Porc__c, Entrega_Inmediata__c '
+            . 'FROM Proyecto__c '
+            . "WHERE IsDeleted = false AND Activo__c = true AND Tipo_Producto__c = 'DEPARTAMENTO' "
+            . 'ORDER BY Name '
+            . 'LIMIT 1000';
 
         $ttl = $cacheTtl ?? $this->defaultCacheTtl;
 
@@ -1195,23 +1291,23 @@ class SalesforceService
     public function findSalesforceUsersByIds(array $salesforceUserIds, ?int $cacheTtl = null): array
     {
         $normalizedIds = array_values(array_unique(array_filter(array_map(
-            static fn (string $id): string => trim($id),
+            static fn(string $id): string => trim($id),
             $salesforceUserIds
-        ), static fn (string $id): bool => $id !== '')));
+        ), static fn(string $id): bool => $id !== '')));
 
         if ($normalizedIds === []) {
             return [];
         }
 
         $quotedIds = array_map(
-            static fn (string $id): string => "'".str_replace("'", "\\'", $id)."'",
+            static fn(string $id): string => "'" . str_replace("'", "\\'", $id) . "'",
             $normalizedIds
         );
 
         $soql = 'SELECT Id, FirstName, LastName, Email, Whatsapp_owner__c, MediumPhotoUrl, IsActive '
-            .'FROM User '
-            .'WHERE Id IN ('.implode(',', $quotedIds).') '
-            .'LIMIT 2000';
+            . 'FROM User '
+            . 'WHERE Id IN (' . implode(',', $quotedIds) . ') '
+            . 'LIMIT 2000';
 
         $records = $this->query($soql, $cacheTtl ?? $this->defaultCacheTtl);
 
@@ -1234,9 +1330,9 @@ class SalesforceService
         $quotedEmail = str_replace("'", "\\'", $normalizedEmail);
 
         $soql = 'SELECT Id, FirstName, LastName, Email, Whatsapp_owner__c, MediumPhotoUrl, IsActive '
-            .'FROM User '
-            ."WHERE Email = '{$quotedEmail}' "
-            .'LIMIT 1';
+            . 'FROM User '
+            . "WHERE Email = '{$quotedEmail}' "
+            . 'LIMIT 1';
 
         $records = $this->query($soql, $cacheTtl ?? $this->defaultCacheTtl);
 
@@ -1275,9 +1371,9 @@ class SalesforceService
 
         if (is_array($value)) {
             return array_values(array_unique(array_filter(array_map(
-                static fn (mixed $item): string => trim((string) $item),
+                static fn(mixed $item): string => trim((string) $item),
                 $value
-            ), static fn (string $item): bool => $item !== '')));
+            ), static fn(string $item): bool => $item !== '')));
         }
 
         $asString = trim((string) $value);
@@ -1289,18 +1385,18 @@ class SalesforceService
             $parts = explode(';', $asString);
 
             return array_values(array_unique(array_filter(array_map(
-                static fn (string $item): string => trim($item),
+                static fn(string $item): string => trim($item),
                 $parts
-            ), static fn (string $item): bool => $item !== '')));
+            ), static fn(string $item): bool => $item !== '')));
         }
 
         if (str_contains($asString, ',')) {
             $parts = explode(',', $asString);
 
             return array_values(array_unique(array_filter(array_map(
-                static fn (string $item): string => trim($item),
+                static fn(string $item): string => trim($item),
                 $parts
-            ), static fn (string $item): bool => $item !== '')));
+            ), static fn(string $item): bool => $item !== '')));
         }
 
         return [$asString];
@@ -1325,22 +1421,22 @@ class SalesforceService
     public function findPublicProjectDocuments(array $documentNames, ?int $cacheTtl = null): array
     {
         $names = array_values(array_unique(array_filter(array_map(
-            static fn ($name): string => trim((string) $name),
+            static fn($name): string => trim((string) $name),
             $documentNames
-        ), static fn (string $name): bool => $name !== '')));
+        ), static fn(string $name): bool => $name !== '')));
 
         if ($names === []) {
             return [];
         }
 
         $quotedNames = array_map(
-            static fn (string $name): string => "'".str_replace("'", "\\'", $name)."'",
+            static fn(string $name): string => "'" . str_replace("'", "\\'", $name) . "'",
             $names
         );
 
         $soql = 'SELECT Id, Name, Type, BodyLength, Body, LastModifiedDate FROM Document '
-            .'WHERE IsPublic = true AND Name IN ('.implode(',', $quotedNames).') '
-            .'ORDER BY Name';
+            . 'WHERE IsPublic = true AND Name IN (' . implode(',', $quotedNames) . ') '
+            . 'ORDER BY Name';
 
         $ttl = $cacheTtl ?? $this->defaultCacheTtl;
         $records = $this->query($soql, $ttl);
@@ -1366,8 +1462,8 @@ class SalesforceService
     public function findPublicCotizadorDocuments(?int $cacheTtl = null): array
     {
         $soql = 'SELECT Id, Name, Type, BodyLength, Body, LastModifiedDate FROM Document '
-            ."WHERE IsPublic = true AND (Name LIKE '% - Cotizador Portada' OR Name LIKE '% - Cotizador Logo') "
-            .'ORDER BY Name';
+            . "WHERE IsPublic = true AND (Name LIKE '% - Cotizador Portada' OR Name LIKE '% - Cotizador Logo') "
+            . 'ORDER BY Name';
 
         $ttl = $cacheTtl ?? $this->defaultCacheTtl;
         $records = $this->query($soql, $ttl);
@@ -1440,7 +1536,7 @@ class SalesforceService
                 $query['lastMod'] = $lastMod;
             }
 
-            return rtrim($publicSiteUrl, '/').'/servlet/servlet.ImageServer?'.http_build_query($query);
+            return rtrim($publicSiteUrl, '/') . '/servlet/servlet.ImageServer?' . http_build_query($query);
         }
 
         if ($bodyPath === null || trim($bodyPath) === '') {
@@ -1452,7 +1548,7 @@ class SalesforceService
             return null;
         }
 
-        return rtrim($instanceUrl, '/').'/'.ltrim($bodyPath, '/');
+        return rtrim($instanceUrl, '/') . '/' . ltrim($bodyPath, '/');
     }
 
     private function resolvePublicSiteUrl(): ?string

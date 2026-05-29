@@ -55,6 +55,22 @@ class SalesforceOAuthController extends Controller
                 data_set($extraSettings, 'salesforce_oauth.connected_by_user_id', auth()->id());
             }
 
+            // Persistir los tokens encriptados de Forrest en la DB para recuperación automática
+            // ante limpiezas de caché (deploys, restart de Redis, etc.)
+            $tokenCacheKey = config('forrest.storage.path', 'forrest_') . 'token';
+            $refreshTokenCacheKey = config('forrest.storage.path', 'forrest_') . 'refresh_token';
+
+            $tokenBackup = \Illuminate\Support\Facades\Cache::get($tokenCacheKey);
+            $refreshTokenBackup = \Illuminate\Support\Facades\Cache::get($refreshTokenCacheKey);
+
+            if ($tokenBackup !== null) {
+                data_set($extraSettings, 'salesforce_oauth.token_cache_backup', $tokenBackup);
+            }
+
+            if ($refreshTokenBackup !== null) {
+                data_set($extraSettings, 'salesforce_oauth.refresh_token_cache_backup', $refreshTokenBackup);
+            }
+
             $siteSettings->update([
                 'extra_settings' => $extraSettings,
             ]);
