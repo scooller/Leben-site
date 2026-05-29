@@ -810,6 +810,7 @@ class SalesforceService
     {
         $cachePath = config('forrest.storage.path', 'forrest_');
         $newTokenBackup = Cache::get($cachePath . 'token');
+        $newRefreshTokenBackup = Cache::get($cachePath . 'refresh_token');
 
         if ($newTokenBackup === null) {
             return;
@@ -819,6 +820,10 @@ class SalesforceService
         $extraSettings = is_array($siteSettings->extra_settings) ? $siteSettings->extra_settings : [];
 
         data_set($extraSettings, 'salesforce_oauth.token_cache_backup', $newTokenBackup);
+
+        if ($newRefreshTokenBackup !== null) {
+            data_set($extraSettings, 'salesforce_oauth.refresh_token_cache_backup', $newRefreshTokenBackup);
+        }
 
         $siteSettings->update(['extra_settings' => $extraSettings]);
     }
