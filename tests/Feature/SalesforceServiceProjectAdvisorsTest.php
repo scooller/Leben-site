@@ -21,8 +21,6 @@ class SalesforceServiceProjectAdvisorsTest extends TestCase
 
     public function test_find_projects_includes_advisor_slots_and_merges_unique_ids(): void
     {
-        Forrest::shouldReceive('authenticate')->once();
-
         Forrest::shouldReceive('query')
             ->once()
             ->withArgs(function (string $soql): bool {

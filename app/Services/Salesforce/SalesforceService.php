@@ -1187,13 +1187,6 @@ class SalesforceService
      */
     public function findProjects(?int $cacheTtl = null): array
     {
-        // Asegurar que Forrest esté autenticado
-        try {
-            Forrest::authenticate();
-        } catch (\Exception $e) {
-            // Si falla, continuar - el query lo intentará
-        }
-
         // SOQL para obtener proyectos desde Proyecto__c
         // Nota: Usamos Fecha_Recepcion_Municipal__c como proxy para fecha de entrega
         $soql = 'SELECT Id, Name, Descripci_n__c, Direccion__c, Comuna__c, Provincia__c, Region__c, '
