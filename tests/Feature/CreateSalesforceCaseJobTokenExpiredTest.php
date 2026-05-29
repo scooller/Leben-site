@@ -47,7 +47,7 @@ class CreateSalesforceCaseJobTokenExpiredTest extends TestCase
                 'Email' => 'camila@example.com',
             ]);
 
-        $service = \Mockery::mock(SalesforceService::class);
+        $service = \Mockery::mock(SalesforceService::class)->makePartial();
         $service->shouldReceive('tryAutoReconnect')
             ->once()
             ->andReturn(true);
@@ -104,7 +104,7 @@ class CreateSalesforceCaseJobTokenExpiredTest extends TestCase
                 ];
             });
 
-        $service = \Mockery::mock(SalesforceService::class);
+        $service = \Mockery::mock(SalesforceService::class)->makePartial();
         $service->shouldReceive('tryAutoReconnect')
             ->once()
             ->andReturn(true);

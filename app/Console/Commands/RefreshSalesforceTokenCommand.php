@@ -48,12 +48,25 @@ class RefreshSalesforceTokenCommand extends Command
             }
 
             Log::critical('salesforce:refresh-token - Auto-reconexión fallida. No hay backup en DB o el refresh token expiró. Reconexión manual requerida en /admin/site-settings.');
+            $salesforceService->markAsDisconnected('salesforce:refresh-token - auto-reconexión fallida: sin token en caché ni backup válido en DB.');
             $this->error('Auto-reconexión fallida. Se requiere reconexión manual en /admin/site-settings → "Conectar con Salesforce".');
 
             return self::FAILURE;
         } catch (\Throwable $e) {
+            $errorMessage = strtolower($e->getMessage());
+
+            if (str_contains($errorMessage, 'invalid_grant') && str_contains($errorMessage, 'expired access/refresh token')) {
+                Log::critical('salesforce:refresh-token - Refresh token expirado o revocado (invalid_grant). Reconexión manual requerida.', [
+                    'error' => $e->getMessage(),
+                ]);
+                $salesforceService->markAsDisconnected('salesforce:refresh-token - invalid_grant: expired access/refresh token');
+                $this->error('El refresh token de Salesforce expiró o fue revocado. Reconecta en /admin/site-settings → "Conectar con Salesforce".');
+
+                return self::FAILURE;
+            }
+
             Log::error('salesforce:refresh-token - Error inesperado.', ['error' => $e->getMessage()]);
-            $this->error('Error inesperado: '.$e->getMessage());
+            $this->error('Error inesperado: ' . $e->getMessage());
 
             return self::FAILURE;
         }

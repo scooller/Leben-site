@@ -824,6 +824,29 @@ class SalesforceService
     }
 
     /**
+     * Marca la conexión OAuth de Salesforce como desconectada en DB y limpia tokens del caché.
+     * Centralizado aquí para poder usarse desde Jobs y Commands.
+     */
+    public function markAsDisconnected(string $reason): void
+    {
+        $siteSettings = SiteSetting::current();
+        $extraSettings = is_array($siteSettings->extra_settings) ? $siteSettings->extra_settings : [];
+
+        data_set($extraSettings, 'salesforce_oauth.connected', false);
+        data_set($extraSettings, 'salesforce_oauth.last_disconnected_at', now()->toIso8601String());
+        data_set($extraSettings, 'salesforce_oauth.last_error', $reason);
+
+        $siteSettings->update(['extra_settings' => $extraSettings]);
+
+        // Limpiar tokens del caché para que los Jobs fast-pathen en el siguiente intento
+        $cachePath = (string) config('forrest.storage.path', 'forrest_');
+        Cache::forget($cachePath . 'token');
+        Cache::forget($cachePath . 'refresh_token');
+
+        Log::critical('Salesforce: Conexión OAuth marcada como desconectada.', ['reason' => $reason]);
+    }
+
+    /**
      * Autenticar con Salesforce (útil para forzar refresh)
      */
     public function authenticate(): void

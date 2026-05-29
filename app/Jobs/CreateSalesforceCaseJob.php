@@ -84,7 +84,7 @@ class CreateSalesforceCaseJob implements ShouldQueue
                     'contact_submission_id' => $submission->id,
                 ]);
 
-                $this->markSalesforceOAuthAsDisconnected('Token perdido de caché y auto-reconexión fallida.');
+                $salesforceService->markAsDisconnected('Token perdido de caché y auto-reconexión fallida.');
                 $this->notifySalesforceOAuthDisconnection($submission->id, 'Token perdido de caché y auto-reconexión fallida.');
 
                 $submission->update([
@@ -147,7 +147,7 @@ class CreateSalesforceCaseJob implements ShouldQueue
                 'contact_submission_id' => $submission->id,
             ]);
 
-            $this->markSalesforceOAuthAsDisconnected('Token no disponible en cache (MissingResourceException) y auto-reconexión fallida.');
+            $salesforceService->markAsDisconnected('Token no disponible en cache (MissingResourceException) y auto-reconexión fallida.');
             $this->notifySalesforceOAuthDisconnection($submission->id, 'Token no disponible en cache (MissingResourceException) y auto-reconexión fallida.');
 
             $submission->update([
@@ -163,7 +163,7 @@ class CreateSalesforceCaseJob implements ShouldQueue
                 'error' => $exception->getMessage(),
             ]);
 
-            $this->markSalesforceOAuthAsDisconnected('invalid_grant: expired access/refresh token');
+            $salesforceService->markAsDisconnected('invalid_grant: expired access/refresh token');
             $this->notifySalesforceOAuthDisconnection($submission->id, 'invalid_grant: expired access/refresh token');
 
             $submission->update([
@@ -232,20 +232,6 @@ class CreateSalesforceCaseJob implements ShouldQueue
         }
 
         return data_get($extraSettings, 'salesforce_oauth.connected') === false;
-    }
-
-    private function markSalesforceOAuthAsDisconnected(string $reason): void
-    {
-        $siteSettings = SiteSetting::current();
-        $extraSettings = is_array($siteSettings->extra_settings) ? $siteSettings->extra_settings : [];
-
-        data_set($extraSettings, 'salesforce_oauth.connected', false);
-        data_set($extraSettings, 'salesforce_oauth.last_disconnected_at', now()->toIso8601String());
-        data_set($extraSettings, 'salesforce_oauth.last_error', $reason);
-
-        $siteSettings->update([
-            'extra_settings' => $extraSettings,
-        ]);
     }
 
     private function notifySalesforceOAuthDisconnection(int $contactSubmissionId, string $reason): void
