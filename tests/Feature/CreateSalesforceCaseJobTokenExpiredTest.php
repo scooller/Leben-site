@@ -95,7 +95,7 @@ class CreateSalesforceCaseJobTokenExpiredTest extends TestCase
 
         $mapper = \Mockery::mock(SalesforceCaseMapper::class);
         $mapper->shouldReceive('mapLead')
-            ->once()
+            ->twice()
             ->andReturnUsing(function (ContactSubmission $model): array {
                 return [
                     'FirstName' => explode(' ', trim((string) $model->name))[0] ?? 'Nombre',
@@ -105,11 +105,13 @@ class CreateSalesforceCaseJobTokenExpiredTest extends TestCase
             });
 
         $service = \Mockery::mock(SalesforceService::class)->makePartial();
+        // Ambos jobs intentan tryAutoReconnect(): el primero porque no hay token en caché,
+        // el segundo porque connected=false fue seteado por el primer job.
         $service->shouldReceive('tryAutoReconnect')
-            ->once()
+            ->twice()
             ->andReturn(true);
         $service->shouldReceive('createLead')
-            ->once()
+            ->twice()
             ->andThrow(new SalesforceTokenExpiredException('Salesforce OAuth token expired or revoked. Manual reconnection required.'));
 
         Mail::shouldReceive('raw')
@@ -119,7 +121,7 @@ class CreateSalesforceCaseJobTokenExpiredTest extends TestCase
         (new CreateSalesforceCaseJob($secondSubmission))->handle($service, $mapper);
     }
 
-    public function test_it_skips_sync_when_oauth_is_already_marked_as_disconnected(): void
+    public function test_it_skips_sync_when_oauth_is_already_marked_as_disconnected_and_autoreconnect_fails(): void
     {
         config()->set('services.salesforce.lead_enabled', true);
 
@@ -141,7 +143,10 @@ class CreateSalesforceCaseJobTokenExpiredTest extends TestCase
         $mapper = \Mockery::mock(SalesforceCaseMapper::class);
         $mapper->shouldReceive('mapLead')->never();
 
+        // Con el nuevo comportamiento, el job intenta tryAutoReconnect() antes de rendirse.
+        // Si el refresh_token ya expiró/fue revocado, la reconexión falla y el job salta.
         $service = \Mockery::mock(SalesforceService::class);
+        $service->shouldReceive('tryAutoReconnect')->once()->andReturn(false);
         $service->shouldReceive('createLead')->never();
 
         (new CreateSalesforceCaseJob($submission))->handle($service, $mapper);
@@ -149,7 +154,7 @@ class CreateSalesforceCaseJobTokenExpiredTest extends TestCase
         $submission->refresh();
 
         $this->assertSame(
-            'OAuth Salesforce desconectado. Reconectar en panel admin antes de reintentar.',
+            'OAuth Salesforce desconectado. Auto-reconexión fallida. Reconectar en panel admin.',
             $submission->salesforce_case_error
         );
         $this->assertNotNull($submission->salesforce_synced_at);

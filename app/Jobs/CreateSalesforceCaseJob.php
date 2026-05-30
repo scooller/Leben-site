@@ -54,41 +54,27 @@ class CreateSalesforceCaseJob implements ShouldQueue
             return;
         }
 
-        // Fast path: si el usuario ya reconectó manualmente (connected=false), no intentar nada.
-        // Este flag se setea cuando el refresh token expiró o fue revocado — requiere acción manual.
-        if ($this->isSalesforceOAuthMarkedDisconnected()) {
-            Log::warning('CreateSalesforceCaseJob: OAuth de Salesforce marcado como desconectado. Se omite envío hasta reconexión manual.', [
+        // Si el OAuth está marcado como desconectado o no hay token en caché, intentar
+        // auto-reconexión silenciosa con el refresh_token del backup en DB antes de rendirse.
+        // Esto cubre: rotación de refresh_token, cache:clear, restart de Redis, o fallo transitorio.
+        if ($this->isSalesforceOAuthMarkedDisconnected() || ! Forrest::hasToken()) {
+            Log::info('CreateSalesforceCaseJob: Token no disponible o OAuth desconectado. Intentando auto-reconexión silenciosa.', [
                 'contact_submission_id' => $submission->id,
-            ]);
-
-            $submission->update([
-                'salesforce_case_error' => 'OAuth Salesforce desconectado. Reconectar en panel admin antes de reintentar.',
-                'salesforce_synced_at' => now(),
-                'salesforce_sync_trigger' => $syncTrigger,
-            ]);
-
-            return;
-        }
-
-        // Si el token no está en caché (ej: cache:clear, restart de Redis), intentar auto-reconexión
-        // silenciosa con el refresh_token persistido en DB (resiliente a deployments).
-        if (! Forrest::hasToken()) {
-            Log::info('CreateSalesforceCaseJob: Token Salesforce no encontrado en caché. Intentando auto-reconexión silenciosa.', [
-                'contact_submission_id' => $submission->id,
+                'disconnected_flag' => $this->isSalesforceOAuthMarkedDisconnected(),
+                'has_token' => Forrest::hasToken(),
             ]);
 
             $reconnected = $salesforceService->tryAutoReconnect();
 
             if (! $reconnected) {
-                Log::critical('CreateSalesforceCaseJob: Auto-reconexión fallida. Se requiere reconexión manual en /admin/site-settings.', [
+                Log::warning('CreateSalesforceCaseJob: OAuth de Salesforce desconectado y auto-reconexión fallida. Se omite envío hasta reconexión manual.', [
                     'contact_submission_id' => $submission->id,
                 ]);
 
-                $salesforceService->markAsDisconnected('Token perdido de caché y auto-reconexión fallida.');
-                $this->notifySalesforceOAuthDisconnection($submission->id, 'Token perdido de caché y auto-reconexión fallida.');
+                $this->notifySalesforceOAuthDisconnection($submission->id, 'Auto-reconexión fallida desde CreateSalesforceCaseJob.');
 
                 $submission->update([
-                    'salesforce_case_error' => 'Token Salesforce no disponible. Auto-reconexión fallida. Reconectar en panel admin.',
+                    'salesforce_case_error' => 'OAuth Salesforce desconectado. Auto-reconexión fallida. Reconectar en panel admin.',
                     'salesforce_synced_at' => now(),
                     'salesforce_sync_trigger' => $syncTrigger,
                 ]);
@@ -97,6 +83,9 @@ class CreateSalesforceCaseJob implements ShouldQueue
             }
 
             // Auto-reconexión exitosa — el token ya está en caché, continuar normalmente
+            Log::info('CreateSalesforceCaseJob: Auto-reconexión exitosa. Continuando con envío a Salesforce.', [
+                'contact_submission_id' => $submission->id,
+            ]);
         }
 
         try {
@@ -253,8 +242,8 @@ class CreateSalesforceCaseJob implements ShouldQueue
         $subject = 'Alerta Salesforce OAuth desconectado';
         $message = implode("\n", [
             'Se detectó desconexión OAuth con Salesforce.',
-            'Submission ID: ' . $contactSubmissionId,
-            'Motivo: ' . $reason,
+            'Submission ID: '.$contactSubmissionId,
+            'Motivo: '.$reason,
             'Acción requerida: reconectar en /admin/site-settings (Conectar con Salesforce).',
         ]);
 
