@@ -816,6 +816,22 @@ class SalesforceService
             return;
         }
 
+        // Forrest::refresh() no actualiza 'forrest_refresh_token' cuando Salesforce rota el refresh_token.
+        // El token nuevo de rotación queda dentro del blob de 'forrest_token'. Lo extraemos y sincronizamos.
+        try {
+            $tokenData = decrypt($newTokenBackup);
+            if (is_array($tokenData) && isset($tokenData['refresh_token'])) {
+                $rotatedEncrypted = encrypt($tokenData['refresh_token']);
+                if ($rotatedEncrypted !== $newRefreshTokenBackup) {
+                    Cache::forever($cachePath . 'refresh_token', $rotatedEncrypted);
+                    $newRefreshTokenBackup = $rotatedEncrypted;
+                    Log::info('Salesforce: updateTokenBackup - refresh_token rotado detectado y sincronizado en caché y DB.');
+                }
+            }
+        } catch (\Throwable) {
+            // Ignorar errores de desencriptado — continuar con backup existente
+        }
+
         $siteSettings = SiteSetting::current();
         $extraSettings = is_array($siteSettings->extra_settings) ? $siteSettings->extra_settings : [];
 

@@ -25,13 +25,14 @@ class RefreshSalesforceTokenCommand extends Command
 
         try {
             if (Forrest::hasToken()) {
-                // Token presente en caché — refresh proactivo antes de que expire
-                $this->info('Token en caché. Realizando refresh proactivo...');
-                Forrest::refresh();
+                // Token presente en caché — solo actualizar backup en DB.
+                // NO llamar Forrest::refresh() proactivo: con rotación activa en Salesforce,
+                // cada llamada consume el refresh_token sin que Forrest persista el nuevo,
+                // lo que invalida el backup y causa invalid_grant en la siguiente ejecución.
                 $salesforceService->updateTokenBackup();
 
-                Log::info('salesforce:refresh-token - Refresh proactivo exitoso.');
-                $this->info('Token renovado y backup actualizado en DB correctamente.');
+                Log::info('salesforce:refresh-token - Token en caché. Backup en DB actualizado.');
+                $this->info('Token en caché. Backup actualizado en DB correctamente.');
 
                 return self::SUCCESS;
             }
