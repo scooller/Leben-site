@@ -108,9 +108,12 @@ function SiteFooter({ config, onNavigate }) {
                 <strong>{config?.site_name || 'iLeben'}</strong>
               )}
 
-              {/* {config?.site_description && (
-                <span className="wa-color-text-quiet wa-font-size-sm">{config.site_description}</span>
-              )} */}
+              {config?.contact?.address && (
+              <div className="contact-link contact-address wa-font-size-sm">
+                <wa-icon name="location-dot"></wa-icon>
+                <span>{config.contact.address}</span>
+              </div>
+            )}
 
               <small className="wa-color-text-quiet wa-font-size-2xs">
                 Todos los derechos reservados {new Date().getFullYear()}&reg;
