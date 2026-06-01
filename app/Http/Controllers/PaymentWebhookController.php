@@ -5,11 +5,11 @@ namespace App\Http\Controllers;
 use App\Facades\PaymentGateway;
 use App\Models\Payment;
 use App\Services\PlantReservationService;
+use App\Support\FlowLogMatrix;
 use BackedEnum;
 use Exception;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class PaymentWebhookController extends Controller
@@ -26,16 +26,16 @@ class PaymentWebhookController extends Controller
         $token = (string) $request->query('token_ws', '');
         $redirectUrl = (string) $request->query('tbk_url', '');
 
-        Log::debug('Transbank: Bridge redirect request received', [
-            'token' => $token,
+        FlowLogMatrix::write('payments.transbank.bridge_request', 'Transbank: Bridge redirect request received', [
+            'token' => $this->maskToken($token),
             'token_is_empty' => $token === '',
             'redirect_url' => $redirectUrl,
             'redirect_url_is_empty' => $redirectUrl === '',
-            'all_query_params' => $request->query(),
+            'query_param_keys' => array_keys($request->query()),
         ]);
 
         if ($token === '' || $redirectUrl === '') {
-            Log::error('Transbank: Bridge missing required parameters', [
+            FlowLogMatrix::write('payments.transbank.bridge_missing_params', 'Transbank: Bridge missing required parameters', [
                 'token_provided' => $token !== '',
                 'redirect_url_provided' => $redirectUrl !== '',
             ]);
@@ -46,7 +46,7 @@ class PaymentWebhookController extends Controller
         }
 
         if (! $this->isValidTransbankRedirectUrl($redirectUrl)) {
-            Log::warning('Transbank: URL de redirección inválida detectada', [
+            FlowLogMatrix::write('payments.transbank.bridge_invalid_redirect_url', 'Transbank: URL de redirección inválida detectada', [
                 'redirect_url' => $redirectUrl,
             ]);
 
@@ -102,8 +102,8 @@ class PaymentWebhookController extends Controller
                 $tbkToken = (string) ($request->input('TBK_TOKEN') ?? $request->input('tbk_token') ?? '');
                 $tbkBuyOrder = (string) ($request->input('TBK_ORDEN_COMPRA') ?? $request->input('tbk_orden_compra') ?? '');
 
-                Log::warning('Transbank: Retorno sin token_ws', [
-                    'tbk_token' => $tbkToken,
+                FlowLogMatrix::write('payments.transbank.return_without_token', 'Transbank: Retorno sin token_ws', [
+                    'tbk_token' => $this->maskToken($tbkToken),
                     'tbk_buy_order' => $tbkBuyOrder,
                 ]);
 
@@ -113,7 +113,7 @@ class PaymentWebhookController extends Controller
                         $payment->update([
                             'status' => \App\Enums\PaymentStatus::CANCELLED,
                             'metadata' => array_merge($payment->metadata ?? [], [
-                                'transbank_abort_payload' => $request->all(),
+                                'transbank_abort_payload' => $this->sanitizeTransbankAbortPayload($request),
                                 'cancelled_at' => now()->toISOString(),
                             ]),
                         ]);
@@ -133,7 +133,7 @@ class PaymentWebhookController extends Controller
                 ]);
             }
 
-            Log::debug('Transbank: Procesando retorno', ['token' => $token]);
+            FlowLogMatrix::write('payments.transbank.processing_return', 'Transbank: Procesando retorno', ['token' => $this->maskToken((string) $token)]);
 
             // Confirmar la transacción con Transbank
             $response = PaymentGateway::driver('transbank')->confirmTransaction($token);
@@ -144,7 +144,7 @@ class PaymentWebhookController extends Controller
                 ->first();
 
             if (! $payment) {
-                Log::warning('Transbank: Pago no encontrado', [
+                FlowLogMatrix::write('payments.transbank.payment_not_found', 'Transbank: Pago no encontrado', [
                     'buy_order' => $response['buy_order'],
                     'session_id' => $response['session_id'],
                 ]);
@@ -165,7 +165,7 @@ class PaymentWebhookController extends Controller
                     ]),
                 ]);
 
-                Log::debug('Transbank: Pago completado exitosamente', [
+                FlowLogMatrix::write('payments.transbank.payment_completed', 'Transbank: Pago completado exitosamente', [
                     'payment_id' => $payment->id,
                     'buy_order' => $response['buy_order'],
                 ]);
@@ -188,7 +188,7 @@ class PaymentWebhookController extends Controller
                     ]),
                 ]);
 
-                Log::warning('Transbank: Pago rechazado', [
+                FlowLogMatrix::write('payments.transbank.payment_rejected', 'Transbank: Pago rechazado', [
                     'payment_id' => $payment->id,
                     'response_code' => $response['response_code'],
                 ]);
@@ -203,9 +203,10 @@ class PaymentWebhookController extends Controller
                 ]);
             }
         } catch (Exception $e) {
-            Log::error('Transbank: Error procesando retorno', [
+            FlowLogMatrix::write('payments.transbank.return_error', 'Transbank: Error procesando retorno', [
                 'error' => $e->getMessage(),
-                'token' => $request->input('token_ws'),
+                'exception_class' => $e::class,
+                'token' => $this->maskToken((string) $request->input('token_ws', '')),
             ]);
 
             return $this->redirectToFrontendResult('failed', null, [
@@ -229,7 +230,7 @@ class PaymentWebhookController extends Controller
             $mercadoPagoService = PaymentGateway::driver('mercadopago');
 
             if (! $mercadoPagoService->verifyWebhookSignature($xSignature ?? '', $rawBody)) {
-                Log::warning('MercadoPago: Webhook rechazado - firma inválida', [
+                FlowLogMatrix::write('payments.mercadopago.invalid_signature', 'MercadoPago: Webhook rechazado - firma inválida', [
                     'x-signature' => $xSignature ? substr($xSignature, 0, 20).'...' : 'missing',
                     'ip' => $request->ip(),
                 ]);
@@ -237,9 +238,7 @@ class PaymentWebhookController extends Controller
                 return response()->json(['error' => 'Invalid signature'], 403);
             }
 
-            $data = $request->all();
-
-            Log::debug('MercadoPago: Webhook recibido', $data);
+            FlowLogMatrix::write('payments.mercadopago.webhook_received', 'MercadoPago: Webhook recibido', $this->summarizeMercadoPagoWebhook($request));
 
             // Verificar el tipo de notificación
             $type = $request->input('type');
@@ -249,7 +248,7 @@ class PaymentWebhookController extends Controller
                 $paymentId = $request->input('data.id');
 
                 if (! $paymentId) {
-                    Log::warning('MercadoPago: Webhook sin payment ID');
+                    FlowLogMatrix::write('payments.mercadopago.webhook_missing_payment_id', 'MercadoPago: Webhook sin payment ID');
 
                     return response()->json(['error' => 'Payment ID missing'], 400);
                 }
@@ -263,7 +262,7 @@ class PaymentWebhookController extends Controller
                     ->first();
 
                 if (! $payment) {
-                    Log::warning('MercadoPago: Pago no encontrado', [
+                    FlowLogMatrix::write('payments.mercadopago.payment_not_found', 'MercadoPago: Pago no encontrado', [
                         'payment_id' => $paymentId,
                         'external_reference' => $paymentInfo['external_reference'],
                     ]);
@@ -278,12 +277,12 @@ class PaymentWebhookController extends Controller
                     'status' => $newStatus,
                     'gateway_tx_id' => $paymentId,
                     'metadata' => array_merge($payment->metadata ?? [], [
-                        'mercadopago_payment' => $paymentInfo,
+                        'mercadopago_payment' => $this->sanitizeMercadoPagoPaymentInfo($paymentInfo),
                         'last_webhook_at' => now()->toISOString(),
                     ]),
                 ]);
 
-                Log::debug('MercadoPago: Pago actualizado', [
+                FlowLogMatrix::write('payments.mercadopago.payment_updated', 'MercadoPago: Pago actualizado', [
                     'payment_id' => $payment->id,
                     'mp_payment_id' => $paymentId,
                     'status' => $newStatus->value,
@@ -303,13 +302,14 @@ class PaymentWebhookController extends Controller
             }
 
             // Otro tipo de notificación
-            Log::debug('MercadoPago: Tipo de webhook no procesado', ['type' => $type]);
+            FlowLogMatrix::write('payments.mercadopago.webhook_unhandled_type', 'MercadoPago: Tipo de webhook no procesado', ['type' => $type]);
 
             return response()->json(['success' => true]);
         } catch (Exception $e) {
-            Log::error('MercadoPago: Error procesando webhook', [
+            FlowLogMatrix::write('payments.mercadopago.webhook_error', 'MercadoPago: Error procesando webhook', [
                 'error' => $e->getMessage(),
-                'data' => $request->all(),
+                'exception_class' => $e::class,
+                'webhook' => $this->summarizeMercadoPagoWebhook($request),
             ]);
 
             return response()->json(['error' => $e->getMessage()], 500);
@@ -326,7 +326,7 @@ class PaymentWebhookController extends Controller
             $status = $request->input('status');
             $externalReference = $request->input('external_reference');
 
-            Log::debug('MercadoPago: Retorno del usuario', [
+            FlowLogMatrix::write('payments.mercadopago.return_received', 'MercadoPago: Retorno del usuario', [
                 'payment_id' => $paymentId,
                 'status' => $status,
                 'external_reference' => $externalReference,
@@ -358,7 +358,7 @@ class PaymentWebhookController extends Controller
                 ]);
             }
         } catch (Exception $e) {
-            Log::error('MercadoPago: Error procesando retorno', [
+            FlowLogMatrix::write('payments.mercadopago.return_error', 'MercadoPago: Error procesando retorno', [
                 'error' => $e->getMessage(),
             ]);
 
@@ -437,5 +437,65 @@ class PaymentWebhookController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function sanitizeTransbankAbortPayload(Request $request): array
+    {
+        $tbkToken = (string) ($request->input('TBK_TOKEN') ?? $request->input('tbk_token') ?? '');
+        $tbkBuyOrder = (string) ($request->input('TBK_ORDEN_COMPRA') ?? $request->input('tbk_orden_compra') ?? '');
+
+        return [
+            'tbk_token' => $this->maskToken($tbkToken),
+            'tbk_buy_order' => $tbkBuyOrder !== '' ? Str::limit($tbkBuyOrder, 100, '') : null,
+            'has_token_ws' => filled((string) $request->input('token_ws', '')),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function summarizeMercadoPagoWebhook(Request $request): array
+    {
+        return [
+            'type' => (string) $request->input('type', ''),
+            'action' => (string) $request->input('action', ''),
+            'payment_id' => (string) $request->input('data.id', ''),
+            'request_key_count' => count($request->all()),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $paymentInfo
+     * @return array<string, mixed>
+     */
+    private function sanitizeMercadoPagoPaymentInfo(array $paymentInfo): array
+    {
+        return [
+            'id' => $paymentInfo['id'] ?? null,
+            'status' => $paymentInfo['status'] ?? null,
+            'status_detail' => $paymentInfo['status_detail'] ?? null,
+            'transaction_amount' => $paymentInfo['transaction_amount'] ?? null,
+            'currency_id' => $paymentInfo['currency_id'] ?? null,
+            'payment_method_id' => $paymentInfo['payment_method_id'] ?? null,
+            'payment_type_id' => $paymentInfo['payment_type_id'] ?? null,
+            'date_created' => $paymentInfo['date_created'] ?? null,
+            'date_approved' => $paymentInfo['date_approved'] ?? null,
+            'external_reference' => $paymentInfo['external_reference'] ?? null,
+            'description' => $paymentInfo['description'] ?? null,
+        ];
+    }
+
+    private function maskToken(string $token): string
+    {
+        if ($token === '') {
+            return '';
+        }
+
+        return strlen($token) <= 8
+            ? str_repeat('*', strlen($token))
+            : substr($token, 0, 4).str_repeat('*', strlen($token) - 8).substr($token, -4);
     }
 }

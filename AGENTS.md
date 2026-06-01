@@ -4,6 +4,8 @@
 
 **Leben** es una plataforma backend-first construida con **Laravel 12** + **Filament 5**, especializada en la gestión de ventas de proyectos inmobiliarios con integración Salesforce, procesamiento de pagos y sincronización de datos en tiempo real.
 
+Versión actual documentada: 1.9.5 (2026-06-01).
+
 La aplicación soporta:
 - **Panel administrativo** (Filament) para gestión de proyectos, plantas, asesores y contactos
 - **API REST** pública para integraciones externas (WordPress, PHP, etc.)
@@ -40,8 +42,9 @@ La aplicación soporta:
 - ✅ **Seguridad API — token.origin**: Middleware corregido para rechazar tokens inválidos/ausentes; usa `PersonalAccessToken::findToken()` sin depender de sesión
 - ✅ **Seguridad API — site-config**: `payment_gateways.*.config`, `price_source` y `price_percentage_source` ocultos en respuesta pública; visibles solo con token válido
 - ✅ **Auto-reconexión Salesforce OAuth**: Tokens OAuth persistidos cifrados en DB (`SiteSetting.extra_settings`); se restauran automáticamente en caché tras `cache:clear` o restart de Redis, sin requerir login manual
-- ✅ **Comando `salesforce:refresh-token`**: Nuevo comando Artisan para refrescar el access token proactivamente; scheduled cada 20 horas via `routes/console.php`
+- ✅ **Comando `salesforce:refresh-token`**: Scheduler operativo con `cron('0 */20 * * *')`; si hay token en caché, sincroniza backup en DB sin forzar refresh
 - ✅ **Panel — Proyectos inactivos visibles**: El selector de proyecto en SiteSettings ahora muestra proyectos inactivos con prefijo `[Inactivo]` en lugar de ocultarlos
+- ✅ **Auto-reconexión reforzada en cola**: `CreateSalesforceCaseJob` intenta auto-reconexión tanto por flag de desconexión como por ausencia de token en caché
 
 ### Módulos Activos
 1. **Salesforce Integration** - Sincronización de leads/casos, OAuth, caché
@@ -259,7 +262,7 @@ php artisan test --compact --filter=testName  # Por test
 - Caché ampliado para consultas SOQL
 - OAuth con flujo authenticate/callback
 - **Auto-reconexión silenciosa**: tokens OAuth persistidos en `SiteSetting.extra_settings` (`token_cache_backup`, `refresh_token_cache_backup`); `CreateSalesforceCaseJob` llama `tryAutoReconnect()` cuando no hay token en caché
-- **Refresh proactivo programado**: `salesforce:refresh-token` corre cada 20 horas; renueva el access token antes de que expire
+- **Refresh/sincronización programada**: `salesforce:refresh-token` corre con `cron('0 */20 * * *')`; con token en caché sincroniza backup, y sin token intenta auto-reconexión
 
 ### Contactos
 - Validación por canal (sale, info, etc.)
@@ -294,12 +297,12 @@ php artisan test --compact --filter=testName  # Por test
 1. Tras OAuth exitoso, `SalesforceOAuthController::callback()` persiste `forrest_token` y `forrest_refresh_token` en `SiteSetting.extra_settings.salesforce_oauth`
 2. `CreateSalesforceCaseJob` chequea `isSalesforceOAuthMarkedDisconnected()` primero (fast path); luego si no hay token en caché, llama `tryAutoReconnect()`
 3. `tryAutoReconnect()` restaura ambos tokens al caché y llama `Forrest::refresh()` → Salesforce entrega nuevo access token sin intervención del usuario
-4. `salesforce:refresh-token` (scheduled cada 20h) realiza refresh proactivo antes de que el token expire
+4. `salesforce:refresh-token` (scheduler `cron('0 */20 * * *')`) sincroniza backups si hay token en caché; si no hay token, intenta auto-reconexión desde DB
 
 **Requisito post-deploy**: Reconectar OAuth manualmente una vez en `/admin/site-settings` para generar el backup inicial en DB.
 
 **Comandos operativos**:
-- `php artisan salesforce:refresh-token` — refresh manual/proactivo
+- `php artisan salesforce:refresh-token` — sincroniza backups o intenta auto-reconexión según estado de token
 
 ---
 

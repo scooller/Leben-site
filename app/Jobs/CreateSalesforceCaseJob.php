@@ -7,10 +7,10 @@ use App\Models\ContactSubmission;
 use App\Models\SiteSetting;
 use App\Services\Salesforce\SalesforceCaseMapper;
 use App\Services\Salesforce\SalesforceService;
+use App\Support\FlowLogMatrix;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Omniphx\Forrest\Exceptions\MissingResourceException;
@@ -34,13 +34,13 @@ class CreateSalesforceCaseJob implements ShouldQueue
         $syncTrigger = $this->normalizeSyncTrigger($this->syncTrigger);
         $leadEnabled = (bool) config('services.salesforce.lead_enabled', config('services.salesforce.case_enabled', false));
 
-        Log::debug('CreateSalesforceCaseJob: Inicio de ejecución', [
+        FlowLogMatrix::write('salesforce.job.start', 'CreateSalesforceCaseJob: Inicio de ejecución', [
             'contact_submission_id' => $this->submission->id,
             'lead_enabled' => $leadEnabled,
         ]);
 
         if (! $leadEnabled) {
-            Log::warning('CreateSalesforceCaseJob: Lead deshabilitado, se omite envío', [
+            FlowLogMatrix::write('salesforce.job.lead_disabled', 'CreateSalesforceCaseJob: Lead deshabilitado, se omite envío', [
                 'contact_submission_id' => $this->submission->id,
             ]);
 
@@ -50,7 +50,7 @@ class CreateSalesforceCaseJob implements ShouldQueue
         $submission = $this->submission->fresh();
 
         if (! $submission) {
-            Log::warning('CreateSalesforceCaseJob: Submission no encontrada al refrescar');
+            FlowLogMatrix::write('salesforce.job.submission_missing', 'CreateSalesforceCaseJob: Submission no encontrada al refrescar');
 
             return;
         }
@@ -59,7 +59,7 @@ class CreateSalesforceCaseJob implements ShouldQueue
         // auto-reconexión silenciosa con el refresh_token del backup en DB antes de rendirse.
         // Esto cubre: rotación de refresh_token, cache:clear, restart de Redis, o fallo transitorio.
         if ($this->isSalesforceOAuthMarkedDisconnected() || ! Forrest::hasToken()) {
-            Log::info('CreateSalesforceCaseJob: Token no disponible o OAuth desconectado. Intentando auto-reconexión silenciosa.', [
+            FlowLogMatrix::write('salesforce.job.oauth_reconnect_attempt', 'CreateSalesforceCaseJob: Token no disponible o OAuth desconectado. Intentando auto-reconexión silenciosa.', [
                 'contact_submission_id' => $submission->id,
                 'disconnected_flag' => $this->isSalesforceOAuthMarkedDisconnected(),
                 'has_token' => Forrest::hasToken(),
@@ -68,7 +68,7 @@ class CreateSalesforceCaseJob implements ShouldQueue
             $reconnected = $salesforceService->tryAutoReconnect();
 
             if (! $reconnected) {
-                Log::warning('CreateSalesforceCaseJob: OAuth de Salesforce desconectado y auto-reconexión fallida. Se omite envío hasta reconexión manual.', [
+                FlowLogMatrix::write('salesforce.job.oauth_reconnect_failed', 'CreateSalesforceCaseJob: OAuth de Salesforce desconectado y auto-reconexión fallida. Se omite envío hasta reconexión manual.', [
                     'contact_submission_id' => $submission->id,
                 ]);
 
@@ -84,7 +84,7 @@ class CreateSalesforceCaseJob implements ShouldQueue
             }
 
             // Auto-reconexión exitosa — el token ya está en caché, continuar normalmente
-            Log::info('CreateSalesforceCaseJob: Auto-reconexión exitosa. Continuando con envío a Salesforce.', [
+            FlowLogMatrix::write('salesforce.job.oauth_reconnect_success', 'CreateSalesforceCaseJob: Auto-reconexión exitosa. Continuando con envío a Salesforce.', [
                 'contact_submission_id' => $submission->id,
             ]);
         }
@@ -109,21 +109,24 @@ class CreateSalesforceCaseJob implements ShouldQueue
                 'salesforce_sync_trigger' => $syncTrigger,
             ]);
 
-            Log::debug('CreateSalesforceCaseJob: Lead creado correctamente', [
+            FlowLogMatrix::write('salesforce.job.lead_created', 'CreateSalesforceCaseJob: Lead creado correctamente', [
                 'contact_submission_id' => $submission->id,
                 'salesforce_lead_id' => $leadId !== '' ? $leadId : null,
                 'salesforce_success' => $response['success'] ?? null,
                 'salesforce_errors' => $response['errors'] ?? null,
-                'salesforce_response' => $response,
+                'salesforce_response_keys' => array_keys($response),
+                'salesforce_error_count' => is_array($response['errors'] ?? null)
+                    ? count($response['errors'])
+                    : null,
             ]);
         } catch (MissingResourceException $exception) {
             // Token no disponible — intentar auto-reconexión como último recurso
-            Log::warning('CreateSalesforceCaseJob: MissingResourceException durante la operación. Intentando auto-reconexión.', [
+            FlowLogMatrix::write('salesforce.job.missing_resource', 'CreateSalesforceCaseJob: MissingResourceException durante la operación. Intentando auto-reconexión.', [
                 'contact_submission_id' => $submission->id,
             ]);
 
             if ($salesforceService->tryAutoReconnect()) {
-                Log::info('CreateSalesforceCaseJob: Auto-reconexión exitosa tras MissingResourceException. Reintentando operación.', [
+                FlowLogMatrix::write('salesforce.job.retry_after_reconnect', 'CreateSalesforceCaseJob: Auto-reconexión exitosa tras MissingResourceException. Reintentando operación.', [
                     'contact_submission_id' => $submission->id,
                 ]);
 
@@ -133,7 +136,7 @@ class CreateSalesforceCaseJob implements ShouldQueue
                 return;
             }
 
-            Log::critical('CreateSalesforceCaseJob: Token de Salesforce no disponible y auto-reconexión fallida. Reconecta en /admin/site-settings → "Conectar con Salesforce"', [
+            FlowLogMatrix::write('salesforce.job.token_missing_reconnect_failed', 'CreateSalesforceCaseJob: Token de Salesforce no disponible y auto-reconexión fallida. Reconecta en /admin/site-settings → "Conectar con Salesforce"', [
                 'contact_submission_id' => $submission->id,
             ]);
 
@@ -148,7 +151,7 @@ class CreateSalesforceCaseJob implements ShouldQueue
 
             // No relanzar — no tiene sentido reintentar sin token
         } catch (SalesforceTokenExpiredException $exception) {
-            Log::critical('CreateSalesforceCaseJob: Salesforce respondió invalid_grant. Reconecta en /admin/site-settings → "Conectar con Salesforce"', [
+            FlowLogMatrix::write('salesforce.job.invalid_grant', 'CreateSalesforceCaseJob: Salesforce respondió invalid_grant. Reconecta en /admin/site-settings → "Conectar con Salesforce"', [
                 'contact_submission_id' => $submission->id,
                 'error' => $exception->getMessage(),
             ]);
@@ -170,9 +173,9 @@ class CreateSalesforceCaseJob implements ShouldQueue
                 'salesforce_sync_trigger' => $syncTrigger,
             ]);
 
-            Log::error('CreateSalesforceCaseJob: Error al crear Lead', [
+            FlowLogMatrix::write('salesforce.job.lead_error', 'CreateSalesforceCaseJob: Error al crear Lead', [
                 'contact_submission_id' => $submission->id,
-                'error' => $exception->getMessage(),
+                'exception_message' => $exception->getMessage(),
                 ...$this->extractExceptionContext($exception),
             ]);
         }
@@ -253,7 +256,7 @@ class CreateSalesforceCaseJob implements ShouldQueue
                 $mail->to($recipient)->subject($subject);
             });
         } catch (Throwable $exception) {
-            Log::warning('CreateSalesforceCaseJob: No se pudo enviar alerta de desconexión OAuth de Salesforce', [
+            FlowLogMatrix::write('salesforce.job.alert_email_failed', 'CreateSalesforceCaseJob: No se pudo enviar alerta de desconexión OAuth de Salesforce', [
                 'recipient' => $recipient,
                 'error' => $exception->getMessage(),
             ]);

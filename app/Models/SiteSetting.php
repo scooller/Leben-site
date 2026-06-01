@@ -474,9 +474,24 @@ class SiteSetting extends Model
                     ? trim((string) $extraSettings['site_locale'])
                     : 'es-CL',
                 'og_image' => $ogImageFromCurator ?? ($settings->og_image ? url($settings->og_image) : null),
+                'utm_source_default' => is_string($extraSettings['utm_source_default'] ?? null)
+                    ? trim((string) $extraSettings['utm_source_default'])
+                    : 'direct',
+                'utm_medium_default' => is_string($extraSettings['utm_medium_default'] ?? null)
+                    ? trim((string) $extraSettings['utm_medium_default'])
+                    : 'organic',
                 'utm_campaign_default' => is_string($extraSettings['utm_campaign_default'] ?? null)
                     ? trim((string) $extraSettings['utm_campaign_default'])
                     : 'campaign',
+                'utm_term_default' => is_string($extraSettings['utm_term_default'] ?? null)
+                    ? trim((string) $extraSettings['utm_term_default'])
+                    : 'none',
+                'utm_content_default' => is_string($extraSettings['utm_content_default'] ?? null)
+                    ? trim((string) $extraSettings['utm_content_default'])
+                    : 'none',
+                'utm_site_default' => is_string($extraSettings['utm_site_default'] ?? null)
+                    ? trim((string) $extraSettings['utm_site_default'])
+                    : '',
             ],
             'contact' => [
                 'email' => $settings->contact_email,

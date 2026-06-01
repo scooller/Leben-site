@@ -1,48 +1,77 @@
-# React + Vite
+# Frontend iLeben
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Frontend React + Vite para el sitio público de iLeben. Consume la API de Laravel en `/api/v1`, renderiza el catálogo de proyectos y plantas, y cubre los flujos públicos de contacto y pago.
 
-Currently, two official plugins are available:
+## Scripts
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- `npm run dev`: levanta el frontend en modo desarrollo con Vite.
+- `npm run build`: genera el build de producción, prerenderiza rutas y valida SEO.
+- `npm run build --production`: ejecuta el build orientado a producción (equivalente recomendado: `npm run build:production`).
+- `npm run build:dev`: genera build en modo desarrollo y luego ejecuta prerender + validación SEO.
+- `npm run preview`: sirve el build localmente.
+- `npm run lint`: ejecuta ESLint sobre el código del frontend.
+- `npm run seo:validate`: valida las reglas SEO sin volver a construir.
+- `npm run install:webawesome`: instala dependencias usando el token de Web Awesome cuando corresponde.
 
-## React Compiler
+## Custom commands
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
+Estos comandos son propios del proyecto y ejecutan scripts internos en `frontend/scripts`:
 
-Note: This will impact Vite dev & build performances.
+- `npm run build`: corre `vite build` y luego ejecuta, en orden:
+	- `node ./scripts/prerender-routes.mjs`
+	- `node ./scripts/validate-seo.mjs`
+- `npm run build:production`: corre `vite build --mode production` y luego ejecuta prerender + validación SEO.
+- `npm run build:dev`: corre `vite build --mode development` y luego ejecuta prerender + validación SEO.
+- `npm run seo:validate`: ejecuta solo `node ./scripts/validate-seo.mjs`.
+- `node ./scripts/prerender-routes.mjs`: prerenderiza rutas estáticas del frontend.
+- `node ./scripts/validate-seo.mjs`: valida metadatos y reglas SEO del build.
+- `npm run install:webawesome`: instala dependencias resolviendo el acceso al registro privado de Web Awesome con variables de entorno.
 
-## Expanding the ESLint configuration
+## Requisitos de entorno
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Configura un archivo `.env` en `frontend/` con estas variables:
 
-## 📚 Documentación de Librerías
+- `VITE_API_URL`: base URL de la API pública.
+- `VITE_APP_URL`: URL base del sitio.
+- `VITE_TURNSTILE_SITE_KEY`: clave pública de Cloudflare Turnstile para los formularios.
+- `VITE_API_AUTH_TOKEN`: token por defecto para llamadas autenticadas.
+- `VITE_STAGE_ALIAS_MAP`: mapeo JSON de alias de etapas visibles.
+- `VITE_STAGE_KEY_ALIASES`: mapeo JSON de llaves de etapa legacy a llaves canónicas.
+- `VITE_STAGE_ALIAS_BY_PROJECT_SLUG`: mapeo JSON de alias por slug de proyecto.
+- `WEBAWESOME_NPM_TOKEN`: token opcional para instalar Web Awesome Pro.
 
-### Animaciones
-- **GSAP v3**: https://gsap.com/docs/v3/
-- **GSAP para LLMs**: https://gsap.com/llms.txt
-- **ScrollTrigger Plugin**: https://gsap.com/docs/v3/Plugins/ScrollTrigger
-- **React + GSAP**: https://gsap.com/resources/React
+Consulta `frontend/.env.example` para la plantilla completa.
 
-### UI Components
-- **Web Awesome Pro**: https://webawesome.com/docs/
-- **Web Awesome Themes**: https://webawesome.com/docs/themes/
+## Arranque local
 
-## Notas del proyecto
+1. Instala dependencias en `frontend/`.
+2. Copia `frontend/.env.example` a `frontend/.env` y completa las variables necesarias.
+3. Asegura que la API de Laravel esté disponible en la URL definida por `VITE_API_URL`.
+4. Ejecuta `npm run dev` para desarrollo o `npm run build` para validar el build de producción.
 
-- El frontend usa `@web.awesome.me/webawesome-pro`.
-- La disponibilidad del catálogo debe consumir los flags `is_paid` e `is_available` entregados por `/api/v1/plantas`.
-- Una planta no disponible puede deberse a reserva activa, reserva completada o pago completado/autorizado asociado en backend.
-- Usar el comando npm run build:dev para generar el build de desarrollo, que incluye el flag `is_available` en el catálogo.
+Si quieres revisar el build generado localmente, ejecuta primero `npm run build` y luego `npm run preview`.
 
-.npmrc file at the root of your project
-@web.awesome.me:registry=https://npm.cloudsmith.io/fortawesome/webawesome-pro/
-//npm.cloudsmith.io/fortawesome/webawesome-pro/:_authToken=${WEBAWESOME_NPM_TOKEN}
+## Estructura funcional
 
-Install Your Project
-Replace [token] with your npm token in the following snippet. Then, run the command in your CLI to grab Web Awesome Pro and add it to your project dependencies.
+- `src/pages/Home.jsx`: catálogo principal y navegación de proyectos/plantas.
+- `src/pages/Contact.jsx`: formulario público de contacto con Turnstile.
+- `src/pages/Payment.jsx`: flujo público de pago.
+- `src/services/`: clientes e integraciones con API, checkout, sitio, reservas y Web Awesome.
+- `src/utils/`: helpers de SEO, alias de etapas, UTM, enlaces externos y datos estructurados.
 
-WEBAWESOME_NPM_TOKEN="[token]" npm install "@web.awesome.me/webawesome-pro@3.7.0"
+## Notas de integración
 
-WEBAWESOME_NPM_TOKEN is an environment variable that holds your npm token. This allows you to keep your token secure and not hard-code it into your project files. Make sure to replace [token] with your actual npm token before running the command.
+- El frontend usa `@web.awesome.me/webawesome-pro` como librería de UI principal.
+- GSAP se usa para animaciones y efectos de scroll cuando aplica.
+- La disponibilidad del catálogo debe basarse en `is_paid` e `is_available` devueltos por `/api/v1/plantas`.
+- Una planta no disponible puede estar reservada, completada o asociada a un pago completado/autorizado en el backend.
+- El build de producción incluye prerender de rutas y validación SEO; `contacto` y `pago` no se prerenderizan.
+- `npm run preview` solo sirve correctamente después de generar `dist/` con `npm run build`.
+
+## Documentación útil
+
+- [Web Awesome](https://webawesome.com/docs/)
+- [Web Awesome Themes](https://webawesome.com/docs/themes/)
+- [GSAP](https://gsap.com/docs/v3/)
+- [GSAP ScrollTrigger](https://gsap.com/docs/v3/Plugins/ScrollTrigger)
+

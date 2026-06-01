@@ -35,7 +35,7 @@ export const appendSessionUtmsToExternalUrl = (value) => {
     Object.entries(storedUtms).forEach(([key, rawValue]) => {
       const utmValue = normalizeValue(rawValue);
 
-      if (utmValue !== '') {
+      if (utmValue !== '' && !parsedUrl.searchParams.has(key)) {
         parsedUrl.searchParams.set(key, utmValue);
       }
     });

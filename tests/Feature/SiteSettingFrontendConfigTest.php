@@ -88,7 +88,12 @@ class SiteSettingFrontendConfigTest extends TestCase
                 'twitter_site' => '@ileben',
                 'robots_default' => 'index,follow',
                 'site_locale' => 'es-CL',
+                'utm_source_default' => 'direct',
+                'utm_medium_default' => 'organic',
                 'utm_campaign_default' => 'campaign',
+                'utm_term_default' => 'none',
+                'utm_content_default' => 'none',
+                'utm_site_default' => 'demo.ileben.cl',
             ],
             'footer_menu' => [
                 [
@@ -105,7 +110,7 @@ class SiteSettingFrontendConfigTest extends TestCase
         $user = User::factory()->create();
         $newToken = $user->createToken('test-token');
         $request = Request::create('/api/v1/site-config', 'GET');
-        $request->headers->set('Authorization', 'Bearer ' . $newToken->plainTextToken);
+        $request->headers->set('Authorization', 'Bearer '.$newToken->plainTextToken);
 
         $payload = SiteSetting::forFrontend($request);
 
@@ -145,7 +150,12 @@ class SiteSettingFrontendConfigTest extends TestCase
         $this->assertSame('@ileben', $payload['seo']['twitter_site']);
         $this->assertSame('index,follow', $payload['seo']['robots_default']);
         $this->assertSame('es-CL', $payload['seo']['site_locale']);
+        $this->assertSame('direct', $payload['seo']['utm_source_default']);
+        $this->assertSame('organic', $payload['seo']['utm_medium_default']);
         $this->assertSame('campaign', $payload['seo']['utm_campaign_default']);
+        $this->assertSame('none', $payload['seo']['utm_term_default']);
+        $this->assertSame('none', $payload['seo']['utm_content_default']);
+        $this->assertSame('demo.ileben.cl', $payload['seo']['utm_site_default']);
         $this->assertArrayHasKey('header_scripts', $payload);
         $this->assertSame('<script>window.headerTracking = true;</script>', $payload['header_scripts']);
         $this->assertArrayHasKey('footer_scripts', $payload);

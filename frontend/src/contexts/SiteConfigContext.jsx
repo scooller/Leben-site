@@ -105,7 +105,12 @@ export const SiteConfigProvider = ({ children }) => {
       }
 
       setUtmDefaultOverrides({
+        utm_source: data?.seo?.utm_source_default,
+        utm_medium: data?.seo?.utm_medium_default,
         utm_campaign: data?.seo?.utm_campaign_default,
+        utm_term: data?.seo?.utm_term_default,
+        utm_content: data?.seo?.utm_content_default,
+        utm_site: data?.seo?.utm_site_default,
       });
 
       setError(null);

@@ -4,7 +4,7 @@ import MaintenanceMode from './components/MaintenanceMode';
 import ErrorNotification from './components/ErrorNotification';
 import { APP_HTTP_ERROR_EVENT } from './utils/errorHandler';
 import { trackPageView } from './utils/tagManager';
-import { captureUtmParamsFromUrl } from './utils/utmSession';
+import { captureUtmParamsFromUrl, cleanTrackedUtmsFromCurrentUrl } from './utils/utmSession';
 import siteConfigService from './services/siteConfig';
 import { resolveSeoPolicy } from './utils/seoPolicy';
 import { removeStructuredData, setStructuredData } from './utils/structuredData';
@@ -166,7 +166,10 @@ function AppContent() {
   );
 
   useEffect(() => {
-    captureUtmParamsFromUrl(window.location.search || '');
+    const currentSearch = window.location.search || '';
+
+    captureUtmParamsFromUrl(currentSearch);
+    cleanTrackedUtmsFromCurrentUrl(currentSearch);
   }, [pathname]);
 
   useEffect(() => {

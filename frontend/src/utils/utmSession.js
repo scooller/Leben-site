@@ -11,6 +11,8 @@ export const UTM_PARAM_CONFIG = [
   { key: 'utm_site', defaultValue: '' },
 ];
 
+const TRACKED_UTM_KEYS = UTM_PARAM_CONFIG.map((config) => config.key);
+
 const normalizeUtmValue = (value) => {
   if (value === null || value === undefined) {
     return '';
@@ -111,6 +113,21 @@ const persistStoredUtms = (values) => {
   window.sessionStorage.setItem(UTM_SESSION_STORAGE_KEY, JSON.stringify(values));
 };
 
+const removeTrackedUtmsFromSearchParams = (searchParams) => {
+  let hasChanges = false;
+
+  TRACKED_UTM_KEYS.forEach((key) => {
+    if (!searchParams.has(key)) {
+      return;
+    }
+
+    searchParams.delete(key);
+    hasChanges = true;
+  });
+
+  return hasChanges;
+};
+
 export const captureUtmParamsFromUrl = (search = '') => {
   if (typeof window === 'undefined') {
     return {};
@@ -140,6 +157,32 @@ export const captureUtmParamsFromUrl = (search = '') => {
   persistStoredUtms(nextValues);
 
   return nextValues;
+};
+
+export const cleanTrackedUtmsFromCurrentUrl = (search = '') => {
+  if (typeof window === 'undefined' || typeof window.history?.replaceState !== 'function') {
+    return false;
+  }
+
+  const currentSearch = search || window.location.search || '';
+
+  if (currentSearch === '') {
+    return false;
+  }
+
+  const searchParams = new URLSearchParams(currentSearch);
+  const hasChanges = removeTrackedUtmsFromSearchParams(searchParams);
+
+  if (!hasChanges) {
+    return false;
+  }
+
+  const nextSearch = searchParams.toString();
+  const nextUrl = `${window.location.pathname}${nextSearch !== '' ? `?${nextSearch}` : ''}${window.location.hash || ''}`;
+
+  window.history.replaceState(window.history.state, '', nextUrl);
+
+  return true;
 };
 
 export const getStoredUtmParams = () => {

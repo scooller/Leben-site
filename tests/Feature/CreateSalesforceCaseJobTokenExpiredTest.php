@@ -53,7 +53,7 @@ class CreateSalesforceCaseJobTokenExpiredTest extends TestCase
             ->andReturn(true);
         $service->shouldReceive('createLead')
             ->once()
-            ->andThrow(new SalesforceTokenExpiredException('Salesforce OAuth token expired or revoked. Manual reconnection required.'));
+            ->andThrow(new SalesforceTokenExpiredException);
 
         $job = new CreateSalesforceCaseJob($submission);
         $job->handle($service, $mapper);
@@ -112,7 +112,7 @@ class CreateSalesforceCaseJobTokenExpiredTest extends TestCase
             ->andReturn(true);
         $service->shouldReceive('createLead')
             ->twice()
-            ->andThrow(new SalesforceTokenExpiredException('Salesforce OAuth token expired or revoked. Manual reconnection required.'));
+            ->andThrow(new SalesforceTokenExpiredException);
 
         Mail::shouldReceive('raw')
             ->once();
