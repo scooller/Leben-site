@@ -953,7 +953,7 @@ function Contact({ onNavigate, currentPath }) {
         )}
       </section>
 
-      <section className="home-container contact-grid">
+      <section className="home-container">
         <wa-card appearance="outlined" className="contact-content-card">
           <div className="wa-stack wa-gap-m">
             <h1>{title}</h1>
