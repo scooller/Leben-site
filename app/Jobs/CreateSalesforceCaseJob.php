@@ -114,7 +114,10 @@ class CreateSalesforceCaseJob implements ShouldQueue
                 'salesforce_lead_id' => $leadId !== '' ? $leadId : null,
                 'salesforce_success' => $response['success'] ?? null,
                 'salesforce_errors' => $response['errors'] ?? null,
-                'salesforce_response' => $response,
+                'salesforce_response_keys' => array_keys($response),
+                'salesforce_error_count' => is_array($response['errors'] ?? null)
+                    ? count($response['errors'])
+                    : null,
             ]);
         } catch (MissingResourceException $exception) {
             // Token no disponible — intentar auto-reconexión como último recurso
@@ -172,7 +175,7 @@ class CreateSalesforceCaseJob implements ShouldQueue
 
             Log::error('CreateSalesforceCaseJob: Error al crear Lead', [
                 'contact_submission_id' => $submission->id,
-                'error' => $exception->getMessage(),
+                'exception_message' => $exception->getMessage(),
                 ...$this->extractExceptionContext($exception),
             ]);
         }

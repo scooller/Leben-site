@@ -7,6 +7,8 @@ use App\Models\Proyecto;
 use App\Models\SiteSetting;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class ProductionSyncService
 {
@@ -18,8 +20,14 @@ class ProductionSyncService
         $baseUrl = trim((string) config('services.production_sync.base_url', ''));
         $token = trim((string) config('services.production_sync.token', ''));
         $authorizedUrl = trim((string) config('services.production_sync.authorized_url', ''));
+        $endpoint = rtrim($baseUrl, '/').'/api/v1/production-sync/export';
 
         if ($baseUrl === '' || $token === '') {
+            Log::warning('ProductionSync: Configuración incompleta para export de snapshot', [
+                'base_url_configured' => $baseUrl !== '',
+                'token_configured' => $token !== '',
+            ]);
+
             return [
                 'meta' => [
                     'error' => 'Falta configurar PRODUCTION_SYNC_BASE_URL o PRODUCTION_SYNC_TOKEN.',
@@ -30,15 +38,38 @@ class ProductionSyncService
             ];
         }
 
-        $response = Http::acceptJson()
-            ->withToken($token)
-            ->withHeaders([
-                'X-Authorized-Url' => $authorizedUrl,
-            ])
-            ->timeout((int) config('services.production_sync.timeout', 120))
-            ->get(rtrim($baseUrl, '/') . '/api/v1/production-sync/export');
+        try {
+            $response = Http::acceptJson()
+                ->withToken($token)
+                ->withHeaders([
+                    'X-Authorized-Url' => $authorizedUrl,
+                ])
+                ->timeout((int) config('services.production_sync.timeout', 120))
+                ->get($endpoint);
+        } catch (Throwable $exception) {
+            Log::error('ProductionSync: Error de red al obtener snapshot', [
+                'endpoint' => $endpoint,
+                'exception_class' => $exception::class,
+                'exception_message' => $exception->getMessage(),
+            ]);
+
+            return [
+                'meta' => [
+                    'error' => 'No se pudo obtener la sincronización de producción.',
+                ],
+                'site_settings' => [],
+                'projects' => [],
+                'plants' => [],
+            ];
+        }
 
         if (! $response->successful()) {
+            Log::warning('ProductionSync: Respuesta no exitosa al obtener snapshot', [
+                'endpoint' => $endpoint,
+                'http_status' => $response->status(),
+                'response_message' => (string) ($response->json('message') ?? ''),
+            ]);
+
             return [
                 'meta' => [
                     'error' => (string) ($response->json('message') ?? 'No se pudo obtener la sincronización de producción.'),

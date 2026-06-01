@@ -92,7 +92,7 @@ class SalesforceService
                 'success' => $response['success'] ?? null,
                 'errors' => $response['errors'] ?? null,
                 'subject' => $payload['Subject'] ?? null,
-                'response' => $response,
+                ...$this->summarizeSobjectResponse($response),
             ]);
 
             return $response;
@@ -129,7 +129,7 @@ class SalesforceService
                     'success' => $response['success'] ?? null,
                     'errors' => $response['errors'] ?? null,
                     'subject' => $payload['Subject'] ?? null,
-                    'response' => $response,
+                    ...$this->summarizeSobjectResponse($response),
                 ]);
 
                 return $response;
@@ -173,7 +173,7 @@ class SalesforceService
                 'lead_id' => $response['id'] ?? $response['Id'] ?? null,
                 'success' => $response['success'] ?? null,
                 'errors' => $response['errors'] ?? null,
-                'response' => $response,
+                ...$this->summarizeSobjectResponse($response),
             ]);
 
             return $response;
@@ -213,7 +213,7 @@ class SalesforceService
                     'lead_id' => $response['id'] ?? $response['Id'] ?? null,
                     'success' => $response['success'] ?? null,
                     'errors' => $response['errors'] ?? null,
-                    'response' => $response,
+                    ...$this->summarizeSobjectResponse($response),
                     'removed_fields' => $sanitized['removed_fields'],
                 ]);
 
@@ -241,7 +241,7 @@ class SalesforceService
                     'lead_id' => $response['id'] ?? $response['Id'] ?? null,
                     'success' => $response['success'] ?? null,
                     'errors' => $response['errors'] ?? null,
-                    'response' => $response,
+                    ...$this->summarizeSobjectResponse($response),
                     'owner_id' => $ownerFallback['owner_id'],
                 ]);
 
@@ -267,7 +267,7 @@ class SalesforceService
                     'lead_id' => $response['id'] ?? $response['Id'] ?? null,
                     'success' => $response['success'] ?? null,
                     'errors' => $response['errors'] ?? null,
-                    'response' => $response,
+                    ...$this->summarizeSobjectResponse($response),
                 ]);
 
                 return $response;
@@ -307,7 +307,7 @@ class SalesforceService
                         'lead_id' => $response['id'] ?? $response['Id'] ?? null,
                         'success' => $response['success'] ?? null,
                         'errors' => $response['errors'] ?? null,
-                        'response' => $response,
+                        ...$this->summarizeSobjectResponse($response),
                         'removed_fields' => $sanitized['removed_fields'],
                     ]);
 
@@ -335,7 +335,7 @@ class SalesforceService
                         'lead_id' => $response['id'] ?? $response['Id'] ?? null,
                         'success' => $response['success'] ?? null,
                         'errors' => $response['errors'] ?? null,
-                        'response' => $response,
+                        ...$this->summarizeSobjectResponse($response),
                         'owner_id' => $ownerFallback['owner_id'],
                     ]);
 
@@ -973,6 +973,20 @@ class SalesforceService
         }
 
         return 'invalid_grant_other';
+    }
+
+    /**
+     * @param  array<string, mixed>  $response
+     * @return array<string, mixed>
+     */
+    private function summarizeSobjectResponse(array $response): array
+    {
+        return [
+            'response_keys' => array_keys($response),
+            'response_error_count' => is_array($response['errors'] ?? null)
+                ? count($response['errors'])
+                : null,
+        ];
     }
 
     /**
