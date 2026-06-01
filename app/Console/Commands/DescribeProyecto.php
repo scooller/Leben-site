@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use Exception;
 use Illuminate\Console\Command;
 use Omniphx\Forrest\Providers\Laravel\Facades\Forrest;
 
@@ -53,7 +54,7 @@ class DescribeProyecto extends Command
 
             return 0;
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->error('❌ Error: '.$e->getMessage());
 
             return 1;

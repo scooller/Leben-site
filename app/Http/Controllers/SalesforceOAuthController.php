@@ -6,6 +6,7 @@ use App\Models\SiteSetting;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Log;
 use Omniphx\Forrest\Providers\Laravel\Facades\Forrest;
+use Throwable;
 
 class SalesforceOAuthController extends Controller
 {
@@ -57,8 +58,8 @@ class SalesforceOAuthController extends Controller
 
             // Persistir los tokens encriptados de Forrest en la DB para recuperación automática
             // ante limpiezas de caché (deploys, restart de Redis, etc.)
-            $tokenCacheKey = config('forrest.storage.path', 'forrest_') . 'token';
-            $refreshTokenCacheKey = config('forrest.storage.path', 'forrest_') . 'refresh_token';
+            $tokenCacheKey = config('forrest.storage.path', 'forrest_').'token';
+            $refreshTokenCacheKey = config('forrest.storage.path', 'forrest_').'refresh_token';
 
             $tokenBackup = \Illuminate\Support\Facades\Cache::get($tokenCacheKey);
             $refreshTokenBackup = \Illuminate\Support\Facades\Cache::get($refreshTokenCacheKey);
@@ -81,13 +82,13 @@ class SalesforceOAuthController extends Controller
             \Illuminate\Support\Facades\Cache::put('salesforce_oauth_just_connected', true, now()->addMinutes(5));
 
             return redirect('/admin/site-settings');
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             Log::error('Salesforce OAuth: Error en callback', [
                 'error' => $e->getMessage(),
             ]);
 
             return redirect('/admin/site-settings')
-                ->withErrors(['salesforce' => 'Error al procesar autorización: ' . $e->getMessage()]);
+                ->withErrors(['salesforce' => 'Error al procesar autorización: '.$e->getMessage()]);
         }
     }
 }

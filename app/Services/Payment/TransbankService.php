@@ -4,6 +4,7 @@ namespace App\Services\Payment;
 
 use App\Contracts\PaymentGatewayInterface;
 use App\Models\Payment;
+use Exception;
 use Illuminate\Support\Facades\Log;
 use Transbank\Webpay\WebpayPlus;
 use Transbank\Webpay\WebpayPlus\MallTransaction;
@@ -237,7 +238,7 @@ class TransbankService implements PaymentGatewayInterface
                 'token' => $token,
                 'url' => $url,
             ];
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Transbank: Error al crear transacción', [
                 'error' => $e->getMessage(),
                 'data' => $data,
@@ -336,7 +337,7 @@ class TransbankService implements PaymentGatewayInterface
             ]);
 
             return $result;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Transbank: Error al confirmar transacción', [
                 'token' => $token,
                 'error' => $e->getMessage(),
@@ -404,7 +405,7 @@ class TransbankService implements PaymentGatewayInterface
                 'authorization_code' => $authorizationCode,
                 'response_code' => $responseCode,
             ];
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Transbank: Error al consultar estado', [
                 'token' => $transactionId,
                 'error' => $e->getMessage(),
@@ -466,7 +467,7 @@ class TransbankService implements PaymentGatewayInterface
                 'balance' => $response->getBalance() ?? null,
                 'response_code' => $response->getResponseCode(),
             ];
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Transbank: Error al procesar reembolso', [
                 'token' => $transactionId,
                 'amount' => $amount,

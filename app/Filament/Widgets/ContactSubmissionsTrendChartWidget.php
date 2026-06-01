@@ -5,6 +5,7 @@ namespace App\Filament\Widgets;
 use App\Models\ContactSubmission;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Facades\Schema;
+use Throwable;
 
 class ContactSubmissionsTrendChartWidget extends ChartWidget
 {
@@ -38,7 +39,7 @@ class ContactSubmissionsTrendChartWidget extends ChartWidget
                     ->whereDate('created_at', $day['date'])
                     ->count();
             });
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return $this->emptyData();
         }
 

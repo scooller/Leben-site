@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use Exception;
 use Illuminate\Console\Command;
 use Omniphx\Forrest\Exceptions\MissingKeyException;
 use Omniphx\Forrest\Providers\Laravel\Facades\Forrest;
@@ -37,7 +38,7 @@ class TestSalesforceAuth extends Command
             $this->error('Verifica que SF_CONSUMER_KEY y SF_CONSUMER_SECRET estén configurados en .env');
 
             return Command::FAILURE;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->error('✗ Error: '.$e->getMessage());
             $this->error('Tipo: '.get_class($e));
 

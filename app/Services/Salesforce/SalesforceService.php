@@ -5,10 +5,13 @@ namespace App\Services\Salesforce;
 use App\Exceptions\SalesforceTokenExpiredException;
 use App\Models\Proyecto;
 use App\Models\SiteSetting;
+use Exception;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Omniphx\Forrest\Exceptions\MissingRefreshTokenException;
 use Omniphx\Forrest\Providers\Laravel\Facades\Forrest;
+use Throwable;
 
 class SalesforceService
 {
@@ -38,7 +41,7 @@ class SalesforceService
                 $result = Forrest::query($soql);
 
                 return $result['records'] ?? [];
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 if ($this->isRefreshTokenExpiredException($e)) {
                     Log::critical('Salesforce: Token OAuth inválido o expirado durante query SOQL. Se requiere reconexión manual.', [
                         ...$this->oauthTokenFailureContext($e, 'query', [
@@ -95,7 +98,7 @@ class SalesforceService
             ]);
 
             return $response;
-        } catch (\Throwable $firstException) {
+        } catch (Throwable $firstException) {
             if ($this->isRefreshTokenExpiredException($firstException)) {
                 Log::critical('Salesforce: Token OAuth inválido o expirado al crear Case. Se requiere reconexión manual.', [
                     ...$this->oauthTokenFailureContext($firstException, 'create_case', [
@@ -134,7 +137,7 @@ class SalesforceService
                 ]);
 
                 return $response;
-            } catch (\Throwable $secondException) {
+            } catch (Throwable $secondException) {
                 Log::error('Salesforce: Error creando Case tras re-autenticación', [
                     'error' => $secondException->getMessage(),
                     'subject' => $payload['Subject'] ?? null,
@@ -178,7 +181,7 @@ class SalesforceService
             ]);
 
             return $response;
-        } catch (\Throwable $firstException) {
+        } catch (Throwable $firstException) {
             if ($this->isRefreshTokenExpiredException($firstException)) {
                 Log::critical('Salesforce: Token OAuth inválido o expirado al crear Lead. Se requiere reconexión manual.', [
                     ...$this->oauthTokenFailureContext($firstException, 'create_lead_first_attempt', [
@@ -274,7 +277,7 @@ class SalesforceService
                 ]);
 
                 return $response;
-            } catch (\Throwable $secondException) {
+            } catch (Throwable $secondException) {
                 if ($this->isRefreshTokenExpiredException($secondException)) {
                     Log::critical('Salesforce: Token OAuth inválido o expirado tras re-auth al crear Lead. Se requiere reconexión manual.', [
                         ...$this->oauthTokenFailureContext($secondException, 'create_lead_after_reauth', [
@@ -357,7 +360,7 @@ class SalesforceService
         }
     }
 
-    private function extractInvalidLeadField(\Throwable $exception): ?string
+    private function extractInvalidLeadField(Throwable $exception): ?string
     {
         $message = $exception->getMessage();
 
@@ -452,7 +455,7 @@ class SalesforceService
             }
 
             return $creatableFields;
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             Log::debug('Salesforce: No se pudo obtener describe de Lead, se omite filtro preventivo', [
                 'error' => $exception->getMessage(),
             ]);
@@ -465,7 +468,7 @@ class SalesforceService
      * @param  array<string, mixed>  $payload
      * @return array{payload: array<string, mixed>, removed_fields: list<string>}
      */
-    private function removeUnavailableLeadFields(array $payload, \Throwable $exception): array
+    private function removeUnavailableLeadFields(array $payload, Throwable $exception): array
     {
         $candidateFields = [];
 
@@ -562,7 +565,7 @@ class SalesforceService
     /**
      * @return list<string>
      */
-    private function extractNonWritableLeadFields(\Throwable $exception): array
+    private function extractNonWritableLeadFields(Throwable $exception): array
     {
         if (! method_exists($exception, 'getResponse')) {
             return [];
@@ -609,7 +612,7 @@ class SalesforceService
      * @param  array<string, mixed>  $payload
      * @return array{payload: array<string, mixed>, applied: bool, owner_id: string|null}
      */
-    private function applyLeadOwnerFallbackOnFlowError(array $payload, \Throwable $exception): array
+    private function applyLeadOwnerFallbackOnFlowError(array $payload, Throwable $exception): array
     {
         if (! $this->isLeadFlowOwnerBlankError($exception)) {
             return [
@@ -674,7 +677,7 @@ class SalesforceService
         return $normalized;
     }
 
-    private function isLeadFlowOwnerBlankError(\Throwable $exception): bool
+    private function isLeadFlowOwnerBlankError(Throwable $exception): bool
     {
         foreach ($this->extractSalesforceErrorItems($exception) as $errorItem) {
             $errorCode = (string) ($errorItem['errorCode'] ?? '');
@@ -696,7 +699,7 @@ class SalesforceService
     /**
      * @return list<array<string, mixed>>
      */
-    private function extractSalesforceErrorItems(\Throwable $exception): array
+    private function extractSalesforceErrorItems(Throwable $exception): array
     {
         if (! method_exists($exception, 'getResponse')) {
             return [];
@@ -779,13 +782,13 @@ class SalesforceService
             $siteSettings->update(['extra_settings' => $extraSettings]);
 
             return true;
-        } catch (\Omniphx\Forrest\Exceptions\MissingRefreshTokenException $e) {
+        } catch (MissingRefreshTokenException $e) {
             Log::critical('Salesforce: tryAutoReconnect - MissingRefreshTokenException. El backup de refresh_token no pudo restaurarse correctamente.', [
                 'error' => $e->getMessage(),
             ]);
 
             return false;
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             if ($this->isRefreshTokenExpiredException($e)) {
                 Log::critical('Salesforce: tryAutoReconnect - invalid_grant: el refresh_token de Salesforce expiró o fue revocado. Reconexión manual requerida.', [
                     ...$this->oauthTokenFailureContext($e, 'tryAutoReconnect'),
@@ -828,7 +831,7 @@ class SalesforceService
                     Log::info('Salesforce: updateTokenBackup - refresh_token rotado detectado y sincronizado en caché y DB.');
                 }
             }
-        } catch (\Throwable) {
+        } catch (Throwable) {
             // Ignorar errores de desencriptado — continuar con backup existente
         }
 
@@ -876,7 +879,7 @@ class SalesforceService
         try {
             Forrest::authenticate();
             Log::debug('Salesforce: Autenticación exitosa');
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             if ($this->isRefreshTokenExpiredException($e)) {
                 Log::critical('Salesforce: OAuth devolvió invalid_grant durante authenticate(). Se requiere reconexión manual.', [
                     ...$this->oauthTokenFailureContext($e, 'authenticate'),
@@ -894,7 +897,7 @@ class SalesforceService
         }
     }
 
-    private function isRefreshTokenExpiredException(\Throwable $exception): bool
+    private function isRefreshTokenExpiredException(Throwable $exception): bool
     {
         $message = strtolower($exception->getMessage());
 
@@ -918,7 +921,7 @@ class SalesforceService
      * @param  array<string, mixed>  $extraContext
      * @return array<string, mixed>
      */
-    private function oauthTokenFailureContext(\Throwable $exception, string $operation, array $extraContext = []): array
+    private function oauthTokenFailureContext(Throwable $exception, string $operation, array $extraContext = []): array
     {
         $oauthPayload = $this->extractOAuthErrorPayload($exception);
 
@@ -926,7 +929,7 @@ class SalesforceService
 
         try {
             $hasToken = Forrest::hasToken();
-        } catch (\Throwable) {
+        } catch (Throwable) {
             $hasToken = null;
         }
 
@@ -984,7 +987,7 @@ class SalesforceService
     /**
      * @return array<string, mixed>
      */
-    private function extractOAuthErrorPayload(\Throwable $exception): array
+    private function extractOAuthErrorPayload(Throwable $exception): array
     {
         if (! method_exists($exception, 'getResponse')) {
             return [];
@@ -1107,7 +1110,7 @@ class SalesforceService
                         'proyecto_id' => $entry['Proyecto__c'] ?? null,
                     ];
                 }, $entries);
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 // Re-autenticar si el token expiró o no hay recursos disponibles
                 Log::debug('Salesforce: Re-autenticando plantas debido a: ' . $e->getMessage());
                 $this->authenticate();
@@ -1265,7 +1268,7 @@ class SalesforceService
                         'entrega_inmediata' => (bool) ($entry['Entrega_Inmediata__c'] ?? false),
                     ];
                 }, $entries);
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 $this->authenticate();
                 $result = Forrest::query($soql);
                 $entries = $result['records'] ?? [];
@@ -1656,7 +1659,7 @@ class SalesforceService
             if (preg_match('/\/id\/([a-zA-Z0-9]{15,18})\//', $identityUrl, $matches) === 1) {
                 return $matches[1];
             }
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return null;
         }
 
@@ -1671,7 +1674,7 @@ class SalesforceService
             $orgId = $records[0]['Id'] ?? null;
 
             return is_string($orgId) && trim($orgId) !== '' ? $orgId : null;
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return null;
         }
     }
@@ -1684,7 +1687,7 @@ class SalesforceService
 
         try {
             return (string) Carbon::parse($lastModifiedAt)->getTimestampMs();
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return null;
         }
     }

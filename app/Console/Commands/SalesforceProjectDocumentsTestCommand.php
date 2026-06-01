@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Services\Salesforce\SalesforceService;
 use Illuminate\Console\Command;
+use Throwable;
 
 class SalesforceProjectDocumentsTestCommand extends Command
 {
@@ -64,7 +65,7 @@ class SalesforceProjectDocumentsTestCommand extends Command
             $this->info('Documentos recuperados: '.count($documents));
 
             return self::SUCCESS;
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             $this->error('Error consultando documentos en Salesforce: '.$exception->getMessage());
 
             return self::FAILURE;

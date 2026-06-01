@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use Exception;
 use Illuminate\Console\Command;
 use Omniphx\Forrest\Providers\Laravel\Facades\Forrest;
 
@@ -81,7 +82,7 @@ class TestProduct2Query extends Command
 
             return Command::SUCCESS;
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->error('❌ Error: '.$e->getMessage());
             $this->error('Tipo: '.get_class($e));
 

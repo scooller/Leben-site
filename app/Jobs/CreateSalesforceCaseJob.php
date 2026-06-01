@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Omniphx\Forrest\Exceptions\MissingResourceException;
 use Omniphx\Forrest\Providers\Laravel\Facades\Forrest;
+use Throwable;
 
 class CreateSalesforceCaseJob implements ShouldQueue
 {
@@ -115,7 +116,7 @@ class CreateSalesforceCaseJob implements ShouldQueue
                 'salesforce_errors' => $response['errors'] ?? null,
                 'salesforce_response' => $response,
             ]);
-        } catch (\Omniphx\Forrest\Exceptions\MissingResourceException $exception) {
+        } catch (MissingResourceException $exception) {
             // Token no disponible — intentar auto-reconexión como último recurso
             Log::warning('CreateSalesforceCaseJob: MissingResourceException durante la operación. Intentando auto-reconexión.', [
                 'contact_submission_id' => $submission->id,
@@ -160,7 +161,7 @@ class CreateSalesforceCaseJob implements ShouldQueue
                 'salesforce_synced_at' => now(),
                 'salesforce_sync_trigger' => $syncTrigger,
             ]);
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             $errorMessage = Str::limit($exception->getMessage(), 65535, '');
 
             $submission->update([
@@ -251,7 +252,7 @@ class CreateSalesforceCaseJob implements ShouldQueue
             Mail::raw($message, static function ($mail) use ($recipient, $subject): void {
                 $mail->to($recipient)->subject($subject);
             });
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             Log::warning('CreateSalesforceCaseJob: No se pudo enviar alerta de desconexión OAuth de Salesforce', [
                 'recipient' => $recipient,
                 'error' => $exception->getMessage(),

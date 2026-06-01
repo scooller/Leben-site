@@ -6,6 +6,7 @@ use App\Services\Salesforce\SalesforceService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Omniphx\Forrest\Providers\Laravel\Facades\Forrest;
+use Throwable;
 
 class RefreshSalesforceTokenCommand extends Command
 {
@@ -53,7 +54,7 @@ class RefreshSalesforceTokenCommand extends Command
             $this->error('Auto-reconexión fallida. Se requiere reconexión manual en /admin/site-settings → "Conectar con Salesforce".');
 
             return self::FAILURE;
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $errorMessage = strtolower($e->getMessage());
 
             if (str_contains($errorMessage, 'invalid_grant') && str_contains($errorMessage, 'expired access/refresh token')) {
@@ -67,7 +68,7 @@ class RefreshSalesforceTokenCommand extends Command
             }
 
             Log::error('salesforce:refresh-token - Error inesperado.', ['error' => $e->getMessage()]);
-            $this->error('Error inesperado: ' . $e->getMessage());
+            $this->error('Error inesperado: '.$e->getMessage());
 
             return self::FAILURE;
         }

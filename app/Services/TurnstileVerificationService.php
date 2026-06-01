@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class TurnstileVerificationService
 {
@@ -34,7 +35,7 @@ class TurnstileVerificationService
             }
 
             return (bool) $response->json('success', false);
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             Log::warning('Turnstile verification exception', [
                 'message' => $exception->getMessage(),
             ]);
