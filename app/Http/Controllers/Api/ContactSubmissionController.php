@@ -51,7 +51,6 @@ class ContactSubmissionController extends Controller
         if ($leadEnabled) {
             Log::info('ContactSubmissionController: Iniciando sincronización Salesforce Lead', [
                 'contact_submission_id' => $submission->id,
-                'email' => $submission->email,
             ]);
 
             CreateSalesforceCaseJob::dispatchSync($submission, 'automatic');
@@ -60,7 +59,7 @@ class ContactSubmissionController extends Controller
                 'contact_submission_id' => $submission->id,
             ]);
         } else {
-            Log::warning('ContactSubmissionController: Salesforce Lead deshabilitado, no se enviará a Salesforce', [
+            Log::info('ContactSubmissionController: Salesforce Lead deshabilitado, no se enviará a Salesforce', [
                 'contact_submission_id' => $submission->id,
             ]);
         }
