@@ -130,34 +130,32 @@ Route::prefix('v1')->group(function () {
     Route::get('/payments/public-status/{id}', [App\Http\Controllers\Api\PaymentController::class, 'publicStatus']);
 
     // Catálogo público (el bloqueo por mostrar_plantas se maneja en frontend)
-    Route::middleware(['token.origin'])->group(function () {
-        Route::get('/proyectos', [App\Http\Controllers\Api\ProyectoController::class, 'index']);
-        Route::get('/proyectos/{id}', [App\Http\Controllers\Api\ProyectoController::class, 'show']);
+    Route::get('/proyectos', [App\Http\Controllers\Api\ProyectoController::class, 'index']);
+    Route::get('/proyectos/{id}', [App\Http\Controllers\Api\ProyectoController::class, 'show']);
 
-        Route::get('/plantas', [App\Http\Controllers\Api\PlantController::class, 'index']);
-        Route::get('/plantas/filtros-ubicacion', [App\Http\Controllers\Api\PlantController::class, 'locationFilters']);
-        Route::get('/plantas/proyecto/{projectSlug}/unidad/{unitName}', [App\Http\Controllers\Api\PlantController::class, 'showByProjectSlugAndUnitName']);
-        Route::get('/plantas/{id}', [App\Http\Controllers\Api\PlantController::class, 'show']);
+    Route::get('/plantas', [App\Http\Controllers\Api\PlantController::class, 'index']);
+    Route::get('/plantas/filtros-ubicacion', [App\Http\Controllers\Api\PlantController::class, 'locationFilters']);
+    Route::get('/plantas/proyecto/{projectSlug}/unidad/{unitName}', [App\Http\Controllers\Api\PlantController::class, 'showByProjectSlugAndUnitName']);
+    Route::get('/plantas/{id}', [App\Http\Controllers\Api\PlantController::class, 'show']);
 
-        Route::get('/brokers', [App\Http\Controllers\Api\BrokerController::class, 'index']);
-        Route::get('/brokers/{broker}/alliances', [App\Http\Controllers\Api\BrokerController::class, 'alliances']);
-        Route::get('/brokers/{broker}/events', [App\Http\Controllers\Api\BrokerController::class, 'events']);
-        Route::get('/brokers/{broker}/galleries', [App\Http\Controllers\Api\BrokerController::class, 'galleries']);
-        Route::get('/brokers/{broker}/galleries/{gallery}', [App\Http\Controllers\Api\BrokerController::class, 'showGallery']);
-    });
+    Route::get('/brokers', [App\Http\Controllers\Api\BrokerController::class, 'index']);
+    Route::get('/brokers/{broker}/alliances', [App\Http\Controllers\Api\BrokerController::class, 'alliances']);
+    Route::get('/brokers/{broker}/events', [App\Http\Controllers\Api\BrokerController::class, 'events']);
+    Route::get('/brokers/{broker}/galleries', [App\Http\Controllers\Api\BrokerController::class, 'galleries']);
+    Route::get('/brokers/{broker}/galleries/{gallery}', [App\Http\Controllers\Api\BrokerController::class, 'showGallery']);
 
     // Endpoints públicos mínimos
 });
 
 // Rutas protegidas (requieren autenticación)
-Route::prefix('v1')->middleware(['auth:sanctum', 'token.origin'])->group(function () {
-    Route::get('/production-sync/export', [App\Http\Controllers\Api\ProductionSyncController::class, 'export']);
+Route::prefix('v1')->middleware(['auth:sanctum'])->group(function () {
+    Route::get('/production-sync/export', [App\Http\Controllers\Api\ProductionSyncController::class, 'export'])->middleware('token.origin');
 
     // Usuario autenticado
     Route::get('/me', function (Request $request) {
         return $request->user();
-    });
-    Route::post('/logout', [App\Http\Controllers\Api\AuthController::class, 'logout']);
+    })->middleware('token.origin');
+    Route::post('/logout', [App\Http\Controllers\Api\AuthController::class, 'logout'])->middleware('token.origin');
 
     // Checkout
     Route::post('/checkout', [App\Http\Controllers\Api\CheckoutController::class, 'initiate']);

@@ -3,8 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\SiteSetting;
+use App\Models\User;
 use Awcodes\Curator\Models\Media;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Tests\TestCase;
 
 class SiteSettingFrontendConfigTest extends TestCase
@@ -98,7 +100,11 @@ class SiteSettingFrontendConfigTest extends TestCase
             'footer_legal_text' => '<p>Texto legal de prueba</p>',
         ]);
 
-        $payload = SiteSetting::forFrontend();
+        $token = User::factory()->create()->createToken('site-config-test')->plainTextToken;
+        $request = Request::create('/api/v1/site-config', 'GET');
+        $request->headers->set('Authorization', 'Bearer ' . $token);
+
+        $payload = SiteSetting::forFrontend($request);
 
         $this->assertArrayHasKey('brand_color', $payload);
         $this->assertSame('#112233', $payload['brand_color']);

@@ -3,11 +3,14 @@
 namespace App\Services\Salesforce;
 
 use App\Exceptions\SalesforceTokenExpiredException;
+use App\Models\Broker;
 use App\Models\Proyecto;
+use App\Models\SalesforceOpportunity;
 use App\Models\SiteSetting;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use InvalidArgumentException;
 use Omniphx\Forrest\Providers\Laravel\Facades\Forrest;
 
 class SalesforceService
@@ -54,13 +57,337 @@ class SalesforceService
                 }
 
                 // Re-autenticar si el token expiró o no hay recursos disponibles
-                Log::debug('Salesforce: Re-autenticando debido a: '.$e->getMessage());
+                Log::debug('Salesforce: Re-autenticando debido a: ' . $e->getMessage());
                 $this->authenticate();
                 $result = Forrest::query($soql);
 
                 return $result['records'] ?? [];
             }
         });
+    }
+
+    /**
+     * Ejecuta una consulta SOQL sin cache para diagnostico/manual query runner.
+     *
+     * @return array{query:string,limit:int,total_size:int,done:bool,records:array<int,array<string,mixed>>}
+     */
+    public function runSoqlWithoutCache(string $soql): array
+    {
+        $normalizedSoql = trim($soql);
+
+        if (! str_starts_with(strtoupper($normalizedSoql), 'SELECT ')) {
+            throw new InvalidArgumentException('La consulta SOQL debe iniciar con SELECT.');
+        }
+
+        if (preg_match('/\bLIMIT\s+(\d+)\b/i', $normalizedSoql, $matches) !== 1) {
+            throw new InvalidArgumentException('La consulta SOQL debe incluir LIMIT para evitar ejecuciones sin tope.');
+        }
+
+        $limit = (int) ($matches[1] ?? 0);
+        if ($limit <= 0) {
+            throw new InvalidArgumentException('La consulta SOQL debe incluir LIMIT mayor a cero.');
+        }
+
+        try {
+            $result = Forrest::query($normalizedSoql);
+        } catch (\Throwable $exception) {
+            Log::warning('Salesforce: runSoqlWithoutCache fallo en primer intento; se reautentica y reintenta.', [
+                'error' => $exception->getMessage(),
+                'soql_hash' => md5($normalizedSoql),
+            ]);
+
+            $this->authenticate();
+            $result = Forrest::query($normalizedSoql);
+        }
+
+        $records = is_array($result['records'] ?? null) ? $result['records'] : [];
+
+        return [
+            'query' => $normalizedSoql,
+            'limit' => $limit,
+            'total_size' => (int) ($result['totalSize'] ?? count($records)),
+            'done' => (bool) ($result['done'] ?? true),
+            'records' => $records,
+        ];
+    }
+
+    /**
+     * Sincroniza snapshots de oportunidades desde Salesforce y actualiza métricas comerciales en brokers.
+     *
+     * @return array{success:bool,message:string,synced:int,created:int,updated:int,watermark:string|null}
+     */
+    public function syncOpportunitiesIncrementally(?Carbon $since = null, int $limit = 2000): array
+    {
+        $normalizedLimit = max(1, min($limit, 2000));
+        $watermark = $since?->copy()->utc();
+
+        if ($watermark === null) {
+            $storedWatermark = data_get(SiteSetting::current()->extra_settings, 'salesforce_sync.opportunities_last_system_modstamp');
+
+            if (is_string($storedWatermark) && trim($storedWatermark) !== '') {
+                try {
+                    $watermark = Carbon::parse($storedWatermark)->utc();
+                } catch (\Throwable) {
+                    $watermark = null;
+                }
+            }
+        }
+
+        $select = [
+            'Id',
+            'Name',
+            'Broker__c',
+            'Broker__r.Name',
+            'Proyecto__c',
+            'Proyecto__r.Name',
+            'StageName',
+            'ForecastCategoryName',
+            'IsWon',
+            'IsClosed',
+            'IsDeleted',
+            'IsPrivate',
+            'CreatedDate',
+            'LastModifiedDate',
+            'SystemModstamp',
+            'CloseDate',
+            'Amount',
+            'CurrencyIsoCode',
+            'Probability',
+            'AccountId',
+            'ContactId',
+            'OwnerId',
+        ];
+
+        $filters = ['Id != null'];
+        if ($watermark instanceof Carbon) {
+            $filters[] = "SystemModstamp > {$watermark->format('Y-m-d\\TH:i:s\\Z')}";
+        }
+
+        $soql = sprintf(
+            'SELECT %s FROM Opportunity WHERE %s ORDER BY SystemModstamp ASC LIMIT %d',
+            implode(', ', $select),
+            implode(' AND ', $filters),
+            $normalizedLimit
+        );
+
+        try {
+            $response = Forrest::query($soql);
+        } catch (\Throwable $exception) {
+            Log::warning('Salesforce: fallo inicial al sincronizar oportunidades, reautenticando.', [
+                'error' => $exception->getMessage(),
+                'soql_hash' => md5($soql),
+            ]);
+
+            $this->authenticate();
+            $response = Forrest::query($soql);
+        }
+
+        $records = is_array($response['records'] ?? null) ? $response['records'] : [];
+
+        $created = 0;
+        $updated = 0;
+        $lastSystemModstamp = $watermark;
+
+        foreach ($records as $record) {
+            if (! is_array($record)) {
+                continue;
+            }
+
+            $salesforceId = trim((string) ($record['Id'] ?? ''));
+            if ($salesforceId === '') {
+                continue;
+            }
+
+            $brokerSalesforceId = $this->normalizeSalesforceId($record['Broker__c'] ?? null);
+            $proyectoSalesforceId = $this->normalizeSalesforceId($record['Proyecto__c'] ?? null);
+
+            $brokerId = null;
+            if ($brokerSalesforceId !== null) {
+                $brokerId = Broker::query()
+                    ->where('salesforce_id', $brokerSalesforceId)
+                    ->value('id');
+            }
+
+            $proyectoId = null;
+            if ($proyectoSalesforceId !== null) {
+                $proyectoId = Proyecto::query()
+                    ->where('salesforce_id', $proyectoSalesforceId)
+                    ->value('id');
+            }
+
+            $snapshot = SalesforceOpportunity::query()->firstWhere('salesforce_id', $salesforceId);
+
+            $payload = [
+                'broker_id' => $brokerId,
+                'proyecto_id' => $proyectoId,
+                'broker_salesforce_id' => $brokerSalesforceId,
+                'proyecto_salesforce_id' => $proyectoSalesforceId,
+                'account_salesforce_id' => $this->normalizeSalesforceId($record['AccountId'] ?? null),
+                'contact_salesforce_id' => $this->normalizeSalesforceId($record['ContactId'] ?? null),
+                'owner_salesforce_id' => $this->normalizeSalesforceId($record['OwnerId'] ?? null),
+                'name' => (string) ($record['Name'] ?? ''),
+                'broker_name' => data_get($record, 'Broker__r.Name'),
+                'proyecto_name' => data_get($record, 'Proyecto__r.Name'),
+                'stage_name' => data_get($record, 'StageName'),
+                'forecast_category_name' => data_get($record, 'ForecastCategoryName'),
+                'currency_iso_code' => data_get($record, 'CurrencyIsoCode'),
+                'amount' => is_numeric($record['Amount'] ?? null) ? (float) $record['Amount'] : null,
+                'probability' => is_numeric($record['Probability'] ?? null) ? (float) $record['Probability'] : null,
+                'is_closed' => (bool) ($record['IsClosed'] ?? false),
+                'is_won' => (bool) ($record['IsWon'] ?? false),
+                'is_deleted' => (bool) ($record['IsDeleted'] ?? false),
+                'is_private' => (bool) ($record['IsPrivate'] ?? false),
+                'close_date' => $this->parseDateValue($record['CloseDate'] ?? null),
+                'salesforce_created_at' => $this->parseDateTimeValue($record['CreatedDate'] ?? null),
+                'salesforce_last_modified_at' => $this->parseDateTimeValue($record['LastModifiedDate'] ?? null),
+                'salesforce_system_modstamp' => $this->parseDateTimeValue($record['SystemModstamp'] ?? null),
+                'synced_at' => now(),
+                'payload' => $record,
+            ];
+
+            if ($snapshot instanceof SalesforceOpportunity) {
+                $snapshot->update($payload);
+                $updated++;
+            } else {
+                SalesforceOpportunity::query()->create([
+                    'salesforce_id' => $salesforceId,
+                    ...$payload,
+                ]);
+                $created++;
+            }
+
+            $recordModstamp = $this->parseDateTimeValue($record['SystemModstamp'] ?? null);
+            if ($recordModstamp instanceof Carbon && ($lastSystemModstamp === null || $recordModstamp->gt($lastSystemModstamp))) {
+                $lastSystemModstamp = $recordModstamp;
+            }
+        }
+
+        if ($lastSystemModstamp instanceof Carbon) {
+            $this->storeOpportunitySyncWatermark($lastSystemModstamp);
+        }
+
+        $this->syncBrokerCommercialMetricsFromSnapshots();
+
+        $synced = $created + $updated;
+
+        return [
+            'success' => true,
+            'message' => "Sincronizacion completada. Registros procesados: {$synced}.",
+            'synced' => $synced,
+            'created' => $created,
+            'updated' => $updated,
+            'watermark' => $lastSystemModstamp?->toIso8601String(),
+        ];
+    }
+
+    public function syncBrokerCommercialMetricsFromSnapshots(): void
+    {
+        $brokers = Broker::query()->get(['id', 'salesforce_id', 'display_name']);
+        $opportunities = SalesforceOpportunity::query()
+            ->where('is_deleted', false)
+            ->where('is_private', false)
+            ->get();
+
+        $windowStart = now()->subDays(30);
+
+        foreach ($brokers as $broker) {
+            $resolvedName = trim((string) ($broker->display_name ?? ''));
+            $query = $opportunities->filter(function (SalesforceOpportunity $opportunity) use ($broker, $resolvedName): bool {
+                $matchesBySalesforceId = filled($broker->salesforce_id)
+                    && $opportunity->broker_salesforce_id === $broker->salesforce_id;
+
+                $matchesByName = $resolvedName !== ''
+                    && strcasecmp((string) ($opportunity->broker_name ?? ''), $resolvedName) === 0;
+
+                return $matchesBySalesforceId || $matchesByName;
+            })->values();
+
+            $total = $query->count();
+            $open = $query->where('is_closed', false)->count();
+            $won = $query->where('is_won', true)->count();
+            $lost = $query->where('is_closed', true)->where('is_won', false)->count();
+
+            $windowed = $query->filter(function (SalesforceOpportunity $opportunity) use ($windowStart): bool {
+                return $opportunity->salesforce_created_at instanceof Carbon
+                    && $opportunity->salesforce_created_at->gte($windowStart);
+            })->values();
+
+            $total30 = $windowed->count();
+            $won30 = $windowed->where('is_won', true)->count();
+            $pipelineAmount30 = (float) $windowed->sum(fn(SalesforceOpportunity $opportunity): float => (float) ($opportunity->amount ?? 0));
+            $wonAmount30 = (float) $windowed->where('is_won', true)->sum(fn(SalesforceOpportunity $opportunity): float => (float) ($opportunity->amount ?? 0));
+
+            $lastOpportunity = $query
+                ->sortByDesc(fn(SalesforceOpportunity $opportunity) => $opportunity->salesforce_system_modstamp?->timestamp ?? 0)
+                ->first();
+
+            $projectsPortfolio = $query
+                ->pluck('proyecto_name')
+                ->filter(fn(mixed $name): bool => is_string($name) && trim($name) !== '')
+                ->map(fn(string $name): string => trim($name))
+                ->unique()
+                ->sort()
+                ->values()
+                ->all();
+
+            $broker->update([
+                'opportunities_total' => $total,
+                'opportunities_open' => $open,
+                'opportunities_won' => $won,
+                'opportunities_lost' => $lost,
+                'opportunities_total_30d' => $total30,
+                'opportunities_won_30d' => $won30,
+                'closure_rate_30d' => $total30 > 0 ? round(($won30 / $total30) * 100, 2) : null,
+                'pipeline_amount_30d' => round($pipelineAmount30, 2),
+                'won_amount_30d' => round($wonAmount30, 2),
+                'last_opportunity_at' => $lastOpportunity?->salesforce_system_modstamp,
+                'last_stage_name' => $lastOpportunity?->stage_name,
+                'projects_portfolio' => $projectsPortfolio,
+                'salesforce_synced_at' => now(),
+            ]);
+        }
+    }
+
+    private function parseDateValue(mixed $value): ?string
+    {
+        if (! is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($value)->toDateString();
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    private function parseDateTimeValue(mixed $value): ?Carbon
+    {
+        if (! is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($value)->utc();
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    private function storeOpportunitySyncWatermark(Carbon $watermark): void
+    {
+        $settings = SiteSetting::current();
+        $extraSettings = is_array($settings->extra_settings) ? $settings->extra_settings : [];
+
+        data_set(
+            $extraSettings,
+            'salesforce_sync.opportunities_last_system_modstamp',
+            $watermark->toIso8601String()
+        );
+
+        $settings->update([
+            'extra_settings' => $extraSettings,
+        ]);
     }
 
     /**
@@ -412,9 +739,9 @@ class SalesforceService
 
         if (is_array($cached) && $cached !== []) {
             return array_values(array_unique(array_filter(array_map(
-                static fn (mixed $field): string => trim((string) $field),
+                static fn(mixed $field): string => trim((string) $field),
                 $cached
-            ), static fn (string $field): bool => $field !== '')));
+            ), static fn(string $field): bool => $field !== '')));
         }
 
         try {
@@ -476,9 +803,9 @@ class SalesforceService
 
         $candidateFields = array_merge($candidateFields, $this->extractNonWritableLeadFields($exception));
         $candidateFields = array_values(array_unique(array_filter(array_map(
-            static fn (string $field): string => trim($field),
+            static fn(string $field): string => trim($field),
             $candidateFields
-        ), static fn (string $field): bool => $field !== '')));
+        ), static fn(string $field): bool => $field !== '')));
 
         $removedFields = [];
 
@@ -528,9 +855,9 @@ class SalesforceService
         }
 
         return array_values(array_unique(array_filter(array_map(
-            static fn (mixed $field): string => trim((string) $field),
+            static fn(mixed $field): string => trim((string) $field),
             $cached
-        ), static fn (string $field): bool => $field !== '')));
+        ), static fn(string $field): bool => $field !== '')));
     }
 
     /**
@@ -539,9 +866,9 @@ class SalesforceService
     private function rememberUnavailableLeadFields(array $fields): void
     {
         $normalized = array_values(array_unique(array_filter(array_map(
-            static fn (string $field): string => trim($field),
+            static fn(string $field): string => trim($field),
             $fields
-        ), static fn (string $field): bool => $field !== '')));
+        ), static fn(string $field): bool => $field !== '')));
 
         if ($normalized === []) {
             return;
@@ -602,7 +929,7 @@ class SalesforceService
             }
         }
 
-        return array_values(array_unique(array_filter($fields, static fn (string $field): bool => $field !== '')));
+        return array_values(array_unique(array_filter($fields, static fn(string $field): bool => $field !== '')));
     }
 
     /**
@@ -749,7 +1076,7 @@ class SalesforceService
                 );
             }
 
-            Log::error('Salesforce: Error en autenticación - '.$e->getMessage());
+            Log::error('Salesforce: Error en autenticación - ' . $e->getMessage());
             throw $e;
         }
     }
@@ -870,7 +1197,7 @@ class SalesforceService
      */
     protected function generateCacheKey(string $soql): string
     {
-        return 'salesforce:soql:'.md5($soql);
+        return 'salesforce:soql:' . md5($soql);
     }
 
     /**
@@ -912,7 +1239,7 @@ class SalesforceService
     {
         $productTypes = $this->getConfiguredPlantProductTypes();
         $productTypesInClause = implode(',', array_map(
-            static fn (string $type): string => "'".str_replace("'", "\\'", $type)."'",
+            static fn(string $type): string => "'" . str_replace("'", "\\'", $type) . "'",
             $productTypes
         ));
         $projectIds = $this->normalizeSalesforceIdList($projectSalesforceIds ?? []);
@@ -922,19 +1249,19 @@ class SalesforceService
         }
 
         $projectIdsInClause = implode(',', array_map(
-            static fn (string $id): string => "'".str_replace("'", "\\'", $id)."'",
+            static fn(string $id): string => "'" . str_replace("'", "\\'", $id) . "'",
             $projectIds
         ));
 
         // SOQL para obtener plantas desde Product2
         $soql = 'SELECT Id, Name, ProductCode, Orientacion2__c, Programa__c, Programa2__c, Modelo__r.Name, Modelo__r.Programa__c, Piso__c, '
-            .'Precio_Base__c, Precio_Lista__c, Porcentaje_maximo_de_unidad__c, '
-            .'Superficie_Total_Producto_Principal__c, Superficie_Interior__c, Superficie_Util__c, '
-            .'Superficie_Terraza__c, Proyecto__c, Tipo_Producto__c '
-            .'FROM Product2 '
-            ."WHERE IsActive = true AND Estado__c = 'Disponible' AND Tipo_Producto__c IN ({$productTypesInClause}) AND Proyecto__c IN ({$projectIdsInClause}) "
-            .'ORDER BY Name '
-            .'LIMIT 1000';
+            . 'Precio_Base__c, Precio_Lista__c, Porcentaje_maximo_de_unidad__c, '
+            . 'Superficie_Total_Producto_Principal__c, Superficie_Interior__c, Superficie_Util__c, '
+            . 'Superficie_Terraza__c, Proyecto__c, Tipo_Producto__c '
+            . 'FROM Product2 '
+            . "WHERE IsActive = true AND Estado__c = 'Disponible' AND Tipo_Producto__c IN ({$productTypesInClause}) AND Proyecto__c IN ({$projectIdsInClause}) "
+            . 'ORDER BY Name '
+            . 'LIMIT 1000';
 
         $ttl = $cacheTtl ?? $this->defaultCacheTtl;
         $cacheKey = $this->buildPlantsCacheKey($productTypes, $projectIds);
@@ -969,7 +1296,7 @@ class SalesforceService
                 }, $entries);
             } catch (\Throwable $e) {
                 // Re-autenticar si el token expiró o no hay recursos disponibles
-                Log::debug('Salesforce: Re-autenticando plantas debido a: '.$e->getMessage());
+                Log::debug('Salesforce: Re-autenticando plantas debido a: ' . $e->getMessage());
                 $this->authenticate();
                 $result = Forrest::query($soql);
                 $entries = $result['records'] ?? [];
@@ -1021,9 +1348,9 @@ class SalesforceService
         }
 
         $normalizedTypes = array_values(array_unique(array_filter(array_map(
-            static fn (mixed $type): string => strtoupper(trim((string) $type)),
+            static fn(mixed $type): string => strtoupper(trim((string) $type)),
             $configuredTypes
-        ), static fn (string $type): bool => $type !== '')));
+        ), static fn(string $type): bool => $type !== '')));
 
         return $normalizedTypes === [] ? ['DEPARTAMENTO'] : $normalizedTypes;
     }
@@ -1034,7 +1361,7 @@ class SalesforceService
      */
     private function buildPlantsCacheKey(array $productTypes, array $projectSalesforceIds): string
     {
-        return 'salesforce:plants:'.md5(implode('|', $productTypes).'::'.implode('|', $projectSalesforceIds));
+        return 'salesforce:plants:' . md5(implode('|', $productTypes) . '::' . implode('|', $projectSalesforceIds));
     }
 
     /**
@@ -1078,15 +1405,15 @@ class SalesforceService
         // SOQL para obtener proyectos desde Proyecto__c
         // Nota: Usamos Fecha_Recepcion_Municipal__c como proxy para fecha de entrega
         $soql = 'SELECT Id, Name, Descripci_n__c, Direccion__c, Comuna__c, Provincia__c, Region__c, '
-            .'Email__c, Telefono__c, Pagina_Web_Proyecto__c, Razon_Social__c, RUT__c, '
-            .'Fecha_Inicio_Ventas__c, Fecha_Recepcion_Municipal__c, Etapa__c, Horario_Atencion__c, '
-            .'Asesor_Responsable__c, Asesor_1__c, Asesor_2__c, '
-            .'Valor_Reserva_Exigido_Defecto_Peso__c, Valor_Reserva_Exigido_Min_Peso__c, '
-            .'Descuento_por_Defecto_Cotizaci_n_Web__c, Dscto_M_x_Prod_Principal_Porc__c, Entrega_Inmediata__c '
-            .'FROM Proyecto__c '
-            ."WHERE IsDeleted = false AND Activo__c = true AND Tipo_Producto__c = 'DEPARTAMENTO' "
-            .'ORDER BY Name '
-            .'LIMIT 1000';
+            . 'Email__c, Telefono__c, Pagina_Web_Proyecto__c, Razon_Social__c, RUT__c, '
+            . 'Fecha_Inicio_Ventas__c, Fecha_Recepcion_Municipal__c, Etapa__c, Horario_Atencion__c, '
+            . 'Asesor_Responsable__c, Asesor_1__c, Asesor_2__c, '
+            . 'Valor_Reserva_Exigido_Defecto_Peso__c, Valor_Reserva_Exigido_Min_Peso__c, '
+            . 'Descuento_por_Defecto_Cotizaci_n_Web__c, Dscto_M_x_Prod_Principal_Porc__c, Entrega_Inmediata__c '
+            . 'FROM Proyecto__c '
+            . "WHERE IsDeleted = false AND Activo__c = true AND Tipo_Producto__c = 'DEPARTAMENTO' "
+            . 'ORDER BY Name '
+            . 'LIMIT 1000';
 
         $ttl = $cacheTtl ?? $this->defaultCacheTtl;
 
@@ -1195,23 +1522,23 @@ class SalesforceService
     public function findSalesforceUsersByIds(array $salesforceUserIds, ?int $cacheTtl = null): array
     {
         $normalizedIds = array_values(array_unique(array_filter(array_map(
-            static fn (string $id): string => trim($id),
+            static fn(string $id): string => trim($id),
             $salesforceUserIds
-        ), static fn (string $id): bool => $id !== '')));
+        ), static fn(string $id): bool => $id !== '')));
 
         if ($normalizedIds === []) {
             return [];
         }
 
         $quotedIds = array_map(
-            static fn (string $id): string => "'".str_replace("'", "\\'", $id)."'",
+            static fn(string $id): string => "'" . str_replace("'", "\\'", $id) . "'",
             $normalizedIds
         );
 
         $soql = 'SELECT Id, FirstName, LastName, Email, Whatsapp_owner__c, MediumPhotoUrl, IsActive '
-            .'FROM User '
-            .'WHERE Id IN ('.implode(',', $quotedIds).') '
-            .'LIMIT 2000';
+            . 'FROM User '
+            . 'WHERE Id IN (' . implode(',', $quotedIds) . ') '
+            . 'LIMIT 2000';
 
         $records = $this->query($soql, $cacheTtl ?? $this->defaultCacheTtl);
 
@@ -1234,9 +1561,9 @@ class SalesforceService
         $quotedEmail = str_replace("'", "\\'", $normalizedEmail);
 
         $soql = 'SELECT Id, FirstName, LastName, Email, Whatsapp_owner__c, MediumPhotoUrl, IsActive '
-            .'FROM User '
-            ."WHERE Email = '{$quotedEmail}' "
-            .'LIMIT 1';
+            . 'FROM User '
+            . "WHERE Email = '{$quotedEmail}' "
+            . 'LIMIT 1';
 
         $records = $this->query($soql, $cacheTtl ?? $this->defaultCacheTtl);
 
@@ -1275,9 +1602,9 @@ class SalesforceService
 
         if (is_array($value)) {
             return array_values(array_unique(array_filter(array_map(
-                static fn (mixed $item): string => trim((string) $item),
+                static fn(mixed $item): string => trim((string) $item),
                 $value
-            ), static fn (string $item): bool => $item !== '')));
+            ), static fn(string $item): bool => $item !== '')));
         }
 
         $asString = trim((string) $value);
@@ -1289,18 +1616,18 @@ class SalesforceService
             $parts = explode(';', $asString);
 
             return array_values(array_unique(array_filter(array_map(
-                static fn (string $item): string => trim($item),
+                static fn(string $item): string => trim($item),
                 $parts
-            ), static fn (string $item): bool => $item !== '')));
+            ), static fn(string $item): bool => $item !== '')));
         }
 
         if (str_contains($asString, ',')) {
             $parts = explode(',', $asString);
 
             return array_values(array_unique(array_filter(array_map(
-                static fn (string $item): string => trim($item),
+                static fn(string $item): string => trim($item),
                 $parts
-            ), static fn (string $item): bool => $item !== '')));
+            ), static fn(string $item): bool => $item !== '')));
         }
 
         return [$asString];
@@ -1325,22 +1652,22 @@ class SalesforceService
     public function findPublicProjectDocuments(array $documentNames, ?int $cacheTtl = null): array
     {
         $names = array_values(array_unique(array_filter(array_map(
-            static fn ($name): string => trim((string) $name),
+            static fn($name): string => trim((string) $name),
             $documentNames
-        ), static fn (string $name): bool => $name !== '')));
+        ), static fn(string $name): bool => $name !== '')));
 
         if ($names === []) {
             return [];
         }
 
         $quotedNames = array_map(
-            static fn (string $name): string => "'".str_replace("'", "\\'", $name)."'",
+            static fn(string $name): string => "'" . str_replace("'", "\\'", $name) . "'",
             $names
         );
 
         $soql = 'SELECT Id, Name, Type, BodyLength, Body, LastModifiedDate FROM Document '
-            .'WHERE IsPublic = true AND Name IN ('.implode(',', $quotedNames).') '
-            .'ORDER BY Name';
+            . 'WHERE IsPublic = true AND Name IN (' . implode(',', $quotedNames) . ') '
+            . 'ORDER BY Name';
 
         $ttl = $cacheTtl ?? $this->defaultCacheTtl;
         $records = $this->query($soql, $ttl);
@@ -1366,8 +1693,8 @@ class SalesforceService
     public function findPublicCotizadorDocuments(?int $cacheTtl = null): array
     {
         $soql = 'SELECT Id, Name, Type, BodyLength, Body, LastModifiedDate FROM Document '
-            ."WHERE IsPublic = true AND (Name LIKE '% - Cotizador Portada' OR Name LIKE '% - Cotizador Logo') "
-            .'ORDER BY Name';
+            . "WHERE IsPublic = true AND (Name LIKE '% - Cotizador Portada' OR Name LIKE '% - Cotizador Logo') "
+            . 'ORDER BY Name';
 
         $ttl = $cacheTtl ?? $this->defaultCacheTtl;
         $records = $this->query($soql, $ttl);
@@ -1440,7 +1767,7 @@ class SalesforceService
                 $query['lastMod'] = $lastMod;
             }
 
-            return rtrim($publicSiteUrl, '/').'/servlet/servlet.ImageServer?'.http_build_query($query);
+            return rtrim($publicSiteUrl, '/') . '/servlet/servlet.ImageServer?' . http_build_query($query);
         }
 
         if ($bodyPath === null || trim($bodyPath) === '') {
@@ -1452,7 +1779,7 @@ class SalesforceService
             return null;
         }
 
-        return rtrim($instanceUrl, '/').'/'.ltrim($bodyPath, '/');
+        return rtrim($instanceUrl, '/') . '/' . ltrim($bodyPath, '/');
     }
 
     private function resolvePublicSiteUrl(): ?string
