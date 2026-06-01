@@ -2,6 +2,8 @@
 
 Aplicación backend-first construida con Laravel 12, Filament 5, React 19 y Web Awesome. El sistema opera como mantenedor administrativo de proyectos y plantas, con sincronización periódica contra Salesforce como sistema maestro para entidades comerciales y operacionales.
 
+Versión actual documentada: 1.9.4 (2026-06-01).
+
 ## 📋 Stack Tecnológico
 
 ### Backend
@@ -149,6 +151,8 @@ frontend/
 - **SalesforceCaseMapper** — Refinamientos de mapeo por canal y manejo robusto de campos legacy/canónicos (`Proyect_ID__c`)
 - **Métricas de brokers** — Scheduler y comando `salesforce:sync-broker-metrics` activos cada 15 minutos
 - **OAuth token hardening** — Nuevos parámetros `SF_OAUTH_SCOPE` y `SF_OAUTH_PROMPT`; además, cuando OAuth queda desconectado el job de sync evita reintentos hasta reconexión manual
+- **OAuth auto-reconnect refinado** — `salesforce:refresh-token` ahora sincroniza backup cuando ya hay token en caché y reserva `tryAutoReconnect()` para ausencia de token, mitigando `invalid_grant` por rotación
+- **Sync desde producción** — Flujo con job en background (`RunProductionSyncJob`), endpoint API y pantalla de progreso en panel para export/sync controlado
 
 ## 🛠️ Comandos Útiles
 

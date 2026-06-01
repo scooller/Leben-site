@@ -1,8 +1,8 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/laravel",
+    "name": "scooller/leben-site",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
+    "description": "Backend-first real estate sales platform with Laravel 12, Filament 5, Salesforce integration, and payment processing.",
     "keywords": ["laravel", "framework"],
     "license": "MIT",
     "require": {

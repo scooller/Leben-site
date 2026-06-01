@@ -8,6 +8,18 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ---
 
+## [1.9.4] - 2026-06-01
+
+### 🔄 Cambios
+
+#### Salesforce OAuth — refinamientos de auto-reconexión y refresh
+- `CreateSalesforceCaseJob` ahora intenta `tryAutoReconnect()` tanto cuando OAuth está marcado como desconectado como cuando no hay token en caché, antes de omitir el envío.
+- `salesforce:refresh-token` dejó de forzar `Forrest::refresh()` cuando ya existe token en caché; en ese caso ahora sincroniza y persiste backups (`token_cache_backup` / `refresh_token_cache_backup`) para evitar `invalid_grant` en escenarios con rotación de refresh token.
+- `SalesforceService::updateTokenBackup()` detecta refresh token rotado dentro del blob de token y lo sincroniza en caché + DB.
+- El scheduler de `salesforce:refresh-token` quedó explícito como `cron('0 */20 * * *')` con `withoutOverlapping()` en `routes/console.php` (compatibilidad con versión instalada).
+
+---
+
 ## [1.9.3] - 2026-05-29
 
 ### 🔄 Cambios
