@@ -8,6 +8,44 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ---
 
+## [1.9.5] - 2026-06-01
+
+### 🔒 Seguridad y Observabilidad
+
+#### Hardening de logs en flujos de pago
+- Sanitización de tokens y reducción de payloads crudos en logs de Transbank y MercadoPago.
+- Eliminación de persistencia de campos sensibles innecesarios en metadata de webhooks (`transbank_abort_payload`, `mercadopago_payment`).
+- Ajustes de contexto para mantener trazabilidad operativa sin exponer PII/secrets.
+
+#### Matriz centralizada de niveles de log
+- Nuevo `App\Support\FlowLogMatrix` para definir severidad por evento/flujo.
+- Adopción de la matriz en:
+  - `PaymentWebhookController`
+  - `CreateSalesforceCaseJob`
+  - `ProductionSyncService`
+  - `TransbankService`
+  - `MercadoPagoService`
+- Estandarización de niveles (`debug/info/warning/error/critical`) para reducir ruido y mejorar alertamiento.
+
+### 🧱 Manejo de Errores
+
+#### Excepciones con mejor trazabilidad
+- Refactor de rethrows en servicios de pago para preservar excepción previa (`previous`) y mantener stack trace original.
+
+#### Production Sync
+- Logging explícito para:
+  - Configuración incompleta
+  - Respuestas HTTP no exitosas
+  - Errores de red/excepciones al consumir snapshot remoto
+
+### ✅ Tests
+
+- Nuevas validaciones en `PaymentWebhookControllerTest` para asegurar sanitización de metadata de retorno cancelado en Transbank.
+- Nuevos tests en `ProductionSyncServiceTest` para casos de logging en configuración faltante, HTTP no exitoso y excepción de conexión.
+- Nuevo `FlowLogMatrixTest` para validar el mapeo de niveles por evento y fallback por defecto.
+
+---
+
 ## [1.9.4] - 2026-06-01
 
 ### 🔄 Cambios

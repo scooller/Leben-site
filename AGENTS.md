@@ -4,7 +4,7 @@
 
 **Leben** es una plataforma backend-first construida con **Laravel 12** + **Filament 5**, especializada en la gestión de ventas de proyectos inmobiliarios con integración Salesforce, procesamiento de pagos y sincronización de datos en tiempo real.
 
-Versión actual documentada: 1.9.4 (2026-06-01).
+Versión actual documentada: 1.9.5 (2026-06-01).
 
 La aplicación soporta:
 - **Panel administrativo** (Filament) para gestión de proyectos, plantas, asesores y contactos
