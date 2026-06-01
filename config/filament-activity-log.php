@@ -12,7 +12,7 @@ return [
     |
     */
     'resource' => [
-        'class' => \AlizHarb\ActivityLog\Resources\ActivityLogs\ActivityLogResource::class,
+        'class' => \App\Filament\Resources\ActivityLogs\ActivityLogResource::class,
         'group' => 'Sistema',
         'sort' => 99,
         'default_sort_column' => 'created_at',
