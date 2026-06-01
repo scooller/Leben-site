@@ -4,8 +4,8 @@ namespace App\Services\Payment;
 
 use App\Contracts\PaymentGatewayInterface;
 use App\Models\Payment;
+use App\Support\FlowLogMatrix;
 use Exception;
-use Illuminate\Support\Facades\Log;
 use Transbank\Webpay\WebpayPlus;
 use Transbank\Webpay\WebpayPlus\MallTransaction;
 use Transbank\Webpay\WebpayPlus\Transaction;
@@ -78,7 +78,7 @@ class TransbankService implements PaymentGatewayInterface
 		if ($payment->project) {
 			$projectCode = $payment->project->transbank_commerce_code;
 			if ($projectCode) {
-				Log::debug('Transbank: Resolviendo código para proyecto', [
+				FlowLogMatrix::write('payments.transbank.resolve_project_commerce_code', 'Transbank: Resolviendo código para proyecto', [
 					'project_id' => $payment->project_id,
 					'project_slug' => $payment->project->slug,
 					'commerce_code' => $projectCode,
@@ -89,7 +89,7 @@ class TransbankService implements PaymentGatewayInterface
 		}
 
 		// Fallback al código default
-		Log::warning('Transbank: Código de proyecto no encontrado, usando default', [
+		FlowLogMatrix::write('payments.transbank.project_code_fallback', 'Transbank: Código de proyecto no encontrado, usando default', [
 			'project_id' => $payment?->project_id,
 			'payment_id' => $payment?->id,
 		]);
@@ -121,7 +121,7 @@ class TransbankService implements PaymentGatewayInterface
 			}
 
 			if ($configuredChildCode !== null) {
-				Log::warning('Transbank: child_commerce_code no válido para integración Mall. Se utilizará child de integración.', [
+				FlowLogMatrix::write('payments.transbank.invalid_child_code_integration', 'Transbank: child_commerce_code no válido para integración Mall. Se utilizará child de integración.', [
 					'configured_child_commerce_code' => $configuredChildCode,
 					'resolved_child_commerce_code' => WebpayPlus::INTEGRATION_MALL_CHILD_COMMERCE_CODE_1,
 				]);
@@ -178,7 +178,7 @@ class TransbankService implements PaymentGatewayInterface
 			// Resolver código de comercio (mall o default)
 			$commerceCode = $this->resolveCommerceCode($payment);
 
-			Log::debug('Transbank: Creando transacción', [
+			FlowLogMatrix::write('payments.transbank.create_transaction_request', 'Transbank: Creando transacción', [
 				'amount' => $amount,
 				'buy_order' => $buyOrder,
 				'session_id' => $sessionId,
@@ -212,7 +212,7 @@ class TransbankService implements PaymentGatewayInterface
 			$token = $response->getToken();
 			$url = $response->getUrl();
 
-			Log::debug('Transbank: Transacción creada exitosamente', [
+			FlowLogMatrix::write('payments.transbank.create_transaction_success', 'Transbank: Transacción creada exitosamente', [
 				'token' => $this->maskToken((string) $token),
 				'token_is_null' => $token === null,
 				'token_is_empty' => $token === '',
@@ -228,7 +228,7 @@ class TransbankService implements PaymentGatewayInterface
 			]);
 
 			if (empty($token) || empty($url)) {
-				Log::error('Transbank: Response inválida - token o URL vacíos', [
+				FlowLogMatrix::write('payments.transbank.create_transaction_invalid_response', 'Transbank: Response inválida - token o URL vacíos', [
 					'token' => $this->maskToken((string) $token),
 					'url' => $url,
 					'buy_order' => $buyOrder,
@@ -241,7 +241,7 @@ class TransbankService implements PaymentGatewayInterface
 				'url' => $url,
 			];
 		} catch (Exception $e) {
-			Log::error('Transbank: Error al crear transacción', [
+			FlowLogMatrix::write('payments.transbank.create_transaction_error', 'Transbank: Error al crear transacción', [
 				'error' => $e->getMessage(),
 				'exception_class' => $e::class,
 				'data_keys' => array_keys($data),
@@ -266,7 +266,7 @@ class TransbankService implements PaymentGatewayInterface
 			// Resolver código de comercio (mall o default)
 			$commerceCode = $this->resolveCommerceCode($payment);
 
-			Log::debug('Transbank: Confirmando transacción', [
+			FlowLogMatrix::write('payments.transbank.confirm_transaction_request', 'Transbank: Confirmando transacción', [
 				'token' => $this->maskToken($token),
 				'commerce_code' => $commerceCode,
 				'mall_mode' => $this->mallMode,
@@ -335,7 +335,7 @@ class TransbankService implements PaymentGatewayInterface
 				'commerce_code' => $commerceCode,
 			];
 
-			Log::debug('Transbank: Transacción confirmada', [
+			FlowLogMatrix::write('payments.transbank.confirm_transaction_success', 'Transbank: Transacción confirmada', [
 				'buy_order' => $result['buy_order'],
 				'status' => $result['status'],
 				'response_code' => $result['response_code'],
@@ -343,7 +343,7 @@ class TransbankService implements PaymentGatewayInterface
 
 			return $result;
 		} catch (Exception $e) {
-			Log::error('Transbank: Error al confirmar transacción', [
+			FlowLogMatrix::write('payments.transbank.confirm_transaction_error', 'Transbank: Error al confirmar transacción', [
 				'token' => $this->maskToken($token),
 				'error' => $e->getMessage(),
 				'exception_class' => $e::class,
@@ -361,7 +361,7 @@ class TransbankService implements PaymentGatewayInterface
 	 */
 	public function processWebhook(array $payload): bool
 	{
-		Log::debug('Transbank: Webhook recibido (no implementado en Webpay Plus)', [
+		FlowLogMatrix::write('payments.transbank.webhook_not_implemented', 'Transbank: Webhook recibido (no implementado en Webpay Plus)', [
 			'payload_keys' => array_keys($payload),
 			'type' => $payload['type'] ?? null,
 			'action' => $payload['action'] ?? null,
@@ -379,7 +379,7 @@ class TransbankService implements PaymentGatewayInterface
 	public function getTransactionStatus(string $transactionId): array
 	{
 		try {
-			Log::debug('Transbank: Consultando estado', ['token' => $this->maskToken($transactionId)]);
+			FlowLogMatrix::write('payments.transbank.status_request', 'Transbank: Consultando estado', ['token' => $this->maskToken($transactionId)]);
 
 			// Obtener credenciales (usar defaults de integración si están vacías)
 			$commerceCode = $this->resolveCommerceCode();
@@ -416,7 +416,7 @@ class TransbankService implements PaymentGatewayInterface
 				'response_code' => $responseCode,
 			];
 		} catch (Exception $e) {
-			Log::error('Transbank: Error al consultar estado', [
+			FlowLogMatrix::write('payments.transbank.status_error', 'Transbank: Error al consultar estado', [
 				'token' => $this->maskToken($transactionId),
 				'error' => $e->getMessage(),
 				'exception_class' => $e::class,
@@ -435,7 +435,7 @@ class TransbankService implements PaymentGatewayInterface
 	public function refundTransaction(string $transactionId, ?float $amount = null): array
 	{
 		try {
-			Log::debug('Transbank: Solicitando reembolso', [
+			FlowLogMatrix::write('payments.transbank.refund_request', 'Transbank: Solicitando reembolso', [
 				'token' => $this->maskToken($transactionId),
 				'amount' => $amount,
 			]);
@@ -463,7 +463,7 @@ class TransbankService implements PaymentGatewayInterface
 				$response = $transaction->refund($transactionId, $amount ?? 0);
 			}
 
-			Log::debug('Transbank: Reembolso procesado', [
+			FlowLogMatrix::write('payments.transbank.refund_success', 'Transbank: Reembolso procesado', [
 				'type' => $response->getType(),
 				'authorization_code' => $response->getAuthorizationCode(),
 				'response_code' => $response->getResponseCode(),
@@ -479,7 +479,7 @@ class TransbankService implements PaymentGatewayInterface
 				'response_code' => $response->getResponseCode(),
 			];
 		} catch (Exception $e) {
-			Log::error('Transbank: Error al procesar reembolso', [
+			FlowLogMatrix::write('payments.transbank.refund_error', 'Transbank: Error al procesar reembolso', [
 				'token' => $this->maskToken($transactionId),
 				'amount' => $amount,
 				'error' => $e->getMessage(),

@@ -3,8 +3,8 @@
 namespace App\Services\Payment;
 
 use App\Contracts\PaymentGatewayInterface;
+use App\Support\FlowLogMatrix;
 use Exception;
-use Illuminate\Support\Facades\Log;
 use MercadoPago\Client\Payment\PaymentClient;
 use MercadoPago\Client\Preference\PreferenceClient;
 use MercadoPago\MercadoPagoConfig;
@@ -82,7 +82,7 @@ class MercadoPagoService implements PaymentGatewayInterface
 				}
 			}
 
-			Log::debug('MercadoPago: Creando preferencia de pago', [
+			FlowLogMatrix::write('payments.mercadopago.create_preference_request', 'MercadoPago: Creando preferencia de pago', [
 				'amount' => $data['amount'] ?? null,
 				'currency' => $data['currency'] ?? 'CLP',
 				'external_reference_present' => filled((string) ($data['external_reference'] ?? '')),
@@ -91,7 +91,7 @@ class MercadoPagoService implements PaymentGatewayInterface
 
 			$response = $client->create($preference);
 
-			Log::debug('MercadoPago: Preferencia creada exitosamente', [
+			FlowLogMatrix::write('payments.mercadopago.create_preference_success', 'MercadoPago: Preferencia creada exitosamente', [
 				'id' => $response->id,
 				'init_point' => $response->init_point,
 			]);
@@ -102,7 +102,7 @@ class MercadoPagoService implements PaymentGatewayInterface
 				'sandbox_init_point' => $response->sandbox_init_point ?? null,
 			];
 		} catch (Exception $e) {
-			Log::error('MercadoPago: Error al crear preferencia', [
+			FlowLogMatrix::write('payments.mercadopago.create_preference_error', 'MercadoPago: Error al crear preferencia', [
 				'error' => $e->getMessage(),
 				'exception_class' => $e::class,
 				'data_keys' => array_keys($data),
@@ -145,7 +145,7 @@ class MercadoPagoService implements PaymentGatewayInterface
 			$client = new PaymentClient;
 			$payment = $client->get((int) $paymentId);
 
-			Log::debug('MercadoPago: Pago obtenido', [
+			FlowLogMatrix::write('payments.mercadopago.get_payment_success', 'MercadoPago: Pago obtenido', [
 				'id' => $payment->id,
 				'status' => $payment->status,
 			]);
@@ -168,7 +168,7 @@ class MercadoPagoService implements PaymentGatewayInterface
 				],
 			];
 		} catch (Exception $e) {
-			Log::error('MercadoPago: Error al obtener pago', [
+			FlowLogMatrix::write('payments.mercadopago.get_payment_error', 'MercadoPago: Error al obtener pago', [
 				'payment_id' => $paymentId,
 				'error' => $e->getMessage(),
 				'exception_class' => $e::class,
@@ -187,7 +187,7 @@ class MercadoPagoService implements PaymentGatewayInterface
 	public function refundTransaction(string $transactionId, ?float $amount = null): array
 	{
 		try {
-			Log::debug('MercadoPago: Procesando reembolso', [
+			FlowLogMatrix::write('payments.mercadopago.refund_request', 'MercadoPago: Procesando reembolso', [
 				'payment_id' => $transactionId,
 				'amount' => $amount,
 			]);
@@ -205,7 +205,7 @@ class MercadoPagoService implements PaymentGatewayInterface
 
 			$refund = $response->json();
 
-			Log::debug('MercadoPago: Reembolso procesado', [
+			FlowLogMatrix::write('payments.mercadopago.refund_success', 'MercadoPago: Reembolso procesado', [
 				'refund_id' => $refund['id'] ?? null,
 				'status' => $refund['status'] ?? null,
 			]);
@@ -218,7 +218,7 @@ class MercadoPagoService implements PaymentGatewayInterface
 				'date_created' => $refund['date_created'] ?? now()->toISOString(),
 			];
 		} catch (Exception $e) {
-			Log::error('MercadoPago: Error al reembolsar', [
+			FlowLogMatrix::write('payments.mercadopago.refund_error', 'MercadoPago: Error al reembolsar', [
 				'transaction_id' => $transactionId,
 				'amount' => $amount,
 				'error' => $e->getMessage(),
@@ -234,7 +234,7 @@ class MercadoPagoService implements PaymentGatewayInterface
 	 */
 	public function processWebhook(array $payload): bool
 	{
-		Log::debug('MercadoPago: Webhook recibido', [
+		FlowLogMatrix::write('payments.mercadopago.service_webhook_received', 'MercadoPago: Webhook recibido', [
 			'payload_keys' => array_keys($payload),
 			'type' => $payload['type'] ?? null,
 			'action' => $payload['action'] ?? null,
@@ -257,7 +257,7 @@ class MercadoPagoService implements PaymentGatewayInterface
 		$type = $payload['type'] ?? null;
 		$action = $payload['action'] ?? null;
 
-		Log::debug('MercadoPago: Procesando evento', [
+		FlowLogMatrix::write('payments.mercadopago.service_webhook_processing', 'MercadoPago: Procesando evento', [
 			'type' => $type,
 			'action' => $action,
 		]);
@@ -285,7 +285,7 @@ class MercadoPagoService implements PaymentGatewayInterface
 		try {
 			$payment = $this->getPayment($paymentId);
 
-			Log::debug('MercadoPago: Pago obtenido', [
+			FlowLogMatrix::write('payments.mercadopago.service_webhook_payment_fetched', 'MercadoPago: Pago obtenido', [
 				'id' => $paymentId,
 				'status' => $payment['status'] ?? 'unknown',
 			]);
@@ -295,7 +295,7 @@ class MercadoPagoService implements PaymentGatewayInterface
 
 			return true;
 		} catch (Exception $e) {
-			Log::error('MercadoPago: Error procesando notificación', [
+			FlowLogMatrix::write('payments.mercadopago.service_webhook_payment_error', 'MercadoPago: Error procesando notificación', [
 				'payment_id' => $paymentId,
 				'error' => $e->getMessage(),
 			]);
@@ -317,7 +317,7 @@ class MercadoPagoService implements PaymentGatewayInterface
 	public function verifyWebhookSignature(string $xSignatureHeader, string $rawBody): bool
 	{
 		if (empty($this->webhookSecret) || empty($xSignatureHeader)) {
-			Log::warning('MercadoPago: Webhook signature verification skipped - missing secret or header');
+			FlowLogMatrix::write('payments.mercadopago.signature_missing_data', 'MercadoPago: Webhook signature verification skipped - missing secret or header');
 
 			return false;
 		}
@@ -336,7 +336,7 @@ class MercadoPagoService implements PaymentGatewayInterface
 			$providedSignature = $signatureParts['v1'] ?? null;
 
 			if (! $timestamp || ! $providedSignature) {
-				Log::warning('MercadoPago: Invalid signature header format', [
+				FlowLogMatrix::write('payments.mercadopago.signature_invalid_format', 'MercadoPago: Invalid signature header format', [
 					'header' => $xSignatureHeader,
 				]);
 
@@ -348,7 +348,7 @@ class MercadoPagoService implements PaymentGatewayInterface
 			$timeDiff = abs($currentTime - (int) $timestamp);
 
 			if ($timeDiff > 600) { // 10 minutos = 600 segundos
-				Log::warning('MercadoPago: Webhook timestamp too old', [
+				FlowLogMatrix::write('payments.mercadopago.signature_timestamp_old', 'MercadoPago: Webhook timestamp too old', [
 					'timestamp' => $timestamp,
 					'current_time' => $currentTime,
 					'diff_seconds' => $timeDiff,
@@ -367,7 +367,7 @@ class MercadoPagoService implements PaymentGatewayInterface
 			$isValid = hash_equals($calculatedSignature, $providedSignature);
 
 			if (! $isValid) {
-				Log::warning('MercadoPago: Invalid webhook signature', [
+				FlowLogMatrix::write('payments.mercadopago.signature_invalid', 'MercadoPago: Invalid webhook signature', [
 					'expected' => substr($calculatedSignature, 0, 10) . '...',
 					'provided' => substr($providedSignature, 0, 10) . '...',
 				]);
@@ -375,7 +375,7 @@ class MercadoPagoService implements PaymentGatewayInterface
 
 			return $isValid;
 		} catch (Exception $e) {
-			Log::error('MercadoPago: Error verifying webhook signature', [
+			FlowLogMatrix::write('payments.mercadopago.signature_exception', 'MercadoPago: Error verifying webhook signature', [
 				'error' => $e->getMessage(),
 			]);
 
