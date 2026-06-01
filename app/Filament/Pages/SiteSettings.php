@@ -42,6 +42,9 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\HtmlString;
 use Omniphx\Forrest\Providers\Laravel\Facades\Forrest;
+use BackedEnum;
+use Throwable;
+use UnitEnum;
 
 class SiteSettings extends Page implements HasForms
 {
@@ -77,13 +80,13 @@ class SiteSettings extends Page implements HasForms
 			->toArray();
 	}
 
-	protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedCog6Tooth;
+	protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCog6Tooth;
 
 	protected static ?string $navigationLabel = 'Configuración del Sitio';
 
 	protected static ?string $title = 'Configuración del Sitio';
 
-	protected static string|\UnitEnum|null $navigationGroup = 'Configuración';
+	protected static string|UnitEnum|null $navigationGroup = 'Configuración';
 
 	protected static ?int $navigationSort = 1;
 
@@ -1250,7 +1253,7 @@ class SiteSettings extends Page implements HasForms
 
 		try {
 			$hasCurrentToken = Forrest::hasToken();
-		} catch (\Throwable) {
+		} catch (Throwable) {
 			$hasCurrentToken = false;
 		}
 
@@ -1260,7 +1263,7 @@ class SiteSettings extends Page implements HasForms
 		if (is_string($rawLastConnectionAt) && trim($rawLastConnectionAt) !== '') {
 			try {
 				$lastConnectionAt = Carbon::parse($rawLastConnectionAt)->setTimezone((string) config('app.timezone'))->format('d-m-Y H:i:s');
-			} catch (\Throwable) {
+			} catch (Throwable) {
 				$lastConnectionAt = $rawLastConnectionAt;
 			}
 		}
