@@ -919,14 +919,14 @@ function Contact({ onNavigate, currentPath }) {
             </div>
           </wa-card>
 
-          <wa-card appearance="filled" className="contact-info-card">
+          {/* <wa-card appearance="filled" className="contact-info-card">
             <div className="wa-stack wa-gap-s">
               <wa-skeleton effect="pulse" style={{ height: '1.75rem', width: '8rem' }}></wa-skeleton>
               <wa-skeleton effect="pulse" style={{ height: '1rem', width: '75%' }}></wa-skeleton>
               <wa-skeleton effect="pulse" style={{ height: '1rem', width: '65%' }}></wa-skeleton>
               <wa-skeleton effect="pulse" style={{ height: '1rem', width: '85%' }}></wa-skeleton>
             </div>
-          </wa-card>
+          </wa-card> */}
         </section>
       </div>
     );
@@ -1067,7 +1067,7 @@ function Contact({ onNavigate, currentPath }) {
           </div>
         </wa-card>
 
-        <wa-card appearance="filled" className="contact-info-card">
+        {/* <wa-card appearance="filled" className="contact-info-card">
           <div className="wa-stack wa-gap-s">
             <h2>Información</h2>
 
@@ -1112,12 +1112,8 @@ function Contact({ onNavigate, currentPath }) {
                 </div>
               </div>
             )}
-
-            {/* <wa-button variant="brand" onClick={() => onNavigate?.('/')}>
-              Volver al Home
-            </wa-button> */}
           </div>
-        </wa-card>
+        </wa-card> */}
       </section>
 
       <SiteFooter config={config} onNavigate={onNavigate} />
