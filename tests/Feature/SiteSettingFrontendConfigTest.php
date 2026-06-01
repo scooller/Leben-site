@@ -100,9 +100,12 @@ class SiteSettingFrontendConfigTest extends TestCase
             'footer_legal_text' => '<p>Texto legal de prueba</p>',
         ]);
 
-        $token = User::factory()->create()->createToken('site-config-test')->plainTextToken;
+        // payment_gateways solo se incluye cuando hay un bearer token válido.
+        // Creamos un usuario + token real y lo inyectamos en un Request de prueba.
+        $user = User::factory()->create();
+        $newToken = $user->createToken('test-token');
         $request = Request::create('/api/v1/site-config', 'GET');
-        $request->headers->set('Authorization', 'Bearer ' . $token);
+        $request->headers->set('Authorization', 'Bearer ' . $newToken->plainTextToken);
 
         $payload = SiteSetting::forFrontend($request);
 

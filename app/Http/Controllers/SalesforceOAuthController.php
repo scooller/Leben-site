@@ -4,9 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\SiteSetting;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Omniphx\Forrest\Providers\Laravel\Facades\Forrest;
+use Throwable;
 
 class SalesforceOAuthController extends Controller
 {
@@ -14,15 +14,9 @@ class SalesforceOAuthController extends Controller
      * Inicia el flujo OAuth de Salesforce (WebServer).
      * Forrest::authenticate() construye la URL y redirige directamente a Salesforce.
      */
-    public function connect(Request $request): RedirectResponse
+    public function connect(): RedirectResponse
     {
         Log::info('Salesforce OAuth: Iniciando flujo de conexión');
-
-        $redirectTo = $request->query('redirect_to', $request->headers->get('referer'));
-
-        if (is_string($redirectTo) && $this->isSafeRedirectTarget($redirectTo, $request)) {
-            session()->put('salesforce_oauth_redirect_to', $redirectTo);
-        }
 
         // En WebServer flow, authenticate() retorna un RedirectResponse hacia Salesforce
         return Forrest::authenticate();
@@ -43,7 +37,7 @@ class SalesforceOAuthController extends Controller
                 'error_description' => $errorDescription,
             ]);
 
-            return redirect($this->resolvePostOAuthRedirectTarget())
+            return redirect('/admin/site-settings')
                 ->withErrors(['salesforce' => "Salesforce: {$errorDescription}"]);
         }
 
@@ -62,6 +56,22 @@ class SalesforceOAuthController extends Controller
                 data_set($extraSettings, 'salesforce_oauth.connected_by_user_id', auth()->id());
             }
 
+            // Persistir los tokens encriptados de Forrest en la DB para recuperación automática
+            // ante limpiezas de caché (deploys, restart de Redis, etc.)
+            $tokenCacheKey = config('forrest.storage.path', 'forrest_').'token';
+            $refreshTokenCacheKey = config('forrest.storage.path', 'forrest_').'refresh_token';
+
+            $tokenBackup = \Illuminate\Support\Facades\Cache::get($tokenCacheKey);
+            $refreshTokenBackup = \Illuminate\Support\Facades\Cache::get($refreshTokenCacheKey);
+
+            if ($tokenBackup !== null) {
+                data_set($extraSettings, 'salesforce_oauth.token_cache_backup', $tokenBackup);
+            }
+
+            if ($refreshTokenBackup !== null) {
+                data_set($extraSettings, 'salesforce_oauth.refresh_token_cache_backup', $refreshTokenBackup);
+            }
+
             $siteSettings->update([
                 'extra_settings' => $extraSettings,
             ]);
@@ -71,67 +81,14 @@ class SalesforceOAuthController extends Controller
             // Guardar en cache por 5 minutos para que la notificación se muestre una sola vez
             \Illuminate\Support\Facades\Cache::put('salesforce_oauth_just_connected', true, now()->addMinutes(5));
 
-            return redirect($this->resolvePostOAuthRedirectTarget());
-        } catch (\Throwable $e) {
+            return redirect('/admin/site-settings');
+        } catch (Throwable $e) {
             Log::error('Salesforce OAuth: Error en callback', [
                 'error' => $e->getMessage(),
             ]);
 
-            return redirect($this->resolvePostOAuthRedirectTarget())
+            return redirect('/admin/site-settings')
                 ->withErrors(['salesforce' => 'Error al procesar autorización: '.$e->getMessage()]);
         }
-    }
-
-    private function resolvePostOAuthRedirectTarget(): string
-    {
-        $redirectTo = session()->pull('salesforce_oauth_redirect_to');
-
-        if (is_string($redirectTo) && $this->isSafeRedirectTarget($redirectTo, request())) {
-            return $redirectTo;
-        }
-
-        return '/admin/site-settings';
-    }
-
-    private function isSafeRedirectTarget(string $target, Request $request): bool
-    {
-        if ($target === '' || str_starts_with($target, '//')) {
-            return false;
-        }
-
-        $targetPath = parse_url($target, PHP_URL_PATH);
-        $connectPath = route('salesforce.oauth.connect', [], false);
-        $callbackPath = route('salesforce.callback', [], false);
-
-        if (! is_string($targetPath)) {
-            return false;
-        }
-
-        if ($targetPath === $connectPath || $targetPath === $callbackPath) {
-            return false;
-        }
-
-        if (str_starts_with($target, '/')) {
-            return true;
-        }
-
-        $targetHost = parse_url($target, PHP_URL_HOST);
-
-        if (! is_string($targetHost)) {
-            return false;
-        }
-
-        $allowedHosts = [
-            $request->getHost(),
-            parse_url((string) config('app.url', ''), PHP_URL_HOST),
-        ];
-
-        foreach ($allowedHosts as $allowedHost) {
-            if (is_string($allowedHost) && $allowedHost !== '' && strcasecmp($targetHost, $allowedHost) === 0) {
-                return true;
-            }
-        }
-
-        return false;
     }
 }

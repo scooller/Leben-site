@@ -3,15 +3,15 @@
 namespace App\Services\Salesforce;
 
 use App\Exceptions\SalesforceTokenExpiredException;
-use App\Models\Broker;
 use App\Models\Proyecto;
-use App\Models\SalesforceOpportunity;
 use App\Models\SiteSetting;
+use Exception;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
-use InvalidArgumentException;
+use Omniphx\Forrest\Exceptions\MissingRefreshTokenException;
 use Omniphx\Forrest\Providers\Laravel\Facades\Forrest;
+use Throwable;
 
 class SalesforceService
 {
@@ -41,7 +41,7 @@ class SalesforceService
                 $result = Forrest::query($soql);
 
                 return $result['records'] ?? [];
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 if ($this->isRefreshTokenExpiredException($e)) {
                     Log::critical('Salesforce: Token OAuth inválido o expirado durante query SOQL. Se requiere reconexión manual.', [
                         ...$this->oauthTokenFailureContext($e, 'query', [
@@ -64,330 +64,6 @@ class SalesforceService
                 return $result['records'] ?? [];
             }
         });
-    }
-
-    /**
-     * Ejecuta una consulta SOQL sin cache para diagnostico/manual query runner.
-     *
-     * @return array{query:string,limit:int,total_size:int,done:bool,records:array<int,array<string,mixed>>}
-     */
-    public function runSoqlWithoutCache(string $soql): array
-    {
-        $normalizedSoql = trim($soql);
-
-        if (! str_starts_with(strtoupper($normalizedSoql), 'SELECT ')) {
-            throw new InvalidArgumentException('La consulta SOQL debe iniciar con SELECT.');
-        }
-
-        if (preg_match('/\bLIMIT\s+(\d+)\b/i', $normalizedSoql, $matches) !== 1) {
-            throw new InvalidArgumentException('La consulta SOQL debe incluir LIMIT para evitar ejecuciones sin tope.');
-        }
-
-        $limit = (int) ($matches[1] ?? 0);
-        if ($limit <= 0) {
-            throw new InvalidArgumentException('La consulta SOQL debe incluir LIMIT mayor a cero.');
-        }
-
-        try {
-            $result = Forrest::query($normalizedSoql);
-        } catch (\Throwable $exception) {
-            Log::warning('Salesforce: runSoqlWithoutCache fallo en primer intento; se reautentica y reintenta.', [
-                'error' => $exception->getMessage(),
-                'soql_hash' => md5($normalizedSoql),
-            ]);
-
-            $this->authenticate();
-            $result = Forrest::query($normalizedSoql);
-        }
-
-        $records = is_array($result['records'] ?? null) ? $result['records'] : [];
-
-        return [
-            'query' => $normalizedSoql,
-            'limit' => $limit,
-            'total_size' => (int) ($result['totalSize'] ?? count($records)),
-            'done' => (bool) ($result['done'] ?? true),
-            'records' => $records,
-        ];
-    }
-
-    /**
-     * Sincroniza snapshots de oportunidades desde Salesforce y actualiza métricas comerciales en brokers.
-     *
-     * @return array{success:bool,message:string,synced:int,created:int,updated:int,watermark:string|null}
-     */
-    public function syncOpportunitiesIncrementally(?Carbon $since = null, int $limit = 2000): array
-    {
-        $normalizedLimit = max(1, min($limit, 2000));
-        $watermark = $since?->copy()->utc();
-
-        if ($watermark === null) {
-            $storedWatermark = data_get(SiteSetting::current()->extra_settings, 'salesforce_sync.opportunities_last_system_modstamp');
-
-            if (is_string($storedWatermark) && trim($storedWatermark) !== '') {
-                try {
-                    $watermark = Carbon::parse($storedWatermark)->utc();
-                } catch (\Throwable) {
-                    $watermark = null;
-                }
-            }
-        }
-
-        $select = [
-            'Id',
-            'Name',
-            'Broker__c',
-            'Broker__r.Name',
-            'Proyecto__c',
-            'Proyecto__r.Name',
-            'StageName',
-            'ForecastCategoryName',
-            'IsWon',
-            'IsClosed',
-            'IsDeleted',
-            'IsPrivate',
-            'CreatedDate',
-            'LastModifiedDate',
-            'SystemModstamp',
-            'CloseDate',
-            'Amount',
-            'CurrencyIsoCode',
-            'Probability',
-            'AccountId',
-            'ContactId',
-            'OwnerId',
-        ];
-
-        $filters = ['Id != null'];
-        if ($watermark instanceof Carbon) {
-            $filters[] = "SystemModstamp > {$watermark->format('Y-m-d\\TH:i:s\\Z')}";
-        }
-
-        $soql = sprintf(
-            'SELECT %s FROM Opportunity WHERE %s ORDER BY SystemModstamp ASC LIMIT %d',
-            implode(', ', $select),
-            implode(' AND ', $filters),
-            $normalizedLimit
-        );
-
-        try {
-            $response = Forrest::query($soql);
-        } catch (\Throwable $exception) {
-            Log::warning('Salesforce: fallo inicial al sincronizar oportunidades, reautenticando.', [
-                'error' => $exception->getMessage(),
-                'soql_hash' => md5($soql),
-            ]);
-
-            $this->authenticate();
-            $response = Forrest::query($soql);
-        }
-
-        $records = is_array($response['records'] ?? null) ? $response['records'] : [];
-
-        $created = 0;
-        $updated = 0;
-        $lastSystemModstamp = $watermark;
-
-        foreach ($records as $record) {
-            if (! is_array($record)) {
-                continue;
-            }
-
-            $salesforceId = trim((string) ($record['Id'] ?? ''));
-            if ($salesforceId === '') {
-                continue;
-            }
-
-            $brokerSalesforceId = $this->normalizeSalesforceId($record['Broker__c'] ?? null);
-            $proyectoSalesforceId = $this->normalizeSalesforceId($record['Proyecto__c'] ?? null);
-
-            $brokerId = null;
-            if ($brokerSalesforceId !== null) {
-                $brokerId = Broker::query()
-                    ->where('salesforce_id', $brokerSalesforceId)
-                    ->value('id');
-            }
-
-            $proyectoId = null;
-            if ($proyectoSalesforceId !== null) {
-                $proyectoId = Proyecto::query()
-                    ->where('salesforce_id', $proyectoSalesforceId)
-                    ->value('id');
-            }
-
-            $snapshot = SalesforceOpportunity::query()->firstWhere('salesforce_id', $salesforceId);
-
-            $payload = [
-                'broker_id' => $brokerId,
-                'proyecto_id' => $proyectoId,
-                'broker_salesforce_id' => $brokerSalesforceId,
-                'proyecto_salesforce_id' => $proyectoSalesforceId,
-                'account_salesforce_id' => $this->normalizeSalesforceId($record['AccountId'] ?? null),
-                'contact_salesforce_id' => $this->normalizeSalesforceId($record['ContactId'] ?? null),
-                'owner_salesforce_id' => $this->normalizeSalesforceId($record['OwnerId'] ?? null),
-                'name' => (string) ($record['Name'] ?? ''),
-                'broker_name' => data_get($record, 'Broker__r.Name'),
-                'proyecto_name' => data_get($record, 'Proyecto__r.Name'),
-                'stage_name' => data_get($record, 'StageName'),
-                'forecast_category_name' => data_get($record, 'ForecastCategoryName'),
-                'currency_iso_code' => data_get($record, 'CurrencyIsoCode'),
-                'amount' => is_numeric($record['Amount'] ?? null) ? (float) $record['Amount'] : null,
-                'probability' => is_numeric($record['Probability'] ?? null) ? (float) $record['Probability'] : null,
-                'is_closed' => (bool) ($record['IsClosed'] ?? false),
-                'is_won' => (bool) ($record['IsWon'] ?? false),
-                'is_deleted' => (bool) ($record['IsDeleted'] ?? false),
-                'is_private' => (bool) ($record['IsPrivate'] ?? false),
-                'close_date' => $this->parseDateValue($record['CloseDate'] ?? null),
-                'salesforce_created_at' => $this->parseDateTimeValue($record['CreatedDate'] ?? null),
-                'salesforce_last_modified_at' => $this->parseDateTimeValue($record['LastModifiedDate'] ?? null),
-                'salesforce_system_modstamp' => $this->parseDateTimeValue($record['SystemModstamp'] ?? null),
-                'synced_at' => now(),
-                'payload' => $record,
-            ];
-
-            if ($snapshot instanceof SalesforceOpportunity) {
-                $snapshot->update($payload);
-                $updated++;
-            } else {
-                SalesforceOpportunity::query()->create([
-                    'salesforce_id' => $salesforceId,
-                    ...$payload,
-                ]);
-                $created++;
-            }
-
-            $recordModstamp = $this->parseDateTimeValue($record['SystemModstamp'] ?? null);
-            if ($recordModstamp instanceof Carbon && ($lastSystemModstamp === null || $recordModstamp->gt($lastSystemModstamp))) {
-                $lastSystemModstamp = $recordModstamp;
-            }
-        }
-
-        if ($lastSystemModstamp instanceof Carbon) {
-            $this->storeOpportunitySyncWatermark($lastSystemModstamp);
-        }
-
-        $this->syncBrokerCommercialMetricsFromSnapshots();
-
-        $synced = $created + $updated;
-
-        return [
-            'success' => true,
-            'message' => "Sincronizacion completada. Registros procesados: {$synced}.",
-            'synced' => $synced,
-            'created' => $created,
-            'updated' => $updated,
-            'watermark' => $lastSystemModstamp?->toIso8601String(),
-        ];
-    }
-
-    public function syncBrokerCommercialMetricsFromSnapshots(): void
-    {
-        $brokers = Broker::query()->get(['id', 'salesforce_id', 'display_name']);
-        $opportunities = SalesforceOpportunity::query()
-            ->where('is_deleted', false)
-            ->where('is_private', false)
-            ->get();
-
-        $windowStart = now()->subDays(30);
-
-        foreach ($brokers as $broker) {
-            $resolvedName = trim((string) ($broker->display_name ?? ''));
-            $query = $opportunities->filter(function (SalesforceOpportunity $opportunity) use ($broker, $resolvedName): bool {
-                $matchesBySalesforceId = filled($broker->salesforce_id)
-                    && $opportunity->broker_salesforce_id === $broker->salesforce_id;
-
-                $matchesByName = $resolvedName !== ''
-                    && strcasecmp((string) ($opportunity->broker_name ?? ''), $resolvedName) === 0;
-
-                return $matchesBySalesforceId || $matchesByName;
-            })->values();
-
-            $total = $query->count();
-            $open = $query->where('is_closed', false)->count();
-            $won = $query->where('is_won', true)->count();
-            $lost = $query->where('is_closed', true)->where('is_won', false)->count();
-
-            $windowed = $query->filter(function (SalesforceOpportunity $opportunity) use ($windowStart): bool {
-                return $opportunity->salesforce_created_at instanceof Carbon
-                    && $opportunity->salesforce_created_at->gte($windowStart);
-            })->values();
-
-            $total30 = $windowed->count();
-            $won30 = $windowed->where('is_won', true)->count();
-            $pipelineAmount30 = (float) $windowed->sum(fn(SalesforceOpportunity $opportunity): float => (float) ($opportunity->amount ?? 0));
-            $wonAmount30 = (float) $windowed->where('is_won', true)->sum(fn(SalesforceOpportunity $opportunity): float => (float) ($opportunity->amount ?? 0));
-
-            $lastOpportunity = $query
-                ->sortByDesc(fn(SalesforceOpportunity $opportunity) => $opportunity->salesforce_system_modstamp?->timestamp ?? 0)
-                ->first();
-
-            $projectsPortfolio = $query
-                ->pluck('proyecto_name')
-                ->filter(fn(mixed $name): bool => is_string($name) && trim($name) !== '')
-                ->map(fn(string $name): string => trim($name))
-                ->unique()
-                ->sort()
-                ->values()
-                ->all();
-
-            $broker->update([
-                'opportunities_total' => $total,
-                'opportunities_open' => $open,
-                'opportunities_won' => $won,
-                'opportunities_lost' => $lost,
-                'opportunities_total_30d' => $total30,
-                'opportunities_won_30d' => $won30,
-                'closure_rate_30d' => $total30 > 0 ? round(($won30 / $total30) * 100, 2) : null,
-                'pipeline_amount_30d' => round($pipelineAmount30, 2),
-                'won_amount_30d' => round($wonAmount30, 2),
-                'last_opportunity_at' => $lastOpportunity?->salesforce_system_modstamp,
-                'last_stage_name' => $lastOpportunity?->stage_name,
-                'projects_portfolio' => $projectsPortfolio,
-                'salesforce_synced_at' => now(),
-            ]);
-        }
-    }
-
-    private function parseDateValue(mixed $value): ?string
-    {
-        if (! is_string($value) || trim($value) === '') {
-            return null;
-        }
-
-        try {
-            return Carbon::parse($value)->toDateString();
-        } catch (\Throwable) {
-            return null;
-        }
-    }
-
-    private function parseDateTimeValue(mixed $value): ?Carbon
-    {
-        if (! is_string($value) || trim($value) === '') {
-            return null;
-        }
-
-        try {
-            return Carbon::parse($value)->utc();
-        } catch (\Throwable) {
-            return null;
-        }
-    }
-
-    private function storeOpportunitySyncWatermark(Carbon $watermark): void
-    {
-        $settings = SiteSetting::current();
-        $extraSettings = is_array($settings->extra_settings) ? $settings->extra_settings : [];
-
-        data_set(
-            $extraSettings,
-            'salesforce_sync.opportunities_last_system_modstamp',
-            $watermark->toIso8601String()
-        );
-
-        $settings->update([
-            'extra_settings' => $extraSettings,
-        ]);
     }
 
     /**
@@ -422,7 +98,7 @@ class SalesforceService
             ]);
 
             return $response;
-        } catch (\Throwable $firstException) {
+        } catch (Throwable $firstException) {
             if ($this->isRefreshTokenExpiredException($firstException)) {
                 Log::critical('Salesforce: Token OAuth inválido o expirado al crear Case. Se requiere reconexión manual.', [
                     ...$this->oauthTokenFailureContext($firstException, 'create_case', [
@@ -461,7 +137,7 @@ class SalesforceService
                 ]);
 
                 return $response;
-            } catch (\Throwable $secondException) {
+            } catch (Throwable $secondException) {
                 Log::error('Salesforce: Error creando Case tras re-autenticación', [
                     'error' => $secondException->getMessage(),
                     'subject' => $payload['Subject'] ?? null,
@@ -505,7 +181,7 @@ class SalesforceService
             ]);
 
             return $response;
-        } catch (\Throwable $firstException) {
+        } catch (Throwable $firstException) {
             if ($this->isRefreshTokenExpiredException($firstException)) {
                 Log::critical('Salesforce: Token OAuth inválido o expirado al crear Lead. Se requiere reconexión manual.', [
                     ...$this->oauthTokenFailureContext($firstException, 'create_lead_first_attempt', [
@@ -601,7 +277,7 @@ class SalesforceService
                 ]);
 
                 return $response;
-            } catch (\Throwable $secondException) {
+            } catch (Throwable $secondException) {
                 if ($this->isRefreshTokenExpiredException($secondException)) {
                     Log::critical('Salesforce: Token OAuth inválido o expirado tras re-auth al crear Lead. Se requiere reconexión manual.', [
                         ...$this->oauthTokenFailureContext($secondException, 'create_lead_after_reauth', [
@@ -684,7 +360,7 @@ class SalesforceService
         }
     }
 
-    private function extractInvalidLeadField(\Throwable $exception): ?string
+    private function extractInvalidLeadField(Throwable $exception): ?string
     {
         $message = $exception->getMessage();
 
@@ -779,7 +455,7 @@ class SalesforceService
             }
 
             return $creatableFields;
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             Log::debug('Salesforce: No se pudo obtener describe de Lead, se omite filtro preventivo', [
                 'error' => $exception->getMessage(),
             ]);
@@ -792,7 +468,7 @@ class SalesforceService
      * @param  array<string, mixed>  $payload
      * @return array{payload: array<string, mixed>, removed_fields: list<string>}
      */
-    private function removeUnavailableLeadFields(array $payload, \Throwable $exception): array
+    private function removeUnavailableLeadFields(array $payload, Throwable $exception): array
     {
         $candidateFields = [];
 
@@ -889,7 +565,7 @@ class SalesforceService
     /**
      * @return list<string>
      */
-    private function extractNonWritableLeadFields(\Throwable $exception): array
+    private function extractNonWritableLeadFields(Throwable $exception): array
     {
         if (! method_exists($exception, 'getResponse')) {
             return [];
@@ -936,7 +612,7 @@ class SalesforceService
      * @param  array<string, mixed>  $payload
      * @return array{payload: array<string, mixed>, applied: bool, owner_id: string|null}
      */
-    private function applyLeadOwnerFallbackOnFlowError(array $payload, \Throwable $exception): array
+    private function applyLeadOwnerFallbackOnFlowError(array $payload, Throwable $exception): array
     {
         if (! $this->isLeadFlowOwnerBlankError($exception)) {
             return [
@@ -1001,7 +677,7 @@ class SalesforceService
         return $normalized;
     }
 
-    private function isLeadFlowOwnerBlankError(\Throwable $exception): bool
+    private function isLeadFlowOwnerBlankError(Throwable $exception): bool
     {
         foreach ($this->extractSalesforceErrorItems($exception) as $errorItem) {
             $errorCode = (string) ($errorItem['errorCode'] ?? '');
@@ -1023,7 +699,7 @@ class SalesforceService
     /**
      * @return list<array<string, mixed>>
      */
-    private function extractSalesforceErrorItems(\Throwable $exception): array
+    private function extractSalesforceErrorItems(Throwable $exception): array
     {
         if (! method_exists($exception, 'getResponse')) {
             return [];
@@ -1055,6 +731,146 @@ class SalesforceService
     }
 
     /**
+     * Intenta reconectar a Salesforce usando el refresh_token persistido en la DB,
+     * sin necesidad de intervención del usuario. Útil cuando el caché fue limpiado.
+     *
+     * Flujo:
+     *  1. Lee los blobs encriptados de Forrest guardados en SiteSetting
+     *  2. Los restaura al caché (forrest_token y forrest_refresh_token)
+     *  3. Llama Forrest::refresh() → Salesforce retorna nuevo access_token
+     *  4. Actualiza el backup en DB con el nuevo token
+     *
+     * @return bool True si la reconexión fue exitosa, false si falló (token verdaderamente expirado)
+     */
+    public function tryAutoReconnect(): bool
+    {
+        $siteSettings = SiteSetting::current();
+        $extraSettings = is_array($siteSettings->extra_settings) ? $siteSettings->extra_settings : [];
+        $oauthMeta = data_get($extraSettings, 'salesforce_oauth', []);
+
+        $tokenBackup = data_get($oauthMeta, 'token_cache_backup');
+        $refreshTokenBackup = data_get($oauthMeta, 'refresh_token_cache_backup');
+
+        if ($refreshTokenBackup === null) {
+            Log::warning('Salesforce: tryAutoReconnect - No hay refresh_token_cache_backup en DB. Reconexión manual requerida.');
+
+            return false;
+        }
+
+        $cachePath = config('forrest.storage.path', 'forrest_');
+
+        try {
+            // Restaurar los blobs encriptados de Forrest al caché
+            if ($tokenBackup !== null) {
+                Cache::forever($cachePath . 'token', $tokenBackup);
+            }
+
+            Cache::forever($cachePath . 'refresh_token', $refreshTokenBackup);
+
+            // Forrest::refresh() usa el refresh_token del caché para obtener un nuevo access_token
+            Forrest::refresh();
+
+            Log::info('Salesforce: tryAutoReconnect - Token renovado automáticamente sin intervención de usuario.');
+
+            // Actualizar el backup en DB con el nuevo forrest_token (access_token actualizado)
+            $this->updateTokenBackup();
+
+            // Marcar como conectado
+            data_set($extraSettings, 'salesforce_oauth.connected', true);
+            data_set($extraSettings, 'salesforce_oauth.last_connected_at', now()->toIso8601String());
+            data_set($extraSettings, 'salesforce_oauth.last_error', null);
+            $siteSettings->update(['extra_settings' => $extraSettings]);
+
+            return true;
+        } catch (MissingRefreshTokenException $e) {
+            Log::critical('Salesforce: tryAutoReconnect - MissingRefreshTokenException. El backup de refresh_token no pudo restaurarse correctamente.', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        } catch (Throwable $e) {
+            if ($this->isRefreshTokenExpiredException($e)) {
+                Log::critical('Salesforce: tryAutoReconnect - invalid_grant: el refresh_token de Salesforce expiró o fue revocado. Reconexión manual requerida.', [
+                    ...$this->oauthTokenFailureContext($e, 'tryAutoReconnect'),
+                ]);
+
+                return false;
+            }
+
+            Log::error('Salesforce: tryAutoReconnect - Error inesperado al intentar renovar token.', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
+
+    /**
+     * Actualiza el backup del token en DB con el forrest_token actual del caché.
+     * Llamar después de operaciones Salesforce exitosas para mantener el backup actualizado.
+     */
+    public function updateTokenBackup(): void
+    {
+        $cachePath = config('forrest.storage.path', 'forrest_');
+        $newTokenBackup = Cache::get($cachePath . 'token');
+        $newRefreshTokenBackup = Cache::get($cachePath . 'refresh_token');
+
+        if ($newTokenBackup === null) {
+            return;
+        }
+
+        // Forrest::refresh() no actualiza 'forrest_refresh_token' cuando Salesforce rota el refresh_token.
+        // El token nuevo de rotación queda dentro del blob de 'forrest_token'. Lo extraemos y sincronizamos.
+        try {
+            $tokenData = decrypt($newTokenBackup);
+            if (is_array($tokenData) && isset($tokenData['refresh_token'])) {
+                $rotatedEncrypted = encrypt($tokenData['refresh_token']);
+                if ($rotatedEncrypted !== $newRefreshTokenBackup) {
+                    Cache::forever($cachePath . 'refresh_token', $rotatedEncrypted);
+                    $newRefreshTokenBackup = $rotatedEncrypted;
+                    Log::info('Salesforce: updateTokenBackup - refresh_token rotado detectado y sincronizado en caché y DB.');
+                }
+            }
+        } catch (Throwable) {
+            // Ignorar errores de desencriptado — continuar con backup existente
+        }
+
+        $siteSettings = SiteSetting::current();
+        $extraSettings = is_array($siteSettings->extra_settings) ? $siteSettings->extra_settings : [];
+
+        data_set($extraSettings, 'salesforce_oauth.token_cache_backup', $newTokenBackup);
+
+        if ($newRefreshTokenBackup !== null) {
+            data_set($extraSettings, 'salesforce_oauth.refresh_token_cache_backup', $newRefreshTokenBackup);
+        }
+
+        $siteSettings->update(['extra_settings' => $extraSettings]);
+    }
+
+    /**
+     * Marca la conexión OAuth de Salesforce como desconectada en DB y limpia tokens del caché.
+     * Centralizado aquí para poder usarse desde Jobs y Commands.
+     */
+    public function markAsDisconnected(string $reason): void
+    {
+        $siteSettings = SiteSetting::current();
+        $extraSettings = is_array($siteSettings->extra_settings) ? $siteSettings->extra_settings : [];
+
+        data_set($extraSettings, 'salesforce_oauth.connected', false);
+        data_set($extraSettings, 'salesforce_oauth.last_disconnected_at', now()->toIso8601String());
+        data_set($extraSettings, 'salesforce_oauth.last_error', $reason);
+
+        $siteSettings->update(['extra_settings' => $extraSettings]);
+
+        // Limpiar tokens del caché para que los Jobs fast-pathen en el siguiente intento
+        $cachePath = (string) config('forrest.storage.path', 'forrest_');
+        Cache::forget($cachePath . 'token');
+        Cache::forget($cachePath . 'refresh_token');
+
+        Log::critical('Salesforce: Conexión OAuth marcada como desconectada.', ['reason' => $reason]);
+    }
+
+    /**
      * Autenticar con Salesforce (útil para forzar refresh)
      */
     public function authenticate(): void
@@ -1063,7 +879,7 @@ class SalesforceService
         try {
             Forrest::authenticate();
             Log::debug('Salesforce: Autenticación exitosa');
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             if ($this->isRefreshTokenExpiredException($e)) {
                 Log::critical('Salesforce: OAuth devolvió invalid_grant durante authenticate(). Se requiere reconexión manual.', [
                     ...$this->oauthTokenFailureContext($e, 'authenticate'),
@@ -1081,7 +897,7 @@ class SalesforceService
         }
     }
 
-    private function isRefreshTokenExpiredException(\Throwable $exception): bool
+    private function isRefreshTokenExpiredException(Throwable $exception): bool
     {
         $message = strtolower($exception->getMessage());
 
@@ -1105,7 +921,7 @@ class SalesforceService
      * @param  array<string, mixed>  $extraContext
      * @return array<string, mixed>
      */
-    private function oauthTokenFailureContext(\Throwable $exception, string $operation, array $extraContext = []): array
+    private function oauthTokenFailureContext(Throwable $exception, string $operation, array $extraContext = []): array
     {
         $oauthPayload = $this->extractOAuthErrorPayload($exception);
 
@@ -1113,7 +929,7 @@ class SalesforceService
 
         try {
             $hasToken = Forrest::hasToken();
-        } catch (\Throwable) {
+        } catch (Throwable) {
             $hasToken = null;
         }
 
@@ -1171,7 +987,7 @@ class SalesforceService
     /**
      * @return array<string, mixed>
      */
-    private function extractOAuthErrorPayload(\Throwable $exception): array
+    private function extractOAuthErrorPayload(Throwable $exception): array
     {
         if (! method_exists($exception, 'getResponse')) {
             return [];
@@ -1294,7 +1110,7 @@ class SalesforceService
                         'proyecto_id' => $entry['Proyecto__c'] ?? null,
                     ];
                 }, $entries);
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 // Re-autenticar si el token expiró o no hay recursos disponibles
                 Log::debug('Salesforce: Re-autenticando plantas debido a: ' . $e->getMessage());
                 $this->authenticate();
@@ -1395,13 +1211,6 @@ class SalesforceService
      */
     public function findProjects(?int $cacheTtl = null): array
     {
-        // Asegurar que Forrest esté autenticado
-        try {
-            Forrest::authenticate();
-        } catch (\Exception $e) {
-            // Si falla, continuar - el query lo intentará
-        }
-
         // SOQL para obtener proyectos desde Proyecto__c
         // Nota: Usamos Fecha_Recepcion_Municipal__c como proxy para fecha de entrega
         $soql = 'SELECT Id, Name, Descripci_n__c, Direccion__c, Comuna__c, Provincia__c, Region__c, '
@@ -1459,7 +1268,7 @@ class SalesforceService
                         'entrega_inmediata' => (bool) ($entry['Entrega_Inmediata__c'] ?? false),
                     ];
                 }, $entries);
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 $this->authenticate();
                 $result = Forrest::query($soql);
                 $entries = $result['records'] ?? [];
@@ -1850,7 +1659,7 @@ class SalesforceService
             if (preg_match('/\/id\/([a-zA-Z0-9]{15,18})\//', $identityUrl, $matches) === 1) {
                 return $matches[1];
             }
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return null;
         }
 
@@ -1865,7 +1674,7 @@ class SalesforceService
             $orgId = $records[0]['Id'] ?? null;
 
             return is_string($orgId) && trim($orgId) !== '' ? $orgId : null;
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return null;
         }
     }
@@ -1878,7 +1687,7 @@ class SalesforceService
 
         try {
             return (string) Carbon::parse($lastModifiedAt)->getTimestampMs();
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return null;
         }
     }

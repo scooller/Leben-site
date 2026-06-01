@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Services\Salesforce\SalesforceService;
+use Exception;
 use Illuminate\Console\Command;
 
 class TestPlantsSync extends Command
@@ -30,7 +31,7 @@ class TestPlantsSync extends Command
                 $this->warn('⚠️ No se encontraron plantas en Salesforce');
             }
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->error('❌ Error: '.$e->getMessage());
             $this->error('Stack trace: '.$e->getTraceAsString());
 

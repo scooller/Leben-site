@@ -8,6 +8,31 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ---
 
+## [1.9.3] - 2026-05-29
+
+### 🔄 Cambios
+
+#### Salesforce OAuth — Auto-reconexión silenciosa tras pérdida de token
+Resuelve la pérdida de sincronización que ocurría al limpiar el caché (deployments, restart de Redis).
+
+**Problema raíz**: `omniphx/forrest` almacena el access token y el refresh token únicamente en el caché de Laravel (`forrest_token`, `forrest_refresh_token`). Al ejecutar `php artisan cache:clear`, ambas claves se eliminan. Sin el refresh token en caché, Forrest no puede renovar el access token y lanza `MissingResourceException`, lo que provocaba marcación manual como "desconectado" en el panel.
+
+**Solución implementada**:
+- `SalesforceOAuthController::callback()` persiste el backup cifrado de `forrest_token` y `forrest_refresh_token` en `SiteSetting.extra_settings.salesforce_oauth` (`token_cache_backup`, `refresh_token_cache_backup`) tras cada OAuth exitoso.
+- `SalesforceService::tryAutoReconnect()`: restaura ambos tokens al caché desde la DB y llama `Forrest::refresh()` para obtener un nuevo access token de Salesforce sin intervención del usuario. Retorna `bool`.
+- `SalesforceService::updateTokenBackup()`: actualiza `token_cache_backup` en DB con el nuevo access token tras cada refresh.
+- `CreateSalesforceCaseJob`: reordenados los checks — `isSalesforceOAuthMarkedDisconnected()` primero (fast path), luego `!Forrest::hasToken()` con llamada a `tryAutoReconnect()`.
+- Nuevo comando `salesforce:refresh-token` (artisan): renueva el token proactivamente; si el token está en caché realiza refresh directo, si no intenta auto-reconexión desde backup en DB.
+- Schedule: `salesforce:refresh-token` corre cada 20 horas via `routes/console.php` con `withoutOverlapping()`.
+
+**Requisito post-deploy**: reconectar OAuth una vez desde `/admin/site-settings` para generar el backup inicial.
+
+#### Panel — Proyectos inactivos visibles en SiteSettings
+- El selector de proyecto en `SiteSettings` ahora incluye proyectos inactivos con prefijo `[Inactivo]` en lugar de filtrarlos.
+- Ordenamiento actualizado: activos primero (`orderBy('is_active', 'desc')`), luego por nombre y comuna.
+
+---
+
 ## [1.9.2] - 2026-05-27
 
 ### 🔒 Seguridad

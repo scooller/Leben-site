@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Filament\Actions\SyncPlantsAction;
+use Exception;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
@@ -16,7 +17,7 @@ class SyncPlantsJob implements ShouldQueue
     {
         try {
             Forrest::authenticate();
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::warning('SyncPlantsJob: Forrest authentication warning: '.$e->getMessage());
         }
 

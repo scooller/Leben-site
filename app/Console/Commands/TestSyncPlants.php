@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Services\Salesforce\SalesforceService;
+use Exception;
 use Illuminate\Console\Command;
 use Omniphx\Forrest\Providers\Laravel\Facades\Forrest;
 
@@ -77,7 +78,7 @@ class TestSyncPlants extends Command
             $this->info('✅ ¡Todas las pruebas pasaron correctamente!');
 
             return Command::SUCCESS;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->error('');
             $this->error('❌ Error: '.$e->getMessage());
             $this->error('');

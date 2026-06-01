@@ -16,7 +16,7 @@ try {
         '--model' => [FrontendPreviewLink::class],
     ])->daily();
     Schedule::job(new SyncPlantsJob)->everyFiveMinutes()->withoutOverlapping();
-} catch (Throwable) {
+    Schedule::command('salesforce:refresh-token')->cron('0 */20 * * *')->withoutOverlapping();
 } catch (\Throwable) {
     // Allow first-time installs to run migrations before settings-backed packages are ready.
 }

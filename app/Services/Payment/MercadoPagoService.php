@@ -3,6 +3,7 @@
 namespace App\Services\Payment;
 
 use App\Contracts\PaymentGatewayInterface;
+use Exception;
 use Illuminate\Support\Facades\Log;
 use MercadoPago\Client\Payment\PaymentClient;
 use MercadoPago\Client\Preference\PreferenceClient;
@@ -95,7 +96,7 @@ class MercadoPagoService implements PaymentGatewayInterface
                 'init_point' => $response->init_point,
                 'sandbox_init_point' => $response->sandbox_init_point ?? null,
             ];
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('MercadoPago: Error al crear preferencia', [
                 'error' => $e->getMessage(),
                 'data' => $data,
@@ -158,7 +159,7 @@ class MercadoPagoService implements PaymentGatewayInterface
                     'email' => $payment->payer?->email,
                 ],
             ];
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('MercadoPago: Error al obtener pago', [
                 'payment_id' => $paymentId,
                 'error' => $e->getMessage(),
@@ -207,7 +208,7 @@ class MercadoPagoService implements PaymentGatewayInterface
                 'payment_id' => $refund['payment_id'] ?? $transactionId,
                 'date_created' => $refund['date_created'] ?? now()->toISOString(),
             ];
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('MercadoPago: Error al reembolsar', [
                 'transaction_id' => $transactionId,
                 'amount' => $amount,
@@ -278,7 +279,7 @@ class MercadoPagoService implements PaymentGatewayInterface
             // Payment::where('gateway_tx_id', $paymentId)->update([...]);
 
             return true;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('MercadoPago: Error procesando notificación', [
                 'payment_id' => $paymentId,
                 'error' => $e->getMessage(),
@@ -358,7 +359,7 @@ class MercadoPagoService implements PaymentGatewayInterface
             }
 
             return $isValid;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('MercadoPago: Error verifying webhook signature', [
                 'error' => $e->getMessage(),
             ]);

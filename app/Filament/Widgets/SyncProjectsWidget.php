@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Filament\Actions\SyncProjectsAction;
+use Exception;
 use Filament\Notifications\Notification;
 use Filament\Widgets\Widget;
 
@@ -51,7 +52,7 @@ class SyncProjectsWidget extends Widget
             }
 
             $this->loadStats();
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Notification::make()
                 ->title('❌ Error')
                 ->body($e->getMessage())

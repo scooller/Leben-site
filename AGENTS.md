@@ -30,25 +30,18 @@ La aplicación soporta:
 - ✅ **Normalización canónica de importación**: `rango_renta` y `apellido` unificados con limpieza de aliases legacy
 - ✅ **Normalización de telefonía**: Persistencia de teléfonos en formato solo dígitos
 - ✅ **UTM mapping robusto**: Aliases de marketing homologados hacia campos UTM y payload Salesforce
-- ✅ **Precios Dinámicos**: Implementación de descuentos máximos por unidad (descuento_maximo_unidad) con lógica de aplicación en API de Plantas y Proyectos
+- ✅ **Precios Dinámicos**: Implementación de descuentos máximos por unidad (`descuento_maximo_unidad`) con lógica de aplicación en API de Plantas y Proyectos
 - ✅ **Configuración de Descuentos**: Ajustes en `SiteSettings` para definir fuentes de descuento Salesforce para pricing de la API
 - ✅ **UX en Panel**: Implementación de `filament-dual-scroll` para tablas extensas y mejoras en visibilidad de columnas de contactos
 - ✅ **Mapeo Salesforce Extendido**: Soporte para `descuento_maximo_unidad` y refinamiento en `SalesforceCaseMapper` (resolución de sitio web por canal)
 - ✅ **Normalización de Proyectos**: Sincronización refinada de `Proyect_ID__c` y manejo de campos legacy
-- ✅ **Precios Dinámicos**: Implementación de descuentos máximos por unidad (descuento_maximo_unidad) con lógica de aplicación en API de Plantas y Proyectos
-- ✅ **Configuración de Descuentos**: Ajustes en `SiteSettings` para definir fuentes de descuento Salesforce para pricing de la API
-- ✅ **UX en Panel**: Implementación de `filament-dual-scroll` para tablas extensas y mejoras en visibilidad de columnas de contactos
-- ✅ **Mapeo Salesforce Extendido**: Soporte para `descuento_maximo_unidad` y refinamiento en `SalesforceCaseMapper` (resolución de sitio web por canal)
-- ✅ **Normalización de Proyectos**: Sincronización refinada de `Proyect_ID__c` y manejo de campos legacy
-- ✅ **Precios Dinámicos**: Implementación de descuentos máximos por unidad (descuento_maximo_unidad) con lógica de aplicación en API de Plantas y Proyectos
-- ✅ **Configuración de Descuentos**: Ajustes en SiteSettings para definir fuentes de descuento Salesforce para pricing de la API
-- ✅ **UX en Panel**: Implementación de filament-dual-scroll para tablas extensas y mejoras en visibilidad de columnas de contactos
-- ✅ **Mapeo Salesforce Extendido**: Soporte para descuento_maximo_unidad y refinamiento en SalesforceCaseMapper (resolución de sitio web por canal)
-- ✅ **Normalización de Proyectos**: Sincronización refinada de Proyect_ID__c y manejo de campos legacy
 - ✅ **OAuth Token Hardening**: Scope/prompt explícitos para WebServer OAuth y reducción de fallas repetidas `invalid_grant` por reconexión controlada
 - ✅ **Protección de Cola Salesforce**: `CreateSalesforceCaseJob` omite reintentos cuando OAuth está marcado como desconectado hasta reconexión manual en panel
 - ✅ **Seguridad API — token.origin**: Middleware corregido para rechazar tokens inválidos/ausentes; usa `PersonalAccessToken::findToken()` sin depender de sesión
 - ✅ **Seguridad API — site-config**: `payment_gateways.*.config`, `price_source` y `price_percentage_source` ocultos en respuesta pública; visibles solo con token válido
+- ✅ **Auto-reconexión Salesforce OAuth**: Tokens OAuth persistidos cifrados en DB (`SiteSetting.extra_settings`); se restauran automáticamente en caché tras `cache:clear` o restart de Redis, sin requerir login manual
+- ✅ **Comando `salesforce:refresh-token`**: Nuevo comando Artisan para refrescar el access token proactivamente; scheduled cada 20 horas via `routes/console.php`
+- ✅ **Panel — Proyectos inactivos visibles**: El selector de proyecto en SiteSettings ahora muestra proyectos inactivos con prefijo `[Inactivo]` en lugar de ocultarlos
 
 ### Módulos Activos
 1. **Salesforce Integration** - Sincronización de leads/casos, OAuth, caché
@@ -128,6 +121,8 @@ routes/
 - Mapeo de objetos Salesforce a modelos Laravel
 - Sincronización de campos filtrados
 - Gestión de OAuth y tokens
+- tryAutoReconnect(): restaura tokens desde backup en DB y llama Forrest::refresh() silenciosamente
+- updateTokenBackup(): persiste el access token renovado de vuelta en DB tras cada refresh
 ```
 
 ### PaymentGateway Services
@@ -263,6 +258,8 @@ php artisan test --compact --filter=testName  # Por test
 - Manejo robusto de tokens expirados
 - Caché ampliado para consultas SOQL
 - OAuth con flujo authenticate/callback
+- **Auto-reconexión silenciosa**: tokens OAuth persistidos en `SiteSetting.extra_settings` (`token_cache_backup`, `refresh_token_cache_backup`); `CreateSalesforceCaseJob` llama `tryAutoReconnect()` cuando no hay token en caché
+- **Refresh proactivo programado**: `salesforce:refresh-token` corre cada 20 horas; renueva el access token antes de que expire
 
 ### Contactos
 - Validación por canal (sale, info, etc.)
@@ -284,10 +281,27 @@ php artisan test --compact --filter=testName  # Por test
 - Website preview links
 - QR code en Asesores
 - Ajustes de formato en Curator (`MediaForm`) y test de QR short link para mantener consistencia (sin cambios funcionales)
+- Selector de proyecto en SiteSettings muestra proyectos inactivos con prefijo `[Inactivo]` (no los oculta)
 
 ---
 
 ## Estado Operativo Actual
+
+### Salesforce OAuth — Auto-reconexión
+**Estado**: Implementado y validado con pruebas focalizadas
+
+**Flujo**:
+1. Tras OAuth exitoso, `SalesforceOAuthController::callback()` persiste `forrest_token` y `forrest_refresh_token` en `SiteSetting.extra_settings.salesforce_oauth`
+2. `CreateSalesforceCaseJob` chequea `isSalesforceOAuthMarkedDisconnected()` primero (fast path); luego si no hay token en caché, llama `tryAutoReconnect()`
+3. `tryAutoReconnect()` restaura ambos tokens al caché y llama `Forrest::refresh()` → Salesforce entrega nuevo access token sin intervención del usuario
+4. `salesforce:refresh-token` (scheduled cada 20h) realiza refresh proactivo antes de que el token expire
+
+**Requisito post-deploy**: Reconectar OAuth manualmente una vez en `/admin/site-settings` para generar el backup inicial en DB.
+
+**Comandos operativos**:
+- `php artisan salesforce:refresh-token` — refresh manual/proactivo
+
+---
 
 ### Contact Submissions - Importación CSV
 **Estado**: Implementado y validado con pruebas focalizadas

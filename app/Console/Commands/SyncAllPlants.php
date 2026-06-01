@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Filament\Actions\SyncPlantsAction;
+use Exception;
 use Illuminate\Console\Command;
 use Omniphx\Forrest\Providers\Laravel\Facades\Forrest;
 
@@ -18,7 +19,7 @@ class SyncAllPlants extends Command
 
         try {
             Forrest::authenticate();
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->warn("⚠️  Autenticación de Forrest: {$e->getMessage()}");
         }
 

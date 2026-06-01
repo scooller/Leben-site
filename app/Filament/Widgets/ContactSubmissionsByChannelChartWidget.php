@@ -5,6 +5,7 @@ namespace App\Filament\Widgets;
 use App\Models\ContactSubmission;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Facades\Schema;
+use Throwable;
 
 class ContactSubmissionsByChannelChartWidget extends ChartWidget
 {
@@ -25,7 +26,7 @@ class ContactSubmissionsByChannelChartWidget extends ChartWidget
                 ->groupBy('contact_channel_id')
                 ->orderByDesc('total')
                 ->get();
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return $this->emptyData();
         }
 

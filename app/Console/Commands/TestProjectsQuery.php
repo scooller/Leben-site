@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Services\Salesforce\SalesforceService;
+use Exception;
 use Illuminate\Console\Command;
 
 class TestProjectsQuery extends Command
@@ -36,7 +37,7 @@ class TestProjectsQuery extends Command
 
             return Command::SUCCESS;
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->error('❌ Error: '.$e->getMessage());
             $this->error('Tipo: '.get_class($e));
 

@@ -6,6 +6,7 @@ use App\Models\Plant;
 use App\Support\BusinessActivityLogger;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
+use Throwable;
 
 class EraseAllPlantsAction
 {
@@ -48,10 +49,10 @@ class EraseAllPlantsAction
                 'message' => "Se eliminaron {$count} plantas correctamente",
                 'count' => $count,
             ];
-        } catch (\Throwable $throwable) {
+        } catch (Throwable $throwable) {
             return [
                 'success' => false,
-                'message' => 'Error al borrar plantas: '.$throwable->getMessage(),
+                'message' => 'Error al borrar plantas: ' . $throwable->getMessage(),
                 'count' => 0,
             ];
         }

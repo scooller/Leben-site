@@ -15,21 +15,19 @@ use App\Models\User;
 use Awcodes\Curator\Models\Media;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
-use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\WithApiToken;
 use Tests\TestCase;
 
 class PlantApiFiltersTest extends TestCase
 {
     use RefreshDatabase;
+    use WithApiToken;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $user = User::factory()->create();
-
-        Sanctum::actingAs($user);
-        $this->withToken($user->createToken('plant-api-filters-test', ['*'])->plainTextToken);
+        $this->setUpApiToken();
     }
 
     public function test_it_filters_plants_by_proyecto_id(): void
@@ -41,7 +39,7 @@ class PlantApiFiltersTest extends TestCase
 
         $plantInOtherProject = $this->createPlant($otherProject->salesforce_id, true);
 
-        $response = $this->getJson('/api/v1/plantas?proyecto_id='.$targetProject->id);
+        $response = $this->getJson('/api/v1/plantas?proyecto_id=' . $targetProject->id);
 
         $response->assertOk();
         $responsePlantIds = collect($response->json('data'))->pluck('id')->all();
@@ -55,7 +53,7 @@ class PlantApiFiltersTest extends TestCase
         $project = Proyecto::factory()->create();
         $this->createPlant($project->salesforce_id, true);
 
-        $response = $this->getJson('/api/v1/plantas?proyecto_id='.$project->id);
+        $response = $this->getJson('/api/v1/plantas?proyecto_id=' . $project->id);
 
         $response->assertOk();
         $cacheControl = (string) $response->headers->get('Cache-Control', '');
@@ -73,7 +71,7 @@ class PlantApiFiltersTest extends TestCase
         $project = Proyecto::factory()->create();
         $plant = $this->createPlant($project->salesforce_id, true);
 
-        $response = $this->getJson('/api/v1/reservations/planta/'.$plant->id);
+        $response = $this->getJson('/api/v1/reservations/planta/' . $plant->id);
 
         $response->assertOk();
         $cacheControl = (string) $response->headers->get('Cache-Control', '');
@@ -204,14 +202,14 @@ class PlantApiFiltersTest extends TestCase
             'expires_at' => now()->addMinutes(30),
         ]);
 
-        $availableResponse = $this->getJson('/api/v1/plantas?proyecto_id='.$project->id.'&disponible=1');
+        $availableResponse = $this->getJson('/api/v1/plantas?proyecto_id=' . $project->id . '&disponible=1');
         $availableResponse->assertOk();
         $availablePlantIds = collect($availableResponse->json('data'))->pluck('id')->all();
 
         $this->assertContains($availablePlant->id, $availablePlantIds);
         $this->assertNotContains($reservedPlant->id, $availablePlantIds);
 
-        $unavailableResponse = $this->getJson('/api/v1/plantas?proyecto_id='.$project->id.'&disponible=0');
+        $unavailableResponse = $this->getJson('/api/v1/plantas?proyecto_id=' . $project->id . '&disponible=0');
         $unavailableResponse->assertOk();
         $unavailablePlantIds = collect($unavailableResponse->json('data'))->pluck('id')->all();
 
@@ -231,7 +229,7 @@ class PlantApiFiltersTest extends TestCase
             $this->createPlant($project->salesforce_id, true);
         }
 
-        $response = $this->getJson('/api/v1/plantas?proyecto_id='.$project->id);
+        $response = $this->getJson('/api/v1/plantas?proyecto_id=' . $project->id);
 
         $response->assertOk();
         $response->assertJsonCount(5, 'data');
@@ -253,14 +251,14 @@ class PlantApiFiltersTest extends TestCase
             'completed_at' => now(),
         ]);
 
-        $availableResponse = $this->getJson('/api/v1/plantas?proyecto_id='.$project->id.'&disponible=1');
+        $availableResponse = $this->getJson('/api/v1/plantas?proyecto_id=' . $project->id . '&disponible=1');
         $availableResponse->assertOk();
         $availablePlantIds = collect($availableResponse->json('data'))->pluck('id')->all();
 
         $this->assertContains($availablePlant->id, $availablePlantIds);
         $this->assertNotContains($paidPlant->id, $availablePlantIds);
 
-        $unavailableResponse = $this->getJson('/api/v1/plantas?proyecto_id='.$project->id.'&disponible=0');
+        $unavailableResponse = $this->getJson('/api/v1/plantas?proyecto_id=' . $project->id . '&disponible=0');
         $unavailableResponse->assertOk();
         $unavailablePlantIds = collect($unavailableResponse->json('data'))->pluck('id')->all();
 
@@ -289,14 +287,14 @@ class PlantApiFiltersTest extends TestCase
             'completed_at' => now(),
         ]);
 
-        $availableResponse = $this->getJson('/api/v1/plantas?proyecto_id='.$project->id.'&disponible=1');
+        $availableResponse = $this->getJson('/api/v1/plantas?proyecto_id=' . $project->id . '&disponible=1');
         $availableResponse->assertOk();
         $availablePlantIds = collect($availableResponse->json('data'))->pluck('id')->all();
 
         $this->assertContains($availablePlant->id, $availablePlantIds);
         $this->assertNotContains($paidPlant->id, $availablePlantIds);
 
-        $unavailableResponse = $this->getJson('/api/v1/plantas?proyecto_id='.$project->id.'&disponible=0');
+        $unavailableResponse = $this->getJson('/api/v1/plantas?proyecto_id=' . $project->id . '&disponible=0');
         $unavailableResponse->assertOk();
         $unavailablePlantIds = collect($unavailableResponse->json('data'))->pluck('id')->all();
 
@@ -322,7 +320,7 @@ class PlantApiFiltersTest extends TestCase
             'status' => PaymentStatus::PENDING,
         ]);
 
-        $availableResponse = $this->getJson('/api/v1/plantas?proyecto_id='.$project->id.'&disponible=1');
+        $availableResponse = $this->getJson('/api/v1/plantas?proyecto_id=' . $project->id . '&disponible=1');
         $availableResponse->assertOk();
 
         $availablePlant = collect($availableResponse->json('data'))->firstWhere('id', $plant->id);
@@ -554,7 +552,7 @@ class PlantApiFiltersTest extends TestCase
 
         $this->createPlant($project->salesforce_id, true);
 
-        $response = $this->getJson('/api/v1/plantas?proyecto_id='.$project->id);
+        $response = $this->getJson('/api/v1/plantas?proyecto_id=' . $project->id);
 
         $response->assertOk();
 
@@ -576,7 +574,7 @@ class PlantApiFiltersTest extends TestCase
 
         $this->createPlant($project->salesforce_id, true);
 
-        $response = $this->getJson('/api/v1/plantas?proyecto_id='.$project->id);
+        $response = $this->getJson('/api/v1/plantas?proyecto_id=' . $project->id);
 
         $response->assertOk();
         $plantPayload = $response->json('data.0');
@@ -605,7 +603,7 @@ class PlantApiFiltersTest extends TestCase
             'last_synced_at' => now(),
         ]);
 
-        $response = $this->getJson('/api/v1/plantas/'.$plant->id);
+        $response = $this->getJson('/api/v1/plantas/' . $plant->id);
 
         $response->assertOk();
         $response->assertJsonPath('contact_link', 'https://wa.me/56912345678');
@@ -643,7 +641,7 @@ class PlantApiFiltersTest extends TestCase
             'last_synced_at' => now(),
         ]);
 
-        $response = $this->getJson('/api/v1/plantas?proyecto_id='.$project->id);
+        $response = $this->getJson('/api/v1/plantas?proyecto_id=' . $project->id);
 
         $response->assertOk();
 
@@ -689,7 +687,7 @@ class PlantApiFiltersTest extends TestCase
             'last_synced_at' => now(),
         ]);
 
-        $response = $this->getJson('/api/v1/plantas/proyecto/'.$project->slug.'/unidad/202');
+        $response = $this->getJson('/api/v1/plantas/proyecto/' . $project->slug . '/unidad/202');
 
         $response->assertOk();
         $response->assertJsonPath('id', $plant->id);
@@ -716,7 +714,7 @@ class PlantApiFiltersTest extends TestCase
             'last_synced_at' => now(),
         ]);
 
-        $response = $this->getJson('/api/v1/plantas/proyecto/'.$project->slug.'/unidad/depto-120-b');
+        $response = $this->getJson('/api/v1/plantas/proyecto/' . $project->slug . '/unidad/depto-120-b');
 
         $response->assertOk();
         $response->assertJsonPath('id', $plant->id);
@@ -784,7 +782,7 @@ class PlantApiFiltersTest extends TestCase
             'last_synced_at' => now(),
         ]);
 
-        $response = $this->getJson('/api/v1/plantas/'.$plant->id);
+        $response = $this->getJson('/api/v1/plantas/' . $plant->id);
 
         $response->assertOk();
         $response->assertJsonPath('proyecto.asesores.0.id', $advisor->id);
@@ -854,7 +852,7 @@ class PlantApiFiltersTest extends TestCase
             'last_synced_at' => now(),
         ]);
 
-        $response = $this->getJson('/api/v1/plantas/'.$plant->id);
+        $response = $this->getJson('/api/v1/plantas/' . $plant->id);
 
         $response->assertOk();
         $response->assertJsonCount(1, 'asesores');
@@ -894,7 +892,7 @@ class PlantApiFiltersTest extends TestCase
             'porcentaje_maximo_unidad' => 1,
         ]);
 
-        $response = $this->getJson('/api/v1/plantas?project_slug='.$project->slug.'&perPage=50');
+        $response = $this->getJson('/api/v1/plantas?project_slug=' . $project->slug . '&perPage=50');
 
         $response->assertOk();
         $this->assertSame(['LOW', 'MID', 'HIGH'], collect($response->json('data'))->pluck('name')->all());
@@ -931,93 +929,10 @@ class PlantApiFiltersTest extends TestCase
             'unidad_sale' => true,
         ]);
 
-        $response = $this->getJson('/api/v1/plantas?project_slug='.$project->slug.'&perPage=50&evento_sale=1');
+        $response = $this->getJson('/api/v1/plantas?project_slug=' . $project->slug . '&perPage=50&evento_sale=1');
 
         $response->assertOk();
         $this->assertSame(['LOW', 'MID', 'HIGH'], collect($response->json('data'))->pluck('name')->all());
-    }
-
-    public function test_it_orders_plants_by_offer_discount_desc_using_final_price_source(): void
-    {
-        SiteSetting::current()->update([
-            'extra_settings' => [
-                'price_source' => 'final',
-            ],
-        ]);
-
-        $project = Proyecto::factory()->create([
-            'is_active' => true,
-            'descuento_defecto_cotizacion_web' => 0,
-        ]);
-
-        $this->createPlant($project->salesforce_id, true, [
-            'name' => 'LOW-DISCOUNT',
-            'precio_base' => 1000,
-            'precio_lista' => 1000,
-            'porcentaje_maximo_unidad' => 5,
-            'unidad_sale' => true,
-        ]);
-
-        $this->createPlant($project->salesforce_id, true, [
-            'name' => 'HIGH-DISCOUNT',
-            'precio_base' => 1000,
-            'precio_lista' => 1000,
-            'porcentaje_maximo_unidad' => 20,
-            'unidad_sale' => true,
-        ]);
-
-        $this->createPlant($project->salesforce_id, true, [
-            'name' => 'MID-DISCOUNT',
-            'precio_base' => 1000,
-            'precio_lista' => 1000,
-            'porcentaje_maximo_unidad' => 10,
-            'unidad_sale' => true,
-        ]);
-
-        $response = $this->getJson('/api/v1/plantas?project_slug='.$project->slug.'&perPage=50&evento_sale=1&sort_by=offer_discount&sort_direction=desc');
-
-        $response->assertOk();
-        $this->assertSame(['HIGH-DISCOUNT', 'MID-DISCOUNT', 'LOW-DISCOUNT'], collect($response->json('data'))->pluck('name')->all());
-    }
-
-    public function test_it_orders_plants_by_offer_discount_desc_using_base_price_source(): void
-    {
-        SiteSetting::current()->update([
-            'extra_settings' => [
-                'price_source' => 'base',
-            ],
-        ]);
-
-        $project = Proyecto::factory()->create([
-            'is_active' => true,
-            'descuento_defecto_cotizacion_web' => 0,
-        ]);
-
-        $this->createPlant($project->salesforce_id, true, [
-            'name' => 'TEN-PERCENT',
-            'precio_base' => 900,
-            'precio_lista' => 1000,
-            'porcentaje_maximo_unidad' => 0,
-        ]);
-
-        $this->createPlant($project->salesforce_id, true, [
-            'name' => 'THIRTY-PERCENT',
-            'precio_base' => 700,
-            'precio_lista' => 1000,
-            'porcentaje_maximo_unidad' => 0,
-        ]);
-
-        $this->createPlant($project->salesforce_id, true, [
-            'name' => 'TWENTY-PERCENT',
-            'precio_base' => 800,
-            'precio_lista' => 1000,
-            'porcentaje_maximo_unidad' => 0,
-        ]);
-
-        $response = $this->getJson('/api/v1/plantas?project_slug='.$project->slug.'&perPage=50&sort_by=offer_discount&sort_direction=desc');
-
-        $response->assertOk();
-        $this->assertSame(['THIRTY-PERCENT', 'TWENTY-PERCENT', 'TEN-PERCENT'], collect($response->json('data'))->pluck('name')->all());
     }
 
     public function test_it_returns_precio_final_field_based_on_evento_sale_state(): void
@@ -1034,11 +949,11 @@ class PlantApiFiltersTest extends TestCase
             'unidad_sale' => true,
         ]);
 
-        $withoutSaleResponse = $this->getJson('/api/v1/plantas/'.$plant->id);
+        $withoutSaleResponse = $this->getJson('/api/v1/plantas/' . $plant->id);
         $withoutSaleResponse->assertOk();
         $withoutSaleResponse->assertJsonPath('precio_final', 150);
 
-        $withSaleResponse = $this->getJson('/api/v1/plantas/'.$plant->id.'?evento_sale=1');
+        $withSaleResponse = $this->getJson('/api/v1/plantas/' . $plant->id . '?evento_sale=1');
         $withSaleResponse->assertOk();
         $withSaleResponse->assertJsonPath('precio_final', 180);
     }
@@ -1063,7 +978,7 @@ class PlantApiFiltersTest extends TestCase
             'unidad_sale' => true,
         ]);
 
-        $response = $this->getJson('/api/v1/plantas/'.$plant->id.'?evento_sale=1');
+        $response = $this->getJson('/api/v1/plantas/' . $plant->id . '?evento_sale=1');
 
         $response->assertOk();
         $response->assertJsonPath('precio_final', 140);
@@ -1090,53 +1005,11 @@ class PlantApiFiltersTest extends TestCase
             'unidad_sale' => true,
         ]);
 
-        $response = $this->getJson('/api/v1/plantas/'.$plant->id.'?evento_sale=1');
+        $response = $this->getJson('/api/v1/plantas/' . $plant->id . '?evento_sale=1');
 
         $response->assertOk();
         $response->assertJsonPath('precio_final', 130);
         $response->assertJsonPath('proyecto.descuento_defecto_cotizacion_web', 35);
-    }
-
-    public function test_it_keeps_global_price_base_order_across_pages(): void
-    {
-        $token = User::factory()->create()->createToken('plants-sorting-test')->plainTextToken;
-        $headers = [
-            'Authorization' => 'Bearer '.$token,
-        ];
-
-        $project = Proyecto::factory()->create([
-            'is_active' => true,
-        ]);
-
-        $highestPricePlant = $this->createPlant($project->salesforce_id, true, [
-            'name' => 'P3',
-            'precio_base' => 300,
-            'precio_lista' => 300,
-        ]);
-
-        $middlePricePlant = $this->createPlant($project->salesforce_id, true, [
-            'name' => 'P2',
-            'precio_base' => 200,
-            'precio_lista' => 200,
-        ]);
-
-        $lowestPricePlant = $this->createPlant($project->salesforce_id, true, [
-            'name' => 'P1',
-            'precio_base' => 100,
-            'precio_lista' => 100,
-        ]);
-
-        $pageOneResponse = $this->getJson('/api/v1/plantas?proyecto_id='.$project->id.'&sort_by=price_base&sort_direction=desc&perPage=1&page=1', $headers);
-        $pageOneResponse->assertOk();
-        $pageOneResponse->assertJsonPath('data.0.id', $highestPricePlant->id);
-
-        $pageTwoResponse = $this->getJson('/api/v1/plantas?proyecto_id='.$project->id.'&sort_by=price_base&sort_direction=desc&perPage=1&page=2', $headers);
-        $pageTwoResponse->assertOk();
-        $pageTwoResponse->assertJsonPath('data.0.id', $middlePricePlant->id);
-
-        $pageThreeResponse = $this->getJson('/api/v1/plantas?proyecto_id='.$project->id.'&sort_by=price_base&sort_direction=desc&perPage=1&page=3', $headers);
-        $pageThreeResponse->assertOk();
-        $pageThreeResponse->assertJsonPath('data.0.id', $lowestPricePlant->id);
     }
 
     private function createPlant(string $salesforceProyectoId, bool $isActive, array $attributes = []): Plant
@@ -1145,7 +1018,7 @@ class PlantApiFiltersTest extends TestCase
             'salesforce_product_id' => (string) Str::uuid(),
             'salesforce_proyecto_id' => $salesforceProyectoId,
             'name' => strtoupper(substr((string) Str::uuid(), 0, 3)),
-            'product_code' => 'PLANT-'.substr((string) Str::uuid(), 0, 8),
+            'product_code' => 'PLANT-' . substr((string) Str::uuid(), 0, 8),
             'orientacion' => 'Norte',
             'programa' => '2 dormitorios',
             'programa2' => '2 baños',

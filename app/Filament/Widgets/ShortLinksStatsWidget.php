@@ -4,6 +4,7 @@ namespace App\Filament\Widgets;
 
 use App\Models\ShortLink;
 use Filament\Widgets\Widget;
+use Throwable;
 
 class ShortLinksStatsWidget extends Widget
 {
@@ -28,7 +29,7 @@ class ShortLinksStatsWidget extends Widget
         $this->loadStats();
         try {
             $this->resourceUrl = route('filament.admin.resources.short-links.index');
-        } catch (\Throwable) {
+        } catch (Throwable) {
             $this->resourceUrl = '#';
         }
     }

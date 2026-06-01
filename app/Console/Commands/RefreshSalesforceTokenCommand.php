@@ -1,0 +1,76 @@
+<?php
+
+namespace App\Console\Commands;
+
+use App\Services\Salesforce\SalesforceService;
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
+use Omniphx\Forrest\Providers\Laravel\Facades\Forrest;
+use Throwable;
+
+class RefreshSalesforceTokenCommand extends Command
+{
+    protected $signature = 'salesforce:refresh-token';
+
+    protected $description = 'Renueva proactivamente el access token de Salesforce OAuth usando el refresh token. No requiere intervención del usuario.';
+
+    public function handle(SalesforceService $salesforceService): int
+    {
+        $leadEnabled = (bool) config('services.salesforce.lead_enabled', false);
+
+        if (! $leadEnabled) {
+            $this->line('Salesforce deshabilitado (SF_LEAD_ENABLED=false). Nada que hacer.');
+
+            return self::SUCCESS;
+        }
+
+        try {
+            if (Forrest::hasToken()) {
+                // Token presente en caché — solo actualizar backup en DB.
+                // NO llamar Forrest::refresh() proactivo: con rotación activa en Salesforce,
+                // cada llamada consume el refresh_token sin que Forrest persista el nuevo,
+                // lo que invalida el backup y causa invalid_grant en la siguiente ejecución.
+                $salesforceService->updateTokenBackup();
+
+                Log::info('salesforce:refresh-token - Token en caché. Backup en DB actualizado.');
+                $this->info('Token en caché. Backup actualizado en DB correctamente.');
+
+                return self::SUCCESS;
+            }
+
+            // Token no está en caché — intentar recuperar desde backup en DB
+            $this->warn('Token no encontrado en caché. Intentando auto-reconexión desde backup en DB...');
+            $reconnected = $salesforceService->tryAutoReconnect();
+
+            if ($reconnected) {
+                Log::info('salesforce:refresh-token - Auto-reconexión exitosa desde backup en DB.');
+                $this->info('Auto-reconexión exitosa. Token restaurado y renovado.');
+
+                return self::SUCCESS;
+            }
+
+            Log::critical('salesforce:refresh-token - Auto-reconexión fallida. No hay backup en DB o el refresh token expiró. Reconexión manual requerida en /admin/site-settings.');
+            $salesforceService->markAsDisconnected('salesforce:refresh-token - auto-reconexión fallida: sin token en caché ni backup válido en DB.');
+            $this->error('Auto-reconexión fallida. Se requiere reconexión manual en /admin/site-settings → "Conectar con Salesforce".');
+
+            return self::FAILURE;
+        } catch (Throwable $e) {
+            $errorMessage = strtolower($e->getMessage());
+
+            if (str_contains($errorMessage, 'invalid_grant') && str_contains($errorMessage, 'expired access/refresh token')) {
+                Log::critical('salesforce:refresh-token - Refresh token expirado o revocado (invalid_grant). Reconexión manual requerida.', [
+                    'error' => $e->getMessage(),
+                ]);
+                $salesforceService->markAsDisconnected('salesforce:refresh-token - invalid_grant: expired access/refresh token');
+                $this->error('El refresh token de Salesforce expiró o fue revocado. Reconecta en /admin/site-settings → "Conectar con Salesforce".');
+
+                return self::FAILURE;
+            }
+
+            Log::error('salesforce:refresh-token - Error inesperado.', ['error' => $e->getMessage()]);
+            $this->error('Error inesperado: '.$e->getMessage());
+
+            return self::FAILURE;
+        }
+    }
+}

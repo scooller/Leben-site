@@ -10,6 +10,8 @@ use App\Services\PlantReservationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use InvalidArgumentException;
+use RuntimeException;
 
 class PlantReservationController extends Controller
 {
@@ -46,12 +48,12 @@ class PlantReservationController extends Controller
                     'remaining_seconds' => $reservation->remainingSeconds(),
                 ],
             ], Response::HTTP_CREATED);
-        } catch (\InvalidArgumentException $e) {
+        } catch (InvalidArgumentException $e) {
             return response()->json([
                 'message' => $e->getMessage(),
                 'error' => 'plant_unavailable',
             ], Response::HTTP_NOT_FOUND);
-        } catch (\RuntimeException $e) {
+        } catch (RuntimeException $e) {
             return response()->json([
                 'message' => $e->getMessage(),
                 'error' => 'already_reserved',
