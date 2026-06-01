@@ -214,6 +214,114 @@ class SalesforceCaseMapperTest extends TestCase
         $this->assertSame('campaign', $payload['utm_campaign__c'] ?? null);
     }
 
+    public function test_it_uses_site_setting_defaults_for_missing_utm_fields(): void
+    {
+        config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');
+        config()->set('services.salesforce.lead_status', 'En Contacto');
+
+        SiteSetting::current()->update([
+            'site_name' => 'iLeben',
+            'extra_settings' => [
+                'utm_source_default' => 'direct',
+                'utm_medium_default' => 'organic',
+                'utm_campaign_default' => 'campaign',
+                'utm_term_default' => 'none',
+                'utm_content_default' => 'none',
+                'utm_site_default' => 'demo.ileben.cl',
+            ],
+            'contact_form_fields' => [
+                ['key' => 'name', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
+                ['key' => 'project_name', 'label' => 'Proyecto', 'type' => 'text', 'required' => false],
+            ],
+        ]);
+
+        Proyecto::query()->create([
+            'salesforce_id' => 'a0J8c00000sdxZZEAY',
+            'name' => 'Edificio Defaults',
+            'slug' => 'edificio-defaults',
+            'is_active' => true,
+        ]);
+
+        $submission = ContactSubmission::query()->create([
+            'name' => 'Default User',
+            'email' => 'default.user@example.com',
+            'phone' => '56911112222',
+            'rut' => '11.111.111-1',
+            'fields' => [
+                'name' => 'Default User',
+                'lastname' => 'Test',
+                'project_name' => 'Edificio Defaults',
+            ],
+            'submitted_at' => now(),
+        ]);
+
+        $payload = app(SalesforceCaseMapper::class)->mapLead($submission);
+
+        $this->assertSame('direct', $payload['utm_source__c'] ?? null);
+        $this->assertSame('organic', $payload['utm_medium__c'] ?? null);
+        $this->assertSame('campaign', $payload['utm_campaign__c'] ?? null);
+        $this->assertSame('none', $payload['utm_term__c'] ?? null);
+        $this->assertSame('none', $payload['utm_content__c'] ?? null);
+        $this->assertSame('demo.ileben.cl', $payload['Website'] ?? null);
+    }
+
+    public function test_it_preserves_explicit_utm_values_over_site_setting_defaults(): void
+    {
+        config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');
+        config()->set('services.salesforce.lead_status', 'En Contacto');
+
+        SiteSetting::current()->update([
+            'site_name' => 'iLeben',
+            'extra_settings' => [
+                'utm_source_default' => 'direct',
+                'utm_medium_default' => 'organic',
+                'utm_campaign_default' => 'campaign',
+                'utm_term_default' => 'none',
+                'utm_content_default' => 'none',
+                'utm_site_default' => 'demo.ileben.cl',
+            ],
+            'contact_form_fields' => [
+                ['key' => 'name', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
+                ['key' => 'project_name', 'label' => 'Proyecto', 'type' => 'text', 'required' => false],
+            ],
+        ]);
+
+        Proyecto::query()->create([
+            'salesforce_id' => 'a0J8c00000sdxYYEAY',
+            'name' => 'Edificio Explicit',
+            'slug' => 'edificio-explicit',
+            'is_active' => true,
+        ]);
+
+        $submission = ContactSubmission::query()->create([
+            'name' => 'Explicit User',
+            'email' => 'explicit.user@example.com',
+            'phone' => '56933334444',
+            'rut' => '11.111.111-1',
+            'fields' => [
+                'name' => 'Explicit User',
+                'lastname' => 'Test',
+                'project_name' => 'Edificio Explicit',
+                'utm_source' => 'facebook',
+                'utm_medium' => 'cpc',
+                'utm_campaign' => 'campana-test',
+                'utm_term' => 'keyword-test',
+                'utm_content' => 'ad-test',
+                'utm_site' => 'landing.ileben.cl',
+            ],
+            'submitted_at' => now(),
+        ]);
+
+        $payload = app(SalesforceCaseMapper::class)->mapLead($submission);
+
+        $this->assertSame('facebook', $payload['utm_source__c'] ?? null);
+        $this->assertSame('cpc', $payload['utm_medium__c'] ?? null);
+        $this->assertSame('campaign', $payload['utm_campaign__c'] ?? null);
+        $this->assertSame('keyword-test', $payload['utm_term__c'] ?? null);
+        $this->assertSame('ad-test', $payload['utm_content__c'] ?? null);
+        $this->assertSame('landing.ileben.cl', $payload['Website'] ?? null);
+    }
+
     public function test_it_always_uses_site_setting_default_campaign_when_configured(): void
     {
         config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');

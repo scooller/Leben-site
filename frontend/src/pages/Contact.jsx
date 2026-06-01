@@ -896,7 +896,7 @@ function Contact({ onNavigate, currentPath }) {
           <wa-skeleton effect="pulse" style={{ height: '22rem', width: '100%', borderRadius: '1rem', display: 'block' }}></wa-skeleton>
         </section>
 
-        <section className="home-container contact-grid">
+        <section className="home-container">
           <wa-card appearance="outlined" className="contact-content-card">
             <div className="wa-stack wa-gap-m">
               <wa-skeleton effect="pulse" style={{ height: '1.75rem', width: '10rem' }}></wa-skeleton>
