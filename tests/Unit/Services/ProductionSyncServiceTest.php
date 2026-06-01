@@ -28,10 +28,11 @@ class ProductionSyncServiceTest extends TestCase
 
         $this->assertSame('Falta configurar PRODUCTION_SYNC_BASE_URL o PRODUCTION_SYNC_TOKEN.', $snapshot['meta']['error']);
 
-        Log::shouldHaveReceived('warning')
+        Log::shouldHaveReceived('log')
             ->once()
-            ->withArgs(function (string $message, array $context): bool {
-                return $message === 'ProductionSync: Configuración incompleta para export de snapshot'
+            ->withArgs(function (string $level, string $message, array $context): bool {
+                return $level === 'warning'
+                    && $message === 'ProductionSync: Configuración incompleta para export de snapshot'
                     && $context['base_url_configured'] === false
                     && $context['token_configured'] === false;
             });
@@ -180,10 +181,11 @@ class ProductionSyncServiceTest extends TestCase
 
         $this->assertSame('Access denied', $snapshot['meta']['error']);
 
-        Log::shouldHaveReceived('warning')
+        Log::shouldHaveReceived('log')
             ->once()
-            ->withArgs(function (string $message, array $context): bool {
-                return $message === 'ProductionSync: Respuesta no exitosa al obtener snapshot'
+            ->withArgs(function (string $level, string $message, array $context): bool {
+                return $level === 'warning'
+                    && $message === 'ProductionSync: Respuesta no exitosa al obtener snapshot'
                     && $context['http_status'] === 403
                     && $context['response_message'] === 'Access denied';
             });
@@ -204,10 +206,11 @@ class ProductionSyncServiceTest extends TestCase
 
         $this->assertSame('No se pudo obtener la sincronización de producción.', $snapshot['meta']['error']);
 
-        Log::shouldHaveReceived('error')
+        Log::shouldHaveReceived('log')
             ->once()
-            ->withArgs(function (string $message, array $context): bool {
-                return $message === 'ProductionSync: Error de red al obtener snapshot'
+            ->withArgs(function (string $level, string $message, array $context): bool {
+                return $level === 'error'
+                    && $message === 'ProductionSync: Error de red al obtener snapshot'
                     && str_contains((string) $context['endpoint'], '/api/v1/production-sync/export')
                     && ($context['exception_message'] ?? null) === 'Connection failed';
             });

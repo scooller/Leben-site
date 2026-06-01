@@ -5,9 +5,9 @@ namespace App\Services\ProductionSync;
 use App\Models\Plant;
 use App\Models\Proyecto;
 use App\Models\SiteSetting;
+use App\Support\FlowLogMatrix;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class ProductionSyncService
@@ -23,7 +23,7 @@ class ProductionSyncService
         $endpoint = rtrim($baseUrl, '/').'/api/v1/production-sync/export';
 
         if ($baseUrl === '' || $token === '') {
-            Log::warning('ProductionSync: Configuración incompleta para export de snapshot', [
+            FlowLogMatrix::write('production_sync.config_missing', 'ProductionSync: Configuración incompleta para export de snapshot', [
                 'base_url_configured' => $baseUrl !== '',
                 'token_configured' => $token !== '',
             ]);
@@ -47,7 +47,7 @@ class ProductionSyncService
                 ->timeout((int) config('services.production_sync.timeout', 120))
                 ->get($endpoint);
         } catch (Throwable $exception) {
-            Log::error('ProductionSync: Error de red al obtener snapshot', [
+            FlowLogMatrix::write('production_sync.network_error', 'ProductionSync: Error de red al obtener snapshot', [
                 'endpoint' => $endpoint,
                 'exception_class' => $exception::class,
                 'exception_message' => $exception->getMessage(),
@@ -64,7 +64,7 @@ class ProductionSyncService
         }
 
         if (! $response->successful()) {
-            Log::warning('ProductionSync: Respuesta no exitosa al obtener snapshot', [
+            FlowLogMatrix::write('production_sync.http_unsuccessful', 'ProductionSync: Respuesta no exitosa al obtener snapshot', [
                 'endpoint' => $endpoint,
                 'http_status' => $response->status(),
                 'response_message' => (string) ($response->json('message') ?? ''),
