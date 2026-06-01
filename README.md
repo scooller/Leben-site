@@ -236,6 +236,37 @@ Usar este flujo cuando aparezca `invalid_grant` o `expired access/refresh token`
 - `SyncSalesforceOpportunitiesJob` (job): cada 60 minutos
 - `salesforce:sync-broker-metrics`: cada 15 minutos
 
+#### Operacion en cPanel (cron + cola)
+
+En cPanel, `schedule:run` no consume la cola por si solo. Si `QUEUE_CONNECTION=database`, debes tener dos cron separados:
+
+```bash
+# 1) Scheduler Laravel (cada minuto)
+* * * * * /usr/local/bin/php /home/adminmktleben/laravel/artisan schedule:run >> /dev/null 2>&1
+
+# 2) Worker de cola con lock (cada minuto)
+* * * * * /usr/bin/flock -n /tmp/leben-queue.lock /usr/local/bin/php /home/adminmktleben/laravel/artisan queue:work database --queue=default --sleep=3 --tries=3 --backoff=5 --max-time=50 --stop-when-empty >> /home/adminmktleben/laravel/storage/logs/queue-worker.log 2>&1
+```
+
+Notas operativas:
+- No usar prefijos como `- ` al inicio del comando del cron.
+- Verifica la ruta real de `flock` en tu servidor (`which flock`), normalmente `/usr/bin/flock`.
+- Si los jobs se acumulan en la tabla `jobs` con `attempts=0` y `reserved_at=NULL`, normalmente falta el worker de cola.
+- Para validar: monitorea que disminuya `jobs` y revisa `storage/logs/queue-worker.log`.
+
+Rotacion basica de logs en cPanel:
+
+```bash
+# Rotar diariamente el log del worker (00:00)
+0 0 * * * /bin/mv /home/adminmktleben/laravel/storage/logs/queue-worker.log /home/adminmktleben/laravel/storage/logs/queue-worker-$(date +\%F).log 2>/dev/null; /usr/bin/touch /home/adminmktleben/laravel/storage/logs/queue-worker.log
+
+# Eliminar logs rotados de mas de 14 dias (00:10)
+10 0 * * * /usr/bin/find /home/adminmktleben/laravel/storage/logs -name 'queue-worker-*.log' -type f -mtime +14 -delete
+```
+
+Nota:
+- En cron, `%` debe escaparse como `\%` para que `date +\%F` funcione correctamente.
+
 ### Reservas y pagos
 
 ```bash
