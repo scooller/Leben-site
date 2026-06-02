@@ -440,8 +440,7 @@ chmod -R 775 /home/devleben/laravel/bootstrap/cache
 
 - [Guía de API](API_USAGE.md) - Uso operativo de endpoints, autenticación y ejemplos cURL
 - [Pagos & Pasarelas](PAYMENTS.md) - Sistema de pagos completo
-- [Salesforce Integration](app/Services/Salesforce/README.md) - Integración CRM
-- [Filament Resources](app/Filament/Resources/README.md) - Admin resources
+- [Frontend React](frontend/README.md) - Estructura y desarrollo del frontend
 
 ## 🔧 Tareas Comunes
 
@@ -581,3 +580,5 @@ Todos los derechos reservados - iLeben © 2026
 
 **Última actualización:** 20 May 2026  
 **Versión:** 1.9.0
+
+**[Historial de cambios](CHANGELOG.md)**
