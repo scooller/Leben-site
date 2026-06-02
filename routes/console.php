@@ -2,6 +2,7 @@
 
 use App\Jobs\SyncPlantsJob;
 use App\Models\FrontendPreviewLink;
+use App\Support\SalesforcePlantSyncSchedule;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -15,7 +16,10 @@ try {
     Schedule::command('model:prune', [
         '--model' => [FrontendPreviewLink::class],
     ])->daily();
-    Schedule::job(new SyncPlantsJob)->everyFiveMinutes()->withoutOverlapping();
+    Schedule::job(new SyncPlantsJob)
+        ->everyMinute()
+        ->withoutOverlapping()
+        ->when(static fn (): bool => SalesforcePlantSyncSchedule::shouldRunAt());
     Schedule::command('salesforce:refresh-token')->cron('0 */20 * * *')->withoutOverlapping();
 } catch (\Throwable) {
     // Allow first-time installs to run migrations before settings-backed packages are ready.

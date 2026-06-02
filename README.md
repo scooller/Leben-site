@@ -912,6 +912,8 @@ Este proyecto sigue:
 - [Copilot Instructions](.github/copilot-instructions.md)
 - [Skills](.github/skills/)
 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/scooller/Leben-site)
+
 ## 📄 Licencia
 
 Todos los derechos reservados - iLeben © 2026
