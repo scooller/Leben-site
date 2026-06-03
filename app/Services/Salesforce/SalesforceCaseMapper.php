@@ -25,6 +25,7 @@ class SalesforceCaseMapper
 	{
 		$settings = SiteSetting::current();
 		$fields = is_array($submission->fields) ? $submission->fields : [];
+		$isCsvImport = $this->isCsvImportSubmission($submission);
 		$extraSettings = is_array($settings->extra_settings) ? $settings->extra_settings : [];
 		$fieldLabels = $this->buildFieldLabels($settings->contact_form_fields);
 
@@ -46,12 +47,16 @@ class SalesforceCaseMapper
 			'utm_source',
 			'lead_source',
 		]);
-		$utmSourceDefault = $this->normalizeFieldValue($extraSettings['utm_source_default'] ?? null) ?: 'direct';
+		$utmSourceDefault = $isCsvImport
+			? null
+			: ($this->normalizeFieldValue($extraSettings['utm_source_default'] ?? null) ?: 'direct');
 		$utmSourceValue = $utmSourceInput ?: $utmSourceDefault;
 		$arrivalMedium = $this->fieldValue($fields, [
 			'medio_de_llegada',
 			'medio_llegada',
-		]) ?: $utmSourceValue;
+		])
+			?: $this->fieldValue($fields, ['origen_del_prospecto', 'origen_prospecto'])
+			?: $utmSourceValue;
 		$originProspect = $this->fieldValue($fields, [
 			'origen_del_prospecto',
 			'origen_prospecto',
@@ -62,7 +67,9 @@ class SalesforceCaseMapper
 		$website = $this->resolveWebsiteSource($submission, $fields, $utmSourceInput, $utmSiteDefault);
 		$utmMediumDefault = $this->normalizeFieldValue($extraSettings['utm_medium_default'] ?? null) ?: 'organic';
 		$utmMedium = $this->fieldValue($fields, ['utm_medium', 'audiencia']) ?: $utmMediumDefault;
-		$utmCampaignDefault = $this->normalizeFieldValue($extraSettings['utm_campaign_default'] ?? null);
+		$utmCampaignDefault = $isCsvImport
+			? null
+			: $this->normalizeFieldValue($extraSettings['utm_campaign_default'] ?? null);
 		$utmCampaign = $this->resolveUtmCampaign($fields, $utmCampaignDefault);
 		$utmContentDefault = $this->normalizeFieldValue($extraSettings['utm_content_default'] ?? null) ?: 'none';
 		$utmContent = $this->fieldValue($fields, ['utm_content', 'pieza_grafica']) ?: $utmContentDefault;
@@ -496,7 +503,7 @@ class SalesforceCaseMapper
 			return $defaultValue;
 		}
 
-		$campaign = $this->fieldValue($fields, ['utm_campaign']);
+		$campaign = $this->fieldValue($fields, ['utm_campaign', 'campana', 'nombre_de_la_campana']);
 
 		if ($campaign === null) {
 			return 'campaign';
@@ -507,6 +514,17 @@ class SalesforceCaseMapper
 		}
 
 		return $campaign;
+	}
+
+	private function isCsvImportSubmission(ContactSubmission $submission): bool
+	{
+		$userAgent = strtolower(trim((string) $submission->user_agent));
+
+		if ($userAgent === '') {
+			return false;
+		}
+
+		return str_contains($userAgent, 'filament-csv-import');
 	}
 
 	private function buildWhatsappLink(?string $phone, string $ownerName): ?string

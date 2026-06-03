@@ -608,4 +608,41 @@ class SalesforceCaseMapperTest extends TestCase
 
 		$this->assertSame('Portal Inmobiliario', $payload['Website'] ?? null);
 	}
+
+	public function test_it_prefers_imported_source_arrival_and_campaign_over_site_defaults(): void
+	{
+		config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');
+		config()->set('services.salesforce.lead_status', 'En Contacto');
+
+		SiteSetting::current()->update([
+			'site_name' => 'iLeben',
+			'extra_settings' => [
+				'utm_source_default' => 'direct',
+				'utm_campaign_default' => 'CyberDay',
+			],
+			'contact_form_fields' => [
+				['key' => 'name', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
+			],
+		]);
+
+		$submission = ContactSubmission::query()->create([
+			'name' => 'Import User',
+			'email' => 'import.user@example.com',
+			'phone' => '56911111111',
+			'user_agent' => 'filament-csv-import',
+			'fields' => [
+				'name' => 'Import User',
+				'medio_de_llegada' => 'Portal Inmobiliario',
+				'campana' => 'Portal Inmobiliario',
+			],
+			'submitted_at' => now(),
+		]);
+
+		$payload = app(SalesforceCaseMapper::class)->mapLead($submission);
+
+		$this->assertSame('Portal Inmobiliario', $payload['utm_source__c'] ?? null);
+		$this->assertSame('Portal_Inmobiliario', $payload['Medio_de_Llegada__c'] ?? null);
+		$this->assertSame('Portal_Inmobiliario', $payload['Nombre_de_la_Campa_a__c'] ?? null);
+		$this->assertSame('Portal Inmobiliario', $payload['utm_campaign__c'] ?? null);
+	}
 }
