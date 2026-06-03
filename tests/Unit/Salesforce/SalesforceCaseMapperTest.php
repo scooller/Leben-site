@@ -633,6 +633,7 @@ class SalesforceCaseMapperTest extends TestCase
 			'fields' => [
 				'name' => 'Import User',
 				'medio_de_llegada' => 'Portal Inmobiliario',
+				'origen_del_prospecto' => 'Portal Inmobiliario',
 				'campana' => 'Portal Inmobiliario',
 			],
 			'submitted_at' => now(),
@@ -641,7 +642,9 @@ class SalesforceCaseMapperTest extends TestCase
 		$payload = app(SalesforceCaseMapper::class)->mapLead($submission);
 
 		$this->assertSame('Portal Inmobiliario', $payload['utm_source__c'] ?? null);
+		$this->assertSame('Portal Inmobiliario', $payload['LeadSource'] ?? null);
 		$this->assertSame('Portal_Inmobiliario', $payload['Medio_de_Llegada__c'] ?? null);
+		$this->assertSame('Portal Inmobiliario', $payload['utm_medium__c'] ?? null);
 		$this->assertSame('Portal_Inmobiliario', $payload['Nombre_de_la_Campa_a__c'] ?? null);
 		$this->assertSame('Portal Inmobiliario', $payload['utm_campaign__c'] ?? null);
 	}

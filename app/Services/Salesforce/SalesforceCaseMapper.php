@@ -65,17 +65,23 @@ class SalesforceCaseMapper
 		]);
 		$utmSiteDefault = $this->normalizeFieldValue($extraSettings['utm_site_default'] ?? null);
 		$website = $this->resolveWebsiteSource($submission, $fields, $utmSourceInput, $utmSiteDefault);
-		$utmMediumDefault = $this->normalizeFieldValue($extraSettings['utm_medium_default'] ?? null) ?: 'organic';
-		$utmMedium = $this->fieldValue($fields, ['utm_medium', 'audiencia']) ?: $utmMediumDefault;
+		$utmMediumDefault = $isCsvImport
+			? null
+			: ($this->normalizeFieldValue($extraSettings['utm_medium_default'] ?? null) ?: 'organic');
+		$utmMedium = $this->fieldValue($fields, ['utm_medium', 'audiencia'])
+			?: $this->fieldValue($fields, ['medio_de_llegada', 'medio_llegada', 'origen_del_prospecto', 'origen_prospecto'])
+			?: $utmMediumDefault;
 		$utmCampaignDefault = $isCsvImport
 			? null
 			: $this->normalizeFieldValue($extraSettings['utm_campaign_default'] ?? null);
 		$utmCampaign = $this->resolveUtmCampaign($fields, $utmCampaignDefault);
 		$utmContentDefault = $this->normalizeFieldValue($extraSettings['utm_content_default'] ?? null) ?: 'none';
 		$utmContent = $this->fieldValue($fields, ['utm_content', 'pieza_grafica']) ?: $utmContentDefault;
-		$utmTermDefault = $this->normalizeFieldValue($extraSettings['utm_term_default'] ?? null) ?: 'none';
+		$utmTermDefault = $isCsvImport
+			? null
+			: ($this->normalizeFieldValue($extraSettings['utm_term_default'] ?? null) ?: 'none');
 		$utmTerm = $this->fieldValue($fields, ['utm_term', 'audiencia']) ?: $utmTermDefault;
-		$leadSource = $utmTerm;
+		$leadSource = $this->resolveLeadSource($fields, $utmTerm, $arrivalMedium);
 		$email = $submission->email ?: $this->fieldValue($fields, ['email', 'correo']) ?: null;
 		$phone = $submission->phone ?: $this->fieldValue($fields, ['phone', 'telefono', 'fono', 'celular', 'whatsapp']);
 		$includeDescription = $this->shouldIncludeDescription($settings);
@@ -89,7 +95,7 @@ class SalesforceCaseMapper
 			?: $commune;
 		$projectSalesforceId = $this->resolveProjectSalesforceId($fields, $projectName);
 		$projectAdvisorPhone = $this->resolveProjectAdvisorPhone($fields, $projectName);
-		$normalizedLeadSource = $this->normalizeLeadSource($leadSource);
+		$normalizedLeadSource = $this->normalizeLeadSource($leadSource, $isCsvImport);
 		$ownerId = $this->resolveLeadOwnerId();
 		$ownerPhone = $projectAdvisorPhone;
 		$wspOwnerPhone = $projectAdvisorPhone;
@@ -385,12 +391,16 @@ class SalesforceCaseMapper
 			->first();
 	}
 
-	private function normalizeLeadSource(?string $value): ?string
+	private function normalizeLeadSource(?string $value, bool $preserveOriginalCase = false): ?string
 	{
 		$normalized = trim((string) $value);
 
 		if ($normalized === '') {
 			return null;
+		}
+
+		if ($preserveOriginalCase) {
+			return $normalized;
 		}
 
 		return ucfirst(strtolower($normalized));
@@ -514,6 +524,20 @@ class SalesforceCaseMapper
 		}
 
 		return $campaign;
+	}
+
+	/**
+	 * @param  array<string, mixed>  $fields
+	 */
+	private function resolveLeadSource(array $fields, ?string $utmTerm, ?string $arrivalMedium): ?string
+	{
+		return $utmTerm
+			?: $this->fieldValue($fields, [
+				'origen_del_prospecto',
+				'origen_prospecto',
+				'lead_source',
+			])
+			?: $arrivalMedium;
 	}
 
 	private function isCsvImportSubmission(ContactSubmission $submission): bool
