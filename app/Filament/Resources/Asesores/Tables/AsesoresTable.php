@@ -78,7 +78,10 @@ class AsesoresTable
 					]),
 			])
 			->recordActions([
-				ShowQrCodeAction::make(fn(Asesor $record): string => self::resolveOrCreateWhatsappShortLinkUrl($record)),
+				ShowQrCodeAction::make(fn(Asesor $record): string => self::resolveOrCreateWhatsappShortLinkUrl($record), 'showWhatsappQr')
+					->tooltip(fn(Asesor $record): ?string => (! $record->is_active || blank($record->whatsapp_owner))
+						? 'El asesor debe estar activo y con WhatsApp para generar su QR.'
+						: 'Ver QR de WhatsApp del asesor.'),
 				// Action::make('createAdvisorQr')
 				// 	->label('Crear QR')
 				// 	->icon('heroicon-o-qr-code')

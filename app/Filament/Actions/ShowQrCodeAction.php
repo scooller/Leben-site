@@ -10,13 +10,14 @@ use LaraZeus\Qr\Facades\Qr;
 
 class ShowQrCodeAction
 {
-	public static function make(string|callable $urlResolver, ?string $name = 'showQrCode'): Action
+	public static function make(string|callable $urlResolver, ?string $name = 'showQrCode', string $tooltip = 'Ver QR'): Action
 	{
 		return Action::make($name)
 			->label('Ver QR')
 			->icon('heroicon-o-qr-code')
 			->color('gray')
 			->disabled(fn($record): bool => empty(value($urlResolver, $record)))
+			->tooltip($tooltip)
 			->modalHeading('Codigo QR')
 			->modalDescription('Escanea o copia la URL asociada a este enlace.')
 			->modalSubmitAction(false)
