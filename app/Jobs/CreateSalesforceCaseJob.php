@@ -169,6 +169,25 @@ class CreateSalesforceCaseJob implements ShouldQueue
 				'salesforce_sync_trigger' => $syncTrigger,
 			]);
 
+			// enviar email de alerta de desconexión OAuth a destinatario administrativo
+			// Obtener todos los usuarios administradores
+			$administrators = User::role('admin')->get();
+			// $administrators = User::where('is_admin', true)->get();
+			// Enviar correo a cada administrador
+			foreach ($administrators as $admin) {
+				Mail::send(
+					'emails.admin-message', // Vista del correo
+					[
+						'titulo' => 'Alerta: Salesforce OAuth desconectado Token no disponible',
+						'contenido' => 'Se detectó que el OAuth de Salesforce está desconectado y la auto-reconexión falló. Esto significa que no se podrán crear casos/leads en Salesforce hasta que se reconecte manualmente desde el panel admin.'
+					],
+					function ($message) use ($admin) {
+						$message->to($admin->email)
+							->subject('Alerta: Salesforce OAuth desconectado Token no disponible');
+					}
+				);
+			}
+
 			// No relanzar — no tiene sentido reintentar sin token
 		} catch (SalesforceTokenExpiredException $exception) {
 			FlowLogMatrix::write('salesforce.job.invalid_grant', 'CreateSalesforceCaseJob: Salesforce respondió invalid_grant. Reconecta en /admin/site-settings → "Conectar con Salesforce"', [
