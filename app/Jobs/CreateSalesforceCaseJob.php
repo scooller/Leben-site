@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Exceptions\SalesforceTokenExpiredException;
 use App\Models\ContactSubmission;
 use App\Models\SiteSetting;
+use App\Models\User;
 use App\Services\Salesforce\SalesforceCaseMapper;
 use App\Services\Salesforce\SalesforceService;
 use App\Support\FlowLogMatrix;
@@ -19,264 +20,283 @@ use Throwable;
 
 class CreateSalesforceCaseJob implements ShouldQueue
 {
-    use Queueable;
+	use Queueable;
 
-    /**
-     * Create a new job instance.
-     */
-    public function __construct(public ContactSubmission $submission, public string $syncTrigger = 'automatic') {}
+	/**
+	 * Create a new job instance.
+	 */
+	public function __construct(public ContactSubmission $submission, public string $syncTrigger = 'automatic') {}
 
-    /**
-     * Execute the job.
-     */
-    public function handle(SalesforceService $salesforceService, SalesforceCaseMapper $mapper): void
-    {
-        $syncTrigger = $this->normalizeSyncTrigger($this->syncTrigger);
-        $leadEnabled = (bool) config('services.salesforce.lead_enabled', config('services.salesforce.case_enabled', false));
+	/**
+	 * Execute the job.
+	 */
+	public function handle(SalesforceService $salesforceService, SalesforceCaseMapper $mapper): void
+	{
+		$syncTrigger = $this->normalizeSyncTrigger($this->syncTrigger);
+		$leadEnabled = (bool) config('services.salesforce.lead_enabled', config('services.salesforce.case_enabled', false));
 
-        FlowLogMatrix::write('salesforce.job.start', 'CreateSalesforceCaseJob: Inicio de ejecución', [
-            'contact_submission_id' => $this->submission->id,
-            'lead_enabled' => $leadEnabled,
-        ]);
+		FlowLogMatrix::write('salesforce.job.start', 'CreateSalesforceCaseJob: Inicio de ejecución', [
+			'contact_submission_id' => $this->submission->id,
+			'lead_enabled' => $leadEnabled,
+		]);
 
-        if (! $leadEnabled) {
-            FlowLogMatrix::write('salesforce.job.lead_disabled', 'CreateSalesforceCaseJob: Lead deshabilitado, se omite envío', [
-                'contact_submission_id' => $this->submission->id,
-            ]);
+		if (! $leadEnabled) {
+			FlowLogMatrix::write('salesforce.job.lead_disabled', 'CreateSalesforceCaseJob: Lead deshabilitado, se omite envío', [
+				'contact_submission_id' => $this->submission->id,
+			]);
 
-            return;
-        }
+			return;
+		}
 
-        $submission = $this->submission->fresh();
+		$submission = $this->submission->fresh();
 
-        if (! $submission) {
-            FlowLogMatrix::write('salesforce.job.submission_missing', 'CreateSalesforceCaseJob: Submission no encontrada al refrescar');
+		if (! $submission) {
+			FlowLogMatrix::write('salesforce.job.submission_missing', 'CreateSalesforceCaseJob: Submission no encontrada al refrescar');
 
-            return;
-        }
+			return;
+		}
 
-        // Si el OAuth está marcado como desconectado o no hay token en caché, intentar
-        // auto-reconexión silenciosa con el refresh_token del backup en DB antes de rendirse.
-        // Esto cubre: rotación de refresh_token, cache:clear, restart de Redis, o fallo transitorio.
-        if ($this->isSalesforceOAuthMarkedDisconnected() || ! Forrest::hasToken()) {
-            FlowLogMatrix::write('salesforce.job.oauth_reconnect_attempt', 'CreateSalesforceCaseJob: Token no disponible o OAuth desconectado. Intentando auto-reconexión silenciosa.', [
-                'contact_submission_id' => $submission->id,
-                'disconnected_flag' => $this->isSalesforceOAuthMarkedDisconnected(),
-                'has_token' => Forrest::hasToken(),
-            ]);
+		// Si el OAuth está marcado como desconectado o no hay token en caché, intentar
+		// auto-reconexión silenciosa con el refresh_token del backup en DB antes de rendirse.
+		// Esto cubre: rotación de refresh_token, cache:clear, restart de Redis, o fallo transitorio.
+		if ($this->isSalesforceOAuthMarkedDisconnected() || ! Forrest::hasToken()) {
+			FlowLogMatrix::write('salesforce.job.oauth_reconnect_attempt', 'CreateSalesforceCaseJob: Token no disponible o OAuth desconectado. Intentando auto-reconexión silenciosa.', [
+				'contact_submission_id' => $submission->id,
+				'disconnected_flag' => $this->isSalesforceOAuthMarkedDisconnected(),
+				'has_token' => Forrest::hasToken(),
+			]);
 
-            $reconnected = $salesforceService->tryAutoReconnect();
+			$reconnected = $salesforceService->tryAutoReconnect();
 
-            if (! $reconnected) {
-                FlowLogMatrix::write('salesforce.job.oauth_reconnect_failed', 'CreateSalesforceCaseJob: OAuth de Salesforce desconectado y auto-reconexión fallida. Se omite envío hasta reconexión manual.', [
-                    'contact_submission_id' => $submission->id,
-                ]);
+			if (! $reconnected) {
+				FlowLogMatrix::write('salesforce.job.oauth_reconnect_failed', 'CreateSalesforceCaseJob: OAuth de Salesforce desconectado y auto-reconexión fallida. Se omite envío hasta reconexión manual.', [
+					'contact_submission_id' => $submission->id,
+				]);
 
-                $this->notifySalesforceOAuthDisconnection($submission->id, 'Auto-reconexión fallida desde CreateSalesforceCaseJob.');
+				$this->notifySalesforceOAuthDisconnection($submission->id, 'Auto-reconexión fallida desde CreateSalesforceCaseJob.');
 
-                $submission->update([
-                    'salesforce_case_error' => 'OAuth Salesforce desconectado. Auto-reconexión fallida. Reconectar en panel admin.',
-                    'salesforce_synced_at' => now(),
-                    'salesforce_sync_trigger' => $syncTrigger,
-                ]);
+				$submission->update([
+					'salesforce_case_error' => 'OAuth Salesforce desconectado. Auto-reconexión fallida. Reconectar en panel admin.',
+					'salesforce_synced_at' => now(),
+					'salesforce_sync_trigger' => $syncTrigger,
+				]);
 
-                return;
-            }
+				// enviar email de alerta de desconexión OAuth a destinatario administrativo
+				// Obtener todos los usuarios administradores
+				$administrators = User::role('admin')->get();
+				// $administrators = User::where('is_admin', true)->get();
+				// Enviar correo a cada administrador
+				foreach ($administrators as $admin) {
+					Mail::send(
+						'emails.admin-message', // Vista del correo
+						[
+							'titulo' => 'Alerta: Salesforce OAuth desconectado',
+							'contenido' => 'Se detectó que el OAuth de Salesforce está desconectado y la auto-reconexión falló. Esto significa que no se podrán crear casos/leads en Salesforce hasta que se reconecte manualmente desde el panel admin.'
+						],
+						function ($message) use ($admin) {
+							$message->to($admin->email)
+								->subject('Alerta: Salesforce OAuth desconectado');
+						}
+					);
+				}
 
-            // Auto-reconexión exitosa — el token ya está en caché, continuar normalmente
-            FlowLogMatrix::write('salesforce.job.oauth_reconnect_success', 'CreateSalesforceCaseJob: Auto-reconexión exitosa. Continuando con envío a Salesforce.', [
-                'contact_submission_id' => $submission->id,
-            ]);
-        }
+				return;
+			}
 
-        try {
-            // WebServer flow: el token se obtiene vía OAuth interactivo desde el panel admin.
-            // No llamar authenticate() aquí porque en WebServer flow intenta redirigir al navegador.
-            // Si no hay token, Forrest lanzará MissingResourceException con mensaje claro.
+			// Auto-reconexión exitosa — el token ya está en caché, continuar normalmente
+			FlowLogMatrix::write('salesforce.job.oauth_reconnect_success', 'CreateSalesforceCaseJob: Auto-reconexión exitosa. Continuando con envío a Salesforce.', [
+				'contact_submission_id' => $submission->id,
+			]);
+		}
 
-            // Flujo Case pausado temporalmente:
-            // $payload = $mapper->map($submission);
-            // $response = $salesforceService->createCase($payload);
+		try {
+			// WebServer flow: el token se obtiene vía OAuth interactivo desde el panel admin.
+			// No llamar authenticate() aquí porque en WebServer flow intenta redirigir al navegador.
+			// Si no hay token, Forrest lanzará MissingResourceException con mensaje claro.
 
-            $payload = $mapper->mapLead($submission);
-            $response = $salesforceService->createLead($payload);
-            $leadId = (string) ($response['id'] ?? $response['Id'] ?? '');
+			// Flujo Case pausado temporalmente:
+			// $payload = $mapper->map($submission);
+			// $response = $salesforceService->createCase($payload);
 
-            $submission->update([
-                'salesforce_case_id' => $leadId !== '' ? $leadId : null,
-                'salesforce_case_error' => null,
-                'salesforce_synced_at' => now(),
-                'salesforce_sync_trigger' => $syncTrigger,
-            ]);
+			$payload = $mapper->mapLead($submission);
+			$response = $salesforceService->createLead($payload);
+			$leadId = (string) ($response['id'] ?? $response['Id'] ?? '');
 
-            FlowLogMatrix::write('salesforce.job.lead_created', 'CreateSalesforceCaseJob: Lead creado correctamente', [
-                'contact_submission_id' => $submission->id,
-                'salesforce_lead_id' => $leadId !== '' ? $leadId : null,
-                'salesforce_success' => $response['success'] ?? null,
-                'salesforce_errors' => $response['errors'] ?? null,
-                'salesforce_response_keys' => array_keys($response),
-                'salesforce_error_count' => is_array($response['errors'] ?? null)
-                    ? count($response['errors'])
-                    : null,
-            ]);
-        } catch (MissingResourceException $exception) {
-            // Token no disponible — intentar auto-reconexión como último recurso
-            FlowLogMatrix::write('salesforce.job.missing_resource', 'CreateSalesforceCaseJob: MissingResourceException durante la operación. Intentando auto-reconexión.', [
-                'contact_submission_id' => $submission->id,
-            ]);
+			$submission->update([
+				'salesforce_case_id' => $leadId !== '' ? $leadId : null,
+				'salesforce_case_error' => null,
+				'salesforce_synced_at' => now(),
+				'salesforce_sync_trigger' => $syncTrigger,
+			]);
 
-            if ($salesforceService->tryAutoReconnect()) {
-                FlowLogMatrix::write('salesforce.job.retry_after_reconnect', 'CreateSalesforceCaseJob: Auto-reconexión exitosa tras MissingResourceException. Reintentando operación.', [
-                    'contact_submission_id' => $submission->id,
-                ]);
+			FlowLogMatrix::write('salesforce.job.lead_created', 'CreateSalesforceCaseJob: Lead creado correctamente', [
+				'contact_submission_id' => $submission->id,
+				'salesforce_lead_id' => $leadId !== '' ? $leadId : null,
+				'salesforce_success' => $response['success'] ?? null,
+				'salesforce_errors' => $response['errors'] ?? null,
+				'salesforce_response_keys' => array_keys($response),
+				'salesforce_error_count' => is_array($response['errors'] ?? null)
+					? count($response['errors'])
+					: null,
+			]);
+		} catch (MissingResourceException $exception) {
+			// Token no disponible — intentar auto-reconexión como último recurso
+			FlowLogMatrix::write('salesforce.job.missing_resource', 'CreateSalesforceCaseJob: MissingResourceException durante la operación. Intentando auto-reconexión.', [
+				'contact_submission_id' => $submission->id,
+			]);
 
-                // Relanzar el job para que se reintente con el token renovado
-                $this->release(5);
+			if ($salesforceService->tryAutoReconnect()) {
+				FlowLogMatrix::write('salesforce.job.retry_after_reconnect', 'CreateSalesforceCaseJob: Auto-reconexión exitosa tras MissingResourceException. Reintentando operación.', [
+					'contact_submission_id' => $submission->id,
+				]);
 
-                return;
-            }
+				// Relanzar el job para que se reintente con el token renovado
+				$this->release(5);
 
-            FlowLogMatrix::write('salesforce.job.token_missing_reconnect_failed', 'CreateSalesforceCaseJob: Token de Salesforce no disponible y auto-reconexión fallida. Reconecta en /admin/site-settings → "Conectar con Salesforce"', [
-                'contact_submission_id' => $submission->id,
-            ]);
+				return;
+			}
 
-            $salesforceService->markAsDisconnected('Token no disponible en cache (MissingResourceException) y auto-reconexión fallida.');
-            $this->notifySalesforceOAuthDisconnection($submission->id, 'Token no disponible en cache (MissingResourceException) y auto-reconexión fallida.');
+			FlowLogMatrix::write('salesforce.job.token_missing_reconnect_failed', 'CreateSalesforceCaseJob: Token de Salesforce no disponible y auto-reconexión fallida. Reconecta en /admin/site-settings → "Conectar con Salesforce"', [
+				'contact_submission_id' => $submission->id,
+			]);
 
-            $submission->update([
-                'salesforce_case_error' => 'Token Salesforce expirado y auto-reconexión fallida. Reconectar en panel admin.',
-                'salesforce_synced_at' => now(),
-                'salesforce_sync_trigger' => $syncTrigger,
-            ]);
+			$salesforceService->markAsDisconnected('Token no disponible en cache (MissingResourceException) y auto-reconexión fallida.');
+			$this->notifySalesforceOAuthDisconnection($submission->id, 'Token no disponible en cache (MissingResourceException) y auto-reconexión fallida.');
 
-            // No relanzar — no tiene sentido reintentar sin token
-        } catch (SalesforceTokenExpiredException $exception) {
-            FlowLogMatrix::write('salesforce.job.invalid_grant', 'CreateSalesforceCaseJob: Salesforce respondió invalid_grant. Reconecta en /admin/site-settings → "Conectar con Salesforce"', [
-                'contact_submission_id' => $submission->id,
-                'error' => $exception->getMessage(),
-            ]);
+			$submission->update([
+				'salesforce_case_error' => 'Token Salesforce expirado y auto-reconexión fallida. Reconectar en panel admin.',
+				'salesforce_synced_at' => now(),
+				'salesforce_sync_trigger' => $syncTrigger,
+			]);
 
-            $salesforceService->markAsDisconnected('invalid_grant: expired access/refresh token');
-            $this->notifySalesforceOAuthDisconnection($submission->id, 'invalid_grant: expired access/refresh token');
+			// No relanzar — no tiene sentido reintentar sin token
+		} catch (SalesforceTokenExpiredException $exception) {
+			FlowLogMatrix::write('salesforce.job.invalid_grant', 'CreateSalesforceCaseJob: Salesforce respondió invalid_grant. Reconecta en /admin/site-settings → "Conectar con Salesforce"', [
+				'contact_submission_id' => $submission->id,
+				'error' => $exception->getMessage(),
+			]);
 
-            $submission->update([
-                'salesforce_case_error' => 'Token Salesforce revocado/expirado (invalid_grant). Reconectar en panel admin.',
-                'salesforce_synced_at' => now(),
-                'salesforce_sync_trigger' => $syncTrigger,
-            ]);
-        } catch (Throwable $exception) {
-            $errorMessage = Str::limit($exception->getMessage(), 65535, '');
+			$salesforceService->markAsDisconnected('invalid_grant: expired access/refresh token');
+			$this->notifySalesforceOAuthDisconnection($submission->id, 'invalid_grant: expired access/refresh token');
 
-            $submission->update([
-                'salesforce_case_error' => $errorMessage,
-                'salesforce_synced_at' => now(),
-                'salesforce_sync_trigger' => $syncTrigger,
-            ]);
+			$submission->update([
+				'salesforce_case_error' => 'Token Salesforce revocado/expirado (invalid_grant). Reconectar en panel admin.',
+				'salesforce_synced_at' => now(),
+				'salesforce_sync_trigger' => $syncTrigger,
+			]);
+		} catch (Throwable $exception) {
+			$errorMessage = Str::limit($exception->getMessage(), 65535, '');
 
-            FlowLogMatrix::write('salesforce.job.lead_error', 'CreateSalesforceCaseJob: Error al crear Lead', [
-                'contact_submission_id' => $submission->id,
-                'exception_message' => $exception->getMessage(),
-                ...$this->extractExceptionContext($exception),
-            ]);
-        }
-    }
+			$submission->update([
+				'salesforce_case_error' => $errorMessage,
+				'salesforce_synced_at' => now(),
+				'salesforce_sync_trigger' => $syncTrigger,
+			]);
 
-    /**
-     * @return array<string, mixed>
-     */
-    private function extractExceptionContext(\Throwable $exception): array
-    {
-        $context = [
-            'exception_class' => $exception::class,
-        ];
+			FlowLogMatrix::write('salesforce.job.lead_error', 'CreateSalesforceCaseJob: Error al crear Lead', [
+				'contact_submission_id' => $submission->id,
+				'exception_message' => $exception->getMessage(),
+				...$this->extractExceptionContext($exception),
+			]);
+		}
+	}
 
-        if (! method_exists($exception, 'getResponse')) {
-            return $context;
-        }
+	/**
+	 * @return array<string, mixed>
+	 */
+	private function extractExceptionContext(\Throwable $exception): array
+	{
+		$context = [
+			'exception_class' => $exception::class,
+		];
 
-        $response = $exception->getResponse();
+		if (! method_exists($exception, 'getResponse')) {
+			return $context;
+		}
 
-        if (! $response) {
-            return $context;
-        }
+		$response = $exception->getResponse();
 
-        $body = (string) $response->getBody();
-        $decodedBody = \json_decode($body, true);
+		if (! $response) {
+			return $context;
+		}
 
-        $context['salesforce_http_status'] = $response->getStatusCode();
-        $context['salesforce_error_response'] = is_array($decodedBody)
-            ? $decodedBody
-            : Str::limit($body, 4000, '');
+		$body = (string) $response->getBody();
+		$decodedBody = \json_decode($body, true);
 
-        return $context;
-    }
+		$context['salesforce_http_status'] = $response->getStatusCode();
+		$context['salesforce_error_response'] = is_array($decodedBody)
+			? $decodedBody
+			: Str::limit($body, 4000, '');
 
-    private function normalizeSyncTrigger(string $syncTrigger): string
-    {
-        return $syncTrigger === 'manual' ? 'manual' : 'automatic';
-    }
+		return $context;
+	}
 
-    private function isSalesforceOAuthMarkedDisconnected(): bool
-    {
-        $extraSettings = SiteSetting::current()->extra_settings;
+	private function normalizeSyncTrigger(string $syncTrigger): string
+	{
+		return $syncTrigger === 'manual' ? 'manual' : 'automatic';
+	}
 
-        if (! is_array($extraSettings)) {
-            return false;
-        }
+	private function isSalesforceOAuthMarkedDisconnected(): bool
+	{
+		$extraSettings = SiteSetting::current()->extra_settings;
 
-        return data_get($extraSettings, 'salesforce_oauth.connected') === false;
-    }
+		if (! is_array($extraSettings)) {
+			return false;
+		}
 
-    private function notifySalesforceOAuthDisconnection(int $contactSubmissionId, string $reason): void
-    {
-        $siteSettings = SiteSetting::current();
-        $recipient = $this->resolveSalesforceAlertRecipient($siteSettings);
+		return data_get($extraSettings, 'salesforce_oauth.connected') === false;
+	}
 
-        if ($recipient === null) {
-            return;
-        }
+	private function notifySalesforceOAuthDisconnection(int $contactSubmissionId, string $reason): void
+	{
+		$siteSettings = SiteSetting::current();
+		$recipient = $this->resolveSalesforceAlertRecipient($siteSettings);
 
-        $alertKey = sprintf('salesforce:oauth:disconnect-alert:%s', md5(strtolower($reason)));
-        $shouldSend = Cache::add($alertKey, now()->toIso8601String(), now()->addMinutes(30));
+		if ($recipient === null) {
+			return;
+		}
 
-        if (! $shouldSend) {
-            return;
-        }
+		$alertKey = sprintf('salesforce:oauth:disconnect-alert:%s', md5(strtolower($reason)));
+		$shouldSend = Cache::add($alertKey, now()->toIso8601String(), now()->addMinutes(30));
 
-        $subject = 'Alerta Salesforce OAuth desconectado';
-        $message = implode("\n", [
-            'Se detectó desconexión OAuth con Salesforce.',
-            'Submission ID: '.$contactSubmissionId,
-            'Motivo: '.$reason,
-            'Acción requerida: reconectar en /admin/site-settings (Conectar con Salesforce).',
-        ]);
+		if (! $shouldSend) {
+			return;
+		}
 
-        try {
-            Mail::raw($message, static function ($mail) use ($recipient, $subject): void {
-                $mail->to($recipient)->subject($subject);
-            });
-        } catch (Throwable $exception) {
-            FlowLogMatrix::write('salesforce.job.alert_email_failed', 'CreateSalesforceCaseJob: No se pudo enviar alerta de desconexión OAuth de Salesforce', [
-                'recipient' => $recipient,
-                'error' => $exception->getMessage(),
-            ]);
-        }
-    }
+		$subject = 'Alerta Salesforce OAuth desconectado';
+		$message = implode("\n", [
+			'Se detectó desconexión OAuth con Salesforce.',
+			'Submission ID: ' . $contactSubmissionId,
+			'Motivo: ' . $reason,
+			'Acción requerida: reconectar en /admin/site-settings (Conectar con Salesforce).',
+		]);
 
-    private function resolveSalesforceAlertRecipient(SiteSetting $siteSettings): ?string
-    {
-        $candidates = [
-            trim((string) $siteSettings->contact_notification_email),
-            trim((string) $siteSettings->contact_email),
-            trim((string) config('mail.from.address', '')),
-        ];
+		try {
+			Mail::raw($message, static function ($mail) use ($recipient, $subject): void {
+				$mail->to($recipient)->subject($subject);
+			});
+		} catch (Throwable $exception) {
+			FlowLogMatrix::write('salesforce.job.alert_email_failed', 'CreateSalesforceCaseJob: No se pudo enviar alerta de desconexión OAuth de Salesforce', [
+				'recipient' => $recipient,
+				'error' => $exception->getMessage(),
+			]);
+		}
+	}
 
-        foreach ($candidates as $candidate) {
-            if ($candidate !== '' && filter_var($candidate, FILTER_VALIDATE_EMAIL) !== false) {
-                return $candidate;
-            }
-        }
+	private function resolveSalesforceAlertRecipient(SiteSetting $siteSettings): ?string
+	{
+		$candidates = [
+			trim((string) $siteSettings->contact_notification_email),
+			trim((string) $siteSettings->contact_email),
+			trim((string) config('mail.from.address', '')),
+		];
 
-        return null;
-    }
+		foreach ($candidates as $candidate) {
+			if ($candidate !== '' && filter_var($candidate, FILTER_VALIDATE_EMAIL) !== false) {
+				return $candidate;
+			}
+		}
+
+		return null;
+	}
 }
