@@ -22,6 +22,11 @@ class ShortLinksTable
 	{
 		return $table
 			->columns([
+				TextColumn::make('title')
+					->label('Titulo')
+					->searchable()
+					->sortable()
+					->toggleable(isToggledHiddenByDefault: true),
 				TextColumn::make('short_url')
 					->label('URL corta')
 					->state(fn(ShortLink $record): string => $record->shortUrl())
@@ -78,11 +83,12 @@ class ShortLinksTable
 					->label('Expira')
 					->dateTime('d/m/Y H:i')
 					->placeholder('-')
-					->sortable(),
+					->sortable()
+					->toggleable(isToggledHiddenByDefault: true),
 				TextColumn::make('creator.name')
 					->label('Creado por')
 					->placeholder('Sistema')
-					->toggleable(),
+					->toggleable(isToggledHiddenByDefault: true),
 				TextColumn::make('created_at')
 					->label('Creado')
 					->dateTime('d/m/Y H:i')
