@@ -81,24 +81,24 @@ class CreateSalesforceCaseJob implements ShouldQueue
 					'salesforce_sync_trigger' => $syncTrigger,
 				]);
 
-				// enviar email de alerta de desconexión OAuth a destinatario administrativo
-				// Obtener todos los usuarios administradores
-				$administrators = User::role('admin')->get();
-				// $administrators = User::where('is_admin', true)->get();
-				// Enviar correo a cada administrador
-				foreach ($administrators as $admin) {
-					Mail::send(
-						'emails.admin-message', // Vista del correo
-						[
-							'titulo' => 'Alerta: Salesforce OAuth desconectado',
-							'contenido' => 'Se detectó que el OAuth de Salesforce está desconectado y la auto-reconexión falló. Esto significa que no se podrán crear casos/leads en Salesforce hasta que se reconecte manualmente desde el panel admin.'
-						],
-						function ($message) use ($admin) {
-							$message->to($admin->email)
-								->subject('Alerta: Salesforce OAuth desconectado');
-						}
-					);
-				}
+				// // enviar email de alerta de desconexión OAuth a destinatario administrativo
+				// // Obtener todos los usuarios administradores
+				// $administrators = User::role('admin')->get();
+				// // $administrators = User::where('is_admin', true)->get();
+				// // Enviar correo a cada administrador
+				// foreach ($administrators as $admin) {
+				// 	Mail::send(
+				// 		'emails.admin-message', // Vista del correo
+				// 		[
+				// 			'titulo' => 'Alerta: Salesforce OAuth desconectado',
+				// 			'contenido' => 'Se detectó que el OAuth de Salesforce está desconectado y la auto-reconexión falló. Esto significa que no se podrán crear casos/leads en Salesforce hasta que se reconecte manualmente desde el panel admin.'
+				// 		],
+				// 		function ($message) use ($admin) {
+				// 			$message->to($admin->email)
+				// 				->subject('Alerta: Salesforce OAuth desconectado');
+				// 		}
+				// 	);
+				// }
 
 				return;
 			}
@@ -169,24 +169,24 @@ class CreateSalesforceCaseJob implements ShouldQueue
 				'salesforce_sync_trigger' => $syncTrigger,
 			]);
 
-			// enviar email de alerta de desconexión OAuth a destinatario administrativo
-			// Obtener todos los usuarios administradores
-			$administrators = User::role('admin')->get();
-			// $administrators = User::where('is_admin', true)->get();
-			// Enviar correo a cada administrador
-			foreach ($administrators as $admin) {
-				Mail::send(
-					'emails.admin-message', // Vista del correo
-					[
-						'titulo' => 'Alerta: Salesforce OAuth desconectado Token no disponible',
-						'contenido' => 'Se detectó que el OAuth de Salesforce está desconectado y la auto-reconexión falló. Esto significa que no se podrán crear casos/leads en Salesforce hasta que se reconecte manualmente desde el panel admin.'
-					],
-					function ($message) use ($admin) {
-						$message->to($admin->email)
-							->subject('Alerta: Salesforce OAuth desconectado Token no disponible');
-					}
-				);
-			}
+			// // enviar email de alerta de desconexión OAuth a destinatario administrativo
+			// // Obtener todos los usuarios administradores
+			// $administrators = User::role('admin')->get();
+			// // $administrators = User::where('is_admin', true)->get();
+			// // Enviar correo a cada administrador
+			// foreach ($administrators as $admin) {
+			// 	Mail::send(
+			// 		'emails.admin-message', // Vista del correo
+			// 		[
+			// 			'titulo' => 'Alerta: Salesforce OAuth desconectado Token no disponible',
+			// 			'contenido' => 'Se detectó que el OAuth de Salesforce está desconectado y la auto-reconexión falló. Esto significa que no se podrán crear casos/leads en Salesforce hasta que se reconecte manualmente desde el panel admin.'
+			// 		],
+			// 		function ($message) use ($admin) {
+			// 			$message->to($admin->email)
+			// 				->subject('Alerta: Salesforce OAuth desconectado Token no disponible');
+			// 		}
+			// 	);
+			// }
 
 			// No relanzar — no tiene sentido reintentar sin token
 		} catch (SalesforceTokenExpiredException $exception) {
@@ -271,7 +271,7 @@ class CreateSalesforceCaseJob implements ShouldQueue
 		$siteSettings = SiteSetting::current();
 		$recipient = $this->resolveSalesforceAlertRecipient($siteSettings);
 
-		if ($recipient === null) {
+		if ($recipient === []) {
 			return;
 		}
 
@@ -302,8 +302,10 @@ class CreateSalesforceCaseJob implements ShouldQueue
 		}
 	}
 
-	private function resolveSalesforceAlertRecipient(SiteSetting $siteSettings): ?string
+	private function resolveSalesforceAlertRecipient(SiteSetting $siteSettings): array
 	{
+		$emails = [];
+
 		$candidates = [
 			trim((string) $siteSettings->contact_notification_email),
 			trim((string) $siteSettings->contact_email),
@@ -312,10 +314,21 @@ class CreateSalesforceCaseJob implements ShouldQueue
 
 		foreach ($candidates as $candidate) {
 			if ($candidate !== '' && filter_var($candidate, FILTER_VALIDATE_EMAIL) !== false) {
-				return $candidate;
+				$emails[] = $candidate;
 			}
 		}
 
-		return null;
+		$adminEmails = User::query()
+			->whereHas('roles', fn($query) => $query->where('name', 'admin'))
+			->whereNotNull('email')
+			->pluck('email')
+			->map(fn($email) => trim((string) $email))
+			->filter(fn($email) => $email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL) !== false)
+			->all();
+
+		return array_values(array_unique([
+			...$emails,
+			...$adminEmails,
+		]));
 	}
 }
