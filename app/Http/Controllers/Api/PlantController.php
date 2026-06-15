@@ -25,8 +25,7 @@ class PlantController extends Controller
             ->with(['proyecto.asesores.avatarImageMedia', 'asesor.avatarImageMedia', 'activeReservation', 'completedReservation', 'completedPayment', 'coverImageMedia', 'interiorImageMedia'])
             ->whereHas('proyecto', function ($projectQuery) {
                 $projectQuery->where('is_active', true);
-            }) // Solo plantas con proyecto activo asociado
-            ->where('is_active', true); // Solo plantas activas
+            });
 
         $projectValues = $this->normalizeInputValues($request->input('salesforce_proyecto_id'));
         $projectIdValues = $this->normalizeInputValues($request->input('proyecto_id', $request->input('project_id')));
@@ -46,6 +45,7 @@ class PlantController extends Controller
         $eventoSale = $this->resolveEventoSaleActive($request);
         $discountSource = $this->resolveSalesforceDiscountSource();
         $available = $this->normalizeBoolean($request->input('disponible', $request->input('available')));
+        $isActive = $this->normalizeBoolean($request->input('is_active'));
 
         // Filtros
         if (count($projectValues) > 0) {
@@ -127,6 +127,10 @@ class PlantController extends Controller
             }
         }
 
+        if ($isActive !== null) {
+            $query->where('is_active', $isActive);
+        }
+
         if (count($dormValues) > 0 || count($banosValues) > 0) {
             $query->where(function ($subQuery) use ($dormValues, $banosValues) {
                 $normalizedColumn = "REPLACE(programa, ' ', '')";
@@ -172,7 +176,6 @@ class PlantController extends Controller
 
         if (count($tipoProductoSlugValues) > 0) {
             $availablePlantTypes = Plant::query()
-                ->where('is_active', true)
                 ->whereHas('proyecto', function ($projectQuery) {
                     $projectQuery->where('is_active', true);
                 })
