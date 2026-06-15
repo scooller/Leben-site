@@ -151,8 +151,22 @@ Filtros soportados (principales):
 - perPage
 - fields o campos (seleccion de campos)
 - include_plantas (en detalle)
+- include_asesores (en detalle) — agrega array `asesores` con asesores activos del proyecto
 
-Ejemplo:
+- Campos de cada asesor: id, full_name, first_name, last_name, email, whatsapp_owner, resolved_avatar_url
+
+- resolved_avatar_url prioriza imagen Curator media sobre avatar_url estatico
+
+- Sin este parametro, `asesores` se omite de la respuesta
+
+Ejemplo (detalle con plantas y asesores):
+```bash
+curl -H "Authorization: Bearer TOKEN" \
+  -H "Origin: https://frontend.cliente.com" \
+  "https://tu-dominio.com/api/v1/proyectos/3?include_plantas=1&include_asesores=1"
+```
+
+Ejemplo (listado simple):
 ```bash
 curl -H "Authorization: Bearer TOKEN" \
   -H "Origin: https://frontend.cliente.com" \
@@ -162,9 +176,9 @@ curl -H "Authorization: Bearer TOKEN" \
 ### 5.2 Plantas
 
 Filtros soportados (principales):
-- proyecto_id o project_id
-- salesforce_proyecto_id
-- project_slug o slug
+- proyecto_id o project_id — filtra por ID de proyecto (accepta lista separada por coma)
+- salesforce_proyecto_id — filtra por Salesforce ID del proyecto
+- project_slug o slug — filtra por slug del proyecto
 - comuna_slug
 - catalog_slug
 - comuna, provincia, region
