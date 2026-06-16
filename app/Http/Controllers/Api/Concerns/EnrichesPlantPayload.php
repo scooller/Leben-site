@@ -13,7 +13,7 @@ trait EnrichesPlantPayload
     /**
      * Build the enriched API payload for a plant, including computed fields.
      */
-    private function buildPlantPayload(Plant $plant, bool $eventoSale, ?string $discountSource): array
+    private function buildPlantPayload(Plant $plant, ?bool $eventoSale, ?string $discountSource): array
     {
         $payload = $plant->toArray();
         $defaultAdvisorAvatarUrl = $this->getDefaultAdvisorAvatarUrl();
@@ -43,7 +43,7 @@ trait EnrichesPlantPayload
     /**
      * Build a lightweight enriched payload for a plant (used inside proyecto detail).
      */
-    private function buildCompactPlantPayload(Plant $plant, bool $eventoSale, ?string $discountSource, ?string $defaultAdvisorAvatarUrl): array
+    private function buildCompactPlantPayload(Plant $plant, ?bool $eventoSale, ?string $discountSource, ?string $defaultAdvisorAvatarUrl): array
     {
         $payload = $plant->toArray();
         $apiDiscountPercentage = $this->resolveApiDiscountPercentage($plant, $eventoSale, $discountSource);
@@ -66,7 +66,7 @@ trait EnrichesPlantPayload
         return $payload;
     }
 
-    private function resolveApiDiscountPercentage(Plant $plant, bool $eventoSale, ?string $discountSource): float
+    private function resolveApiDiscountPercentage(Plant $plant, ?bool $eventoSale, ?string $discountSource): float
     {
         if ($discountSource === 'project') {
             return (float) ($plant->proyecto?->descuento_maximo_unidad ?? $plant->porcentaje_maximo_unidad ?? 0);

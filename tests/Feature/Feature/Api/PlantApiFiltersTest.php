@@ -1095,4 +1095,38 @@ class PlantApiFiltersTest extends TestCase
             'last_synced_at' => now(),
         ], $attributes));
     }
+
+    public function test_evento_sale_does_not_filter_plants_by_default_even_when_site_setting_is_true(): void
+    {
+        SiteSetting::current()->update([
+            'evento_sale' => true,
+        ]);
+
+        $project = Proyecto::factory()->create([
+            'is_active' => true,
+        ]);
+
+        $salePlant = $this->createPlant($project->salesforce_id, true, [
+            'unidad_sale' => true,
+        ]);
+        $nonSalePlant = $this->createPlant($project->salesforce_id, true, [
+            'unidad_sale' => false,
+        ]);
+
+        $response = $this->getJson('/api/v1/plantas?proyecto_id='.$project->id);
+
+        $response->assertOk();
+        $responsePlantIds = collect($response->json('data'))->pluck('id')->all();
+
+        $this->assertContains($salePlant->id, $responsePlantIds);
+        $this->assertContains($nonSalePlant->id, $responsePlantIds);
+
+        $saleOnlyResponse = $this->getJson('/api/v1/plantas?proyecto_id='.$project->id.'&evento_sale=1');
+
+        $saleOnlyResponse->assertOk();
+        $saleOnlyPlantIds = collect($saleOnlyResponse->json('data'))->pluck('id')->all();
+
+        $this->assertContains($salePlant->id, $saleOnlyPlantIds);
+        $this->assertNotContains($nonSalePlant->id, $saleOnlyPlantIds);
+    }
 }

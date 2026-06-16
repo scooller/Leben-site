@@ -298,9 +298,9 @@ class ProyectoController extends Controller
         return in_array($source, ['project', 'plant'], true) ? $source : null;
     }
 
-    private function resolveEventoSaleActive(): bool
+    private function resolveEventoSaleActive(): ?bool
     {
-        return (bool) (SiteSetting::current()->evento_sale ?? false);
+        return $this->normalizeBoolean(request()->input('evento_sale'));
     }
 
     private function resolveProjectApiDiscount(Proyecto $proyecto, ?string $discountSource): ?float

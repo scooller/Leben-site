@@ -480,7 +480,7 @@ class PlantController extends Controller
         ]);
     }
 
-    private function plantPayload(Plant $plant, bool $eventoSale, ?string $discountSource): array
+    private function plantPayload(Plant $plant, ?bool $eventoSale, ?string $discountSource): array
     {
         $payload = $this->buildPlantPayload($plant, $eventoSale, $discountSource);
         $payload['proyecto'] = $this->projectPayload($plant->proyecto, $plant, $eventoSale, $discountSource);
@@ -488,15 +488,9 @@ class PlantController extends Controller
         return $payload;
     }
 
-    private function resolveEventoSaleActive(Request $request): bool
+    private function resolveEventoSaleActive(Request $request): ?bool
     {
-        $eventoSaleFromQuery = $this->normalizeBoolean($request->input('evento_sale'));
-
-        if ($eventoSaleFromQuery !== null) {
-            return $eventoSaleFromQuery;
-        }
-
-        return (bool) (SiteSetting::current()->evento_sale ?? false);
+        return $this->normalizeBoolean($request->input('evento_sale'));
     }
 
     private function resolveSalesforceDiscountSource(): ?string
@@ -508,7 +502,7 @@ class PlantController extends Controller
         return in_array($source, ['project', 'plant'], true) ? $source : null;
     }
 
-    private function projectPayload(?Proyecto $proyecto, Plant $plant, bool $eventoSale, ?string $discountSource): ?array
+    private function projectPayload(?Proyecto $proyecto, Plant $plant, ?bool $eventoSale, ?string $discountSource): ?array
     {
         if (! $proyecto) {
             return null;

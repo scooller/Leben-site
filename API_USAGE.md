@@ -188,7 +188,8 @@ Filtros soportados (principales):
 - tipo_producto, tipo_producto_slug, tipo_slug
 - entrega
 - disponible o available
-- evento_sale
+- is_active — filtro por estado activo de la planta. Sin este parámetro se retornan todas las plantas (activas e inactivas). 1=solo activas, 0=solo inactivas
+- evento_sale — filtro evento sale. Solo aplica cuando se envía explícitamente via URL. 1=solo unidades sale con pricing evento, 0=no sale con pricing normal. Sin parámetro no filtra y usa pricing normal (descuento del proyecto)
 - min_precio, max_precio
 - perPage, page
 
