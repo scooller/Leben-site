@@ -38,14 +38,21 @@ class ProductionSyncService
             ];
         }
 
+        $httpVerify = (bool) config('services.production_sync.http_verify', false);
+
         try {
-            $response = Http::acceptJson()
+            $pendingRequest = Http::acceptJson()
                 ->withToken($token)
                 ->withHeaders([
                     'X-Authorized-Url' => $authorizedUrl,
                 ])
-                ->timeout((int) config('services.production_sync.timeout', 120))
-                ->get($endpoint);
+                ->timeout((int) config('services.production_sync.timeout', 120));
+
+            if (! $httpVerify) {
+                $pendingRequest = $pendingRequest->withoutVerifying();
+            }
+
+            $response = $pendingRequest->get($endpoint);
         } catch (Throwable $exception) {
             FlowLogMatrix::write('production_sync.network_error', 'ProductionSync: Error de red al obtener snapshot', [
                 'endpoint' => $endpoint,

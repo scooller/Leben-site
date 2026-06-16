@@ -30,7 +30,7 @@ class ProductionSyncProgress extends Page
 
     public static function canAccess(): bool
     {
-        return app()->environment('testing');
+        return app()->environment('testing') || app()->environment('local');
     }
 
     public function mount(): void

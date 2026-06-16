@@ -40,13 +40,13 @@ class ProductionSyncServiceTest extends TestCase
 
     public function test_fetch_snapshot_uses_bearer_token_and_authorized_url_header(): void
     {
-        config()->set('services.production_sync.base_url', 'https://prod.ileben.cl');
+        config()->set('services.production_sync.base_url', 'https://admin.ileben.cl');
         config()->set('services.production_sync.token', 'test-token');
         config()->set('services.production_sync.authorized_url', 'https://dev.ileben.cl');
         config()->set('services.production_sync.timeout', 30);
 
         Http::fake([
-            'https://prod.ileben.cl/api/v1/production-sync/export' => Http::response([
+            'https://admin.ileben.cl/api/v1/production-sync/export' => Http::response([
                 'meta' => ['app_env' => 'production'],
                 'site_settings' => ['site_name' => 'Prod'],
                 'projects' => [],
@@ -59,7 +59,7 @@ class ProductionSyncServiceTest extends TestCase
         $this->assertSame('production', $snapshot['meta']['app_env']);
 
         Http::assertSent(function ($request): bool {
-            return $request->url() === 'https://prod.ileben.cl/api/v1/production-sync/export'
+            return $request->url() === 'https://admin.ileben.cl/api/v1/production-sync/export'
                 && $request->hasHeader('Authorization', 'Bearer test-token')
                 && $request->hasHeader('X-Authorized-Url', 'https://dev.ileben.cl');
         });
@@ -125,7 +125,7 @@ class ProductionSyncServiceTest extends TestCase
         $service = app(ProductionSyncService::class);
         $tracker = app(ProductionSyncProgressTracker::class);
         $syncId = 'sync-test-1';
-        $tracker->initialize($syncId, 5, 'https://prod.ileben.cl');
+        $tracker->initialize($syncId, 5, 'https://admin.ileben.cl');
 
         $result = $service->syncSnapshot($syncId, $snapshot, $tracker);
 
@@ -166,11 +166,11 @@ class ProductionSyncServiceTest extends TestCase
 
     public function test_fetch_snapshot_logs_warning_for_non_success_http_response(): void
     {
-        config()->set('services.production_sync.base_url', 'https://prod.ileben.cl');
+        config()->set('services.production_sync.base_url', 'https://admin.ileben.cl');
         config()->set('services.production_sync.token', 'test-token');
 
         Http::fake([
-            'https://prod.ileben.cl/api/v1/production-sync/export' => Http::response([
+            'https://admin.ileben.cl/api/v1/production-sync/export' => Http::response([
                 'message' => 'Access denied',
             ], 403),
         ]);
@@ -193,7 +193,7 @@ class ProductionSyncServiceTest extends TestCase
 
     public function test_fetch_snapshot_logs_error_and_returns_fallback_on_connection_exception(): void
     {
-        config()->set('services.production_sync.base_url', 'https://prod.ileben.cl');
+        config()->set('services.production_sync.base_url', 'https://admin.ileben.cl');
         config()->set('services.production_sync.token', 'test-token');
 
         Http::fake(function (): void {
@@ -214,5 +214,55 @@ class ProductionSyncServiceTest extends TestCase
                     && str_contains((string) $context['endpoint'], '/api/v1/production-sync/export')
                     && ($context['exception_message'] ?? null) === 'Connection failed';
             });
+    }
+
+    public function test_fetch_snapshot_skips_ssl_verification_when_http_verify_is_false(): void
+    {
+        config()->set('services.production_sync.base_url', 'https://admin.ileben.cl');
+        config()->set('services.production_sync.token', 'test-token');
+        config()->set('services.production_sync.http_verify', false);
+
+        Http::fake([
+            'https://admin.ileben.cl/api/v1/production-sync/export' => Http::response([
+                'meta' => ['app_env' => 'production'],
+                'site_settings' => [],
+                'projects' => [],
+                'plants' => [],
+            ]),
+        ]);
+
+        $snapshot = app(ProductionSyncService::class)->fetchSnapshot();
+
+        $this->assertSame('production', $snapshot['meta']['app_env']);
+
+        Http::assertSent(function ($request): bool {
+            return $request->url() === 'https://admin.ileben.cl/api/v1/production-sync/export'
+                && $request->hasHeader('Authorization', 'Bearer test-token');
+        });
+    }
+
+    public function test_fetch_snapshot_enforces_ssl_verification_when_http_verify_is_true(): void
+    {
+        config()->set('services.production_sync.base_url', 'https://admin.ileben.cl');
+        config()->set('services.production_sync.token', 'test-token');
+        config()->set('services.production_sync.http_verify', true);
+
+        Http::fake([
+            'https://admin.ileben.cl/api/v1/production-sync/export' => Http::response([
+                'meta' => ['app_env' => 'production'],
+                'site_settings' => [],
+                'projects' => [],
+                'plants' => [],
+            ]),
+        ]);
+
+        $snapshot = app(ProductionSyncService::class)->fetchSnapshot();
+
+        $this->assertSame('production', $snapshot['meta']['app_env']);
+
+        Http::assertSent(function ($request): bool {
+            return $request->url() === 'https://admin.ileben.cl/api/v1/production-sync/export'
+                && $request->hasHeader('Authorization', 'Bearer test-token');
+        });
     }
 }

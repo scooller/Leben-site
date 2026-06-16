@@ -31,8 +31,8 @@ class ProductionSyncExportApiTest extends TestCase
         ])->save();
 
         $this->withHeaders([
-            'Authorization' => 'Bearer ' . $token->plainTextToken,
-            'X-Authorized-Url' => 'https://otro-host.cl',
+            'Authorization' => 'Bearer '.$token->plainTextToken,
+            'X-Authorized-Url' => 'https://localhost',
         ])->getJson('/api/v1/production-sync/export')
             ->assertStatus(403)
             ->assertJson([
@@ -71,7 +71,7 @@ class ProductionSyncExportApiTest extends TestCase
         ])->save();
 
         $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $token->plainTextToken,
+            'Authorization' => 'Bearer '.$token->plainTextToken,
             'X-Authorized-Url' => 'https://dev.ileben.cl',
         ])->getJson('/api/v1/production-sync/export');
 
