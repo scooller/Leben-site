@@ -4,14 +4,40 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\ActivityLogs;
 
+use AlizHarb\ActivityLog\Models\Activity;
 use AlizHarb\ActivityLog\Resources\ActivityLogs\ActivityLogResource as BaseActivityLogResource;
+use AlizHarb\ActivityLog\Resources\ActivityLogs\Tables\ActivityLogTable;
 use App\Filament\Resources\ActivityLogs\Pages\ListActivityLogs;
 use App\Filament\Resources\ActivityLogs\Pages\ViewActivityLog;
 use App\Filament\Resources\ActivityLogs\Schemas\ActivityLogInfolist;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Schema;
+use Filament\Tables\Table;
 
 class ActivityLogResource extends BaseActivityLogResource
 {
+    public static function table(Table $table): Table
+    {
+        $table = ActivityLogTable::configure($table);
+
+        foreach ($table->getHeaderActions() as $action) {
+            if ($action->getName() === 'prune') {
+                $action->action(function (array $data) {
+                    $count = Activity::query()
+                        ->whereDate('created_at', '<=', $data['prune_until'])
+                        ->delete();
+
+                    Notification::make()
+                        ->success()
+                        ->title(__('filament-activity-log::activity.action.prune.success', ['count' => $count]))
+                        ->send();
+                });
+            }
+        }
+
+        return $table;
+    }
+
     public static function infolist(Schema $schema): Schema
     {
         return ActivityLogInfolist::configure($schema);
