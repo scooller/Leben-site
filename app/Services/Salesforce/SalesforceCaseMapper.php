@@ -99,7 +99,7 @@ class SalesforceCaseMapper
 		$wspOwnerPhone = $projectAdvisorPhone;
 		$telefonoOwnerPhone = $projectAdvisorPhone;
 		$notas = $this->fieldValue($fields, ['nota', 'notas']);
-		$comentarioCliente = $this->fieldValue($fields, ['cliente_comentario', 'coment_cli', 'comentario_cliente']);
+		$comentarioCliente = $this->fieldValue($fields, ['cliente_comentario', 'coment_cli', 'comentario_cliente', 'comentarios', 'comentario', 'message']);
 
 		$payload = [
 			'FirstName' => $firstName,
