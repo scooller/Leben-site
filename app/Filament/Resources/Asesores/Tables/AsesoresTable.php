@@ -7,6 +7,7 @@ use App\Models\Asesor;
 use App\Models\ShortLink;
 use App\Models\SiteSetting;
 use App\Services\ShortLink\ShortLinkService;
+use App\Filament\Actions\ShowQrCodeAction;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -77,29 +78,33 @@ class AsesoresTable
 					]),
 			])
 			->recordActions([
-				Action::make('createAdvisorQr')
-					->label('Crear QR')
-					->icon('heroicon-o-qr-code')
-					->color('gray')
-					->disabled(fn(Asesor $record): bool => ! $record->is_active || blank($record->whatsapp_owner))
+				ShowQrCodeAction::make(fn(Asesor $record): string => self::resolveOrCreateWhatsappShortLinkUrl($record), 'showWhatsappQr')
 					->tooltip(fn(Asesor $record): ?string => (! $record->is_active || blank($record->whatsapp_owner))
 						? 'El asesor debe estar activo y con WhatsApp para generar su QR.'
-						: null)
-					->modalHeading('Codigo QR del asesor')
-					->modalDescription('Genera automaticamente un link corto al redirect de WhatsApp del asesor y muestra su QR.')
-					->modalSubmitAction(false)
-					->modalCancelActionLabel('Cerrar')
-					->modalContent(function (Asesor $record): View {
-						$shortUrl = self::resolveOrCreateWhatsappShortLinkUrl($record);
-						$qrOptions = SiteSetting::current()->qrOptions();
-						$qrOptions['type'] = 'svg';
+						: 'Ver QR de WhatsApp del asesor.'),
+				// Action::make('createAdvisorQr')
+				// 	->label('Crear QR')
+				// 	->icon('heroicon-o-qr-code')
+				// 	->color('gray')
+				// 	->disabled(fn(Asesor $record): bool => ! $record->is_active || blank($record->whatsapp_owner))
+				// 	->tooltip(fn(Asesor $record): ?string => (! $record->is_active || blank($record->whatsapp_owner))
+				// 		? 'El asesor debe estar activo y con WhatsApp para generar su QR.'
+				// 		: null)
+				// 	->modalHeading('Codigo QR del asesor')
+				// 	->modalDescription('Genera automaticamente un link corto al redirect de WhatsApp del asesor y muestra su QR.')
+				// 	->modalSubmitAction(false)
+				// 	->modalCancelActionLabel('Cerrar')
+				// 	->modalContent(function (Asesor $record): View {
+				// 		$shortUrl = self::resolveOrCreateWhatsappShortLinkUrl($record);
+				// 		$qrOptions = SiteSetting::current()->qrOptions();
+				// 		$qrOptions['type'] = 'svg';
 
-						return view('filament.actions.show-qr-code', [
-							'url' => $shortUrl,
-							'qrSvg' => Qr::render(data: $shortUrl, options: $qrOptions, downloadable: false),
-						]);
-					})
-					->action(static fn(): null => null),
+				// 		return view('filament.actions.show-qr-code', [
+				// 			'url' => $shortUrl,
+				// 			'qrSvg' => Qr::render(data: $shortUrl, options: $qrOptions, downloadable: false),
+				// 		]);
+				// 	})
+				// 	->action(static fn(): null => null),
 				EditAction::make(),
 			])
 			->toolbarActions([
@@ -113,6 +118,10 @@ class AsesoresTable
 	{
 		/** @var ShortLinkService $shortLinkService */
 		$shortLinkService = app(ShortLinkService::class);
+
+		if (! $asesor->is_active || blank($asesor->whatsapp_owner)) {
+			return '';
+		}
 
 		$destinationUrl = $shortLinkService->normalizeAndValidateDestinationUrl(
 			route('advisors.whatsapp.redirect', ['asesor' => $asesor])

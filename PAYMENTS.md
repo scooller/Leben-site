@@ -69,7 +69,7 @@ $transaction = PaymentGatewayFacade::driver('transbank')->createTransaction([
 return redirect($transaction['url'] . '?token_ws=' . $transaction['token']);
 
 // 4. El sistema automáticamente procesa el retorno en:
-// POST /payments/transbank/return → PaymentWebhookController@transbankReturn
+// GET|POST /payments/transbank/return → PaymentWebhookController@transbankReturn
 ```
 
 ### Crear y procesar pago con Mercado Pago
@@ -184,7 +184,7 @@ Flujo para transferencias bancarias o efectivo:
 
 1. **Crear pago** → Estado: `PENDING_APPROVAL`
 2. **Mostrar instrucciones** → Datos bancarios
-3. **Usuario envía comprobante** → (implementar upload)
+3. **Usuario envía comprobante** → `POST /api/v1/payments/{id}/manual-proof` (multipart/form-data)
 4. **Admin aprueba** → Desde Filament panel
 5. **Estado final** → `COMPLETED` o `FAILED`
 
@@ -347,9 +347,13 @@ $refund = PaymentGateway::driver('mercadopago')
 
 ```php
 // Webhooks y retornos
-POST   /payments/transbank/return       # Retorno Transbank
+GET    /payments/transbank/redirect     # Puente para POST hacia Webpay
+GET|POST /payments/transbank/return     # Retorno Transbank
 POST   /payments/mercadopago/webhook    # Webhook Mercado Pago
 GET    /payments/mercadopago/return     # Retorno Mercado Pago
+
+// API autenticada
+POST   /api/v1/payments/{id}/manual-proof # Subir comprobante manual
 
 // Páginas de resultado
 GET    /payments/success/{payment?}     # Pago exitoso
@@ -408,12 +412,12 @@ tail -f storage/logs/laravel.log | grep -E "Transbank|MercadoPago"
 - [x] PaymentWebhookController
 - [x] Rutas configuradas
 - [x] Vistas de resultado
-- [ ] Variables .env configuradas
+- [x] Variables .env configuradas
 - [ ] Webhook MP registrado
-- [ ] Pruebas con tarjetas test
-- [ ] Validación firma webhooks MP
-- [ ] Notificaciones email
-- [ ] Deploy producción
+- [x] Pruebas con tarjetas test
+- [x] Validación firma webhooks MP
+- [x] Notificaciones email
+- [x] Deploy producción
 
 ## 📝 Notas Operativas
 

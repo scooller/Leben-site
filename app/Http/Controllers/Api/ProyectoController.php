@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Api\Concerns\EnrichesPlantPayload;
 use App\Http\Controllers\Controller;
+use App\Models\Asesor;
+use App\Models\Plant;
 use App\Models\Proyecto;
 use App\Models\SiteSetting;
 use Illuminate\Http\JsonResponse;
@@ -10,6 +13,8 @@ use Illuminate\Http\Request;
 
 class ProyectoController extends Controller
 {
+    use EnrichesPlantPayload;
+
     /**
      * @var array<string, string>
      */
@@ -27,7 +32,14 @@ class ProyectoController extends Controller
         'direccion',
         'comuna',
         'pagina_web',
-        'image_url',
+        'etapa',
+        'entrega_inmediata',
+        'telefono',
+        'horario_atencion',
+        'salesforce_logo_url',
+        'salesforce_portada_url',
+        'project_image_id',
+        'descuento_defecto_cotizacion_web',
     ];
 
     /**
@@ -58,7 +70,7 @@ class ProyectoController extends Controller
         'entrega_inmediata',
         'salesforce_logo_url',
         'salesforce_portada_url',
-        'image_url',
+        'project_image_id',
         'created_at',
         'updated_at',
     ];
@@ -117,7 +129,7 @@ class ProyectoController extends Controller
         }
 
         $requestedFields = $this->resolveRequestedFields($request);
-        $computedFields = array_intersect(['image_url'], $requestedFields);
+        $computedFields = array_intersect(['project_image_id'], $requestedFields);
         $requiresDiscountProjection = in_array('descuento_defecto_cotizacion_web', $requestedFields, true);
         $databaseFields = array_diff($requestedFields, $computedFields);
 
@@ -142,8 +154,8 @@ class ProyectoController extends Controller
                 $data = $proyecto->toArray();
 
                 foreach ($computedFields as $field) {
-                    if ($field === 'image_url') {
-                        $data['image_url'] = $proyecto->image_url;
+                    if ($field === 'project_image_id') {
+                        $data['project_image_id'] = $proyecto->project_image_id;
                     }
                 }
 
@@ -172,7 +184,9 @@ class ProyectoController extends Controller
         $query = Proyecto::query();
         $discountSource = $this->resolveSalesforceDiscountSource();
         $includePlantas = $this->normalizeBoolean(request()->input('include_plantas')) === true;
+        $includeAsesores = $this->normalizeBoolean(request()->input('include_asesores')) === true;
         $hideSalesforceId = false;
+        $eventoSale = $this->resolveEventoSaleActive();
 
         $requestedFields = $this->resolveRequestedFields(request());
         $requiresDiscountProjection = in_array('descuento_defecto_cotizacion_web', $requestedFields, true);
@@ -194,8 +208,30 @@ class ProyectoController extends Controller
             $query->withMax('plantas as descuento_maximo_unidad_fallback', 'porcentaje_maximo_unidad');
         }
 
-        if ($includePlantas) {
-            $query->with('plantas');
+        if ($includePlantas || $includeAsesores) {
+            $asesoresConstraint = function ($q): void {
+                $q->where('asesores.is_active', true)
+                    ->select(['asesores.id', 'asesores.is_active', 'asesores.first_name', 'asesores.last_name', 'asesores.email', 'asesores.whatsapp_owner', 'asesores.avatar_url', 'asesores.avatar_image_id'])
+                    ->with('avatarImageMedia');
+            };
+
+            if ($includePlantas) {
+                $query->with([
+                    'asesores' => $asesoresConstraint,
+                    'plantas' => function ($q) {
+                        $q->with([
+                            'asesor.avatarImageMedia',
+                            'activeReservation',
+                            'completedReservation',
+                            'completedPayment',
+                            'coverImageMedia',
+                            'interiorImageMedia',
+                        ]);
+                    },
+                ]);
+            } else {
+                $query->with(['asesores' => $asesoresConstraint]);
+            }
         }
 
         $proyecto = $query->findOrFail($id);
@@ -216,6 +252,40 @@ class ProyectoController extends Controller
 
         unset($payload['descuento_maximo_unidad_fallback']);
 
+        $includeAsesoresInPayload = $includePlantas || $includeAsesores;
+        if ($includeAsesoresInPayload && isset($payload['asesores'])) {
+            $payload['asesores'] = collect($proyecto->asesores)->map(function (Asesor $asesor): array {
+                return [
+                    'id' => $asesor->id,
+                    'full_name' => $asesor->full_name,
+                    'first_name' => $asesor->first_name,
+                    'last_name' => $asesor->last_name,
+                    'email' => $asesor->email,
+                    'whatsapp_owner' => $asesor->whatsapp_owner,
+                    'resolved_avatar_url' => $asesor->resolved_avatar_url,
+                ];
+            })->values()->toArray();
+        }
+
+        if ($includePlantas && isset($payload['plantas'])) {
+            $defaultAdvisorAvatarUrl = $this->getDefaultAdvisorAvatarUrl();
+            $payload['plantas'] = collect($proyecto->plantas)->map(function (Plant $plant) use ($proyecto, $discountSource, $eventoSale, $defaultAdvisorAvatarUrl): array {
+                $plantPayload = $this->buildCompactPlantPayload($plant, $eventoSale, $discountSource, $defaultAdvisorAvatarUrl);
+
+                // Override default advisor resolution: use proyecto's asesores collection
+                // since plantas loaded via Proyecto don't have proyecto->asesores preloaded per plant
+                if ($plant->asesor === null || ! (bool) $plant->asesor->is_active) {
+                    $plantPayload['asesores'] = $proyecto->asesores
+                        ->where('is_active', true)
+                        ->values()
+                        ->map(fn (Asesor $asesor): array => $this->asesorPayload($asesor, $defaultAdvisorAvatarUrl))
+                        ->all();
+                }
+
+                return $plantPayload;
+            })->values()->toArray();
+        }
+
         return response()->json($payload);
     }
 
@@ -226,6 +296,11 @@ class ProyectoController extends Controller
         $source = strtolower(trim((string) data_get($extraSettings, 'salesforce_discount_source', '')));
 
         return in_array($source, ['project', 'plant'], true) ? $source : null;
+    }
+
+    private function resolveEventoSaleActive(): ?bool
+    {
+        return $this->normalizeBoolean(request()->input('evento_sale'));
     }
 
     private function resolveProjectApiDiscount(Proyecto $proyecto, ?string $discountSource): ?float

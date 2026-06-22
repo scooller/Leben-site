@@ -25,6 +25,7 @@ class SalesforceCaseMapper
     {
         $settings = SiteSetting::current();
         $fields = is_array($submission->fields) ? $submission->fields : [];
+        $isCsvImport = $this->isCsvImportSubmission($submission);
         $extraSettings = is_array($settings->extra_settings) ? $settings->extra_settings : [];
         $fieldLabels = $this->buildFieldLabels($settings->contact_form_fields);
 
@@ -35,17 +36,27 @@ class SalesforceCaseMapper
             ?: $this->extractLastName($fullName)
             ?: 'Sin Apellido';
 
-        $projectName = $this->fieldValue($fields, ['nombre_proyecto', 'proyecto', 'project_name', 'proyecto_formulario']);
+        $projectName = $this->fieldValue($fields, ['nombre_proyecto', 'proyecto', 'project_name', 'proyecto_formulario', 'project']);
+        $quotationInfo = $this->fieldValue($fields, [
+            'informacion_cotizacion',
+            'informacion_cotizaci_n',
+            'informacion_cotizacion_web',
+            'quote_information',
+        ]) ?: $projectName;
         $utmSourceInput = $this->fieldValue($fields, [
             'utm_source',
             'lead_source',
         ]);
-        $utmSourceDefault = $this->normalizeFieldValue($extraSettings['utm_source_default'] ?? null) ?: 'direct';
+        $utmSourceDefault = $isCsvImport
+            ? null
+            : ($this->normalizeFieldValue($extraSettings['utm_source_default'] ?? null) ?: 'direct');
         $utmSourceValue = $utmSourceInput ?: $utmSourceDefault;
         $arrivalMedium = $this->fieldValue($fields, [
             'medio_de_llegada',
             'medio_llegada',
-        ]) ?: $utmSourceValue;
+        ])
+            ?: $this->fieldValue($fields, ['origen_del_prospecto', 'origen_prospecto'])
+            ?: $utmSourceValue;
         $originProspect = $this->fieldValue($fields, [
             'origen_del_prospecto',
             'origen_prospecto',
@@ -54,15 +65,23 @@ class SalesforceCaseMapper
         ]);
         $utmSiteDefault = $this->normalizeFieldValue($extraSettings['utm_site_default'] ?? null);
         $website = $this->resolveWebsiteSource($submission, $fields, $utmSourceInput, $utmSiteDefault);
-        $utmMediumDefault = $this->normalizeFieldValue($extraSettings['utm_medium_default'] ?? null) ?: 'organic';
-        $utmMedium = $this->fieldValue($fields, ['utm_medium', 'audiencia']) ?: $utmMediumDefault;
-        $utmCampaignDefault = $this->normalizeFieldValue($extraSettings['utm_campaign_default'] ?? null);
+        $utmMediumDefault = $isCsvImport
+            ? null
+            : ($this->normalizeFieldValue($extraSettings['utm_medium_default'] ?? null) ?: 'organic');
+        $utmMedium = $this->fieldValue($fields, ['utm_medium', 'audiencia'])
+            ?: $this->fieldValue($fields, ['medio_de_llegada', 'medio_llegada', 'origen_del_prospecto', 'origen_prospecto'])
+            ?: $utmMediumDefault;
+        $utmCampaignDefault = $isCsvImport
+            ? null
+            : $this->normalizeFieldValue($extraSettings['utm_campaign_default'] ?? null);
         $utmCampaign = $this->resolveUtmCampaign($fields, $utmCampaignDefault);
         $utmContentDefault = $this->normalizeFieldValue($extraSettings['utm_content_default'] ?? null) ?: 'none';
         $utmContent = $this->fieldValue($fields, ['utm_content', 'pieza_grafica']) ?: $utmContentDefault;
-        $utmTermDefault = $this->normalizeFieldValue($extraSettings['utm_term_default'] ?? null) ?: 'none';
+        $utmTermDefault = $isCsvImport
+            ? null
+            : ($this->normalizeFieldValue($extraSettings['utm_term_default'] ?? null) ?: 'none');
         $utmTerm = $this->fieldValue($fields, ['utm_term', 'audiencia']) ?: $utmTermDefault;
-        $leadSource = $utmTerm;
+        $leadSource = $this->resolveLeadSource($fields, $utmTerm, $arrivalMedium);
         $email = $submission->email ?: $this->fieldValue($fields, ['email', 'correo']) ?: null;
         $phone = $submission->phone ?: $this->fieldValue($fields, ['phone', 'telefono', 'fono', 'celular', 'whatsapp']);
         $includeDescription = $this->shouldIncludeDescription($settings);
@@ -76,7 +95,7 @@ class SalesforceCaseMapper
             ?: $commune;
         $projectSalesforceId = $this->resolveProjectSalesforceId($fields, $projectName);
         $projectAdvisorPhone = $this->resolveProjectAdvisorPhone($fields, $projectName);
-        $normalizedLeadSource = $this->normalizeLeadSource($leadSource);
+        $normalizedLeadSource = $this->normalizeLeadSource($leadSource, $isCsvImport);
         $ownerId = $this->resolveLeadOwnerId();
         $ownerPhone = $projectAdvisorPhone;
         $wspOwnerPhone = $projectAdvisorPhone;
@@ -102,7 +121,7 @@ class SalesforceCaseMapper
             'Tipo_Ingreso__c' => 'Online',
             'Proyecto__c' => $projectSalesforceId,
             'ID_Proyecto__c' => $projectSalesforceId,
-            'Informacion_Cotizacion__c' => $projectName,
+            'Informacion_Cotizacion__c' => $quotationInfo,
             // 'Proyect_ID__c' => $projectName,
             'Comuna__c' => $commune,
             'Rango_de_renta_liquida__c' => $incomeRange,
@@ -311,16 +330,70 @@ class SalesforceCaseMapper
             return $normalizedProjectId;
         }
 
+        $normalizedProjectNameId = $this->normalizeSalesforceId($projectName);
+
+        if ($normalizedProjectNameId !== null) {
+            return $normalizedProjectNameId;
+        }
+
+        $project = $this->resolveProjectByName($projectName);
+
+        return $this->normalizeSalesforceId($project?->salesforce_id);
+    }
+
+    private function resolveProjectByName(?string $projectName): ?Proyecto
+    {
         if ($projectName === null || trim($projectName) === '') {
             return null;
         }
 
         $project = Proyecto::query()
-            ->select(['salesforce_id'])
+            ->select(['id', 'salesforce_id', 'name', 'slug'])
             ->where('name', $projectName)
             ->first();
 
-        return $this->normalizeSalesforceId($project?->salesforce_id);
+        if ($project !== null) {
+            return $project;
+        }
+
+        $project = Proyecto::query()
+            ->select(['id', 'salesforce_id', 'name', 'slug'])
+            ->whereRaw('LOWER(name) = ?', [mb_strtolower($projectName)])
+            ->first();
+
+        if ($project !== null) {
+            return $project;
+        }
+
+        $signature = $this->textSignature($projectName);
+
+        $project = Proyecto::query()
+            ->select(['id', 'salesforce_id', 'name', 'slug'])
+            ->whereRaw('LOWER(slug) = ?', [$signature])
+            ->first();
+
+        if ($project !== null) {
+            return $project;
+        }
+
+        foreach (Proyecto::query()->select(['id', 'salesforce_id', 'name', 'slug'])->get() as $candidate) {
+            if ($this->textSignature($candidate->name) === $signature) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
+    private function textSignature(string $value): string
+    {
+        return Str::of($value)
+            ->ascii()
+            ->lower()
+            ->replace(':', ' ')
+            ->replaceMatches('/[^a-z0-9]+/', '_')
+            ->trim('_')
+            ->toString();
     }
 
     /**
@@ -352,32 +425,47 @@ class SalesforceCaseMapper
         $rawProjectId = $this->fieldValue($fields, ['proyecto_id', 'id_proyecto', 'project_id', 'proyecto_salesforce_id']);
         $normalizedProjectId = $this->normalizeSalesforceId($rawProjectId);
 
-        $query = Proyecto::query()
-            ->with(['asesores' => static function ($query): void {
-                $query->select(['asesores.id', 'asesores.whatsapp_owner', 'asesores.is_active']);
-            }]);
-
         if ($normalizedProjectId !== null) {
-            return $query
+            return Proyecto::query()
+                ->with(['asesores' => static function ($query): void {
+                    $query->select(['asesores.id', 'asesores.whatsapp_owner', 'asesores.is_active']);
+                }])
                 ->where('salesforce_id', $normalizedProjectId)
                 ->first();
         }
 
-        if ($projectName === null || trim($projectName) === '') {
+        $normalizedProjectNameId = $this->normalizeSalesforceId($projectName);
+
+        if ($normalizedProjectNameId !== null) {
+            return Proyecto::query()
+                ->with(['asesores' => static function ($query): void {
+                    $query->select(['asesores.id', 'asesores.whatsapp_owner', 'asesores.is_active']);
+                }])
+                ->where('salesforce_id', $normalizedProjectNameId)
+                ->first();
+        }
+
+        $project = $this->resolveProjectByName($projectName);
+
+        if ($project === null) {
             return null;
         }
 
-        return $query
-            ->where('name', $projectName)
-            ->first();
+        return $project->load(['asesores' => static function ($query): void {
+            $query->select(['asesores.id', 'asesores.whatsapp_owner', 'asesores.is_active']);
+        }]);
     }
 
-    private function normalizeLeadSource(?string $value): ?string
+    private function normalizeLeadSource(?string $value, bool $preserveOriginalCase = false): ?string
     {
         $normalized = trim((string) $value);
 
         if ($normalized === '') {
             return null;
+        }
+
+        if ($preserveOriginalCase) {
+            return $normalized;
         }
 
         return ucfirst(strtolower($normalized));
@@ -440,6 +528,10 @@ class SalesforceCaseMapper
             'origen_sitio',
             'source_site',
             'origin_site',
+            'medio_de_llegada',
+            'medio_llegada',
+            'origen_del_prospecto',
+            'origen_prospecto',
             'referrer',
         ]) ?: $utmSiteDefault ?: $utmSource;
     }
@@ -486,7 +578,7 @@ class SalesforceCaseMapper
             return $defaultValue;
         }
 
-        $campaign = $this->fieldValue($fields, ['utm_campaign']);
+        $campaign = $this->fieldValue($fields, ['utm_campaign', 'campana', 'nombre_de_la_campana']);
 
         if ($campaign === null) {
             return 'campaign';
@@ -497,6 +589,31 @@ class SalesforceCaseMapper
         }
 
         return $campaign;
+    }
+
+    /**
+     * @param  array<string, mixed>  $fields
+     */
+    private function resolveLeadSource(array $fields, ?string $utmTerm, ?string $arrivalMedium): ?string
+    {
+        return $utmTerm
+            ?: $this->fieldValue($fields, [
+                'origen_del_prospecto',
+                'origen_prospecto',
+                'lead_source',
+            ])
+            ?: $arrivalMedium;
+    }
+
+    private function isCsvImportSubmission(ContactSubmission $submission): bool
+    {
+        $userAgent = strtolower(trim((string) $submission->user_agent));
+
+        if ($userAgent === '') {
+            return false;
+        }
+
+        return str_contains($userAgent, 'filament-csv-import');
     }
 
     private function buildWhatsappLink(?string $phone, string $ownerName): ?string

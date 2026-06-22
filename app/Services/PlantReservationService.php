@@ -10,6 +10,7 @@ use App\Models\PlantReservation;
 use App\Models\SiteSetting;
 use App\Support\BusinessActivityLogger;
 use DateTimeInterface;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -281,10 +282,13 @@ class PlantReservationService
      */
     public function extendForManualPayment(PlantReservation $reservation, DateTimeInterface $expiresAt, array $metadata = []): PlantReservation
     {
+        $normalizedExpiresAt = Carbon::instance(\DateTimeImmutable::createFromInterface($expiresAt))
+            ->setTimezone(config('app.timezone'));
+
         $reservationMetadata = array_merge($reservation->metadata ?? [], $metadata);
 
         $reservation->update([
-            'expires_at' => $expiresAt,
+            'expires_at' => $normalizedExpiresAt,
             'metadata' => $reservationMetadata,
         ]);
 

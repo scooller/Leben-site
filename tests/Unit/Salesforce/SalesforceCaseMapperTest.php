@@ -546,4 +546,312 @@ class SalesforceCaseMapperTest extends TestCase
 
         $this->assertSame('sale.ileben.cl', $payload['Website'] ?? null);
     }
+
+    public function test_it_prefers_informacion_cotizacion_field_over_project_name_for_salesforce_field(): void
+    {
+        config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');
+        config()->set('services.salesforce.lead_status', 'En Contacto');
+
+        SiteSetting::current()->update([
+            'site_name' => 'iLeben',
+            'contact_form_fields' => [
+                ['key' => 'name', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
+                ['key' => 'project_name', 'label' => 'Proyecto', 'type' => 'text', 'required' => false],
+                ['key' => 'informacion_cotizacion', 'label' => 'Informacion Cotizacion', 'type' => 'text', 'required' => false],
+            ],
+        ]);
+
+        $submission = ContactSubmission::query()->create([
+            'name' => 'Cesar Test',
+            'email' => 'cesar.test@example.com',
+            'phone' => '56911111111',
+            'fields' => [
+                'name' => 'Cesar Test',
+                'project_name' => 'Edificio Baum',
+                'informacion_cotizacion' => 'Se cotizo el Departamento 1902 desde Portal Inmobiliario',
+            ],
+            'submitted_at' => now(),
+        ]);
+
+        $payload = app(SalesforceCaseMapper::class)->mapLead($submission);
+
+        $this->assertSame('Se_cotizo_el_Departamento_1902_desde_Portal_Inmobiliario', $payload['Informacion_Cotizacion__c'] ?? null);
+    }
+
+    public function test_it_uses_medio_de_llegada_for_website_when_explicit_site_is_missing(): void
+    {
+        config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');
+        config()->set('services.salesforce.lead_status', 'En Contacto');
+
+        SiteSetting::current()->update([
+            'site_name' => 'iLeben',
+            'contact_form_fields' => [
+                ['key' => 'name', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
+            ],
+            'extra_settings' => [
+                'utm_site_default' => null,
+            ],
+        ]);
+
+        $submission = ContactSubmission::query()->create([
+            'name' => 'Cesar Test',
+            'email' => 'cesar.test@example.com',
+            'phone' => '56911111111',
+            'fields' => [
+                'name' => 'Cesar Test',
+                'medio_de_llegada' => 'Portal Inmobiliario',
+            ],
+            'submitted_at' => now(),
+        ]);
+
+        $payload = app(SalesforceCaseMapper::class)->mapLead($submission);
+
+        $this->assertSame('Portal Inmobiliario', $payload['Website'] ?? null);
+    }
+
+    public function test_it_prefers_imported_source_arrival_and_campaign_over_site_defaults(): void
+    {
+        config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');
+        config()->set('services.salesforce.lead_status', 'En Contacto');
+
+        SiteSetting::current()->update([
+            'site_name' => 'iLeben',
+            'extra_settings' => [
+                'utm_source_default' => 'direct',
+                'utm_campaign_default' => 'CyberDay',
+            ],
+            'contact_form_fields' => [
+                ['key' => 'name', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
+            ],
+        ]);
+
+        $submission = ContactSubmission::query()->create([
+            'name' => 'Import User',
+            'email' => 'import.user@example.com',
+            'phone' => '56911111111',
+            'user_agent' => 'filament-csv-import',
+            'fields' => [
+                'name' => 'Import User',
+                'medio_de_llegada' => 'Portal Inmobiliario',
+                'origen_del_prospecto' => 'Portal Inmobiliario',
+                'campana' => 'Portal Inmobiliario',
+            ],
+            'submitted_at' => now(),
+        ]);
+
+        $payload = app(SalesforceCaseMapper::class)->mapLead($submission);
+
+        $this->assertSame('Portal Inmobiliario', $payload['utm_source__c'] ?? null);
+        $this->assertSame('Portal Inmobiliario', $payload['LeadSource'] ?? null);
+        $this->assertSame('Portal_Inmobiliario', $payload['Medio_de_Llegada__c'] ?? null);
+        $this->assertSame('Portal Inmobiliario', $payload['utm_medium__c'] ?? null);
+        $this->assertSame('Portal_Inmobiliario', $payload['Nombre_de_la_Campa_a__c'] ?? null);
+        $this->assertSame('Portal Inmobiliario', $payload['utm_campaign__c'] ?? null);
+    }
+
+    public function test_it_resolves_project_with_case_insensitive_name(): void
+    {
+        config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');
+        config()->set('services.salesforce.lead_status', 'En Contacto');
+
+        SiteSetting::current()->update([
+            'site_name' => 'iLeben',
+            'contact_form_fields' => [
+                ['key' => 'name', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
+                ['key' => 'project_name', 'label' => 'Proyecto', 'type' => 'text', 'required' => false],
+            ],
+        ]);
+
+        Proyecto::query()->create([
+            'salesforce_id' => 'a0J8c00000CaseIA',
+            'name' => 'Edificio Indigo',
+            'slug' => 'edificio-indigo',
+            'is_active' => true,
+        ]);
+
+        $submission = ContactSubmission::query()->create([
+            'name' => 'Test User',
+            'email' => 'test@example.com',
+            'phone' => '56911112222',
+            'fields' => [
+                'name' => 'Test User',
+                'project_name' => 'edificio indigo',
+            ],
+            'submitted_at' => now(),
+        ]);
+
+        $payload = app(SalesforceCaseMapper::class)->mapLead($submission);
+
+        $this->assertSame('a0J8c00000CaseIA', $payload['Proyecto__c'] ?? null);
+        $this->assertSame('a0J8c00000CaseIA', $payload['ID_Proyecto__c'] ?? null);
+    }
+
+    public function test_it_resolves_project_with_accented_name_via_signature_match(): void
+    {
+        config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');
+        config()->set('services.salesforce.lead_status', 'En Contacto');
+
+        SiteSetting::current()->update([
+            'site_name' => 'iLeben',
+            'contact_form_fields' => [
+                ['key' => 'name', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
+                ['key' => 'project_name', 'label' => 'Proyecto', 'type' => 'text', 'required' => false],
+            ],
+        ]);
+
+        Proyecto::query()->create([
+            'salesforce_id' => 'a0J8c00000AccntA',
+            'name' => 'Edificio Índigo',
+            'slug' => 'edificio-indigo',
+            'is_active' => true,
+        ]);
+
+        $submission = ContactSubmission::query()->create([
+            'name' => 'Test User',
+            'email' => 'test@example.com',
+            'phone' => '56911112222',
+            'fields' => [
+                'name' => 'Test User',
+                'project_name' => 'Edificio Indigo',
+            ],
+            'submitted_at' => now(),
+        ]);
+
+        $payload = app(SalesforceCaseMapper::class)->mapLead($submission);
+
+        $this->assertSame('a0J8c00000AccntA', $payload['Proyecto__c'] ?? null);
+        $this->assertSame('a0J8c00000AccntA', $payload['ID_Proyecto__c'] ?? null);
+    }
+
+    public function test_it_resolves_project_via_slug_fallback(): void
+    {
+        config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');
+        config()->set('services.salesforce.lead_status', 'En Contacto');
+
+        SiteSetting::current()->update([
+            'site_name' => 'iLeben',
+            'contact_form_fields' => [
+                ['key' => 'name', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
+                ['key' => 'proyecto', 'label' => 'Proyecto', 'type' => 'text', 'required' => false],
+            ],
+        ]);
+
+        Proyecto::query()->create([
+            'salesforce_id' => 'a0J8c00000SlugMA',
+            'name' => 'Edificio Alameda',
+            'slug' => 'edificio_alameda',
+            'is_active' => true,
+        ]);
+
+        $submission = ContactSubmission::query()->create([
+            'name' => 'Test User',
+            'email' => 'test@example.com',
+            'phone' => '56911112222',
+            'fields' => [
+                'name' => 'Test User',
+                'proyecto' => 'Edificio Alameda',
+            ],
+            'submitted_at' => now(),
+        ]);
+
+        $payload = app(SalesforceCaseMapper::class)->mapLead($submission);
+
+        $this->assertSame('a0J8c00000SlugMA', $payload['Proyecto__c'] ?? null);
+    }
+
+    public function test_it_resolves_project_using_project_alias(): void
+    {
+        config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');
+        config()->set('services.salesforce.lead_status', 'En Contacto');
+
+        SiteSetting::current()->update([
+            'site_name' => 'iLeben',
+            'contact_form_fields' => [
+                ['key' => 'name', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
+                ['key' => 'project', 'label' => 'Proyecto', 'type' => 'text', 'required' => false],
+            ],
+        ]);
+
+        Proyecto::query()->create([
+            'salesforce_id' => 'a0J8c00000PrjctA',
+            'name' => 'Edificio Residencia',
+            'slug' => 'edificio-residencia',
+            'is_active' => true,
+        ]);
+
+        $submission = ContactSubmission::query()->create([
+            'name' => 'Test User',
+            'email' => 'test@example.com',
+            'phone' => '56911112222',
+            'fields' => [
+                'name' => 'Test User',
+                'project' => 'Edificio Residencia',
+            ],
+            'submitted_at' => now(),
+        ]);
+
+        $payload = app(SalesforceCaseMapper::class)->mapLead($submission);
+
+        $this->assertSame('a0J8c00000PrjctA', $payload['Proyecto__c'] ?? null);
+        $this->assertSame('a0J8c00000PrjctA', $payload['ID_Proyecto__c'] ?? null);
+    }
+
+    public function test_it_omits_project_fields_when_project_not_found(): void
+    {
+        config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');
+        config()->set('services.salesforce.lead_status', 'En Contacto');
+
+        SiteSetting::current()->update([
+            'site_name' => 'iLeben',
+            'contact_form_fields' => [
+                ['key' => 'name', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
+                ['key' => 'project_name', 'label' => 'Proyecto', 'type' => 'text', 'required' => false],
+            ],
+        ]);
+
+        $submission = ContactSubmission::query()->create([
+            'name' => 'Test User',
+            'email' => 'test@example.com',
+            'phone' => '56911112222',
+            'fields' => [
+                'name' => 'Test User',
+                'project_name' => 'Proyecto Inexistente',
+            ],
+            'submitted_at' => now(),
+        ]);
+
+        $payload = app(SalesforceCaseMapper::class)->mapLead($submission);
+
+        $this->assertArrayNotHasKey('Proyecto__c', $payload);
+        $this->assertArrayNotHasKey('ID_Proyecto__c', $payload);
+    }
+
+    public function test_it_prefers_direct_proyecto_salesforce_id_over_name_lookup(): void
+    {
+        config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');
+        config()->set('services.salesforce.lead_status', 'En Contacto');
+
+        SiteSetting::current()->update([
+            'site_name' => 'iLeben',
+            'contact_form_fields' => [
+                ['key' => 'name', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
+            ],
+        ]);
+
+        $submission = ContactSubmission::query()->create([
+            'name' => 'Test User',
+            'email' => 'test@example.com',
+            'phone' => '56911112222',
+            'fields' => [
+                'name' => 'Test User',
+                'proyecto_salesforce_id' => 'a0J8c00000DirXX',
+            ],
+            'submitted_at' => now(),
+        ]);
+
+        $payload = app(SalesforceCaseMapper::class)->mapLead($submission);
+
+        $this->assertSame('a0J8c00000DirXX', $payload['Proyecto__c'] ?? null);
+        $this->assertSame('a0J8c00000DirXX', $payload['ID_Proyecto__c'] ?? null);
+    }
 }

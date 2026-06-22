@@ -78,6 +78,7 @@ return [
         'token' => env('PRODUCTION_SYNC_TOKEN'),
         'authorized_url' => env('PRODUCTION_SYNC_AUTHORIZED_URL', env('APP_URL')),
         'timeout' => env('PRODUCTION_SYNC_TIMEOUT', 120),
+        'http_verify' => env('PRODUCTION_SYNC_HTTP_VERIFY', false),
     ],
 
     'slack' => [

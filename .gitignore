@@ -39,3 +39,5 @@ skills-lock.json
 /.vscode
 frontend/.env.dev
 .env.testing
+.env.testing
+/.qwen
