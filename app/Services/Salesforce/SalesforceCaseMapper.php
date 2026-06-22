@@ -60,8 +60,6 @@ class SalesforceCaseMapper
 		$originProspect = $this->fieldValue($fields, [
 			'origen_del_prospecto',
 			'origen_prospecto',
-			'origen del prospecto',
-			'origen-del-prospecto',
 		]);
 		$utmSiteDefault = $this->normalizeFieldValue($extraSettings['utm_site_default'] ?? null);
 		$website = $this->resolveWebsiteSource($submission, $fields, $utmSourceInput, $utmSiteDefault);
@@ -259,11 +257,13 @@ class SalesforceCaseMapper
 	private function fieldValue(array $fields, array $aliases): ?string
 	{
 		foreach ($aliases as $alias) {
-			if (! array_key_exists($alias, $fields)) {
+			$normalizedAlias = $this->normalizeFieldKey($alias);
+
+			if (! array_key_exists($normalizedAlias, $fields)) {
 				continue;
 			}
 
-			$normalized = $this->normalizeFieldValue($fields[$alias]);
+			$normalized = $this->normalizeFieldValue($fields[$normalizedAlias]);
 
 			if ($normalized !== null && $normalized !== '') {
 				return $normalized;
@@ -705,5 +705,33 @@ class SalesforceCaseMapper
 		}
 
 		return $payload;
+	}
+	/*
+		Extra metodos
+	*/
+	/**
+	 * @param array<string, mixed> $fields
+	 * @return array<string, mixed>
+	 */
+	private function normalizeFieldKeys(array $fields): array
+	{
+		$normalized = [];
+
+		foreach ($fields as $key => $value) {
+			$normalizedKey = $this->normalizeFieldKey((string) $key);
+			$normalized[$normalizedKey] = $value;
+		}
+
+		return $normalized;
+	}
+
+	private function normalizeFieldKey(string $key): string
+	{
+		return Str::of($key)
+			->ascii()                 // quita tildes y translitera ñ -> n
+			->lower()                 // minúsculas
+			->replaceMatches('/[^a-z0-9]+/', '_') // espacios y separadores a _
+			->trim('_')
+			->toString();
 	}
 }
