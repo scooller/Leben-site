@@ -13,41 +13,48 @@ use App\Filament\Resources\ActivityLogs\Schemas\ActivityLogInfolist;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Log;
 
 class ActivityLogResource extends BaseActivityLogResource
 {
-    public static function table(Table $table): Table
-    {
-        $table = ActivityLogTable::configure($table);
+	public static function table(Table $table): Table
+	{
+		$table = ActivityLogTable::configure($table);
 
-        foreach ($table->getHeaderActions() as $action) {
-            if ($action->getName() === 'prune') {
-                $action->action(function (array $data) {
-                    $count = Activity::query()
-                        ->whereDate('created_at', '<=', $data['prune_until'])
-                        ->delete();
+		foreach ($table->getHeaderActions() as $action) {
+			if ($action->getName() === 'prune') {
+				$action->action(function (array $data) {
+					$count = Activity::query()
+						->whereDate('created_at', '<=', $data['prune_until'])
+						->delete();
 
-                    Notification::make()
-                        ->success()
-                        ->title(__('filament-activity-log::activity.action.prune.success', ['count' => $count]))
-                        ->send();
-                });
-            }
-        }
+					$msj = $count > 0 ? __('filament-activity-log::activity.action.prune.success', ['count' => $count]) : 'No se han podido borrar';
+					Notification::make()
+						->success()
+						->title($msj)
+						->send();
 
-        return $table;
-    }
+					Log::info('Intento de borrado de logs activity con fecha:' . $data['prune_until']);
+				});
+			} else {
+				// agregar log si la accion es distinta
+				Log::info('Accion erronea se esperaba prune y llego ' . $action->getName());
+			}
+		}
 
-    public static function infolist(Schema $schema): Schema
-    {
-        return ActivityLogInfolist::configure($schema);
-    }
+		return $table;
+	}
 
-    public static function getPages(): array
-    {
-        return [
-            'index' => ListActivityLogs::route('/'),
-            'view' => ViewActivityLog::route('/{record}'),
-        ];
-    }
+	public static function infolist(Schema $schema): Schema
+	{
+		return ActivityLogInfolist::configure($schema);
+	}
+
+	public static function getPages(): array
+	{
+		return [
+			'index' => ListActivityLogs::route('/'),
+			'view' => ViewActivityLog::route('/{record}'),
+		];
+	}
 }
