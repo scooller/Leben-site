@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreContactSubmissionRequest;
 use App\Jobs\CreateSalesforceCaseJob;
 use App\Models\ContactSubmission;
+use App\Models\Proyecto;
 use App\Models\SiteSetting;
 use App\Services\FinMail\FinMailNotificationService;
 use Illuminate\Http\JsonResponse;
@@ -19,6 +20,7 @@ class ContactSubmissionController extends Controller
         $channel = $request->resolvedChannel();
         $fields = $request->validated('fields', []);
         $fields = $this->enrichMarketingFields($request, $fields);
+        $fields = $this->enrichProjectSalesforceId($fields);
 
         $name = $this->fieldValue($fields, ['name', 'nombre']);
         $email = $this->fieldValue($fields, ['email', 'correo']);
@@ -120,6 +122,55 @@ class ContactSubmissionController extends Controller
         $host = trim((string) $request->getHost());
 
         return $host !== '' ? strtolower($host) : null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $fields
+     * @return array<string, mixed>
+     */
+    private function enrichProjectSalesforceId(array $fields): array
+    {
+        if (isset($fields['proyecto_salesforce_id']) && trim((string) $fields['proyecto_salesforce_id']) !== '') {
+            return $fields;
+        }
+
+        $projectName = $this->fieldValue($fields, ['nombre_proyecto', 'proyecto', 'project_name', 'proyecto_formulario', 'project']);
+
+        if ($projectName === null) {
+            return $fields;
+        }
+
+        if ($this->isValidSalesforceId($projectName)) {
+            $fields['proyecto_salesforce_id'] = $projectName;
+
+            return $fields;
+        }
+
+        $project = Proyecto::query()
+            ->select(['id', 'salesforce_id', 'name', 'slug'])
+            ->whereRaw('LOWER(name) = ?', [mb_strtolower($projectName)])
+            ->first();
+
+        if ($project === null) {
+            $slug = Str::of($projectName)->ascii()->lower()->replaceMatches('/[^a-z0-9]+/', '_')->trim('_')->toString();
+            $project = Proyecto::query()
+                ->select(['id', 'salesforce_id', 'name', 'slug'])
+                ->where('slug', $slug)
+                ->first();
+        }
+
+        if ($project !== null && filled($project->salesforce_id)) {
+            $fields['proyecto_salesforce_id'] = $project->salesforce_id;
+        }
+
+        return $fields;
+    }
+
+    private function isValidSalesforceId(string $value): bool
+    {
+        $normalized = trim($value);
+
+        return $normalized !== '' && preg_match('/^[a-zA-Z0-9]{15,18}$/', $normalized) === 1;
     }
 
     /**

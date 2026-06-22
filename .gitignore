@@ -40,3 +40,4 @@ skills-lock.json
 frontend/.env.dev
 .env.testing
 .env.testing
+/.qwen
