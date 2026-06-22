@@ -34,11 +34,11 @@ class ActivityLogResource extends BaseActivityLogResource
 						->title($msj)
 						->send();
 
-					Log::info('Intento de borrado de logs activity con fecha:' . $data['prune_until']);
+					Log::Error('Intento de borrado de logs activity con fecha:' . $data['prune_until']);
 				});
 			} else {
 				// agregar log si la accion es distinta
-				Log::info('Accion erronea se esperaba prune y llego ' . $action->getName());
+				Log::Error('Accion erronea se esperaba prune y llego ' . $action->getName());
 			}
 		}
 
