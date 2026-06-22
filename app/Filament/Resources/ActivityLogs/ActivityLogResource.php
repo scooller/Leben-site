@@ -25,7 +25,7 @@ class ActivityLogResource extends BaseActivityLogResource
 			if ($action->getName() === 'prune') {
 				$action->action(function (array $data) {
 					$count = Activity::query()
-						->whereDate('created_at', '<=', $data['prune_until'])
+						->whereDate('created_at', '>=', $data['prune_until'])
 						->delete();
 
 					$msj = $count > 0 ? __('filament-activity-log::activity.action.prune.success', ['count' => $count]) : 'No se han podido borrar';
@@ -34,7 +34,7 @@ class ActivityLogResource extends BaseActivityLogResource
 						->title($msj)
 						->send();
 
-					Log::Error('Intento de borrado de logs activity con fecha:' . $data['prune_until']);
+					Log::Info('Intento de borrado de logs activity con fecha:' . $data['prune_until']);
 				});
 			} else {
 				// agregar log si la accion es distinta
