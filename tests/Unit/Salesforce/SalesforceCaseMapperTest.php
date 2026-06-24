@@ -101,7 +101,7 @@ class SalesforceCaseMapperTest extends TestCase
         $this->assertSame('a0J8c00000sdxCXEAY', $payload['Proyecto__c'] ?? null);
         $this->assertSame('a0J8c00000sdxCXEAY', $payload['ID_Proyecto__c'] ?? null);
         $this->assertSame('Edificio_Indigo', $payload['Informacion_Cotizacion__c'] ?? null);
-        // $this->assertSame('Edificio_Indigo', $payload['Proyect_ID__c'] ?? null);
+        $this->assertSame('Edificio_Indigo', $payload['Proyect_ID__c'] ?? null);
         $this->assertSame('Puerto_Varas', $payload['Comuna__c'] ?? null);
         $this->assertSame('Entre $2.500.000 y $3.500.000', $payload['Rango_de_renta_liquida__c'] ?? null);
         $this->assertSame('no, no puedo complementarla.', $payload['complementaRenta__c'] ?? null);
@@ -853,5 +853,44 @@ class SalesforceCaseMapperTest extends TestCase
 
         $this->assertSame('a0J8c00000DirXX', $payload['Proyecto__c'] ?? null);
         $this->assertSame('a0J8c00000DirXX', $payload['ID_Proyecto__c'] ?? null);
+    }
+
+    public function test_it_resolves_project_name_from_model_when_field_contains_salesforce_id(): void
+    {
+        config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');
+        config()->set('services.salesforce.lead_status', 'En Contacto');
+
+        SiteSetting::current()->update([
+            'site_name' => 'iLeben',
+            'contact_form_fields' => [
+                ['key' => 'name', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
+                ['key' => 'project_name', 'label' => 'Proyecto', 'type' => 'text', 'required' => false],
+            ],
+        ]);
+
+        Proyecto::query()->create([
+            'salesforce_id' => 'a0J8c00000IdAsName',
+            'name' => 'Edificio Aconcagua',
+            'slug' => 'edificio-aconcagua',
+            'is_active' => true,
+        ]);
+
+        $submission = ContactSubmission::query()->create([
+            'name' => 'Test User',
+            'email' => 'test@example.com',
+            'phone' => '56911112222',
+            'fields' => [
+                'name' => 'Test User',
+                'project_name' => 'a0J8c00000IdAsName',
+            ],
+            'submitted_at' => now(),
+        ]);
+
+        $payload = app(SalesforceCaseMapper::class)->mapLead($submission);
+
+        $this->assertSame('a0J8c00000IdAsName', $payload['Proyecto__c'] ?? null);
+        $this->assertSame('a0J8c00000IdAsName', $payload['ID_Proyecto__c'] ?? null);
+        $this->assertSame('Edificio_Aconcagua', $payload['Informacion_Cotizacion__c'] ?? null);
+        $this->assertSame('Edificio_Aconcagua', $payload['Proyect_ID__c'] ?? null);
     }
 }
