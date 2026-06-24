@@ -1826,6 +1826,58 @@ class SalesforceService
 	}
 
 	/**
+	 * Ejecutar una consulta SOQL sin caché, con validación y respuesta normalizada.
+	 *
+	 * Requiere que la consulta incluya SELECT y LIMIT para evitar consultas descontroladas.
+	 *
+	 * @return array{records: array, total_size: int, done: bool, limit: int|null}
+	 */
+	public function runSoqlWithoutCache(string $soql): array
+	{
+		$soqlUpper = strtoupper(trim($soql));
+
+		if (! preg_match('/^\s*SELECT\b/i', $soql)) {
+			throw new \InvalidArgumentException('La consulta SOQL debe incluir SELECT.');
+		}
+
+		if (! preg_match('/\bLIMIT\b/i', $soql)) {
+			throw new \InvalidArgumentException('La consulta SOQL debe incluir LIMIT.');
+		}
+
+		try {
+			$result = Forrest::query($soql);
+		} catch (Throwable $e) {
+			if ($this->isRefreshTokenExpiredException($e)) {
+				Log::critical('Salesforce: Token OAuth inválido o expirado durante runSoqlWithoutCache. Se requiere reconexión manual.', [
+					...$this->oauthTokenFailureContext($e, 'runSoqlWithoutCache', [
+						'soql_hash' => md5($soql),
+					]),
+				]);
+
+				throw new SalesforceTokenExpiredException(
+					previous: $e
+				);
+			}
+
+			Log::debug('Salesforce: Re-autenticando en runSoqlWithoutCache debido a: ' . $e->getMessage());
+			$this->authenticate();
+			$result = Forrest::query($soql);
+		}
+
+		$limitMatch = null;
+		if (preg_match('/\bLIMIT\s+(\d+)/i', $soql, $matches)) {
+			$limitMatch = (int) $matches[1];
+		}
+
+		return [
+			'records' => $result['records'] ?? [],
+			'total_size' => (int) ($result['totalSize'] ?? 0),
+			'done' => (bool) ($result['done'] ?? true),
+			'limit' => $limitMatch,
+		];
+	}
+
+	/**
 	 * Crear un Case en Salesforce.
 	 *
 	 * @param  array<string, mixed>  $payload

@@ -45,7 +45,7 @@ class SalesforceCaseMapper
 			'informacion_cotizaci_n',
 			'informacion_cotizacion_web',
 			'quote_information',
-		]);
+		]) ?: $projectName;
 		$utmSourceInput = $this->fieldValue($fields, [
 			'utm_source',
 			'lead_source',
