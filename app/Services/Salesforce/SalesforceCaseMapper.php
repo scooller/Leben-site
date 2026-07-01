@@ -75,7 +75,7 @@ class SalesforceCaseMapper
 		$utmCampaignDefault = $isCsvImport
 			? null
 			: $this->normalizeFieldValue($extraSettings['utm_campaign_default'] ?? null);
-		$utmCampaign = $this->resolveUtmCampaign($fields, $utmCampaignDefault);
+		$utmCampaign = $this->resolveUtmCampaign($fields, $utmCampaignDefault, $settings);
 		$utmContentDefault = $this->normalizeFieldValue($extraSettings['utm_content_default'] ?? null) ?: 'none';
 		$utmContent = $this->fieldValue($fields, ['utm_content', 'pieza_grafica']) ?: $utmContentDefault;
 		$utmTermDefault = $isCsvImport
@@ -566,8 +566,13 @@ class SalesforceCaseMapper
 	/**
 	 * @param  array<string, mixed>  $fields
 	 */
-	private function resolveUtmCampaign(array $fields, ?string $defaultValue): string
+	private function resolveUtmCampaign(array $fields, ?string $defaultValue, SiteSetting $settings): string
 	{
+		// Siempre que es evento SALE sobreescribe la campaña UTM con el valor por defecto configurado en settings.extra_settings.utm_campaign_default
+		if ($settings->evento_sale && trim($defaultValue) !== '') {
+			return trim($defaultValue);
+		}
+
 		if ($defaultValue !== null && trim($defaultValue) !== '') {
 			return $defaultValue;
 		}
@@ -575,11 +580,11 @@ class SalesforceCaseMapper
 		$campaign = $this->fieldValue($fields, ['utm_campaign', 'campana', 'nombre_de_la_campana']);
 
 		if ($campaign === null) {
-			return 'campaign';
+			return 'auto-tagging';
 		}
 
 		if (in_array(strtolower(trim($campaign)), ['auto-tagging', 'campaign'], true)) {
-			return 'campaign';
+			return 'auto-tagging';
 		}
 
 		return $campaign;
