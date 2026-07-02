@@ -568,13 +568,11 @@ class SalesforceCaseMapper
 	 */
 	private function resolveUtmCampaign(array $fields, ?string $defaultValue, SiteSetting $settings): string
 	{
-		// Siempre que es evento SALE esta activo sobreescribe la campaña UTM con el valor por defecto configurado en settings.extra_settings.utm_campaign_default
-		if (($settings->evento_sale === true) && trim($defaultValue) !== '') {
-			return trim($defaultValue);
-		}
+		$normalizedDefaultValue = trim((string) $defaultValue);
 
-		if ($defaultValue !== null && trim($defaultValue) !== '') {
-			return $defaultValue;
+		// Solo se usa el valor por defecto de campaña cuando el evento SALE está activo.
+		if (($settings->evento_sale === true) && $normalizedDefaultValue !== '') {
+			return $normalizedDefaultValue;
 		}
 
 		$campaign = $this->fieldValue($fields, ['utm_campaign', 'campana', 'nombre_de_la_campana']);
