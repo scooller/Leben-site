@@ -7,7 +7,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Asesor;
 use App\Models\Plant;
 use App\Models\Proyecto;
-use App\Models\SiteSetting;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -174,7 +173,6 @@ class ProyectoController extends Controller
     public function show(string $id): JsonResponse
     {
         $query = Proyecto::query();
-        $discountSource = $this->resolveSalesforceDiscountSource();
         $includePlantas = $this->normalizeBoolean(request()->input('include_plantas')) === true;
         $includeAsesores = $this->normalizeBoolean(request()->input('include_asesores')) === true;
         $hideSalesforceId = false;
@@ -252,8 +250,8 @@ class ProyectoController extends Controller
 
         if ($includePlantas && isset($payload['plantas'])) {
             $defaultAdvisorAvatarUrl = $this->getDefaultAdvisorAvatarUrl();
-            $payload['plantas'] = collect($proyecto->plantas)->map(function (Plant $plant) use ($proyecto, $discountSource, $eventoSale, $defaultAdvisorAvatarUrl): array {
-                $plantPayload = $this->buildCompactPlantPayload($plant, $eventoSale, $discountSource, $defaultAdvisorAvatarUrl);
+            $payload['plantas'] = collect($proyecto->plantas)->map(function (Plant $plant) use ($proyecto, $eventoSale, $defaultAdvisorAvatarUrl): array {
+                $plantPayload = $this->buildCompactPlantPayload($plant, $eventoSale, $defaultAdvisorAvatarUrl);
 
                 // Override default advisor resolution: use proyecto's asesores collection
                 // since plantas loaded via Proyecto don't have proyecto->asesores preloaded per plant
@@ -275,15 +273,6 @@ class ProyectoController extends Controller
     private function resolveEventoSaleActive(): ?bool
     {
         return $this->normalizeBoolean(request()->input('evento_sale'));
-    }
-
-    private function resolveSalesforceDiscountSource(): ?string
-    {
-        $settings = SiteSetting::current();
-        $extraSettings = is_array($settings->extra_settings ?? null) ? $settings->extra_settings : [];
-        $source = strtolower(trim((string) data_get($extraSettings, 'salesforce_discount_source', '')));
-
-        return in_array($source, ['project', 'plant'], true) ? $source : null;
     }
 
     /**

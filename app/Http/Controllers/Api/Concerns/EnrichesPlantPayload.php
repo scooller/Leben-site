@@ -12,11 +12,11 @@ trait EnrichesPlantPayload
     /**
      * Build the enriched API payload for a plant, including computed fields.
      */
-    private function buildPlantPayload(Plant $plant, ?bool $eventoSale, ?string $discountSource): array
+    private function buildPlantPayload(Plant $plant, ?bool $eventoSale): array
     {
         $payload = $plant->toArray();
         $defaultAdvisorAvatarUrl = $this->getDefaultAdvisorAvatarUrl();
-        $apiDiscountPercentage = $this->resolveApiDiscountPercentage($plant, $eventoSale, $discountSource);
+        $apiDiscountPercentage = $this->resolveApiDiscountPercentage($plant, $eventoSale);
 
         unset($payload['cover_image_id'], $payload['interior_image_id']);
 
@@ -42,10 +42,10 @@ trait EnrichesPlantPayload
         return $payload;
     }
 
-    private function buildCompactPlantPayload(Plant $plant, ?bool $eventoSale, ?string $discountSource, ?string $defaultAdvisorAvatarUrl): array
+    private function buildCompactPlantPayload(Plant $plant, ?bool $eventoSale, ?string $defaultAdvisorAvatarUrl): array
     {
         $payload = $plant->toArray();
-        $apiDiscountPercentage = $this->resolveApiDiscountPercentage($plant, $eventoSale, $discountSource);
+        $apiDiscountPercentage = $this->resolveApiDiscountPercentage($plant, $eventoSale);
 
         unset($payload['cover_image_id'], $payload['interior_image_id']);
 
@@ -66,16 +66,8 @@ trait EnrichesPlantPayload
         return $payload;
     }
 
-    private function resolveApiDiscountPercentage(Plant $plant, ?bool $eventoSale, ?string $discountSource): float
+    private function resolveApiDiscountPercentage(Plant $plant, ?bool $eventoSale): float
     {
-        if ($discountSource === 'project') {
-            return (float) ($plant->proyecto?->descuento_maximo_unidad ?? $plant->porcentaje_maximo_unidad ?? 0);
-        }
-
-        if ($discountSource === 'plant') {
-            return (float) ($plant->porcentaje_maximo_unidad ?? $plant->proyecto?->descuento_maximo_unidad ?? 0);
-        }
-
         $projectDiscount = $plant->proyecto?->descuento_defecto_cotizacion_web;
 
         return $eventoSale

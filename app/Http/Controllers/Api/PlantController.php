@@ -43,7 +43,6 @@ class PlantController extends Controller
         $regionValues = $this->normalizeInputValues($request->input('region'));
         $entregaValues = $this->normalizeEtapaValues($request->input('entrega'));
         $eventoSale = $this->resolveEventoSaleActive($request);
-        $discountSource = $this->resolveSalesforceDiscountSource();
         $available = $this->normalizeBoolean($request->input('disponible', $request->input('available')));
         $isActive = $this->normalizeBoolean($request->input('is_active'));
 
@@ -243,23 +242,18 @@ class PlantController extends Controller
         $perPage = (int) $request->input('perPage', $defaultPerPage);
         $perPage = max(1, min($perPage, 100));
 
-        $projectDiscountExpression = '(SELECT p.descuento_maximo_unidad FROM proyectos p WHERE p.salesforce_id = plants.salesforce_proyecto_id LIMIT 1)';
-        $legacyProjectDiscountExpression = '(SELECT p.descuento_defecto_cotizacion_web FROM proyectos p WHERE p.salesforce_id = plants.salesforce_proyecto_id LIMIT 1)';
+        $projectDiscountExpression = '(SELECT p.descuento_defecto_cotizacion_web FROM proyectos p WHERE p.salesforce_id = plants.salesforce_proyecto_id LIMIT 1)';
 
-        $orderByDiscountExpression = match ($discountSource) {
-            'project' => "COALESCE({$projectDiscountExpression}, porcentaje_maximo_unidad, 0)",
-            'plant' => "COALESCE(porcentaje_maximo_unidad, {$projectDiscountExpression}, 0)",
-            default => $eventoSale === true
-                ? 'COALESCE(porcentaje_maximo_unidad, 0)'
-                : "COALESCE({$legacyProjectDiscountExpression}, 0)",
-        };
+        $orderByDiscountExpression = $eventoSale === true
+            ? 'COALESCE(porcentaje_maximo_unidad, 0)'
+            : "COALESCE({$projectDiscountExpression}, 0)";
 
         $query->orderByRaw(
             "COALESCE(CASE WHEN {$orderByDiscountExpression} > 0 AND precio_lista > 0 THEN CASE WHEN (precio_lista - ((precio_lista * {$orderByDiscountExpression}) / 100)) < 0 THEN 0 ELSE (precio_lista - ((precio_lista * {$orderByDiscountExpression}) / 100)) END ELSE precio_base END, 999999999999) ASC"
         )->orderBy('id');
 
-        $plants = $query->paginate($perPage)->through(function (Plant $plant) use ($eventoSale, $discountSource): array {
-            return $this->plantPayload($plant, $eventoSale, $discountSource);
+        $plants = $query->paginate($perPage)->through(function (Plant $plant) use ($eventoSale): array {
+            return $this->plantPayload($plant, $eventoSale);
         });
 
         return $this->noStoreJson($plants);
@@ -346,7 +340,7 @@ class PlantController extends Controller
             })
             ->findOrFail($id);
 
-        return $this->noStoreJson($this->plantPayload($plant, $eventoSale, $this->resolveSalesforceDiscountSource()));
+        return $this->noStoreJson($this->plantPayload($plant, $eventoSale));
     }
 
     public function showByProjectSlugAndUnitName(Request $request, string $projectSlug, string $unitName): JsonResponse
@@ -370,7 +364,7 @@ class PlantController extends Controller
             })
             ->firstOrFail();
 
-        return $this->noStoreJson($this->plantPayload($plant, $eventoSale, $this->resolveSalesforceDiscountSource()));
+        return $this->noStoreJson($this->plantPayload($plant, $eventoSale));
     }
 
     public function locationFilters(): JsonResponse
@@ -480,10 +474,10 @@ class PlantController extends Controller
         ]);
     }
 
-    private function plantPayload(Plant $plant, ?bool $eventoSale, ?string $discountSource): array
+    private function plantPayload(Plant $plant, ?bool $eventoSale): array
     {
-        $payload = $this->buildPlantPayload($plant, $eventoSale, $discountSource);
-        $payload['proyecto'] = $this->projectPayload($plant->proyecto, $plant, $eventoSale, $discountSource);
+        $payload = $this->buildPlantPayload($plant, $eventoSale);
+        $payload['proyecto'] = $this->projectPayload($plant->proyecto);
 
         return $payload;
     }
@@ -493,16 +487,7 @@ class PlantController extends Controller
         return $this->normalizeBoolean($request->input('evento_sale'));
     }
 
-    private function resolveSalesforceDiscountSource(): ?string
-    {
-        $settings = SiteSetting::current();
-        $extraSettings = is_array($settings->extra_settings ?? null) ? $settings->extra_settings : [];
-        $source = strtolower(trim((string) data_get($extraSettings, 'salesforce_discount_source', '')));
-
-        return in_array($source, ['project', 'plant'], true) ? $source : null;
-    }
-
-    private function projectPayload(?Proyecto $proyecto, Plant $plant, ?bool $eventoSale, ?string $discountSource): ?array
+    private function projectPayload(?Proyecto $proyecto): ?array
     {
         if (! $proyecto) {
             return null;
