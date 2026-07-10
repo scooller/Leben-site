@@ -40,6 +40,7 @@ class ProyectoController extends Controller
         'salesforce_portada_url',
         'project_image_id',
         'descuento_defecto_cotizacion_web',
+        'descuento_maximo_unidad',
     ];
 
     /**
@@ -66,6 +67,7 @@ class ProyectoController extends Controller
         'etapa',
         'horario_atencion',
         'descuento_defecto_cotizacion_web',
+        'descuento_maximo_unidad',
         'is_active',
         'entrega_inmediata',
         'salesforce_logo_url',
@@ -81,7 +83,6 @@ class ProyectoController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = Proyecto::query()->where('is_active', true);
-        $discountSource = $this->resolveSalesforceDiscountSource();
 
         // Filtros opcionales
         if (filled($request->input('region'))) {
@@ -130,16 +131,7 @@ class ProyectoController extends Controller
 
         $requestedFields = $this->resolveRequestedFields($request);
         $computedFields = array_intersect(['project_image_id'], $requestedFields);
-        $requiresDiscountProjection = in_array('descuento_defecto_cotizacion_web', $requestedFields, true);
         $databaseFields = array_diff($requestedFields, $computedFields);
-
-        if ($requiresDiscountProjection) {
-            $query->withMax('plantas as descuento_maximo_unidad_fallback', 'porcentaje_maximo_unidad');
-
-            if (! in_array('descuento_maximo_unidad', $databaseFields, true)) {
-                $databaseFields[] = 'descuento_maximo_unidad';
-            }
-        }
 
         if (count($databaseFields) > 0) {
             $query->select($databaseFields);
@@ -148,9 +140,13 @@ class ProyectoController extends Controller
         $perPage = (int) $request->input('perPage', 15);
         $proyectos = $query->paginate(max(1, min($perPage, 100)));
 
-        // Add computed fields to response if needed
-        if (count($computedFields) > 0 || $requiresDiscountProjection) {
-            $proyectos->transform(function (Proyecto $proyecto) use ($computedFields, $requiresDiscountProjection, $discountSource, $requestedFields): array {
+        $discountFields = array_intersect(
+            ['descuento_defecto_cotizacion_web', 'descuento_maximo_unidad'],
+            $requestedFields,
+        );
+
+        if (count($computedFields) > 0 || count($discountFields) > 0) {
+            $proyectos->transform(function (Proyecto $proyecto) use ($computedFields, $discountFields): array {
                 $data = $proyecto->toArray();
 
                 foreach ($computedFields as $field) {
@@ -159,15 +155,11 @@ class ProyectoController extends Controller
                     }
                 }
 
-                if ($requiresDiscountProjection) {
-                    $data['descuento_defecto_cotizacion_web'] = $this->resolveProjectApiDiscount($proyecto, $discountSource);
-
-                    if (! in_array('descuento_maximo_unidad', $requestedFields, true)) {
-                        unset($data['descuento_maximo_unidad']);
+                foreach ($discountFields as $field) {
+                    if (array_key_exists($field, $data) && $data[$field] === null) {
+                        $data[$field] = 0;
                     }
                 }
-
-                unset($data['descuento_maximo_unidad_fallback']);
 
                 return $data;
             });
@@ -189,23 +181,14 @@ class ProyectoController extends Controller
         $eventoSale = $this->resolveEventoSaleActive();
 
         $requestedFields = $this->resolveRequestedFields(request());
-        $requiresDiscountProjection = in_array('descuento_defecto_cotizacion_web', $requestedFields, true);
 
         if ($includePlantas && ! in_array('salesforce_id', $requestedFields, true)) {
             $requestedFields[] = 'salesforce_id';
             $hideSalesforceId = true;
         }
 
-        if ($requiresDiscountProjection && ! in_array('descuento_maximo_unidad', $requestedFields, true)) {
-            $requestedFields[] = 'descuento_maximo_unidad';
-        }
-
         if (count($requestedFields) > 0) {
             $query->select($requestedFields);
-        }
-
-        if ($requiresDiscountProjection) {
-            $query->withMax('plantas as descuento_maximo_unidad_fallback', 'porcentaje_maximo_unidad');
         }
 
         if ($includePlantas || $includeAsesores) {
@@ -242,15 +225,15 @@ class ProyectoController extends Controller
 
         $payload = $proyecto->toArray();
 
-        if ($requiresDiscountProjection) {
-            $payload['descuento_defecto_cotizacion_web'] = $this->resolveProjectApiDiscount($proyecto, $discountSource);
+        foreach (['descuento_defecto_cotizacion_web', 'descuento_maximo_unidad'] as $discountField) {
+            if (array_key_exists($discountField, $payload) && $payload[$discountField] === null) {
+                $payload[$discountField] = 0;
+            }
         }
 
         if ($hideSalesforceId) {
             unset($payload['salesforce_id']);
         }
-
-        unset($payload['descuento_maximo_unidad_fallback']);
 
         $includeAsesoresInPayload = $includePlantas || $includeAsesores;
         if ($includeAsesoresInPayload && isset($payload['asesores'])) {
@@ -289,6 +272,11 @@ class ProyectoController extends Controller
         return response()->json($payload);
     }
 
+    private function resolveEventoSaleActive(): ?bool
+    {
+        return $this->normalizeBoolean(request()->input('evento_sale'));
+    }
+
     private function resolveSalesforceDiscountSource(): ?string
     {
         $settings = SiteSetting::current();
@@ -296,30 +284,6 @@ class ProyectoController extends Controller
         $source = strtolower(trim((string) data_get($extraSettings, 'salesforce_discount_source', '')));
 
         return in_array($source, ['project', 'plant'], true) ? $source : null;
-    }
-
-    private function resolveEventoSaleActive(): ?bool
-    {
-        return $this->normalizeBoolean(request()->input('evento_sale'));
-    }
-
-    private function resolveProjectApiDiscount(Proyecto $proyecto, ?string $discountSource): ?float
-    {
-        if ($discountSource === 'project') {
-            $value = $proyecto->descuento_maximo_unidad ?? $proyecto->descuento_maximo_unidad_fallback;
-
-            return $value !== null ? (float) $value : null;
-        }
-
-        if ($discountSource === 'plant') {
-            $value = $proyecto->descuento_maximo_unidad_fallback ?? $proyecto->descuento_maximo_unidad;
-
-            return $value !== null ? (float) $value : null;
-        }
-
-        return $proyecto->descuento_defecto_cotizacion_web !== null
-            ? (float) $proyecto->descuento_defecto_cotizacion_web
-            : null;
     }
 
     /**

@@ -54,8 +54,9 @@ trait EnrichesPlantPayload
         $payload['interior_image_url'] = $plant->interiorImageMedia?->url ?: $plant->salesforce_interior_image_url;
         $payload['imageUrl'] = $this->resolveImageUrl($plant);
         $payload['detailImageUrl'] = $this->resolveDetailImageUrl($plant);
-        $payload['descuento_defecto_cotizacion_web'] = $plant->descuento_defecto_cotizacion_web
-            ?? $plant->proyecto?->descuento_defecto_cotizacion_web;
+        $payload['descuento_defecto_cotizacion_web'] = (float) ($plant->descuento_defecto_cotizacion_web
+            ?? $plant->proyecto?->descuento_defecto_cotizacion_web
+            ?? 0);
         $payload['asesores'] = $this->resolvePlantAdvisors($plant, $defaultAdvisorAvatarUrl ?? $this->getDefaultAdvisorAvatarUrl());
         $payload['is_paid'] = $plant->completedReservation !== null || $plant->completedPayment !== null;
         $payload['is_available'] = $plant->activeReservation === null

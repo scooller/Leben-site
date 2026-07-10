@@ -968,6 +968,7 @@ class PlantApiFiltersTest extends TestCase
 
         $project = Proyecto::factory()->create([
             'is_active' => true,
+            'descuento_defecto_cotizacion_web' => 5,
             'descuento_maximo_unidad' => 30,
         ]);
 
@@ -982,7 +983,7 @@ class PlantApiFiltersTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonPath('precio_final', 140);
-        $response->assertJsonPath('proyecto.descuento_defecto_cotizacion_web', 30);
+        $response->assertJsonPath('proyecto.descuento_defecto_cotizacion_web', 5);
     }
 
     public function test_it_falls_back_to_project_discount_when_plant_discount_is_missing_and_plant_source_is_configured(): void
@@ -995,6 +996,7 @@ class PlantApiFiltersTest extends TestCase
 
         $project = Proyecto::factory()->create([
             'is_active' => true,
+            'descuento_defecto_cotizacion_web' => 8,
             'descuento_maximo_unidad' => 35,
         ]);
 
@@ -1009,7 +1011,7 @@ class PlantApiFiltersTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonPath('precio_final', 130);
-        $response->assertJsonPath('proyecto.descuento_defecto_cotizacion_web', 35);
+        $response->assertJsonPath('proyecto.descuento_defecto_cotizacion_web', 8);
     }
 
     public function test_it_returns_all_plants_by_default_without_is_active_filter(): void

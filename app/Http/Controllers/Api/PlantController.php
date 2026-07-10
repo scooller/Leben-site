@@ -509,9 +509,6 @@ class PlantController extends Controller
         }
 
         $defaultAdvisorAvatarUrl = $this->getDefaultAdvisorAvatarUrl();
-        $projectDiscountForApi = $discountSource === null
-            ? $proyecto->descuento_defecto_cotizacion_web
-            : $this->resolveApiDiscountPercentage($plant, $eventoSale, $discountSource);
 
         return [
             'id' => $proyecto->id,
@@ -531,7 +528,7 @@ class PlantController extends Controller
             'salesforce_logo_url' => $proyecto->salesforce_logo_url,
             'valor_reserva_exigido_defecto_peso' => $proyecto->valor_reserva_exigido_defecto_peso,
             'valor_reserva_exigido_min_peso' => $proyecto->valor_reserva_exigido_min_peso,
-            'descuento_defecto_cotizacion_web' => $projectDiscountForApi,
+            'descuento_defecto_cotizacion_web' => (float) ($proyecto->descuento_defecto_cotizacion_web ?? 0),
             'asesores' => $proyecto->asesores
                 ->where('is_active', true)
                 ->values()
