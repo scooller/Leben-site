@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api\Concerns;
 
 use App\Models\Asesor;
 use App\Models\Plant;
-use App\Models\Proyecto;
 use App\Models\SiteSetting;
 use Awcodes\Curator\Models\Media;
 
@@ -35,14 +34,14 @@ trait EnrichesPlantPayload
         $payload['is_available'] = $plant->activeReservation === null
             && $plant->completedReservation === null
             && $plant->completedPayment === null;
+        $payload['descuento_defecto_cotizacion_web'] = (float) ($plant->descuento_defecto_cotizacion_web
+            ?? $plant->proyecto?->descuento_defecto_cotizacion_web
+            ?? 0);
         $payload['precio_final'] = $this->resolveApiFinalPrice($plant, $apiDiscountPercentage);
 
         return $payload;
     }
 
-    /**
-     * Build a lightweight enriched payload for a plant (used inside proyecto detail).
-     */
     private function buildCompactPlantPayload(Plant $plant, ?bool $eventoSale, ?string $discountSource, ?string $defaultAdvisorAvatarUrl): array
     {
         $payload = $plant->toArray();
