@@ -44,3 +44,4 @@ frontend/.env.dev
 /.continue
 /.idx
 *.tmp
+/graphify-out

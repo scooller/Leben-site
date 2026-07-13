@@ -9,6 +9,12 @@ use Tests\TestCase;
 
 class SalesforceServiceLeadOwnerFallbackTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Forrest::shouldReceive('hasToken')->andReturn(true)->byDefault();
+    }
+
     public function test_it_retries_lead_creation_with_configured_owner_on_flow_owner_blank_error(): void
     {
         config()->set('services.salesforce.lead_owner_id', 'owner-id-invalido');

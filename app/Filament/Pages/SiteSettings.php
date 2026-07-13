@@ -1115,13 +1115,29 @@ class SiteSettings extends Page implements HasForms
                                             ->content(function (): HtmlString {
                                                 $details = $this->salesforceOauthConnectionDetails();
 
-                                                $listItems = [
-                                                    '<li><strong>Conexión actual:</strong> '.e($details['current_connection_status']).'</li>',
-                                                    '<li><strong>Última conexión:</strong> '.e($details['last_connection_at']).'</li>',
-                                                    '<li><strong>Método OAuth:</strong> '.e($details['auth_method']).'</li>',
-                                                ];
+                                                $statusColor = $details['is_connected'] ? '#22c55e' : '#ef4444';
+                                                $statusIcon = $details['is_connected'] ? '🟢' : '🔴';
+                                                $statusLabel = $details['is_connected'] ? 'Conectado' : 'Desconectado';
 
-                                                return new HtmlString('<ul class="list-disc ps-5 space-y-1">'.implode('', $listItems).'</ul>');
+                                                $expiryItem = $details['is_connected'] && $details['estimated_expiry'] !== null
+                                                    ? '<li><strong>Expiración estimada:</strong> '.e($details['estimated_expiry']).'</li>'
+                                                    : '';
+
+                                                $html = <<<HTML
+                                                <div style="display:flex;flex-direction:column;gap:0.75rem;">
+                                                    <div style="display:flex;align-items:center;gap:0.5rem;">
+                                                        <span style="font-size:1.25rem;">{$statusIcon}</span>
+                                                        <span style="font-weight:700;color:{$statusColor};">{$statusLabel}</span>
+                                                    </div>
+                                                    <ul class="list-disc ps-5 space-y-1">
+                                                        <li><strong>Última conexión:</strong> {$details['last_connection_at']}</li>
+                                                        <li><strong>Método OAuth:</strong> {$details['auth_method']}</li>
+                                                        {$expiryItem}
+                                                    </ul>
+                                                </div>
+                                                HTML;
+
+                                                return new HtmlString($html);
                                             }),
                                     ])
                                     ->columns(1),
@@ -1223,7 +1239,7 @@ class SiteSettings extends Page implements HasForms
     }
 
     /**
-     * @return array{current_connection_status: string, last_connection_at: string, auth_method: string}
+     * @return array{is_connected: bool, estimated_expiry: string|null, current_connection_status: string, last_connection_at: string, auth_method: string}
      */
     protected function salesforceOauthConnectionDetails(): array
     {
@@ -1231,13 +1247,9 @@ class SiteSettings extends Page implements HasForms
         $extraSettings = is_array($settings->extra_settings) ? $settings->extra_settings : [];
         $oauthMetadata = data_get($extraSettings, 'salesforce_oauth', []);
 
-        $hasCurrentToken = false;
-
-        try {
-            $hasCurrentToken = Forrest::hasToken();
-        } catch (Throwable) {
-            $hasCurrentToken = false;
-        }
+        $salesforceService = app(\App\Services\Salesforce\SalesforceService::class);
+        $expiryInfo = $salesforceService->tokenExpiryInfo();
+        $hasCurrentToken = $expiryInfo['is_connected'];
 
         $lastConnectionAt = 'Sin registros';
         $rawLastConnectionAt = data_get($oauthMetadata, 'last_connected_at');
@@ -1256,6 +1268,8 @@ class SiteSettings extends Page implements HasForms
         }
 
         return [
+            'is_connected' => $hasCurrentToken,
+            'estimated_expiry' => $expiryInfo['estimated_expiry'],
             'current_connection_status' => $hasCurrentToken ? 'Conectado' : 'No conectado',
             'last_connection_at' => $lastConnectionAt,
             'auth_method' => $authMethod,

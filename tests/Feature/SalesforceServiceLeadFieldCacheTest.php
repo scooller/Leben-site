@@ -9,6 +9,11 @@ use Tests\TestCase;
 
 class SalesforceServiceLeadFieldCacheTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Forrest::shouldReceive('hasToken')->andReturn(true)->byDefault();
+    }
     public function test_it_filters_non_creatable_lead_fields_using_describe_metadata(): void
     {
         Cache::forget('salesforce:lead:creatable-fields');

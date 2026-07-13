@@ -16,6 +16,7 @@ class SalesforceServicePlantTypesFilterTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        Forrest::shouldReceive('hasToken')->andReturn(true)->byDefault();
 
         Cache::flush();
     }

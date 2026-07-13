@@ -4,7 +4,19 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
-- Sin cambios
+### 🔄 Cambios
+
+#### Salesforce OAuth — Auto-Refresh Proactivo
+- Refactorización para implementar auto-refresh proactivo de tokens antes de que expiren silenciosamente.
+- Creados los métodos `isTokenExpiringSoon()` y `proactiveRefresh()` en `SalesforceService` para manejar proactivamente la expiración.
+- Implementado el wrapper centralizado `executeWithTokenProtection()` que valida el token, hace refresh proactivo o intenta reconexión y fallback de retry en caso de error. 
+- Refactorizados `query()` y `createCase()` para usar el wrapper.
+- Refactorizado el primer intento de `createLead()` para usar el wrapper, manteniendo la lógica de retry específica de payloads.
+- Actualizado el comando `salesforce:refresh-token` para hacer un refresh proactivo cuando detecta que el token está próximo a expirar en lugar de solo resincronizar el backup.
+- Modificado el scheduler en `routes/console.php` para ejecutar `salesforce:refresh-token` cada 45 minutos (en vez de cada 20 horas) para anticiparse a la expiración de ~2h de Salesforce.
+- Protegido `SyncPlantsJob` aplicando `isTokenExpiringSoon()` y `proactiveRefresh()` antes de la acción principal, y usando `tryAutoReconnect()` en lugar de forzar redirección web (`Forrest::authenticate()`).
+- Mejorada la UI de la sección "Conexión OAuth" en `SiteSettings` con Filament, incluyendo un badge visual (color verde/rojo) e información de la expiración estimada del token.
+- Agregados nuevos tests (`SalesforceProactiveRefreshTest.php`) para las funciones de refresh proactivo.
 
 ---
 
