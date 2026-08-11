@@ -40,6 +40,8 @@ class ProyectoController extends Controller
         'project_image_id',
         'descuento_defecto_cotizacion_web',
         'descuento_maximo_unidad',
+        'precio_desde',
+        'tipologias',
     ];
 
     /**
@@ -72,6 +74,8 @@ class ProyectoController extends Controller
         'salesforce_logo_url',
         'salesforce_portada_url',
         'project_image_id',
+        'precio_desde',
+        'tipologias',
         'created_at',
         'updated_at',
     ];
@@ -129,8 +133,15 @@ class ProyectoController extends Controller
         }
 
         $requestedFields = $this->resolveRequestedFields($request);
-        $computedFields = array_intersect(['project_image_id'], $requestedFields);
+        $computedFields = array_intersect(['project_image_id', 'precio_desde', 'tipologias'], $requestedFields);
         $databaseFields = array_diff($requestedFields, $computedFields);
+
+        $needsPlantSummary = count(array_intersect(['precio_desde', 'tipologias'], $computedFields)) > 0;
+        $hideSalesforceId = false;
+        if ($needsPlantSummary && ! in_array('salesforce_id', $databaseFields, true)) {
+            $databaseFields[] = 'salesforce_id';
+            $hideSalesforceId = true;
+        }
 
         if (count($databaseFields) > 0) {
             $query->select($databaseFields);
@@ -144,13 +155,21 @@ class ProyectoController extends Controller
             $requestedFields,
         );
 
-        if (count($computedFields) > 0 || count($discountFields) > 0) {
-            $proyectos->transform(function (Proyecto $proyecto) use ($computedFields, $discountFields): array {
+        if (count($computedFields) > 0 || count($discountFields) > 0 || $hideSalesforceId) {
+            $plantSummaries = $needsPlantSummary
+                ? $this->batchPlantSummaries($proyectos->getCollection()->pluck('salesforce_id')->filter()->values()->all())
+                : [];
+
+            $proyectos->transform(function (Proyecto $proyecto) use ($computedFields, $discountFields, $plantSummaries, $hideSalesforceId): array {
                 $data = $proyecto->toArray();
 
                 foreach ($computedFields as $field) {
                     if ($field === 'project_image_id') {
                         $data['project_image_id'] = $proyecto->project_image_id;
+                    } elseif ($field === 'precio_desde') {
+                        $data['precio_desde'] = $plantSummaries[$proyecto->salesforce_id]['precio_desde'] ?? null;
+                    } elseif ($field === 'tipologias') {
+                        $data['tipologias'] = $plantSummaries[$proyecto->salesforce_id]['tipologias'] ?? [];
                     }
                 }
 
@@ -158,6 +177,10 @@ class ProyectoController extends Controller
                     if (array_key_exists($field, $data) && $data[$field] === null) {
                         $data[$field] = 0;
                     }
+                }
+
+                if ($hideSalesforceId) {
+                    unset($data['salesforce_id']);
                 }
 
                 return $data;
@@ -179,14 +202,16 @@ class ProyectoController extends Controller
         $eventoSale = $this->resolveEventoSaleActive();
 
         $requestedFields = $this->resolveRequestedFields(request());
+        $summaryFields = array_intersect(['precio_desde', 'tipologias'], $requestedFields);
+        $selectableFields = array_diff($requestedFields, $summaryFields);
 
-        if ($includePlantas && ! in_array('salesforce_id', $requestedFields, true)) {
-            $requestedFields[] = 'salesforce_id';
+        if (($includePlantas || count($summaryFields) > 0) && ! in_array('salesforce_id', $selectableFields, true)) {
+            $selectableFields[] = 'salesforce_id';
             $hideSalesforceId = true;
         }
 
-        if (count($requestedFields) > 0) {
-            $query->select($requestedFields);
+        if (count($selectableFields) > 0) {
+            $query->select($selectableFields);
         }
 
         if ($includePlantas || $includeAsesores) {
@@ -259,12 +284,24 @@ class ProyectoController extends Controller
                     $plantPayload['asesores'] = $proyecto->asesores
                         ->where('is_active', true)
                         ->values()
-                        ->map(fn (Asesor $asesor): array => $this->asesorPayload($asesor, $defaultAdvisorAvatarUrl))
+                        ->map(fn(Asesor $asesor): array => $this->asesorPayload($asesor, $defaultAdvisorAvatarUrl))
                         ->all();
                 }
 
                 return $plantPayload;
             })->values()->toArray();
+        }
+
+        if (count($summaryFields) > 0) {
+            $plantSummaries = $this->batchPlantSummaries([$proyecto->salesforce_id]);
+            $summary = $plantSummaries[$proyecto->salesforce_id] ?? ['precio_desde' => null, 'tipologias' => []];
+
+            if (in_array('precio_desde', $summaryFields, true)) {
+                $payload['precio_desde'] = $summary['precio_desde'];
+            }
+            if (in_array('tipologias', $summaryFields, true)) {
+                $payload['tipologias'] = $summary['tipologias'];
+            }
         }
 
         return response()->json($payload);
@@ -273,6 +310,62 @@ class ProyectoController extends Controller
     private function resolveEventoSaleActive(): ?bool
     {
         return $this->normalizeBoolean(request()->input('evento_sale'));
+    }
+
+    /**
+     * Batch-compute precio_desde (min precio_lista) and tipologias (grouped by
+     * programa/programa2/tipo_producto) from active plants for a set of projects.
+     *
+     * @param  list<string>  $salesforceIds
+     * @return array<string, array{precio_desde: ?float, tipologias: list<array<string, mixed>>}>
+     */
+    private function batchPlantSummaries(array $salesforceIds): array
+    {
+        $summaries = array_fill_keys($salesforceIds, ['precio_desde' => null, 'tipologias' => []]);
+
+        if (count($salesforceIds) === 0) {
+            return $summaries;
+        }
+
+        $rows = Plant::query()
+            ->where('is_active', true)
+            ->whereIn('salesforce_proyecto_id', $salesforceIds)
+            ->selectRaw('
+                salesforce_proyecto_id,
+                programa,
+                programa2,
+                tipo_producto,
+                COUNT(*) as cantidad,
+                MIN(NULLIF(precio_lista, 0)) as precio_min,
+                MIN(NULLIF(superficie_util, 0)) as superficie_min,
+                MAX(superficie_util) as superficie_max
+            ')
+            ->groupBy('salesforce_proyecto_id', 'programa', 'programa2', 'tipo_producto')
+            ->get();
+
+        foreach ($rows as $row) {
+            $sid = $row->salesforce_proyecto_id;
+            if (! isset($summaries[$sid])) {
+                continue;
+            }
+
+            $precioMin = $row->precio_min !== null ? (float) $row->precio_min : null;
+            if ($precioMin !== null && ($summaries[$sid]['precio_desde'] === null || $precioMin < $summaries[$sid]['precio_desde'])) {
+                $summaries[$sid]['precio_desde'] = $precioMin;
+            }
+
+            $summaries[$sid]['tipologias'][] = [
+                'programa' => $row->programa,
+                'programa2' => $row->programa2,
+                'tipo_producto' => $row->tipo_producto,
+                'cantidad' => (int) $row->cantidad,
+                'precio_desde' => $row->precio_min !== null ? (float) $row->precio_min : null,
+                'superficie_util_min' => $row->superficie_min !== null ? (float) $row->superficie_min : null,
+                'superficie_util_max' => (float) $row->superficie_max,
+            ];
+        }
+
+        return $summaries;
     }
 
     /**
@@ -307,7 +400,7 @@ class ProyectoController extends Controller
     private function normalizeInputValues(mixed $value): array
     {
         if (is_array($value)) {
-            return array_values(array_filter(array_map(static fn (mixed $item): string => trim((string) $item), $value), static fn (string $item): bool => $item !== ''));
+            return array_values(array_filter(array_map(static fn(mixed $item): string => trim((string) $item), $value), static fn(string $item): bool => $item !== ''));
         }
 
         if (is_string($value)) {
@@ -318,7 +411,7 @@ class ProyectoController extends Controller
             if (str_contains($value, ',')) {
                 $parts = explode(',', $value);
 
-                return array_values(array_filter(array_map(static fn (string $item): string => trim($item), $parts), static fn (string $item): bool => $item !== ''));
+                return array_values(array_filter(array_map(static fn(string $item): string => trim($item), $parts), static fn(string $item): bool => $item !== ''));
             }
 
             return [trim($value)];
