@@ -42,3 +42,4 @@ frontend/.env.dev
 .env.testing
 /.qwen
 /.continue
+/graphify-out
