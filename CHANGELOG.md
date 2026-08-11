@@ -6,6 +6,18 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ### 🔄 Cambios
 
+## [1.9.6] - 2026-08-11
+
+### ✨ Nuevas características
+
+#### API de Proyectos — `precio_desde` y `tipologias`
+- Agregados campos computados `precio_desde` y `tipologias` a los endpoints `GET /api/v1/proyectos` y `GET /api/v1/proyectos/{id}`.
+- `precio_desde`: precio de lista (`precio_lista`) más bajo entre las plantas activas del proyecto.
+- `tipologias`: agrupación de plantas activas por `programa` (dormitorios) + `programa2` (baños) + `tipo_producto`, con cantidad de unidades, precio mínimo, superficie útil min/max.
+- Cálculo vía query `GROUP BY` optimizada (no carga plantas a memoria).
+- Ambos campos aparecen por defecto en ambos endpoints y se omiten si el cliente usa `?fields=` sin incluirlos.
+- Tests feature cubriendo listado, detalle, proyecto sin plantas, exclusión de plantas inactivas y selección de campos.
+
 #### Salesforce OAuth — Auto-Refresh Proactivo
 - Refactorización para implementar auto-refresh proactivo de tokens antes de que expiren silenciosamente.
 - Creados los métodos `isTokenExpiringSoon()` y `proactiveRefresh()` en `SalesforceService` para manejar proactivamente la expiración.

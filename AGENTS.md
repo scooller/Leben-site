@@ -4,7 +4,7 @@
 
 **Leben** es una plataforma backend-first construida con **Laravel 12** + **Filament 5**, especializada en la gestión de ventas de proyectos inmobiliarios con integración Salesforce, procesamiento de pagos y sincronización de datos en tiempo real.
 
-Versión actual documentada: 1.9.5 (2026-06-01).
+Versión actual documentada: 1.9.6 (2026-08-11).
 
 La aplicación soporta:
 - **Panel administrativo** (Filament) para gestión de proyectos, plantas, asesores y contactos
@@ -20,6 +20,7 @@ La aplicación soporta:
 ## Estado del Proyecto (Últimos 30 commits)
 
 ### Trabajo Completado Recientemente
+- ✅ **API Proyectos — precio_desde y tipologias**: Campos computados `precio_desde` (min `precio_lista`) y `tipologias` (agrupación por `programa`/`programa2`/`tipo_producto`) en `GET /api/v1/proyectos` y `GET /api/v1/proyectos/{id}`; query `GROUP BY` optimizada
 - ✅ **Bulk Salesforce Sync**: Acción para sincronizar múltiples registros a Salesforce
 - ✅ **Filtrado de campos Salesforce**: Payload de Lead filtrado por campos creables
 - ✅ **OAuth Salesforce**: Autenticación y flujo de callback con caché

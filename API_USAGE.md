@@ -8,7 +8,7 @@ Fuentes verificadas:
 - app/Http/Requests/*
 - app/Http/Middleware/EnsureTokenOriginIsAuthorized.php
 - routes/web.php (retornos y webhooks de pago)
-- git log reciente en main (HEAD: 6804179)
+- git log reciente en main (HEAD: precio_desde + tipologias en API de proyectos)
 
 ## 1. Base URL y descubrimiento
 
@@ -159,6 +159,30 @@ Filtros soportados (principales):
 
 - Sin este parametro, `asesores` se omite de la respuesta
 
+Campos computados nuevos (disponibles en listado y detalle por defecto):
+
+| Campo | Descripcion |
+|-------|-------------|
+| `precio_desde` | Precio de lista (`precio_lista`) mas bajo entre las plantas activas del proyecto. `null` si no tiene plantas. |
+| `tipologias` | Array de agrupaciones de plantas activas por combinacion de `programa` (dormitorios) + `programa2` (banos) + `tipo_producto`. Array vacio si no tiene plantas. |
+
+Estructura de cada elemento en `tipologias`:
+
+```json
+{
+  "programa": "2 dormitorios",
+  "programa2": "1 bano",
+  "tipo_producto": "DEPARTAMENTO",
+  "cantidad": 12,
+  "precio_desde": 2800.00,
+  "superficie_util_min": 48.00,
+  "superficie_util_max": 52.00
+}
+```
+
+- Solo se consideran plantas activas (`is_active = 1`).
+- Ambos campos aparecen por defecto. Si se usa `?fields=` sin incluirlos, se omiten.
+
 Ejemplo (detalle con plantas y asesores):
 ```bash
 curl -H "Authorization: Bearer TOKEN" \
@@ -171,6 +195,33 @@ Ejemplo (listado simple):
 curl -H "Authorization: Bearer TOKEN" \
   -H "Origin: https://frontend.cliente.com" \
   "https://tu-dominio.com/api/v1/proyectos?region=Metropolitana&perPage=12"
+```
+
+Respuesta de listado (ejemplo con `precio_desde` y `tipologias`):
+```json
+{
+  "data": [
+    {
+      "id": 3,
+      "name": "Torre Central",
+      "precio_desde": 2800.00,
+      "tipologias": [
+        {
+          "programa": "2 dormitorios",
+          "programa2": "1 bano",
+          "tipo_producto": "DEPARTAMENTO",
+          "cantidad": 12,
+          "precio_desde": 2800.00,
+          "superficie_util_min": 48.00,
+          "superficie_util_max": 52.00
+        }
+      ]
+    }
+  ],
+  "current_page": 1,
+  "per_page": 15,
+  "total": 1
+}
 ```
 
 ### 5.2 Plantas

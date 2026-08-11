@@ -2,7 +2,7 @@
 
 Aplicación backend-first construida con Laravel 12, Filament 5, React 19 y Web Awesome. El sistema opera como mantenedor administrativo de proyectos y plantas, con sincronización periódica contra Salesforce como sistema maestro para entidades comerciales y operacionales.
 
-Versión actual documentada: 1.9.5 (2026-06-01).
+Versión actual documentada: 1.9.6 (2026-08-11).
 
 ## 📋 Stack Tecnológico
 
@@ -146,6 +146,7 @@ frontend/
 - **Importación de contactos** — Normalización de `rango_renta`, `apellido` canónico, teléfono en solo dígitos y aliases UTM alineados con Salesforce
 - **Normalización histórica** — Comando `contact:normalize-rango-renta-key` con modo `--dry-run`
 - **Pricing dinámico** — Soporte para `descuento_maximo_unidad` y `descuento_maximo_cotizacion_web` en proyectos, panel y API
+- **API: precio desde y tipologías** — `precio_desde` (mínimo `precio_lista`) y `tipologias` (agrupación por dormitorios, baños y tipo) en endpoints de proyectos
 - **SiteSettings de descuentos** — Configuración de fuentes de descuento para cálculo de precios comerciales
 - **UX de tablas en panel** — Integración de dual-scroll para tablas extensas y mejoras de lectura operativa
 - **SalesforceCaseMapper** — Refinamientos de mapeo por canal y manejo robusto de campos legacy/canónicos (`Proyect_ID__c`)
@@ -366,7 +367,7 @@ Resumen rápido:
 - Descubrimiento: `GET /api/v1`
 - Configuración pública: `GET /api/v1/site-config`
 - Contacto público: `POST /api/v1/contact-submissions`
-- Catálogo: `GET /api/v1/proyectos`, `GET /api/v1/plantas`, `GET /api/v1/plantas/{id}`
+- Catálogo: `GET /api/v1/proyectos` (con `precio_desde` y `tipologias`), `GET /api/v1/plantas`, `GET /api/v1/plantas/{id}`
 - Checkout y pagos: `POST /api/v1/checkout`, `GET /api/v1/payments`, `POST /api/v1/payments/{id}/manual-proof`
 
 Notas:
