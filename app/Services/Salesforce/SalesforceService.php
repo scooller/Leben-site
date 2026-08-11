@@ -5,6 +5,7 @@ namespace App\Services\Salesforce;
 use App\Exceptions\SalesforceTokenExpiredException;
 use App\Models\Proyecto;
 use App\Models\SiteSetting;
+use Closure;
 use Exception;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -36,32 +37,11 @@ class SalesforceService
 		$cacheKey = $this->generateCacheKey($soql);
 		$ttl = $cacheTtl ?? $this->defaultCacheTtl;
 
-		return Cache::remember($cacheKey, $ttl, function () use ($soql) {
-			try {
-				$result = Forrest::query($soql);
+		return Cache::remember($cacheKey, $ttl, fn () => $this->executeWithTokenProtection(function () use ($soql) {
+			$result = Forrest::query($soql);
 
-				return $result['records'] ?? [];
-			} catch (Throwable $e) {
-				if ($this->isRefreshTokenExpiredException($e)) {
-					Log::critical('Salesforce: Token OAuth inválido o expirado durante query SOQL. Se requiere reconexión manual.', [
-						...$this->oauthTokenFailureContext($e, 'query', [
-							'soql_hash' => md5($soql),
-						]),
-					]);
-
-					throw new SalesforceTokenExpiredException(
-						previous: $e
-					);
-				}
-
-				// Re-autenticar si el token expiró o no hay recursos disponibles
-				Log::debug('Salesforce: Re-autenticando debido a: ' . $e->getMessage());
-				$this->authenticate();
-				$result = Forrest::query($soql);
-
-				return $result['records'] ?? [];
-			}
-		});
+			return $result['records'] ?? [];
+		}));
 	}
 
 	/**
@@ -73,8 +53,6 @@ class SalesforceService
 	 */
 	public function runSoqlWithoutCache(string $soql): array
 	{
-		$soqlUpper = strtoupper(trim($soql));
-
 		if (! preg_match('/^\s*SELECT\b/i', $soql)) {
 			throw new \InvalidArgumentException('La consulta SOQL debe incluir SELECT.');
 		}
@@ -83,25 +61,9 @@ class SalesforceService
 			throw new \InvalidArgumentException('La consulta SOQL debe incluir LIMIT.');
 		}
 
-		try {
-			$result = Forrest::query($soql);
-		} catch (Throwable $e) {
-			if ($this->isRefreshTokenExpiredException($e)) {
-				Log::critical('Salesforce: Token OAuth inválido o expirado durante runSoqlWithoutCache. Se requiere reconexión manual.', [
-					...$this->oauthTokenFailureContext($e, 'runSoqlWithoutCache', [
-						'soql_hash' => md5($soql),
-					]),
-				]);
-
-				throw new SalesforceTokenExpiredException(
-					previous: $e
-				);
-			}
-
-			Log::debug('Salesforce: Re-autenticando en runSoqlWithoutCache debido a: ' . $e->getMessage());
-			$this->authenticate();
-			$result = Forrest::query($soql);
-		}
+		$result = $this->executeWithTokenProtection(function () use ($soql) {
+			return Forrest::query($soql);
+		});
 
 		$limitMatch = null;
 		if (preg_match('/\bLIMIT\s+(\d+)/i', $soql, $matches)) {
@@ -131,7 +93,7 @@ class SalesforceService
 			'payload_keys' => array_keys($payload),
 		]);
 
-		try {
+		return $this->executeWithTokenProtection(function () use ($payload) {
 			$result = Forrest::sobjects('Case', [
 				'method' => 'post',
 				'body' => $payload,
@@ -148,52 +110,7 @@ class SalesforceService
 			]);
 
 			return $response;
-		} catch (Throwable $firstException) {
-			if ($this->isRefreshTokenExpiredException($firstException)) {
-				Log::critical('Salesforce: Token OAuth inválido o expirado al crear Case. Se requiere reconexión manual.', [
-					...$this->oauthTokenFailureContext($firstException, 'create_case', [
-						'subject' => $payload['Subject'] ?? null,
-					]),
-				]);
-
-				throw new SalesforceTokenExpiredException(
-					previous: $firstException
-				);
-			}
-
-			Log::warning('Salesforce: Error creando Case, se intentará re-autenticación', [
-				'error' => $firstException->getMessage(),
-				'subject' => $payload['Subject'] ?? null,
-			]);
-
-			$this->authenticate();
-
-			try {
-				$result = Forrest::sobjects('Case', [
-					'method' => 'post',
-					'body' => $payload,
-				]);
-
-				$response = is_array($result) ? $result : [];
-
-				Log::debug('Salesforce: Respuesta creación de Case tras re-autenticación', [
-					'case_id' => $response['id'] ?? $response['Id'] ?? null,
-					'success' => $response['success'] ?? null,
-					'errors' => $response['errors'] ?? null,
-					'subject' => $payload['Subject'] ?? null,
-					...$this->summarizeSobjectResponse($response),
-				]);
-
-				return $response;
-			} catch (Throwable $secondException) {
-				Log::error('Salesforce: Error creando Case tras re-autenticación', [
-					'error' => $secondException->getMessage(),
-					'subject' => $payload['Subject'] ?? null,
-				]);
-
-				throw $secondException;
-			}
-		}
+		});
 	}
 
 	/**
@@ -214,34 +131,28 @@ class SalesforceService
 		]);
 
 		try {
-			$result = Forrest::sobjects('Lead', [
-				'method' => 'post',
-				'body' => $currentPayload,
-			]);
-
-			$response = is_array($result) ? $result : [];
-
-			Log::debug('Salesforce: Respuesta creación de Lead', [
-				'lead_id' => $response['id'] ?? $response['Id'] ?? null,
-				'success' => $response['success'] ?? null,
-				'errors' => $response['errors'] ?? null,
-				...$this->summarizeSobjectResponse($response),
-			]);
-
-			return $response;
-		} catch (Throwable $firstException) {
-			if ($this->isRefreshTokenExpiredException($firstException)) {
-				Log::critical('Salesforce: Token OAuth inválido o expirado al crear Lead. Se requiere reconexión manual.', [
-					...$this->oauthTokenFailureContext($firstException, 'create_lead_first_attempt', [
-						'email' => $payload['Email'] ?? null,
-					]),
+			$response = $this->executeWithTokenProtection(function () use ($currentPayload) {
+				$result = Forrest::sobjects('Lead', [
+					'method' => 'post',
+					'body' => $currentPayload,
 				]);
 
-				throw new SalesforceTokenExpiredException(
-					previous: $firstException
-				);
-			}
+				$response = is_array($result) ? $result : [];
 
+				Log::debug('Salesforce: Respuesta creación de Lead', [
+					'lead_id' => $response['id'] ?? $response['Id'] ?? null,
+					'success' => $response['success'] ?? null,
+					'errors' => $response['errors'] ?? null,
+					...$this->summarizeSobjectResponse($response),
+				]);
+
+				return $response;
+			});
+
+			return $response;
+		} catch (SalesforceTokenExpiredException $e) {
+			throw $e;
+		} catch (Throwable $firstException) {
 			$sanitized = $this->removeUnavailableLeadFields($currentPayload, $firstException);
 			$currentPayload = $sanitized['payload'];
 
@@ -300,107 +211,12 @@ class SalesforceService
 				return $response;
 			}
 
-			Log::warning('Salesforce: Error creando Lead, se intentará re-autenticación', [
+			Log::error('Salesforce: Error creando Lead no recuperable', [
 				'error' => $firstException->getMessage(),
 				'email' => $payload['Email'] ?? null,
 			]);
 
-			$this->authenticate();
-
-			try {
-				$result = Forrest::sobjects('Lead', [
-					'method' => 'post',
-					'body' => $currentPayload,
-				]);
-
-				$response = is_array($result) ? $result : [];
-
-				Log::debug('Salesforce: Respuesta creación de Lead tras re-autenticación', [
-					'lead_id' => $response['id'] ?? $response['Id'] ?? null,
-					'success' => $response['success'] ?? null,
-					'errors' => $response['errors'] ?? null,
-					...$this->summarizeSobjectResponse($response),
-				]);
-
-				return $response;
-			} catch (Throwable $secondException) {
-				if ($this->isRefreshTokenExpiredException($secondException)) {
-					Log::critical('Salesforce: Token OAuth inválido o expirado tras re-auth al crear Lead. Se requiere reconexión manual.', [
-						...$this->oauthTokenFailureContext($secondException, 'create_lead_after_reauth', [
-							'email' => $payload['Email'] ?? null,
-						]),
-					]);
-
-					throw new SalesforceTokenExpiredException(
-						previous: $secondException
-					);
-				}
-
-				$sanitized = $this->removeUnavailableLeadFields($currentPayload, $secondException);
-				$currentPayload = $sanitized['payload'];
-
-				if ($sanitized['removed_fields'] !== []) {
-					$this->rememberUnavailableLeadFields($sanitized['removed_fields']);
-
-					Log::warning('Salesforce: Campos removidos tras re-auth, reintentando Lead', [
-						'removed_fields' => $sanitized['removed_fields'],
-						'email' => $payload['Email'] ?? null,
-						'payload_keys' => array_keys($currentPayload),
-					]);
-
-					$result = Forrest::sobjects('Lead', [
-						'method' => 'post',
-						'body' => $currentPayload,
-					]);
-
-					$response = is_array($result) ? $result : [];
-
-					Log::debug('Salesforce: Respuesta creación de Lead tras re-auth y remover campo inválido', [
-						'lead_id' => $response['id'] ?? $response['Id'] ?? null,
-						'success' => $response['success'] ?? null,
-						'errors' => $response['errors'] ?? null,
-						...$this->summarizeSobjectResponse($response),
-						'removed_fields' => $sanitized['removed_fields'],
-					]);
-
-					return $response;
-				}
-
-				$ownerFallback = $this->applyLeadOwnerFallbackOnFlowError($currentPayload, $secondException);
-				$currentPayload = $ownerFallback['payload'];
-
-				if ($ownerFallback['applied']) {
-					Log::warning('Salesforce: Reintentando Lead tras re-auth por error de flujo con OwnerId forzado', [
-						'email' => $payload['Email'] ?? null,
-						'owner_id' => $ownerFallback['owner_id'],
-						'payload_keys' => array_keys($currentPayload),
-					]);
-
-					$result = Forrest::sobjects('Lead', [
-						'method' => 'post',
-						'body' => $currentPayload,
-					]);
-
-					$response = is_array($result) ? $result : [];
-
-					Log::debug('Salesforce: Respuesta creación de Lead tras re-auth y OwnerId forzado', [
-						'lead_id' => $response['id'] ?? $response['Id'] ?? null,
-						'success' => $response['success'] ?? null,
-						'errors' => $response['errors'] ?? null,
-						...$this->summarizeSobjectResponse($response),
-						'owner_id' => $ownerFallback['owner_id'],
-					]);
-
-					return $response;
-				}
-
-				Log::error('Salesforce: Error creando Lead tras re-autenticación', [
-					'error' => $secondException->getMessage(),
-					'email' => $payload['Email'] ?? null,
-				]);
-
-				throw $secondException;
-			}
+			throw $firstException;
 		}
 	}
 
@@ -890,6 +706,220 @@ class SalesforceService
 		}
 
 		$siteSettings->update(['extra_settings' => $extraSettings]);
+	}
+
+	/**
+	 * Determina si el access_token actual está próximo a expirar.
+	 *
+	 * Desencripta el blob forrest_token del caché y compara el campo issued_at
+	 * (timestamp Unix en milisegundos que Salesforce incluye) con el tiempo actual.
+	 * Si faltan menos de 15 minutos para expirar, retorna true.
+	 *
+	 * Si no puede determinar la expiración (formato inesperado, error de desencriptación),
+	 * retorna true como medida defensiva para forzar un refresh.
+	 */
+	public function isTokenExpiringSoon(int $thresholdSeconds = 900): bool
+	{
+		$cachePath = config('forrest.storage.path', 'forrest_');
+		$tokenBlob = Cache::get($cachePath . 'token');
+
+		if ($tokenBlob === null) {
+			return true;
+		}
+
+		try {
+			$tokenData = decrypt($tokenBlob);
+
+			if (! is_array($tokenData)) {
+				return true;
+			}
+
+			// Salesforce incluye issued_at en milisegundos (Unix timestamp * 1000)
+			$issuedAt = $tokenData['issued_at'] ?? null;
+
+			if ($issuedAt === null) {
+				Log::debug('Salesforce: isTokenExpiringSoon - No se encontró issued_at en token. Asumiendo que necesita refresh.');
+
+				return true;
+			}
+
+			$issuedAtSeconds = (int) ($issuedAt / 1000);
+
+			// Salesforce access_tokens expiran típicamente en 2 horas (7200 segundos)
+			$expiresIn = 7200;
+			$expiresAt = $issuedAtSeconds + $expiresIn;
+			$remainingSeconds = $expiresAt - time();
+
+			$expiringSoon = $remainingSeconds <= $thresholdSeconds;
+
+			if ($expiringSoon) {
+				Log::info('Salesforce: isTokenExpiringSoon - Token próximo a expirar.', [
+					'remaining_seconds' => $remainingSeconds,
+					'threshold_seconds' => $thresholdSeconds,
+					'expires_at' => date('Y-m-d H:i:s', $expiresAt),
+				]);
+			}
+
+			return $expiringSoon;
+		} catch (Throwable) {
+			// Error al desencriptar — asumir que necesita refresh
+			return true;
+		}
+	}
+
+	/**
+	 * Información sobre la expiración del token actual.
+	 *
+	 * @return array{is_connected: bool, estimated_expiry: string|null, remaining_seconds: int|null}
+	 */
+	public function tokenExpiryInfo(): array
+	{
+		$cachePath = config('forrest.storage.path', 'forrest_');
+		$tokenBlob = Cache::get($cachePath . 'token');
+
+		if ($tokenBlob === null) {
+			return ['is_connected' => false, 'estimated_expiry' => null, 'remaining_seconds' => null];
+		}
+
+		try {
+			$tokenData = decrypt($tokenBlob);
+
+			if (! is_array($tokenData) || ! isset($tokenData['issued_at'])) {
+				return ['is_connected' => true, 'estimated_expiry' => null, 'remaining_seconds' => null];
+			}
+
+			$issuedAtSeconds = (int) ($tokenData['issued_at'] / 1000);
+			$expiresAt = $issuedAtSeconds + 7200;
+			$remaining = $expiresAt - time();
+
+			return [
+				'is_connected' => true,
+				'estimated_expiry' => date('Y-m-d H:i:s', $expiresAt),
+				'remaining_seconds' => max(0, $remaining),
+			];
+		} catch (Throwable) {
+			return ['is_connected' => true, 'estimated_expiry' => null, 'remaining_seconds' => null];
+		}
+	}
+
+	/**
+	 * Ejecuta un refresh proactivo del access_token de Salesforce.
+	 *
+	 * A diferencia de tryAutoReconnect() (diseñado para cuando NO hay token en caché),
+	 * este método está diseñado para cuando SÍ hay token pero está próximo a expirar.
+	 * Llama Forrest::refresh() y actualiza el backup en DB.
+	 *
+	 * Maneja correctamente la rotación del refresh_token.
+	 */
+	public function proactiveRefresh(): bool
+	{
+		try {
+			Forrest::refresh();
+
+			Log::info('Salesforce: proactiveRefresh - Token renovado proactivamente.');
+
+			// Actualizar backup en DB con el nuevo token
+			$this->updateTokenBackup();
+
+			// Marcar como conectado
+			$siteSettings = SiteSetting::current();
+			$extraSettings = is_array($siteSettings->extra_settings) ? $siteSettings->extra_settings : [];
+
+			data_set($extraSettings, 'salesforce_oauth.connected', true);
+			data_set($extraSettings, 'salesforce_oauth.last_connected_at', now()->toIso8601String());
+			data_set($extraSettings, 'salesforce_oauth.last_error', null);
+			$siteSettings->update(['extra_settings' => $extraSettings]);
+
+			return true;
+		} catch (MissingRefreshTokenException $e) {
+			Log::critical('Salesforce: proactiveRefresh - MissingRefreshTokenException. Intentando auto-reconexión desde backup.', [
+				'error' => $e->getMessage(),
+			]);
+
+			// Fallback: si el refresh_token no está en caché, intentar restaurar desde DB
+			return $this->tryAutoReconnect();
+		} catch (Throwable $e) {
+			if ($this->isRefreshTokenExpiredException($e)) {
+				Log::critical('Salesforce: proactiveRefresh - invalid_grant: el refresh_token expiró o fue revocado. Reconexión manual requerida.', [
+					...$this->oauthTokenFailureContext($e, 'proactiveRefresh'),
+				]);
+
+				$this->markAsDisconnected('proactiveRefresh - invalid_grant: expired access/refresh token');
+
+				return false;
+			}
+
+			Log::error('Salesforce: proactiveRefresh - Error inesperado al renovar token.', [
+				'error' => $e->getMessage(),
+			]);
+
+			return false;
+		}
+	}
+
+	/**
+	 * Wrapper centralizado para operaciones Salesforce con protección de token.
+	 *
+	 * Flujo:
+	 *  1. Verifica que hay token disponible, si no → tryAutoReconnect()
+	 *  2. Si el token está próximo a expirar → proactiveRefresh()
+	 *  3. Ejecuta la operación
+	 *  4. Si falla con token expirado → proactiveRefresh() + retry
+	 *  5. Tras éxito → updateTokenBackup()
+	 *
+	 * @template T
+	 * @param  Closure(): T  $operation
+	 * @return T
+	 *
+	 * @throws SalesforceTokenExpiredException cuando el token está irrecuperable
+	 */
+	public function executeWithTokenProtection(Closure $operation): mixed
+	{
+		// 1. Verificar que hay token disponible
+		if (! Forrest::hasToken()) {
+			if (! $this->tryAutoReconnect()) {
+				throw new SalesforceTokenExpiredException(
+					'Token de Salesforce no disponible y auto-reconexión fallida.'
+				);
+			}
+		}
+
+		// 2. Si el token está próximo a expirar, refrescar proactivamente
+		if ($this->isTokenExpiringSoon()) {
+			$this->proactiveRefresh();
+		}
+
+		try {
+			// 3. Ejecutar la operación
+			$result = $operation();
+
+			// 4. Tras éxito, actualizar backup
+			$this->updateTokenBackup();
+
+			return $result;
+		} catch (Throwable $e) {
+			// 5. Si es invalid_grant definitivo, no reintentar
+			if ($this->isRefreshTokenExpiredException($e)) {
+				$this->markAsDisconnected('executeWithTokenProtection - invalid_grant: expired access/refresh token');
+
+				throw new SalesforceTokenExpiredException(previous: $e);
+			}
+
+			// 6. Otro error de token → refresh + retry
+			Log::warning('Salesforce: executeWithTokenProtection - Error en operación, intentando refresh + retry.', [
+				'error' => $e->getMessage(),
+			]);
+
+			if (! $this->proactiveRefresh()) {
+				throw $e;
+			}
+
+			// Retry con token renovado
+			$result = $operation();
+			$this->updateTokenBackup();
+
+			return $result;
+		}
 	}
 
 	/**

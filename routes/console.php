@@ -21,7 +21,7 @@ try {
 		->everyMinute()
 		->withoutOverlapping()
 		->when(static fn(): bool => SalesforcePlantSyncSchedule::shouldRunAt());
-	Schedule::command('salesforce:refresh-token')->cron('0 */20 * * *')->withoutOverlapping();
+	Schedule::command('salesforce:refresh-token')->cron('*/45 * * * *')->withoutOverlapping();
 } catch (\Throwable $exception) {
 	// Allow first-time installs to run migrations before settings-backed packages are ready.
 	Log::error('Error: ' . $exception->getMessage());

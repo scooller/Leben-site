@@ -958,16 +958,11 @@ class PlantApiFiltersTest extends TestCase
         $withSaleResponse->assertJsonPath('precio_final', 180);
     }
 
-    public function test_it_uses_project_discount_source_for_api_price_and_project_payload_when_configured(): void
+    public function test_it_uses_plant_max_unit_discount_for_api_price_when_evento_sale(): void
     {
-        SiteSetting::current()->update([
-            'extra_settings' => [
-                'salesforce_discount_source' => 'project',
-            ],
-        ]);
-
         $project = Proyecto::factory()->create([
             'is_active' => true,
+            'descuento_defecto_cotizacion_web' => 5,
             'descuento_maximo_unidad' => 30,
         ]);
 
@@ -978,24 +973,25 @@ class PlantApiFiltersTest extends TestCase
             'unidad_sale' => true,
         ]);
 
+        // evento_sale=1 → uses porcentaje_maximo_unidad (10%): 200 - 10% = 180
         $response = $this->getJson('/api/v1/plantas/'.$plant->id.'?evento_sale=1');
 
         $response->assertOk();
-        $response->assertJsonPath('precio_final', 140);
-        $response->assertJsonPath('proyecto.descuento_defecto_cotizacion_web', 30);
+        $response->assertJsonPath('precio_final', 180);
+        $response->assertJsonPath('proyecto.descuento_defecto_cotizacion_web', 5);
+
+        // evento_sale=0 → uses descuento_defecto_cotizacion_web (5%): 200 - 5% = 190
+        $responseNormal = $this->getJson('/api/v1/plantas/'.$plant->id);
+        $responseNormal->assertOk();
+        $responseNormal->assertJsonPath('precio_final', 190);
     }
 
-    public function test_it_falls_back_to_project_discount_when_plant_discount_is_missing_and_plant_source_is_configured(): void
+    public function test_it_falls_back_to_precio_base_when_no_discount_available(): void
     {
-        SiteSetting::current()->update([
-            'extra_settings' => [
-                'salesforce_discount_source' => 'plant',
-            ],
-        ]);
-
         $project = Proyecto::factory()->create([
             'is_active' => true,
-            'descuento_maximo_unidad' => 35,
+            'descuento_defecto_cotizacion_web' => null,
+            'descuento_maximo_unidad' => null,
         ]);
 
         $plant = $this->createPlant($project->salesforce_id, true, [
@@ -1005,11 +1001,12 @@ class PlantApiFiltersTest extends TestCase
             'unidad_sale' => true,
         ]);
 
+        // No discount at all → falls back to precio_base
         $response = $this->getJson('/api/v1/plantas/'.$plant->id.'?evento_sale=1');
 
         $response->assertOk();
-        $response->assertJsonPath('precio_final', 130);
-        $response->assertJsonPath('proyecto.descuento_defecto_cotizacion_web', 35);
+        $response->assertJsonPath('precio_final', 100);
+        $response->assertJsonPath('proyecto.descuento_defecto_cotizacion_web', 0);
     }
 
     public function test_it_returns_all_plants_by_default_without_is_active_filter(): void

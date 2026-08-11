@@ -42,4 +42,6 @@ frontend/.env.dev
 .env.testing
 /.qwen
 /.continue
+/.idx
+*.tmp
 /graphify-out

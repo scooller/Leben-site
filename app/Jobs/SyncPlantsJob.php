@@ -3,7 +3,7 @@
 namespace App\Jobs;
 
 use App\Filament\Actions\SyncPlantsAction;
-use Exception;
+use App\Services\Salesforce\SalesforceService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
@@ -15,18 +15,27 @@ class SyncPlantsJob implements ShouldQueue
 
     public function handle(): void
     {
-        try {
-            Forrest::authenticate();
-        } catch (Exception $e) {
-            Log::warning('SyncPlantsJob: Forrest authentication warning: '.$e->getMessage());
+        $salesforceService = app(SalesforceService::class);
+
+        if (! Forrest::hasToken()) {
+            if (! $salesforceService->tryAutoReconnect()) {
+                Log::warning('SyncPlantsJob: Token de Salesforce no disponible y auto-reconexión fallida. Omitiendo sincronización.');
+
+                return;
+            }
+        }
+
+        // Si el token está próximo a expirar, refrescar proactivamente
+        if ($salesforceService->isTokenExpiringSoon()) {
+            $salesforceService->proactiveRefresh();
         }
 
         $result = SyncPlantsAction::execute();
 
         if ($result['success']) {
-            Log::debug('SyncPlantsJob: '.$result['message']);
+            Log::debug('SyncPlantsJob: ' . $result['message']);
         } else {
-            Log::error('SyncPlantsJob: '.$result['message']);
+            Log::error('SyncPlantsJob: ' . $result['message']);
         }
     }
 }

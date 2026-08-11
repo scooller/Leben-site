@@ -29,9 +29,10 @@ class SyncPlantsJobTest extends TestCase
     {
         $proyecto = Proyecto::factory()->create(['salesforce_id' => 'SF_PROJ_001']);
 
-        Forrest::shouldReceive('authenticate')->once();
+        Forrest::shouldReceive('hasToken')->andReturn(true);
 
         $this->mock(SalesforceService::class, function (MockInterface $mock) use ($proyecto) {
+            $mock->shouldReceive('isTokenExpiringSoon')->andReturn(false)->byDefault();
             $mock->shouldReceive('findPlants')
                 ->once()
                 ->andReturn([
@@ -71,9 +72,10 @@ class SyncPlantsJobTest extends TestCase
     {
         $proyecto = Proyecto::factory()->create(['salesforce_id' => 'SF_PROJ_002']);
 
-        Forrest::shouldReceive('authenticate')->once();
+        Forrest::shouldReceive('hasToken')->andReturn(true);
 
         $this->mock(SalesforceService::class, function (MockInterface $mock) use ($proyecto) {
+            $mock->shouldReceive('isTokenExpiringSoon')->andReturn(false)->byDefault();
             $mock->shouldReceive('findPlants')
                 ->once()
                 ->andReturn([
@@ -111,9 +113,10 @@ class SyncPlantsJobTest extends TestCase
     {
         Proyecto::factory()->create(['salesforce_id' => 'SF_PROJ_EMPTY']);
 
-        Forrest::shouldReceive('authenticate')->once();
+        Forrest::shouldReceive('hasToken')->andReturn(true);
 
         $this->mock(SalesforceService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('isTokenExpiringSoon')->andReturn(false)->byDefault();
             $mock->shouldReceive('findPlants')
                 ->once()
                 ->andReturn([]);
@@ -130,43 +133,24 @@ class SyncPlantsJobTest extends TestCase
 
     public function test_job_continues_when_forrest_authentication_fails(): void
     {
-        $proyecto = Proyecto::factory()->create(['salesforce_id' => 'SF_PROJ_003']);
+        Proyecto::factory()->create(['salesforce_id' => 'SF_PROJ_003']);
 
-        Forrest::shouldReceive('authenticate')
-            ->once()
-            ->andThrow(new Exception('Auth failed'));
+        Forrest::shouldReceive('hasToken')->andReturn(false);
 
-        $this->mock(SalesforceService::class, function (MockInterface $mock) use ($proyecto) {
-            $mock->shouldReceive('findPlants')
-                ->once()
-                ->andReturn([
-                    [
-                        'id' => 'SF_PLANT_003',
-                        'name' => 'Depto 303',
-                        'product_code' => 'PLANT-303',
-                        'orientacion' => 'Este',
-                        'programa' => '3 dormitorios',
-                        'programa2' => '2 baños',
-                        'piso' => '3',
-                        'precio_base' => 7000.0,
-                        'precio_lista' => 7700.0,
-                        'superficie_total_principal' => 90.0,
-                        'superficie_interior' => 80.0,
-                        'superficie_util' => 75.0,
-                        'superficie_terraza' => 15.0,
-                        'proyecto_id' => $proyecto->salesforce_id,
-                    ],
-                ]);
-
-            $mock->shouldReceive('findPublicProjectDocuments')
-                ->zeroOrMoreTimes()
-                ->andReturn([]);
+        $this->mock(SalesforceService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('tryAutoReconnect')->andReturn(false);
+            $mock->shouldReceive('isTokenExpiringSoon')->never();
+            $mock->shouldReceive('findPlants')->never();
         });
+
+        // Setup log spy
+        $logSpy = \Illuminate\Support\Facades\Log::spy();
 
         (new SyncPlantsJob)->handle();
 
-        $this->assertDatabaseHas('plants', [
-            'salesforce_product_id' => 'SF_PLANT_003',
-        ]);
+        $logSpy->shouldHaveReceived('warning')
+            ->withArgs(function ($message) {
+                return str_contains($message, 'Token de Salesforce no disponible');
+            });
     }
 }

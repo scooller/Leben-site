@@ -11,6 +11,12 @@ use Tests\TestCase;
 
 class SalesforceServiceTokenExpiredTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Forrest::shouldReceive('hasToken')->andReturn(true)->byDefault();
+    }
+
     public function test_it_throws_specific_exception_without_reauth_when_salesforce_returns_invalid_grant_on_lead_creation(): void
     {
         Cache::forget('salesforce:lead:creatable-fields');

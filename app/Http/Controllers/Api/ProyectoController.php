@@ -7,7 +7,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Asesor;
 use App\Models\Plant;
 use App\Models\Proyecto;
-use App\Models\SiteSetting;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -40,6 +39,9 @@ class ProyectoController extends Controller
         'salesforce_portada_url',
         'project_image_id',
         'descuento_defecto_cotizacion_web',
+        'descuento_maximo_unidad',
+        'precio_desde',
+        'tipologias',
     ];
 
     /**
@@ -66,11 +68,14 @@ class ProyectoController extends Controller
         'etapa',
         'horario_atencion',
         'descuento_defecto_cotizacion_web',
+        'descuento_maximo_unidad',
         'is_active',
         'entrega_inmediata',
         'salesforce_logo_url',
         'salesforce_portada_url',
         'project_image_id',
+        'precio_desde',
+        'tipologias',
         'created_at',
         'updated_at',
     ];
@@ -81,7 +86,6 @@ class ProyectoController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = Proyecto::query()->where('is_active', true);
-        $discountSource = $this->resolveSalesforceDiscountSource();
 
         // Filtros opcionales
         if (filled($request->input('region'))) {
@@ -129,16 +133,14 @@ class ProyectoController extends Controller
         }
 
         $requestedFields = $this->resolveRequestedFields($request);
-        $computedFields = array_intersect(['project_image_id'], $requestedFields);
-        $requiresDiscountProjection = in_array('descuento_defecto_cotizacion_web', $requestedFields, true);
+        $computedFields = array_intersect(['project_image_id', 'precio_desde', 'tipologias'], $requestedFields);
         $databaseFields = array_diff($requestedFields, $computedFields);
 
-        if ($requiresDiscountProjection) {
-            $query->withMax('plantas as descuento_maximo_unidad_fallback', 'porcentaje_maximo_unidad');
-
-            if (! in_array('descuento_maximo_unidad', $databaseFields, true)) {
-                $databaseFields[] = 'descuento_maximo_unidad';
-            }
+        $needsPlantSummary = count(array_intersect(['precio_desde', 'tipologias'], $computedFields)) > 0;
+        $hideSalesforceId = false;
+        if ($needsPlantSummary && ! in_array('salesforce_id', $databaseFields, true)) {
+            $databaseFields[] = 'salesforce_id';
+            $hideSalesforceId = true;
         }
 
         if (count($databaseFields) > 0) {
@@ -148,26 +150,38 @@ class ProyectoController extends Controller
         $perPage = (int) $request->input('perPage', 15);
         $proyectos = $query->paginate(max(1, min($perPage, 100)));
 
-        // Add computed fields to response if needed
-        if (count($computedFields) > 0 || $requiresDiscountProjection) {
-            $proyectos->transform(function (Proyecto $proyecto) use ($computedFields, $requiresDiscountProjection, $discountSource, $requestedFields): array {
+        $discountFields = array_intersect(
+            ['descuento_defecto_cotizacion_web', 'descuento_maximo_unidad'],
+            $requestedFields,
+        );
+
+        if (count($computedFields) > 0 || count($discountFields) > 0 || $hideSalesforceId) {
+            $plantSummaries = $needsPlantSummary
+                ? $this->batchPlantSummaries($proyectos->getCollection()->pluck('salesforce_id')->filter()->values()->all())
+                : [];
+
+            $proyectos->transform(function (Proyecto $proyecto) use ($computedFields, $discountFields, $plantSummaries, $hideSalesforceId): array {
                 $data = $proyecto->toArray();
 
                 foreach ($computedFields as $field) {
                     if ($field === 'project_image_id') {
                         $data['project_image_id'] = $proyecto->project_image_id;
+                    } elseif ($field === 'precio_desde') {
+                        $data['precio_desde'] = $plantSummaries[$proyecto->salesforce_id]['precio_desde'] ?? null;
+                    } elseif ($field === 'tipologias') {
+                        $data['tipologias'] = $plantSummaries[$proyecto->salesforce_id]['tipologias'] ?? [];
                     }
                 }
 
-                if ($requiresDiscountProjection) {
-                    $data['descuento_defecto_cotizacion_web'] = $this->resolveProjectApiDiscount($proyecto, $discountSource);
-
-                    if (! in_array('descuento_maximo_unidad', $requestedFields, true)) {
-                        unset($data['descuento_maximo_unidad']);
+                foreach ($discountFields as $field) {
+                    if (array_key_exists($field, $data) && $data[$field] === null) {
+                        $data[$field] = 0;
                     }
                 }
 
-                unset($data['descuento_maximo_unidad_fallback']);
+                if ($hideSalesforceId) {
+                    unset($data['salesforce_id']);
+                }
 
                 return $data;
             });
@@ -182,30 +196,22 @@ class ProyectoController extends Controller
     public function show(string $id): JsonResponse
     {
         $query = Proyecto::query();
-        $discountSource = $this->resolveSalesforceDiscountSource();
         $includePlantas = $this->normalizeBoolean(request()->input('include_plantas')) === true;
         $includeAsesores = $this->normalizeBoolean(request()->input('include_asesores')) === true;
         $hideSalesforceId = false;
         $eventoSale = $this->resolveEventoSaleActive();
 
         $requestedFields = $this->resolveRequestedFields(request());
-        $requiresDiscountProjection = in_array('descuento_defecto_cotizacion_web', $requestedFields, true);
+        $summaryFields = array_intersect(['precio_desde', 'tipologias'], $requestedFields);
+        $selectableFields = array_diff($requestedFields, $summaryFields);
 
-        if ($includePlantas && ! in_array('salesforce_id', $requestedFields, true)) {
-            $requestedFields[] = 'salesforce_id';
+        if (($includePlantas || count($summaryFields) > 0) && ! in_array('salesforce_id', $selectableFields, true)) {
+            $selectableFields[] = 'salesforce_id';
             $hideSalesforceId = true;
         }
 
-        if ($requiresDiscountProjection && ! in_array('descuento_maximo_unidad', $requestedFields, true)) {
-            $requestedFields[] = 'descuento_maximo_unidad';
-        }
-
-        if (count($requestedFields) > 0) {
-            $query->select($requestedFields);
-        }
-
-        if ($requiresDiscountProjection) {
-            $query->withMax('plantas as descuento_maximo_unidad_fallback', 'porcentaje_maximo_unidad');
+        if (count($selectableFields) > 0) {
+            $query->select($selectableFields);
         }
 
         if ($includePlantas || $includeAsesores) {
@@ -242,15 +248,15 @@ class ProyectoController extends Controller
 
         $payload = $proyecto->toArray();
 
-        if ($requiresDiscountProjection) {
-            $payload['descuento_defecto_cotizacion_web'] = $this->resolveProjectApiDiscount($proyecto, $discountSource);
+        foreach (['descuento_defecto_cotizacion_web', 'descuento_maximo_unidad'] as $discountField) {
+            if (array_key_exists($discountField, $payload) && $payload[$discountField] === null) {
+                $payload[$discountField] = 0;
+            }
         }
 
         if ($hideSalesforceId) {
             unset($payload['salesforce_id']);
         }
-
-        unset($payload['descuento_maximo_unidad_fallback']);
 
         $includeAsesoresInPayload = $includePlantas || $includeAsesores;
         if ($includeAsesoresInPayload && isset($payload['asesores'])) {
@@ -269,8 +275,8 @@ class ProyectoController extends Controller
 
         if ($includePlantas && isset($payload['plantas'])) {
             $defaultAdvisorAvatarUrl = $this->getDefaultAdvisorAvatarUrl();
-            $payload['plantas'] = collect($proyecto->plantas)->map(function (Plant $plant) use ($proyecto, $discountSource, $eventoSale, $defaultAdvisorAvatarUrl): array {
-                $plantPayload = $this->buildCompactPlantPayload($plant, $eventoSale, $discountSource, $defaultAdvisorAvatarUrl);
+            $payload['plantas'] = collect($proyecto->plantas)->map(function (Plant $plant) use ($proyecto, $eventoSale, $defaultAdvisorAvatarUrl): array {
+                $plantPayload = $this->buildCompactPlantPayload($plant, $eventoSale, $defaultAdvisorAvatarUrl);
 
                 // Override default advisor resolution: use proyecto's asesores collection
                 // since plantas loaded via Proyecto don't have proyecto->asesores preloaded per plant
@@ -278,7 +284,7 @@ class ProyectoController extends Controller
                     $plantPayload['asesores'] = $proyecto->asesores
                         ->where('is_active', true)
                         ->values()
-                        ->map(fn (Asesor $asesor): array => $this->asesorPayload($asesor, $defaultAdvisorAvatarUrl))
+                        ->map(fn(Asesor $asesor): array => $this->asesorPayload($asesor, $defaultAdvisorAvatarUrl))
                         ->all();
                 }
 
@@ -286,16 +292,19 @@ class ProyectoController extends Controller
             })->values()->toArray();
         }
 
+        if (count($summaryFields) > 0) {
+            $plantSummaries = $this->batchPlantSummaries([$proyecto->salesforce_id]);
+            $summary = $plantSummaries[$proyecto->salesforce_id] ?? ['precio_desde' => null, 'tipologias' => []];
+
+            if (in_array('precio_desde', $summaryFields, true)) {
+                $payload['precio_desde'] = $summary['precio_desde'];
+            }
+            if (in_array('tipologias', $summaryFields, true)) {
+                $payload['tipologias'] = $summary['tipologias'];
+            }
+        }
+
         return response()->json($payload);
-    }
-
-    private function resolveSalesforceDiscountSource(): ?string
-    {
-        $settings = SiteSetting::current();
-        $extraSettings = is_array($settings->extra_settings ?? null) ? $settings->extra_settings : [];
-        $source = strtolower(trim((string) data_get($extraSettings, 'salesforce_discount_source', '')));
-
-        return in_array($source, ['project', 'plant'], true) ? $source : null;
     }
 
     private function resolveEventoSaleActive(): ?bool
@@ -303,23 +312,60 @@ class ProyectoController extends Controller
         return $this->normalizeBoolean(request()->input('evento_sale'));
     }
 
-    private function resolveProjectApiDiscount(Proyecto $proyecto, ?string $discountSource): ?float
+    /**
+     * Batch-compute precio_desde (min precio_lista) and tipologias (grouped by
+     * programa/programa2/tipo_producto) from active plants for a set of projects.
+     *
+     * @param  list<string>  $salesforceIds
+     * @return array<string, array{precio_desde: ?float, tipologias: list<array<string, mixed>>}>
+     */
+    private function batchPlantSummaries(array $salesforceIds): array
     {
-        if ($discountSource === 'project') {
-            $value = $proyecto->descuento_maximo_unidad ?? $proyecto->descuento_maximo_unidad_fallback;
+        $summaries = array_fill_keys($salesforceIds, ['precio_desde' => null, 'tipologias' => []]);
 
-            return $value !== null ? (float) $value : null;
+        if (count($salesforceIds) === 0) {
+            return $summaries;
         }
 
-        if ($discountSource === 'plant') {
-            $value = $proyecto->descuento_maximo_unidad_fallback ?? $proyecto->descuento_maximo_unidad;
+        $rows = Plant::query()
+            ->where('is_active', true)
+            ->whereIn('salesforce_proyecto_id', $salesforceIds)
+            ->selectRaw('
+                salesforce_proyecto_id,
+                programa,
+                programa2,
+                tipo_producto,
+                COUNT(*) as cantidad,
+                MIN(NULLIF(precio_lista, 0)) as precio_min,
+                MIN(NULLIF(superficie_util, 0)) as superficie_min,
+                MAX(superficie_util) as superficie_max
+            ')
+            ->groupBy('salesforce_proyecto_id', 'programa', 'programa2', 'tipo_producto')
+            ->get();
 
-            return $value !== null ? (float) $value : null;
+        foreach ($rows as $row) {
+            $sid = $row->salesforce_proyecto_id;
+            if (! isset($summaries[$sid])) {
+                continue;
+            }
+
+            $precioMin = $row->precio_min !== null ? (float) $row->precio_min : null;
+            if ($precioMin !== null && ($summaries[$sid]['precio_desde'] === null || $precioMin < $summaries[$sid]['precio_desde'])) {
+                $summaries[$sid]['precio_desde'] = $precioMin;
+            }
+
+            $summaries[$sid]['tipologias'][] = [
+                'programa' => $row->programa,
+                'programa2' => $row->programa2,
+                'tipo_producto' => $row->tipo_producto,
+                'cantidad' => (int) $row->cantidad,
+                'precio_desde' => $row->precio_min !== null ? (float) $row->precio_min : null,
+                'superficie_util_min' => $row->superficie_min !== null ? (float) $row->superficie_min : null,
+                'superficie_util_max' => (float) $row->superficie_max,
+            ];
         }
 
-        return $proyecto->descuento_defecto_cotizacion_web !== null
-            ? (float) $proyecto->descuento_defecto_cotizacion_web
-            : null;
+        return $summaries;
     }
 
     /**
@@ -354,7 +400,7 @@ class ProyectoController extends Controller
     private function normalizeInputValues(mixed $value): array
     {
         if (is_array($value)) {
-            return array_values(array_filter(array_map(static fn (mixed $item): string => trim((string) $item), $value), static fn (string $item): bool => $item !== ''));
+            return array_values(array_filter(array_map(static fn(mixed $item): string => trim((string) $item), $value), static fn(string $item): bool => $item !== ''));
         }
 
         if (is_string($value)) {
@@ -365,7 +411,7 @@ class ProyectoController extends Controller
             if (str_contains($value, ',')) {
                 $parts = explode(',', $value);
 
-                return array_values(array_filter(array_map(static fn (string $item): string => trim($item), $parts), static fn (string $item): bool => $item !== ''));
+                return array_values(array_filter(array_map(static fn(string $item): string => trim($item), $parts), static fn(string $item): bool => $item !== ''));
             }
 
             return [trim($value)];
