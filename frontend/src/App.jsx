@@ -215,13 +215,22 @@ function AppContent() {
       socialLinks.twitter,
     ].filter(Boolean);
 
+    const contactAddress = config?.contact?.address;
+
     const organizationSchema = {
       '@context': 'https://schema.org',
-      '@type': 'Organization',
+      '@type': ['Organization', 'RealEstateAgent'],
       name: config?.site_name || 'iLeben',
       url: siteUrl,
       logo: config?.logo || config?.logo_dark || config?.favicon || undefined,
       description: config?.site_description || undefined,
+      address: contactAddress
+        ? {
+          '@type': 'PostalAddress',
+          streetAddress: contactAddress,
+          addressCountry: 'CL',
+        }
+        : undefined,
       sameAs: sameAs.length > 0 ? sameAs : undefined,
       contactPoint: config?.contact?.phone || config?.contact?.email
         ? [{
@@ -241,6 +250,7 @@ function AppContent() {
       removeStructuredData('organization');
     };
   }, [
+    config?.contact?.address,
     config?.contact?.email,
     config?.contact?.phone,
     config?.favicon,

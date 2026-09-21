@@ -4,7 +4,16 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
-## [1.9.11] - 2026-09-21
+## [1.9.12] - 2026-09-21
+
+### 🚀 Optimización SEO Técnico, Marketing & Marcado Semántico LLMO
+- **Schema.org Enriquecido (`App.jsx`, `Home.jsx`)**:
+  - Incorporado tipo `RealEstateAgent` y dirección postal (`PostalAddress`) en la entidad principal `Organization`.
+  - Evolucionado el marcado estructurado de plantas a `['Product', 'RealEstateListing']` incorporando el objeto `about` de tipo `Apartment` / `SingleFamilyResidence`, con dormitorios (`programa`), superficie m² (`QuantitativeValue`) y dirección postal completa (`streetAddress`, `addressLocality`, `addressRegion`, país `CL`).
+- **SEO & Jerarquía Semántica (`Home.jsx`)**:
+  - Activado y promovido el encabezado principal a `<h1>` semántico con texto contextual dinámico según proyecto seleccionado o catálogo general.
+  - Sincronización reactiva de `og:image` de la unidad seleccionada en páginas de detalle de planta para vistas previas en redes sociales y mensajería.
+- **Validación**: Compilación frontend exitosa (`npm run build`), prerenderizado de rutas completado y 27 tests de backend pasando sin errores.
 
 ### 🔄 Migración de Componentes y Atributos Web Awesome
 - **Migración a sintaxis moderna de Web Awesome 3.x (`Home.jsx`, `Contact.jsx`, `PlantDetailDialog.jsx`)**:

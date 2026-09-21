@@ -463,6 +463,11 @@ function Home({ onNavigate, currentPath }) {
       }
     }
 
+    let ogImage = seoConfig.og_image;
+    if (isDetailPage) {
+      ogImage = selectedPlantDetail?.imageUrl || selectedPlantDetail?.coverImage || seoConfig.og_image;
+    }
+
     siteConfigService.applySeo({
       title,
       description,
@@ -470,7 +475,7 @@ function Home({ onNavigate, currentPath }) {
       author: seoConfig.meta_author,
       canonical,
       robots: seoPolicy.robots || seoConfig.robots_default || 'index,follow',
-      ogImage: seoConfig.og_image,
+      ogImage,
       ogType,
       ogSiteName: siteName,
       ogLocale: seoConfig.site_locale || 'es-CL',
@@ -509,9 +514,28 @@ function Home({ onNavigate, currentPath }) {
       ? 'https://schema.org/SoldOut'
       : 'https://schema.org/InStock';
 
+    const hasPostalAddress = Boolean(selectedPlantDetail.proyectoDireccion || selectedPlantDetail.proyectoComuna);
+    const postalAddress = hasPostalAddress
+      ? {
+        '@type': 'PostalAddress',
+        streetAddress: selectedPlantDetail.proyectoDireccion || undefined,
+        addressLocality: selectedPlantDetail.proyectoComuna || undefined,
+        addressRegion: selectedPlantDetail.proyectoRegion || undefined,
+        addressCountry: 'CL',
+      }
+      : undefined;
+
+    const floorSize = selectedPlantDetail.superficieUtil > 0
+      ? {
+        '@type': 'QuantitativeValue',
+        value: selectedPlantDetail.superficieUtil,
+        unitCode: 'MTK',
+      }
+      : undefined;
+
     const productSchema = {
       '@context': 'https://schema.org',
-      '@type': 'Product',
+      '@type': ['Product', 'RealEstateListing'],
       name: productName,
       url: detailUrl,
       category: selectedPlantDetail.tipoProducto || 'Inmobiliario',
@@ -529,6 +553,13 @@ function Home({ onNavigate, currentPath }) {
         priceCurrency: 'CLF',
         price: Number.isFinite(numericPrice) && numericPrice > 0 ? numericPrice : undefined,
         itemCondition: 'https://schema.org/NewCondition',
+      },
+      about: {
+        '@type': selectedPlantDetail.tipoProducto === 'CASA' ? 'SingleFamilyResidence' : 'Apartment',
+        name: productName,
+        numberOfRooms: selectedPlantDetail.programa || undefined,
+        floorSize,
+        address: postalAddress,
       },
     };
 
@@ -635,7 +666,10 @@ function Home({ onNavigate, currentPath }) {
       proyectoDescripcion: plant.proyecto?.descripcion,
       proyectoDireccion: plant.proyecto?.direccion,
       proyectoComuna: plant.proyecto?.comuna,
+      proyectoRegion: plant.proyecto?.region,
       proyectoEtapa: plant.proyecto?.etapa,
+      superficieUtil: Number(plant.superficie_util) || 0,
+      superficieTotal: Number(plant.superficie_total_principal) || 0,
       asesores: advisorsSource.map((asesor) => ({
           id: asesor.id,
           fullName: asesor.full_name,
@@ -1561,7 +1595,11 @@ function Home({ onNavigate, currentPath }) {
         {/* Header de Plantas */}
         <div className="plants-header">
             <div className="wa-cluster wa-gap-s wa-align-items-center plants-header-main">
-                <h2>{config?.site_name}</h2>
+                <h1 className="wa-heading-l" style={{ margin: 0 }}>
+                    {selectedProyecto.length === 1 && proyectos.find((p) => `${p.salesforce_id}` === `${selectedProyecto[0]}`)
+                      ? `Departamentos en Venta — ${proyectos.find((p) => `${p.salesforce_id}` === `${selectedProyecto[0]}`).name}`
+                      : (config?.site_name ? `${config.site_name} | Departamentos y Proyectos Inmobiliarios` : 'Departamentos y Proyectos Inmobiliarios')}
+                </h1>
                 {activeFilterCount > 0 && (
                 <wa-badge variant="brand" pill>
                     {activeFilterCount} {activeFilterCount === 1 ? 'filtro' : 'filtros'} activo{activeFilterCount === 1 ? '' : 's'}
