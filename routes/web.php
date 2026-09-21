@@ -86,9 +86,10 @@ Route::get('/', function () {
 
 // Servir archivos del almacenamiento público bajo la ruta /curator/ (para compatibilidad con Curator)
 Route::get('/curator/{path}', function (string $path) {
-    $fullPath = storage_path('app/public/' . $path);
+    $basePath = realpath(storage_path('app/public'));
+    $fullPath = realpath(storage_path('app/public/' . $path));
 
-    if (! file_exists($fullPath)) {
+    if (! $fullPath || ! $basePath || ! str_starts_with($fullPath, $basePath . DIRECTORY_SEPARATOR) || ! is_file($fullPath)) {
         abort(404);
     }
 

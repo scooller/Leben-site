@@ -10,6 +10,14 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 - Limpieza de entradas duplicadas en `.gitignore`.
 - Traducida y actualizada la documentación de `AGENTS.md` al inglés para optimizar la comprensión de agentes IA.
 
+## [1.9.7] - 2026-09-21
+
+### 🔒 Parches de Seguridad
+- **Path Traversal en Curator (`routes/web.php`)**: Implementada validación de `realpath` y confinamiento de directorio sobre `storage/app/public` en la ruta `/curator/{path}` para prevenir acceso arbitrario a archivos del sistema (e.g. `.env`).
+- **Control de Acceso en Sync Export (`ProductionSyncController.php`)**: Requerida verificación administrativa (`isAdmin()`) en `GET /api/v1/production-sync/export` para impedir que usuarios registrados sin privilegios extraigan configuraciones sensibles de pasarelas de pago y datos del sistema.
+- **Exención CSRF para Webhooks de Pago (`bootstrap/app.php`)**: Añadida la ruta `payments/*` a `validateCsrfTokens(except: ...)` para garantizar la recepción confiable de notificaciones POST externas de Mercado Pago y Transbank.
+- **Tests Automatizados**: Añadido `CuratorRouteSecurityTest` y ampliado `ProductionSyncExportApiTest` para validar defensas.
+
 ## [1.9.6] - 2026-08-11
 
 ### ✨ Nuevas características

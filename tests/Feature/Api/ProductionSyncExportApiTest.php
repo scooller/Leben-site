@@ -64,7 +64,7 @@ class ProductionSyncExportApiTest extends TestCase
             'is_active' => true,
         ]);
 
-        $user = User::factory()->create();
+        $user = User::factory()->create(['user_type' => 'admin']);
         $token = $user->createToken('production-sync', ['*']);
         $token->accessToken->forceFill([
             'authorized_url' => 'https://dev.ileben.cl',
@@ -82,5 +82,17 @@ class ProductionSyncExportApiTest extends TestCase
             ->assertJsonMissingPath('site_settings.extra_settings.salesforce_oauth')
             ->assertJsonMissingPath('site_settings.extra_settings.hero_url')
             ->assertJsonPath('site_settings.extra_settings.public_value', 'ok');
+    }
+
+    public function test_production_sync_export_forbidden_for_non_admin_user(): void
+    {
+        $user = User::factory()->create(['user_type' => 'customer']);
+        $token = $user->createToken('production-sync', ['*']);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$token->plainTextToken,
+        ])->getJson('/api/v1/production-sync/export');
+
+        $response->assertStatus(403);
     }
 }
