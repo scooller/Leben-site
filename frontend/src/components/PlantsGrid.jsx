@@ -409,7 +409,7 @@ function PlantsGrid({
                 </div>
 
                 <div className="plant-body">
-                    <div className="wa-split wa-gap-xs plant-tags" style={{ '--spacing': '0' }}>
+                    <div className="wa-split wa-gap-2xs plant-tags">
                         {plant.programa && (
                         <div className="wa-cluster wa-gap-xs">
                             <wa-icon name="kaaba"></wa-icon>

@@ -50,8 +50,20 @@ const run = async () => {
     fail('[validate-seo] Missing organization structured data hook in App.jsx');
   }
 
+  if (!appSource.includes("'RealEstateAgent'")) {
+    fail('[validate-seo] Missing RealEstateAgent type in organization schema');
+  }
+
   if (!homeSource.includes("setStructuredData('product'")) {
     fail('[validate-seo] Missing product structured data hook in Home.jsx');
+  }
+
+  if (!homeSource.includes("'RealEstateListing'")) {
+    fail('[validate-seo] Missing RealEstateListing schema in Home.jsx');
+  }
+
+  if (!homeSource.includes('<h1')) {
+    fail('[validate-seo] Missing semantic <h1> heading in Home.jsx');
   }
 
   if (process.exitCode !== 1) {
