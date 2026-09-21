@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\FrontendPreviewLink;
 use App\Models\PersonalAccessToken;
 use Closure;
 use Illuminate\Http\Request;
@@ -16,6 +17,10 @@ class EnsureTokenOriginIsAuthorized
      */
     public function handle(Request $request, Closure $next): Response
     {
+        if (FrontendPreviewLink::isAuthorizedForRequest($request)) {
+            return $next($request);
+        }
+
         if (blank($request->bearerToken())) {
             return response()->json([
                 'message' => 'Token de acceso requerido.',

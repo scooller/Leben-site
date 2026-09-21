@@ -120,6 +120,8 @@ Route::prefix('v1')->group(function () {
 		Route::get('/plantas/filtros-ubicacion', [App\Http\Controllers\Api\PlantController::class, 'locationFilters']);
 		Route::get('/plantas/proyecto/{projectSlug}/unidad/{unitName}', [App\Http\Controllers\Api\PlantController::class, 'showByProjectSlugAndUnitName']);
 		Route::get('/plantas/{id}', [App\Http\Controllers\Api\PlantController::class, 'show']);
+
+		Route::get('/payment-gateways', [App\Http\Controllers\Api\CheckoutController::class, 'availableGateways']);
 	});
 
 	// Endpoints públicos mínimos
@@ -137,9 +139,6 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'token.origin'])->group(functio
 
 	// Checkout
 	Route::post('/checkout', [App\Http\Controllers\Api\CheckoutController::class, 'initiate']);
-
-	// Pasarelas disponibles
-	Route::get('/payment-gateways', [App\Http\Controllers\Api\CheckoutController::class, 'availableGateways']);
 
 	// Reservas
 	Route::get('/reservations/planta/{plantId}', [App\Http\Controllers\Api\PlantReservationController::class, 'status']);

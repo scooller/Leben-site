@@ -10,6 +10,13 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 - Limpieza de entradas duplicadas en `.gitignore`.
 - Traducida y actualizada la documentación de `AGENTS.md` al inglés para optimizar la comprensión de agentes IA.
 
+## [1.9.8] - 2026-09-21
+
+### 🛠️ Correcciones
+- **Ruta `payment-gateways` pública en API (`routes/api.php`)**: Movido el endpoint `GET /api/v1/payment-gateways` fuera del middleware `auth:sanctum` al grupo de catálogo con `token.origin`. Esto permite a los visitantes del frontend explorar y seleccionar pasarelas disponibles sin requerir inicio de sesión previo.
+- **Soporte de Enlaces Preview (`EnsureTokenOriginIsAuthorized.php`)**: Permitido acceso a rutas protegidas por `token.origin` para enlaces preview autorizados (`FrontendPreviewLink::isAuthorizedForRequest()`) sin requerir un token Bearer estático.
+- **Tests Automatizados**: Añadidos tests en `ApiAuthenticationTest` para verificar el acceso no autenticado a `payment-gateways` con token de API y con token preview.
+
 ## [1.9.7] - 2026-09-21
 
 ### 🔒 Parches de Seguridad

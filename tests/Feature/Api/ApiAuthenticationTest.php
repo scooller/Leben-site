@@ -74,4 +74,32 @@ class ApiAuthenticationTest extends TestCase
                 'id' => $plant->id,
             ]);
     }
+
+    public function test_payment_gateways_endpoint_returns_200_when_unauthenticated_with_api_token(): void
+    {
+        $this->setUpApiToken();
+
+        $response = $this->get('/api/v1/payment-gateways');
+
+        $response
+            ->assertOk()
+            ->assertJsonStructure(['gateways', 'count']);
+    }
+
+    public function test_payment_gateways_endpoint_returns_200_with_preview_token_without_bearer_token(): void
+    {
+        $plainToken = \Illuminate\Support\Str::random(64);
+
+        \App\Models\FrontendPreviewLink::query()->create([
+            'name' => 'preview-test',
+            'token' => $plainToken,
+            'expires_at' => now()->addHour(),
+        ]);
+
+        $response = $this->get('/api/v1/payment-gateways?preview_token='.$plainToken);
+
+        $response
+            ->assertOk()
+            ->assertJsonStructure(['gateways', 'count']);
+    }
 }
