@@ -4,6 +4,16 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.17] - 2026-09-21
+
+### ✅ Agent Commerce Protocol Discovery (ACP, UCP, MPP)
+
+- **ACP** (`/.well-known/acp.json`): Agentic Commerce Protocol discovery document. Declares `protocol.name: "acp"`, `api_base_url`, `transports: ["http"]`, and `capabilities.services` (real-estate-catalog, property-listings, contact-submissions, reservations, payments).
+- **UCP** (`/.well-known/ucp`): Universal Commerce Protocol discovery document. Includes `protocol_version`, `services` (catalog, reservations, checkout), `capabilities` (payment_methods: transbank, mercadopago, card; currencies: CLP), and `endpoints` map.
+- **MPP** (`/openapi.json`): Full OpenAPI 3.1 document with `x-payment-info` extensions on payable operations (catalog, checkout). Maps Transbank / Mercado Pago to MPP `card` payment method. Includes top-level `x-service-info` with categories.
+- **llms.txt** (`MarkdownRepresentationService`): Updated "Recursos para Agentes" section to advertise the three new discovery endpoints and the Transbank/Mercado Pago payment methods.
+- x402 (crypto) **descartado** — no aplica ya que los métodos de pago son Transbank y Mercado Pago (no cripto).
+
 ## [1.9.16] - 2026-09-21
 
 ### 🚦 Preferencias de Uso de Contenido IA (`Content-Signal` en `robots.txt`)

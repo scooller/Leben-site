@@ -82,8 +82,12 @@ class MarkdownRepresentationService
         $markdown[] = "## Recursos para Agentes y Desarrolladores";
         $markdown[] = "- **Catálogo de APIs (RFC 9727)**: `{$siteUrl}/.well-known/api-catalog` (Content-Type: `application/linkset+json`)";
         $markdown[] = "- **Especificación OpenAPI v1**: `{$siteUrl}/api/v1` (JSON)";
+        $markdown[] = "- **OpenAPI completo (MPP)**: `{$siteUrl}/openapi.json` (OpenAPI 3.1 con `x-payment-info`)";
+        $markdown[] = "- **ACP Discovery**: `{$siteUrl}/.well-known/acp.json` (Agentic Commerce Protocol)";
+        $markdown[] = "- **UCP Discovery**: `{$siteUrl}/.well-known/ucp` (Universal Commerce Protocol)";
         $markdown[] = "- **Mapa del Sitio (Sitemap)**: `{$siteUrl}/sitemap.xml`";
         $markdown[] = "- **Archivo LLMs**: `{$siteUrl}/llms.txt`";
+        $markdown[] = "- **Métodos de pago**: Transbank Webpay Plus, Mercado Pago (tarjeta / CLP)";
 
         return implode("\n", $markdown) . "\n";
     }

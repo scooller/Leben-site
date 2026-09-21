@@ -216,6 +216,264 @@ Route::prefix('payments')->name('payment.')->group(function () {
     })->name('pending');
 });
 
+// ──────────────────────────────────────────────────────────
+// Agent Commerce Protocol Discovery Endpoints
+// ──────────────────────────────────────────────────────────
+
+/**
+ * ACP — Agentic Commerce Protocol discovery document.
+ * Spec: https://agenticcommerce.dev
+ * Required fields: protocol.name, protocol.version, api_base_url, transports, capabilities.services
+ */
+Route::match(['GET', 'HEAD'], '/.well-known/acp.json', function () {
+    $apiBaseUrl = rtrim(url('/api/v1'), '/');
+
+    return response()->json([
+        'protocol' => [
+            'name'    => 'acp',
+            'version' => '1.0',
+        ],
+        'api_base_url' => $apiBaseUrl,
+        'transports'   => ['http'],
+        'capabilities' => [
+            'services' => [
+                'real-estate-catalog',
+                'property-listings',
+                'contact-submissions',
+                'reservations',
+                'payments',
+            ],
+        ],
+        'description' => 'iLeben real-estate project and unit catalog API with checkout and reservation flows.',
+        'contact'     => [
+            'url' => url('/api/v1'),
+        ],
+    ], 200, [
+        'Content-Type'                 => 'application/json; charset=UTF-8',
+        'Access-Control-Allow-Origin'  => '*',
+        'Access-Control-Allow-Methods' => 'GET, HEAD, OPTIONS',
+        'Cache-Control'                => 'public, max-age=3600',
+    ]);
+})->name('well-known.acp');
+
+/**
+ * UCP — Universal Commerce Protocol discovery document.
+ * Spec: https://ucp.dev/specification/overview/
+ * Required fields: protocol_version, services, capabilities, endpoints
+ */
+Route::match(['GET', 'HEAD'], '/.well-known/ucp', function () {
+    $apiBaseUrl = rtrim(url('/api/v1'), '/');
+
+    return response()->json([
+        'protocol_version' => '1.0',
+        'services'         => [
+            [
+                'id'          => 'real-estate-catalog',
+                'name'        => 'iLeben Property Catalog',
+                'description' => 'Browse and filter real-estate projects and floor plans available for sale in Chile.',
+                'type'        => 'catalog',
+                'url'         => $apiBaseUrl . '/proyectos',
+            ],
+            [
+                'id'          => 'reservations',
+                'name'        => 'Unit Reservation',
+                'description' => 'Reserve a specific housing unit (planta) temporarily.',
+                'type'        => 'reservation',
+                'url'         => $apiBaseUrl . '/reservations',
+            ],
+            [
+                'id'          => 'checkout',
+                'name'        => 'Payment Checkout',
+                'description' => 'Initiate a payment transaction via Transbank Webpay or Mercado Pago.',
+                'type'        => 'checkout',
+                'url'         => $apiBaseUrl . '/checkout',
+            ],
+        ],
+        'capabilities' => [
+            'payment_methods' => ['transbank', 'mercadopago', 'card'],
+            'currencies'      => ['CLP'],
+            'reservations'    => true,
+            'catalog'         => true,
+            'checkout'        => true,
+        ],
+        'endpoints' => [
+            'catalog'      => $apiBaseUrl . '/proyectos',
+            'units'        => $apiBaseUrl . '/plantas',
+            'reservations' => $apiBaseUrl . '/reservations',
+            'checkout'     => $apiBaseUrl . '/checkout',
+            'payments'     => $apiBaseUrl . '/payments',
+            'openapi'      => url('/openapi.json'),
+        ],
+        'spec_url' => 'https://ucp.dev/specification/overview/',
+    ], 200, [
+        'Content-Type'                 => 'application/json; charset=UTF-8',
+        'Access-Control-Allow-Origin'  => '*',
+        'Access-Control-Allow-Methods' => 'GET, HEAD, OPTIONS',
+        'Cache-Control'                => 'public, max-age=3600',
+    ]);
+})->name('well-known.ucp');
+
+/**
+ * MPP — Machine Payment Protocol: OpenAPI document with x-payment-info extensions.
+ * Spec: https://mpp.dev / https://paymentauth.org/draft-payment-discovery-00.txt
+ * Agents use this to discover which operations require payment and how to pay.
+ * Payment methods: Transbank / Mercado Pago map to MPP "card" method.
+ */
+Route::match(['GET', 'HEAD'], '/openapi.json', function () {
+    $apiBase  = rtrim(url('/api/v1'), '/');
+    $siteBase = rtrim(url('/'), '/');
+
+    $paymentInfo = [
+        'intent'      => 'charge',
+        'method'      => 'card',
+        'amount'      => 0,
+        'currency'    => 'CLP',
+        'description' => 'Access via Transbank Webpay or Mercado Pago',
+        'payment_url' => $apiBase . '/checkout',
+    ];
+
+    return response()->json([
+        'openapi' => '3.1.0',
+        'info'    => [
+            'title'       => 'iLeben API',
+            'version'     => 'v1',
+            'description' => 'Real-estate project and unit catalog with checkout, reservations, and payment flows. ' .
+                             'Supports Transbank Webpay Plus and Mercado Pago.',
+            'contact' => ['url' => $siteBase],
+            'x-service-info' => [
+                'categories'   => ['real-estate', 'catalog', 'reservations', 'payments'],
+                'payment_page' => $apiBase . '/checkout',
+            ],
+        ],
+        'servers' => [
+            ['url' => $apiBase, 'description' => 'iLeben API v1'],
+        ],
+        'paths' => [
+            '/proyectos' => [
+                'get' => [
+                    'operationId'   => 'listProyectos',
+                    'summary'       => 'List real-estate projects',
+                    'description'   => 'Returns paginated projects with precio_desde and tipologias.',
+                    'tags'          => ['Catalog'],
+                    'x-payment-info' => $paymentInfo,
+                    'responses'     => [
+                        '200' => ['description' => 'Paginated project list'],
+                        '401' => ['description' => 'Unauthorized'],
+                    ],
+                ],
+            ],
+            '/proyectos/{id}' => [
+                'get' => [
+                    'operationId'   => 'getProyecto',
+                    'summary'       => 'Get project detail',
+                    'tags'          => ['Catalog'],
+                    'x-payment-info' => $paymentInfo,
+                    'parameters'    => [
+                        ['name' => 'id', 'in' => 'path', 'required' => true, 'schema' => ['type' => 'string']],
+                    ],
+                    'responses' => [
+                        '200' => ['description' => 'Project detail'],
+                        '404' => ['description' => 'Not found'],
+                    ],
+                ],
+            ],
+            '/plantas' => [
+                'get' => [
+                    'operationId'   => 'listPlantas',
+                    'summary'       => 'List housing units (floor plans)',
+                    'tags'          => ['Catalog'],
+                    'x-payment-info' => $paymentInfo,
+                    'responses'     => [
+                        '200' => ['description' => 'Paginated unit list'],
+                        '401' => ['description' => 'Unauthorized'],
+                    ],
+                ],
+            ],
+            '/plantas/{id}' => [
+                'get' => [
+                    'operationId'   => 'getPlanta',
+                    'summary'       => 'Get unit detail',
+                    'tags'          => ['Catalog'],
+                    'x-payment-info' => $paymentInfo,
+                    'parameters'    => [
+                        ['name' => 'id', 'in' => 'path', 'required' => true, 'schema' => ['type' => 'string']],
+                    ],
+                    'responses' => [
+                        '200' => ['description' => 'Unit detail'],
+                        '404' => ['description' => 'Not found'],
+                    ],
+                ],
+            ],
+            '/checkout' => [
+                'post' => [
+                    'operationId'   => 'initiateCheckout',
+                    'summary'       => 'Initiate payment checkout',
+                    'description'   => 'Start a Transbank Webpay or Mercado Pago payment session for a unit reservation.',
+                    'tags'          => ['Payments'],
+                    'x-payment-info' => array_merge($paymentInfo, [
+                        'intent'      => 'session',
+                        'description' => 'Initiates a payment session via Transbank or Mercado Pago',
+                    ]),
+                    'requestBody' => [
+                        'required' => true,
+                        'content'  => ['application/json' => ['schema' => ['type' => 'object']]],
+                    ],
+                    'responses' => [
+                        '200' => ['description' => 'Checkout session initiated'],
+                        '422' => ['description' => 'Validation error'],
+                    ],
+                ],
+            ],
+            '/reservations' => [
+                'post' => [
+                    'operationId' => 'createReservation',
+                    'summary'     => 'Reserve a housing unit',
+                    'tags'        => ['Reservations'],
+                    'requestBody' => [
+                        'required' => true,
+                        'content'  => ['application/json' => ['schema' => ['type' => 'object']]],
+                    ],
+                    'responses' => [
+                        '201' => ['description' => 'Reservation created'],
+                        '422' => ['description' => 'Validation error'],
+                    ],
+                ],
+            ],
+            '/contact-submissions' => [
+                'post' => [
+                    'operationId' => 'submitContact',
+                    'summary'     => 'Submit a contact / lead inquiry',
+                    'tags'        => ['Contact'],
+                    'requestBody' => [
+                        'required' => true,
+                        'content'  => ['application/json' => ['schema' => ['type' => 'object']]],
+                    ],
+                    'responses' => [
+                        '201' => ['description' => 'Submission received'],
+                        '422' => ['description' => 'Validation error'],
+                    ],
+                ],
+            ],
+        ],
+        'components' => [
+            'securitySchemes' => [
+                'bearerAuth' => [
+                    'type'        => 'http',
+                    'scheme'      => 'bearer',
+                    'bearerFormat' => 'Token',
+                ],
+            ],
+        ],
+    ], 200, [
+        'Content-Type'                 => 'application/json; charset=UTF-8',
+        'Access-Control-Allow-Origin'  => '*',
+        'Access-Control-Allow-Methods' => 'GET, HEAD, OPTIONS',
+        'Cache-Control'                => 'public, max-age=3600',
+    ]);
+})->name('openapi.json');
+
+// ──────────────────────────────────────────────────────────
+
 // Rutas de integración Salesforce OAuth
 Route::prefix('salesforce')->name('salesforce.')->group(function () {
     Route::get('oauth/connect', [\App\Http\Controllers\SalesforceOAuthController::class, 'connect'])
