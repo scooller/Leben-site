@@ -333,13 +333,13 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
                                 {plant.orientacion && (
                                 <div className="wa-split wa-align-items-center">
                                     <strong>Orientación</strong>
-                                    <wa-tag variant="primary">{plant.orientacion}</wa-tag>
+                                    <wa-tag variant="brand">{plant.orientacion}</wa-tag>
                                 </div>
                                 )}
                                 {plant.piso && (
                                 <div className="wa-split wa-align-items-center">
                                     <strong>Piso</strong>
-                                    <wa-tag variant="primary">{plant.piso}</wa-tag>
+                                    <wa-tag variant="brand">{plant.piso}</wa-tag>
                                 </div>
                                 )}
                                 {/* Precio de reserva */}
@@ -364,7 +364,7 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
                                     <wa-icon name="house" style={{ fontSize: '0.9em' }}></wa-icon>
                                     <span>Total principal</span>
                                     </div>
-                                    <wa-tag variant="primary">{plant.superficie_total_principal} m²</wa-tag>
+                                    <wa-tag variant="brand">{plant.superficie_total_principal} m²</wa-tag>
                                 </div>
                                 )}
                                 {plant.superficie_interior !== null && plant.superficie_interior !== undefined && (
@@ -373,7 +373,7 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
                                     <wa-icon name="door-open" style={{ fontSize: '0.9em' }}></wa-icon>
                                     <span>Interior</span>
                                     </div>
-                                    <wa-tag variant="primary">{plant.superficie_interior} m²</wa-tag>
+                                    <wa-tag variant="brand">{plant.superficie_interior} m²</wa-tag>
                                 </div>
                                 )}
                                 {plant.superficie_util !== null && plant.superficie_util !== undefined && (
@@ -382,7 +382,7 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
                                     <wa-icon name="ruler" style={{ fontSize: '0.9em' }}></wa-icon>
                                     <span>Útil</span>
                                     </div>
-                                    <wa-tag variant="primary">{plant.superficie_util} m²</wa-tag>
+                                    <wa-tag variant="brand">{plant.superficie_util} m²</wa-tag>
                                 </div>
                                 )}
                                 {plant.superficie_terraza !== null && plant.superficie_terraza !== undefined && (
@@ -391,7 +391,7 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
                                     <wa-icon name="umbrella-beach" style={{ fontSize: '0.9em' }}></wa-icon>
                                     <span>Terraza</span>
                                     </div>
-                                    <wa-tag variant="primary">{plant.superficie_terraza} m²</wa-tag>
+                                    <wa-tag variant="brand">{plant.superficie_terraza} m²</wa-tag>
                                 </div>
                                 )}
                                 {/* {plant.superficie_vendible !== null && plant.superficie_vendible !== undefined && (
@@ -400,7 +400,7 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
                                     <wa-icon name="layer-group" style={{ fontSize: '0.9em' }}></wa-icon>
                                     <span>Vendible</span>
                                     </div>
-                                    <wa-tag variant="primary">{plant.superficie_vendible} m²</wa-tag>
+                                    <wa-tag variant="brand">{plant.superficie_vendible} m²</wa-tag>
                                 </div>
                                 )} */}
                             </div>

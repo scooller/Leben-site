@@ -834,7 +834,7 @@ function Contact({ onNavigate, currentPath }) {
             placeholder={field.placeholder || 'Selecciona una opción'}
             required={field.required || isRequiredSelectionField}
             disabled={field.disabled}
-            clearable={!field.required && !isRequiredSelectionField}
+            with-clear={!field.required && !isRequiredSelectionField ? '' : undefined}
             onChange={(event) => handleFieldChange(field, event.target.value || '')}
           >
             {renderFieldLabel(field)}

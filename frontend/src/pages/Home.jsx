@@ -1478,12 +1478,12 @@ function Home({ onNavigate, currentPath }) {
                 </div>
             </wa-callout>
             <div style={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
-            <wa-button onClick={() => loadPlants()} variant="primary">
+            <wa-button onClick={() => loadPlants()} variant="brand">
                 <wa-icon slot="start" name="arrow-rotate-right" animation="spin"></wa-icon>
                 Reintentar
             </wa-button>
             {error.canRetry && (
-            <wa-button onClick={() => window.location.reload()} variant="default">
+            <wa-button onClick={() => window.location.reload()}>
                 Recargar página
             </wa-button>
             )}
@@ -1606,7 +1606,7 @@ function Home({ onNavigate, currentPath }) {
                             setTempProyecto(value);
                             }}
                             multiple
-                            clearable
+                            with-clear
                         >
                             <span slot='label'><wa-icon name="building"></wa-icon> Proyecto</span>
                             {proyectos.map((proyecto) => (
@@ -1626,7 +1626,6 @@ function Home({ onNavigate, currentPath }) {
                             }}
                             with-clear
                             multiple
-                            clearable
                         >
                             <span slot='label'><wa-icon name="bed"></wa-icon> Dormitorios</span>
                             <wa-option value="ST"><wa-icon name="bed" slot="start"></wa-icon>Studio</wa-option>
@@ -1646,7 +1645,6 @@ function Home({ onNavigate, currentPath }) {
                             }}
                             with-clear
                             multiple
-                            clearable
                         >
                             <span slot='label'><wa-icon name="bath"></wa-icon> Baños</span>
                             <wa-option value="1B"><wa-icon name="bath" slot="start"></wa-icon>1 Baño</wa-option>
@@ -1664,7 +1662,6 @@ function Home({ onNavigate, currentPath }) {
                             setTempPiso(value);
                             }}
                             multiple
-                            clearable
                         >
                             <span slot='label'><wa-icon name="arrow-right-to-city"></wa-icon> Piso</span>
                             {pisoOptions.map((piso) => (
@@ -1683,7 +1680,6 @@ function Home({ onNavigate, currentPath }) {
                             const value = getSingleSelectValue(e);
                             setTempTipoProducto(value);
                             }}
-                            clearable
                           >
                             <span slot='label'><wa-icon name="city"></wa-icon> Tipo de planta</span>
                             <wa-option value="DEPARTAMENTO"><wa-icon name="building" slot="start"></wa-icon>Departamento</wa-option>
@@ -1701,7 +1697,6 @@ function Home({ onNavigate, currentPath }) {
                             const value = getSingleSelectValue(e);
                             setTempOrientacion(value);
                             }}
-                            clearable
                           >
                             <span slot='label'><wa-icon name="compass"></wa-icon> Orientación</span>
                             {orientacionOptions.map((orientacion) => (
@@ -1720,7 +1715,6 @@ function Home({ onNavigate, currentPath }) {
                             const value = getSingleSelectValue(e);
                             setTempEntrega(value);
                             }}
-                            clearable
                           >
                             <span slot='label'><wa-icon name="key"></wa-icon> Entrega</span>
                             {entregaOptions.map((entrega) => (
@@ -1740,7 +1734,6 @@ function Home({ onNavigate, currentPath }) {
                             setTempComuna(value);
                             }}
                             multiple
-                            clearable
                         >
                             <span slot='label'><wa-icon name="map-location"></wa-icon> Comuna</span>
                             {filteredComunaOptions.map((comuna) => (

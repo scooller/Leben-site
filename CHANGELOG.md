@@ -4,6 +4,22 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.11] - 2026-09-21
+
+### 🔄 Migración de Componentes y Atributos Web Awesome
+- **Migración a sintaxis moderna de Web Awesome 3.x (`Home.jsx`, `Contact.jsx`, `PlantDetailDialog.jsx`)**:
+  - Reemplazado atributo obsoleto `clearable` por el estándar oficial `with-clear` en elementos `<wa-select>`.
+  - Reemplazado atributo obsoleto `variant="primary"` por `variant="brand"` en `<wa-button>` y `<wa-tag>`.
+  - Removido `variant="default"` en `<wa-button>` reemplazándolo por el tratamiento por defecto del componente (`neutral`).
+- **Servicio Web Awesome (`webAwesome.js`)**: Agregada la importación faltante del componente `<wa-spinner>` (`@web.awesome.me/webawesome-pro/dist/components/spinner/spinner.js`).
+
+## [1.9.10] - 2026-09-21
+
+### 📦 Dependencias Frontend
+- **Actualización de Web Awesome Pro (`frontend/package.json`)**: Actualizado `@web.awesome.me/webawesome-pro` de `^3.7.0` a `^3.13.0`.
+- **Configuración de Autenticación NPM (`frontend/.env`)**: Actualizado el token de autenticación para el registro privado de Cloudsmith (`WEBAWESOME_NPM_TOKEN`).
+- **Build Frontend**: Compilación y prerenderizado validados sin errores con Vite y SEO check.
+
 ## [1.9.9] - 2026-09-21
 
 ### 🛠️ Correcciones y Flujo Anónimo de Checkout
