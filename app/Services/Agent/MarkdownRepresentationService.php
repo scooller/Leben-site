@@ -80,6 +80,12 @@ class MarkdownRepresentationService
 
         // Recursos para Agentes IA y APIs
         $markdown[] = "## Recursos para Agentes y Desarrolladores";
+        $markdown[] = "- **Catálogo de Recursos IA (ARD)**: `{$siteUrl}/.well-known/ai-catalog.json` (Agentic Resource Discovery)";
+        $markdown[] = "- **Tarjeta Servidor MCP**: `{$siteUrl}/.well-known/mcp/server-card.json` (SEP-1649)";
+        $markdown[] = "- **Índice de Habilidades de Agentes**: `{$siteUrl}/.well-known/agent-skills/index.json` (RFC v0.2.0)";
+        $markdown[] = "- **Autenticación y Registro de Agentes**: `{$siteUrl}/auth.md` (Auth.md)";
+        $markdown[] = "- **Servidor de Autorización OAuth**: `{$siteUrl}/.well-known/oauth-authorization-server`";
+        $markdown[] = "- **Metadatos de Recursos Protegidos**: `{$siteUrl}/.well-known/oauth-protected-resource` (RFC 9728)";
         $markdown[] = "- **Catálogo de APIs (RFC 9727)**: `{$siteUrl}/.well-known/api-catalog` (Content-Type: `application/linkset+json`)";
         $markdown[] = "- **Especificación OpenAPI v1**: `{$siteUrl}/api/v1` (JSON)";
         $markdown[] = "- **OpenAPI completo (MPP)**: `{$siteUrl}/openapi.json` (OpenAPI 3.1 con `x-payment-info`)";

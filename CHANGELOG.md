@@ -4,6 +4,36 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.20] - 2026-09-21
+
+### 🤖 Protocolos de Descubrimiento IA y Compatibilidad con Agentes (Agent Readiness)
+
+- **Negociación de Contenido Markdown (`Accept: text/markdown`)**:
+  - `NegotiateMarkdownForAgents.php`: Resolvió código 403 sirviendo directamente representación en Markdown con cabeceras `Content-Type: text/markdown; charset=UTF-8`, `Vary: Accept` y `x-markdown-tokens` para solicitudes públicas.
+  - `frontend/public/.htaccess`: Incorporado permiso explícito `Require all granted` / `Allow from all` para extensiones `.md`, `.txt`, `.json` y `.xml` evitando bloqueos del servidor web Apache, y regla de reescritura para negociar `index.md`.
+  - `frontend/public/index.md` y `MarkdownRepresentationService.php`: Catálogo enriquecido con todos los enlaces de descubrimiento para agentes y desarrolladores.
+- **Autenticación y Registro de Agentes (`Auth.md`)**:
+  - `frontend/public/auth.md` y ruta `GET /auth.md` en Laravel: Encabezado obligatorio `# Auth.md - iLeben Agent Authentication and Registration`, especificación de provisión de agentes (`POST /agent/register`), tipos de identidad (`anonymous`, `identity_assertion`), tipos de credenciales (`bearer_token`, `api_key`), scopes y endpoints de reclamo/revocación.
+- **Descubrimiento OAuth 2.0 y OpenID Connect**:
+  - `/.well-known/oauth-authorization-server`: Metadatos de servidor de autorización (RFC 8414) con bloque `agent_auth` para registro automatizado de agentes.
+  - `/.well-known/openid-configuration`: Metadatos estándar OIDC para autenticación federada.
+- **Metadatos de Recursos Protegidos OAuth (RFC 9728)**:
+  - `/.well-known/oauth-protected-resource`: Documento JSON con `resource`, `authorization_servers`, `scopes_supported` y `bearer_methods_supported: ["header"]`.
+- **Tarjeta de Servidor MCP (SEP-1649)**:
+  - `/.well-known/mcp/server-card.json`: Especificación para servidores Model Context Protocol con transporte Streamable HTTP (`/mcp`) y declaración de capacidades (herramientas, recursos, prompts).
+- **Índice de Descubrimiento de Habilidades de Agentes (Agent Skills RFC v0.2.0)**:
+  - `/.well-known/agent-skills/index.json`: Índice de habilidades con esquema `$schema: https://schemas.agentskills.io/discovery/0.2.0/schema.json` y hashes SHA-256 criptográficos verificados.
+  - Habilidades publicadas: `catalog-search/SKILL.md`, `unit-reservation/SKILL.md`, `auth-md/SKILL.md`.
+- **Integración WebMCP en Navegador**:
+  - `frontend/src/services/webMcp.js`: Implementación de la API WebMCP de W3C / Chrome EPP. Registra las herramientas `search_projects`, `get_plant_details`, `contact_sales_advisor` y `reserve_unit` mediante `navigator.modelContext.provideContext()` y `navigator.modelContext.registerTool()`, con shim reactivo para detección inmediata en escaneos pasivos.
+  - `frontend/src/main.jsx`: Inicialización automática durante la carga de página.
+- **Manifiesto ARD (Agentic Resource Discovery)**:
+  - `/.well-known/ai-catalog.json`: Manifiesto con formato `specVersion: "1.0"`, identificador DID Web, entradas URN AIR (`urn:air:<domain>:...`) y consultas semánticas representativas (`representativeQueries`).
+  - `robots.txt`: Incorporada directiva `Agentmap: https://sale.ileben.cl/.well-known/ai-catalog.json`.
+  - `frontend/index.html`: Enlaces `<link rel="ai-catalog">` y `<link rel="mcp-server-card">` en cabecera HTML.
+- **Tests Automatizados**:
+  - `tests/Feature/Api/AgentReadinessDiscoveryTest.php`: 10 nuevos tests de características validando estructura, encabezados CORS y payloads de todos los protocolos (446 tests en total pasando).
+
 ## [1.9.19] - 2026-09-21
 
 ### ✅ Scripts de Conversión y Píxel Post-Formularios (Contacto y Pago) — Estilo mow-plugin

@@ -28,8 +28,13 @@ class NegotiateMarkdownForAgents
         if ($wantsMarkdown) {
             $path = trim($request->path(), '/');
 
-            // Root homepage or standard public page requests
-            if ($path === '' || $path === 'f' || $path === 'plantas' || $path === 'contacto' || $path === 'index.html') {
+            // Allow dedicated markdown routes (like auth.md) to serve their own content
+            if ($path === 'auth.md') {
+                return $next($request);
+            }
+
+            // If non-API request, return markdown representation immediately
+            if (! $request->is('api/*') && ! $request->is('payments/*')) {
                 $markdown = $this->markdownService->renderHomepageMarkdown();
                 return $this->markdownService->makeResponse($markdown);
             }
@@ -37,8 +42,8 @@ class NegotiateMarkdownForAgents
 
         $response = $next($request);
 
-        // If response is HTML and the client explicitly requested text/markdown
-        if ($wantsMarkdown && str_contains(strtolower((string) $response->headers->get('Content-Type', '')), 'text/html')) {
+        // Fallback: If downstream response is HTML, redirect, or error, and client wants markdown
+        if ($wantsMarkdown && ! $request->is('api/*') && ! $request->is('payments/*')) {
             $markdown = $this->markdownService->renderHomepageMarkdown();
             return $this->markdownService->makeResponse($markdown);
         }

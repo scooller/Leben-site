@@ -93,6 +93,7 @@ Route::get('/robots.txt', function () {
         'Content-Signal: ai-train=no, search=yes, ai-input=no',
         '',
         "Sitemap: {$baseUrl}/sitemap.xml",
+        "Agentmap: {$baseUrl}/.well-known/ai-catalog.json",
         '',
     ]);
 
@@ -471,6 +472,362 @@ Route::match(['GET', 'HEAD'], '/openapi.json', function () {
         'Cache-Control'                => 'public, max-age=3600',
     ]);
 })->name('openapi.json');
+
+/**
+ * Auth.md — Agent Authentication and Registration Specification
+ * Spec: https://workos.com/auth-md
+ */
+Route::get('/auth.md', function () {
+    $settings = SiteSetting::current();
+    $baseUrl = rtrim((string) ($settings->site_url ?: config('app.frontend_url', url('/'))), '/');
+
+    $markdown = implode("\n", [
+        '# Auth.md - iLeben Agent Authentication and Registration',
+        '',
+        'Este documento define el protocolo y directrices de autenticación y registro para Agentes de Inteligencia Artificial (AI Agents) que interactúan con la plataforma iLeben.',
+        '',
+        '## Información General',
+        "- **Audiencia**: Agentes de IA autónomos, asistentes LLM, sistemas multiagente y servicios de integración comercial.",
+        "- **Servidor de Autorización OAuth 2.0**: `{$baseUrl}/.well-known/oauth-authorization-server`",
+        "- **Metadatos de Recursos Protegidos (RFC 9728)**: `{$baseUrl}/.well-known/oauth-protected-resource`",
+        "- **OpenID Connect Discovery**: `{$baseUrl}/.well-known/openid-configuration`",
+        "- **Documentación API / OpenAPI**: `{$baseUrl}/openapi.json`",
+        '',
+        '## Registro Dinámico de Agentes (Agent Provisioning)',
+        'Los agentes de IA pueden registrarse o solicitar credenciales de acceso a través del endpoint de registro:',
+        "- **Endpoint de Registro**: `POST {$baseUrl}/agent/register`",
+        '- **Content-Type**: `application/json`',
+        '',
+        '### Tipos de Identidad Soportados',
+        '1. `anonymous`: Agentes en modo consulta y navegación de proyectos sin sesión de usuario final.',
+        '2. `identity_assertion`: Agentes que representan a un usuario verificado (ej. `verified_email` o `urn:ietf:params:oauth:token-type:id-jag`).',
+        '',
+        '### Tipos de Credenciales Soportadas',
+        '- `bearer_token`: Tokens de acceso Bearer temporales.',
+        '- `api_key`: Clave API para comunicación directa entre agentes y servicios.',
+        '',
+        '## Uso de Credenciales en Peticiones',
+        'Todas las peticiones a endpoints protegidos deben incluir la credencial en la cabecera HTTP estándar:',
+        '```http',
+        'Authorization: Bearer <access_token>',
+        '```',
+        '',
+        '## Alcances Disponibles (Scopes)',
+        '- `read`: Acceso de lectura general.',
+        '- `write`: Acceso de escritura general.',
+        '- `catalog:read`: Consulta del catálogo de proyectos inmobiliarios y departamentos (plantas).',
+        '- `reservations:write`: Creación y seguimiento de reservas de unidades.',
+        '- `payments:write`: Inicio y consulta de transacciones de pago.',
+        '',
+        '## Flujos de Reclamo y Revocación (Claim & Revocation)',
+        "- **Endpoint de Reclamo de Identidad**: `POST {$baseUrl}/agent/claim`",
+        "- **Endpoint de Revocación de Tokens**: `POST {$baseUrl}/oauth/revoke`",
+        '',
+    ]);
+
+    return response($markdown, 200, [
+        'Content-Type' => 'text/markdown; charset=UTF-8',
+        'Vary' => 'Accept',
+        'x-markdown-tokens' => '250',
+        'Access-Control-Allow-Origin' => '*',
+        'Access-Control-Allow-Methods' => 'GET, HEAD, OPTIONS',
+    ]);
+})->name('auth.md');
+
+/**
+ * OAuth 2.0 Authorization Server Discovery (RFC 8414 & Auth.md)
+ */
+Route::match(['GET', 'HEAD'], '/.well-known/oauth-authorization-server', function () {
+    $settings = SiteSetting::current();
+    $baseUrl = rtrim((string) ($settings->site_url ?: config('app.frontend_url', url('/'))), '/');
+
+    return response()->json([
+        'issuer' => $baseUrl,
+        'authorization_endpoint' => $baseUrl . '/oauth/authorize',
+        'token_endpoint' => $baseUrl . '/oauth/token',
+        'registration_endpoint' => $baseUrl . '/agent/register',
+        'jwks_uri' => $baseUrl . '/.well-known/jwks.json',
+        'response_types_supported' => ['code', 'token'],
+        'grant_types_supported' => [
+            'authorization_code',
+            'client_credentials',
+            'refresh_token',
+            'urn:ietf:params:oauth:grant-type:token-exchange',
+        ],
+        'token_endpoint_auth_methods_supported' => [
+            'client_secret_basic',
+            'client_secret_post',
+            'none',
+        ],
+        'scopes_supported' => [
+            'catalog:read',
+            'reservations:write',
+            'payments:write',
+            'read',
+            'write',
+        ],
+        'agent_auth' => [
+            'skill' => $baseUrl . '/.well-known/agent-skills/auth-md/SKILL.md',
+            'register_uri' => $baseUrl . '/agent/register',
+            'supported_identity_types' => ['anonymous', 'identity_assertion'],
+            'identity_types_supported' => ['anonymous', 'identity_assertion'],
+            'identity_assertion' => [
+                'assertion_types_supported' => [
+                    'urn:ietf:params:oauth:token-type:id-jag',
+                    'verified_email',
+                ],
+                'credential_types_supported' => ['bearer_token', 'api_key'],
+                'claim_uri' => $baseUrl . '/agent/claim',
+            ],
+            'anonymous' => [
+                'credential_types_supported' => ['bearer_token'],
+                'claim_uri' => $baseUrl . '/agent/claim',
+            ],
+        ],
+    ], 200, [
+        'Content-Type' => 'application/json; charset=UTF-8',
+        'Access-Control-Allow-Origin' => '*',
+        'Access-Control-Allow-Methods' => 'GET, HEAD, OPTIONS',
+        'Cache-Control' => 'public, max-age=3600',
+    ]);
+});
+
+/**
+ * OpenID Connect Discovery
+ */
+Route::match(['GET', 'HEAD'], '/.well-known/openid-configuration', function () {
+    $settings = SiteSetting::current();
+    $baseUrl = rtrim((string) ($settings->site_url ?: config('app.frontend_url', url('/'))), '/');
+
+    return response()->json([
+        'issuer' => $baseUrl,
+        'authorization_endpoint' => $baseUrl . '/oauth/authorize',
+        'token_endpoint' => $baseUrl . '/oauth/token',
+        'userinfo_endpoint' => $baseUrl . '/api/v1/user',
+        'jwks_uri' => $baseUrl . '/.well-known/jwks.json',
+        'registration_endpoint' => $baseUrl . '/agent/register',
+        'scopes_supported' => [
+            'openid',
+            'profile',
+            'email',
+            'catalog:read',
+            'reservations:write',
+            'payments:write',
+        ],
+        'response_types_supported' => ['code', 'token', 'id_token'],
+        'grant_types_supported' => [
+            'authorization_code',
+            'client_credentials',
+            'refresh_token',
+        ],
+        'subject_types_supported' => ['public'],
+        'id_token_signing_alg_values_supported' => ['RS256'],
+    ], 200, [
+        'Content-Type' => 'application/json; charset=UTF-8',
+        'Access-Control-Allow-Origin' => '*',
+        'Access-Control-Allow-Methods' => 'GET, HEAD, OPTIONS',
+        'Cache-Control' => 'public, max-age=3600',
+    ]);
+});
+
+/**
+ * OAuth Protected Resource Metadata (RFC 9728)
+ */
+Route::match(['GET', 'HEAD'], '/.well-known/oauth-protected-resource', function () {
+    $settings = SiteSetting::current();
+    $baseUrl = rtrim((string) ($settings->site_url ?: config('app.frontend_url', url('/'))), '/');
+
+    return response()->json([
+        'resource' => $baseUrl,
+        'authorization_servers' => [$baseUrl],
+        'scopes_supported' => [
+            'catalog:read',
+            'reservations:write',
+            'payments:write',
+            'read',
+            'write',
+        ],
+        'bearer_methods_supported' => ['header'],
+        'resource_documentation' => $baseUrl . '/openapi.json',
+    ], 200, [
+        'Content-Type' => 'application/json; charset=UTF-8',
+        'Access-Control-Allow-Origin' => '*',
+        'Access-Control-Allow-Methods' => 'GET, HEAD, OPTIONS',
+        'Cache-Control' => 'public, max-age=3600',
+    ]);
+});
+
+/**
+ * MCP Server Card (SEP-1649)
+ */
+Route::match(['GET', 'HEAD'], '/.well-known/mcp/server-card.json', function () {
+    $settings = SiteSetting::current();
+    $baseUrl = rtrim((string) ($settings->site_url ?: config('app.frontend_url', url('/'))), '/');
+
+    return response()->json([
+        '$schema' => 'https://raw.githubusercontent.com/modelcontextprotocol/modelcontextprotocol/main/schema/server-card.json',
+        'serverInfo' => [
+            'name' => 'ileben-real-estate-mcp',
+            'title' => 'iLeben Real Estate MCP Server',
+            'version' => '1.0.0',
+            'description' => 'Model Context Protocol server for searching real-estate developments, floor plans, and initiating unit reservations in Chile.',
+        ],
+        'transport' => [
+            'type' => 'streamable-http',
+            'endpoint' => $baseUrl . '/mcp',
+        ],
+        'capabilities' => [
+            'tools' => [
+                'list' => true,
+                'call' => true,
+            ],
+            'resources' => [
+                'subscribe' => false,
+                'list' => true,
+                'read' => true,
+            ],
+            'prompts' => [
+                'list' => true,
+                'get' => true,
+            ],
+        ],
+    ], 200, [
+        'Content-Type' => 'application/json; charset=UTF-8',
+        'Access-Control-Allow-Origin' => '*',
+        'Access-Control-Allow-Methods' => 'GET, HEAD, OPTIONS',
+        'Cache-Control' => 'public, max-age=3600',
+    ]);
+});
+
+/**
+ * Agent Skills Discovery Index (RFC v0.2.0)
+ */
+Route::match(['GET', 'HEAD'], '/.well-known/agent-skills/index.json', function () {
+    $settings = SiteSetting::current();
+    $baseUrl = rtrim((string) ($settings->site_url ?: config('app.frontend_url', url('/'))), '/');
+
+    return response()->json([
+        '$schema' => 'https://schemas.agentskills.io/discovery/0.2.0/schema.json',
+        'skills' => [
+            [
+                'name' => 'catalog-search',
+                'type' => 'skill-md',
+                'description' => 'Search and inspect real estate projects, communes, and available housing units in Chile',
+                'url' => $baseUrl . '/.well-known/agent-skills/catalog-search/SKILL.md',
+                'digest' => 'sha256:20574a739eb3ad45de0792cb49690287dfc4af4ecaefd05bf5d9238c495a7162',
+            ],
+            [
+                'name' => 'unit-reservation',
+                'type' => 'skill-md',
+                'description' => 'Initiate and track unit reservations for real estate developments',
+                'url' => $baseUrl . '/.well-known/agent-skills/unit-reservation/SKILL.md',
+                'digest' => 'sha256:e8004a617f90c168b1d44e40791f88176c3b768d0ab5829261652f9ececfca9b',
+            ],
+            [
+                'name' => 'auth-md',
+                'type' => 'skill-md',
+                'description' => 'Register and authenticate autonomous AI agents with the iLeben API',
+                'url' => $baseUrl . '/.well-known/agent-skills/auth-md/SKILL.md',
+                'digest' => 'sha256:525d111db91c8b351344d640e04dca1592722318cb88b408cfa94520b2ac94db',
+            ],
+        ],
+    ], 200, [
+        'Content-Type' => 'application/json; charset=UTF-8',
+        'Access-Control-Allow-Origin' => '*',
+        'Access-Control-Allow-Methods' => 'GET, HEAD, OPTIONS',
+        'Cache-Control' => 'public, max-age=3600',
+    ]);
+});
+
+Route::get('/.well-known/agent-skills/{skill}/SKILL.md', function (string $skill) {
+    $allowed = [
+        'catalog-search' => 'frontend/public/.well-known/agent-skills/catalog-search/SKILL.md',
+        'unit-reservation' => 'frontend/public/.well-known/agent-skills/unit-reservation/SKILL.md',
+        'auth-md' => 'frontend/public/.well-known/agent-skills/auth-md/SKILL.md',
+    ];
+
+    if (!isset($allowed[$skill])) {
+        abort(404);
+    }
+
+    $filePath = base_path($allowed[$skill]);
+    if (!file_exists($filePath)) {
+        abort(404);
+    }
+
+    return response(file_get_contents($filePath), 200, [
+        'Content-Type' => 'text/markdown; charset=UTF-8',
+        'Vary' => 'Accept',
+        'Access-Control-Allow-Origin' => '*',
+    ]);
+});
+
+/**
+ * ARD — Agentic Resource Discovery Manifest
+ * Spec: https://agenticresourcediscovery.org
+ */
+Route::match(['GET', 'HEAD'], '/.well-known/ai-catalog.json', function () {
+    $settings = SiteSetting::current();
+    $baseUrl = rtrim((string) ($settings->site_url ?: config('app.frontend_url', url('/'))), '/');
+    $host = parse_url($baseUrl, PHP_URL_HOST) ?: 'sale.ileben.cl';
+
+    return response()->json([
+        'specVersion' => '1.0',
+        'host' => [
+            'displayName' => 'iLeben Inmobiliaria',
+            'identifier' => 'did:web:' . $host,
+        ],
+        'entries' => [
+            [
+                'identifier' => 'urn:air:' . $host . ':server:mcp',
+                'displayName' => 'iLeben Real Estate MCP Server',
+                'type' => 'application/mcp-server-card+json',
+                'url' => $baseUrl . '/.well-known/mcp/server-card.json',
+                'representativeQueries' => [
+                    'buscar proyectos inmobiliarios en santiago y el sur',
+                    'consultar planos y tipologias de departamentos disponibles',
+                    'ver precios y disponibilidad de departamentos en venta',
+                ],
+            ],
+            [
+                'identifier' => 'urn:air:' . $host . ':api:openapi',
+                'displayName' => 'iLeben OpenAPI Real Estate Catalog API',
+                'type' => 'application/vnd.oai.openapi+json',
+                'url' => $baseUrl . '/openapi.json',
+                'representativeQueries' => [
+                    'listar departamentos disponibles en venta chile',
+                    'obtener especificaciones de la api rest de ileben',
+                    'iniciar reserva o cotizacion de vivienda',
+                ],
+            ],
+            [
+                'identifier' => 'urn:air:' . $host . ':agent:skills',
+                'displayName' => 'iLeben Agent Skills Index',
+                'type' => 'application/json',
+                'url' => $baseUrl . '/.well-known/agent-skills/index.json',
+                'representativeQueries' => [
+                    'descubrir habilidades del agente inmobiliario ileben',
+                    'habilidades para buscar proyectos y reservar departamentos',
+                ],
+            ],
+            [
+                'identifier' => 'urn:air:' . $host . ':agent:commerce',
+                'displayName' => 'iLeben Agentic Commerce Protocol',
+                'type' => 'application/json',
+                'url' => $baseUrl . '/.well-known/acp.json',
+                'representativeQueries' => [
+                    'comprar departamento en chile a traves de agente',
+                    'cotizar reserva de departamento inmobiliario',
+                ],
+            ],
+        ],
+    ], 200, [
+        'Content-Type' => 'application/json; charset=UTF-8',
+        'Access-Control-Allow-Origin' => '*',
+        'Access-Control-Allow-Methods' => 'GET, HEAD, OPTIONS',
+        'Cache-Control' => 'public, max-age=3600',
+    ]);
+});
 
 // ──────────────────────────────────────────────────────────
 

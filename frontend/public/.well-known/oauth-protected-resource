@@ -1,0 +1,17 @@
+{
+  "resource": "https://sale.ileben.cl",
+  "authorization_servers": [
+    "https://sale.ileben.cl"
+  ],
+  "scopes_supported": [
+    "catalog:read",
+    "reservations:write",
+    "payments:write",
+    "read",
+    "write"
+  ],
+  "bearer_methods_supported": [
+    "header"
+  ],
+  "resource_documentation": "https://sale.ileben.cl/openapi.json"
+}

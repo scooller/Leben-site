@@ -1,0 +1,51 @@
+{
+  "specVersion": "1.0",
+  "host": {
+    "displayName": "iLeben Inmobiliaria",
+    "identifier": "did:web:sale.ileben.cl"
+  },
+  "entries": [
+    {
+      "identifier": "urn:air:sale.ileben.cl:server:mcp",
+      "displayName": "iLeben Real Estate MCP Server",
+      "type": "application/mcp-server-card+json",
+      "url": "https://sale.ileben.cl/.well-known/mcp/server-card.json",
+      "representativeQueries": [
+        "buscar proyectos inmobiliarios en santiago y el sur",
+        "consultar planos y tipologias de departamentos disponibles",
+        "ver precios y disponibilidad de departamentos en venta"
+      ]
+    },
+    {
+      "identifier": "urn:air:sale.ileben.cl:api:openapi",
+      "displayName": "iLeben OpenAPI Real Estate Catalog API",
+      "type": "application/vnd.oai.openapi+json",
+      "url": "https://sale.ileben.cl/openapi.json",
+      "representativeQueries": [
+        "listar departamentos disponibles en venta chile",
+        "obtener especificaciones de la api rest de ileben",
+        "iniciar reserva o cotizacion de vivienda"
+      ]
+    },
+    {
+      "identifier": "urn:air:sale.ileben.cl:agent:skills",
+      "displayName": "iLeben Agent Skills Index",
+      "type": "application/json",
+      "url": "https://sale.ileben.cl/.well-known/agent-skills/index.json",
+      "representativeQueries": [
+        "descubrir habilidades del agente inmobiliario ileben",
+        "habilidades para buscar proyectos y reservar departamentos"
+      ]
+    },
+    {
+      "identifier": "urn:air:sale.ileben.cl:agent:commerce",
+      "displayName": "iLeben Agentic Commerce Protocol",
+      "type": "application/json",
+      "url": "https://sale.ileben.cl/.well-known/acp.json",
+      "representativeQueries": [
+        "comprar departamento en chile a traves de agente",
+        "cotizar reserva de departamento inmobiliario"
+      ]
+    }
+  ]
+}
