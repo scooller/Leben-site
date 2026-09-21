@@ -4,6 +4,20 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.18] - 2026-09-21
+
+### ✅ SEO Estructurado — Evento Sale/Cyber (controlado desde backend)
+
+**Backend:**
+- `SiteSettings.php` (Filament): nueva Section "Evento Sale — SEO" en el tab SEO, visible solo cuando `evento_sale` está activo. Campos: `sale_event_name`, `sale_event_description`, `sale_event_start_date`, `sale_event_end_date`, `sale_og_image_id` (CuratorPicker).
+- `SiteSetting.php` (Model): se agrega `DatePicker` al import de Filament; `forFrontend()` expone `seo.sale_event` (null cuando inactivo, objeto con 5 campos cuando activo); `seo.og_image` ahora prefiere `sale_og_image` durante el evento.
+
+**Frontend:**
+- `utils/saleEventSchema.js` (nuevo): builders `buildSpecialAnnouncementSchema` y `buildSaleEventSchema` que generan JSON-LD schema.org desde los datos del backend.
+- `App.jsx`: nuevo `useEffect` que inyecta/elimina los dos schemas (`ileben-jsonld-sale-announcement`, `ileben-jsonld-sale-event`) reactivamente cuando `config.seo.sale_event` cambia. Limpieza automática en unmount.
+
+**Sin cambios en el comportamiento** cuando `evento_sale` está desactivado (sale_event === null → schemas no se inyectan).
+
 ## [1.9.17] - 2026-09-21
 
 ### ✅ Agent Commerce Protocol Discovery (ACP, UCP, MPP)

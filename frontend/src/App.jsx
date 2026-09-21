@@ -8,6 +8,7 @@ import { captureUtmParamsFromUrl, cleanTrackedUtmsFromCurrentUrl } from './utils
 import siteConfigService from './services/siteConfig';
 import { resolveSeoPolicy } from './utils/seoPolicy';
 import { removeStructuredData, setStructuredData } from './utils/structuredData';
+import { buildSpecialAnnouncementSchema, buildSaleEventSchema } from './utils/saleEventSchema';
 import SiteHeader from './components/SiteHeader';
 import SiteFooter from './components/SiteFooter';
 import './App.scss';
@@ -261,6 +262,36 @@ function AppContent() {
     config?.site_description,
     config?.site_name,
     config?.social,
+    siteUrl,
+  ]);
+
+  // Inject / remove sale event JSON-LD schemas whenever the backend toggle changes.
+  // config.seo.sale_event is null when evento_sale is off, object with fields when on.
+  useEffect(() => {
+    const saleEvent = config?.seo?.sale_event ?? null;
+    const siteName  = config?.site_name || 'iLeben';
+
+    if (saleEvent) {
+      const announcement = buildSpecialAnnouncementSchema(siteUrl, saleEvent, siteName);
+      const event        = buildSaleEventSchema(siteUrl, saleEvent, siteName);
+
+      if (announcement) setStructuredData('sale-announcement', announcement);
+      else               removeStructuredData('sale-announcement');
+
+      if (event) setStructuredData('sale-event', event);
+      else        removeStructuredData('sale-event');
+    } else {
+      removeStructuredData('sale-announcement');
+      removeStructuredData('sale-event');
+    }
+
+    return () => {
+      removeStructuredData('sale-announcement');
+      removeStructuredData('sale-event');
+    };
+  }, [
+    config?.seo?.sale_event,
+    config?.site_name,
     siteUrl,
   ]);
 

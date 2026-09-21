@@ -12,6 +12,7 @@ use Awcodes\Curator\Components\Forms\RichEditor\AttachCuratorMediaPlugin;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\ColorPicker;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\RichEditor;
@@ -630,6 +631,38 @@ class SiteSettings extends Page implements HasForms
                                         CuratorPicker::make('extra_settings.og_image_id')
                                             ->label('Imagen Open Graph')
                                             ->helperText('Selecciona una imagen desde Curator para compartir en redes sociales (ideal: 1200x630px).'),
+                                    ])
+                                    ->columns(1),
+
+                                Section::make('Evento Sale — SEO')
+                                    ->description('Campos de SEO estructurado para Google durante eventos Cyber/Sale. Se activan automáticamente cuando "Evento Sale" está habilitado.')
+                                    ->icon('heroicon-o-tag')
+                                    ->collapsed()
+                                    ->visible(fn (Get $get): bool => (bool) $get('evento_sale'))
+                                    ->schema([
+                                        TextInput::make('extra_settings.sale_event_name')
+                                            ->label('Nombre del evento')
+                                            ->maxLength(120)
+                                            ->placeholder('CyberDay 2025, Sale de Verano...')
+                                            ->helperText('Nombre visible en los schemas JSON-LD (SpecialAnnouncement y SaleEvent de Google).'),
+
+                                        Textarea::make('extra_settings.sale_event_description')
+                                            ->label('Descripción del evento')
+                                            ->rows(2)
+                                            ->maxLength(300)
+                                            ->helperText('Descripción corta del evento para schema.org. Ej: "Departamentos con descuento exclusivo por CyberDay".'),
+
+                                        DatePicker::make('extra_settings.sale_event_start_date')
+                                            ->label('Fecha de inicio')
+                                            ->helperText('Fecha de inicio del evento (ISO 8601). Usada en SpecialAnnouncement datePosted y SaleEvent startDate.'),
+
+                                        DatePicker::make('extra_settings.sale_event_end_date')
+                                            ->label('Fecha de término')
+                                            ->helperText('Fecha de término del evento. Usada en SpecialAnnouncement expires y SaleEvent endDate.'),
+
+                                        CuratorPicker::make('extra_settings.sale_og_image_id')
+                                            ->label('Imagen OG del evento (opcional)')
+                                            ->helperText('Si se selecciona, reemplaza la imagen Open Graph estándar durante el evento (ideal: 1200x630px). Deja vacío para usar la imagen OG general.'),
                                     ])
                                     ->columns(1),
                             ]),

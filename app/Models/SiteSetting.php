@@ -421,6 +421,7 @@ class SiteSetting extends Model
         $contactHeroDesktopImage = Media::query()->find($extraSettings['contact_hero_image_desktop_id'] ?? $extraSettings['contact_hero_image_id'] ?? null)?->url;
         $contactHeroMobileImage = Media::query()->find($extraSettings['contact_hero_image_mobile_id'] ?? $extraSettings['contact_hero_image_id'] ?? null)?->url;
         $ogImageFromCurator = Media::query()->find($extraSettings['og_image_id'] ?? null)?->url;
+        $saleOgImageFromCurator = Media::query()->find($extraSettings['sale_og_image_id'] ?? null)?->url;
         $priceSource = $extraSettings['price_source'] ?? 'final';
         $pricePercentageSource = $extraSettings['price_percentage_source'] ?? 'web_discount';
 
@@ -473,7 +474,6 @@ class SiteSetting extends Model
                 'site_locale' => is_string($extraSettings['site_locale'] ?? null)
                     ? trim((string) $extraSettings['site_locale'])
                     : 'es-CL',
-                'og_image' => $ogImageFromCurator ?? ($settings->og_image ? url($settings->og_image) : null),
                 'utm_source_default' => is_string($extraSettings['utm_source_default'] ?? null)
                     ? trim((string) $extraSettings['utm_source_default'])
                     : 'direct',
@@ -492,6 +492,26 @@ class SiteSetting extends Model
                 'utm_site_default' => is_string($extraSettings['utm_site_default'] ?? null)
                     ? trim((string) $extraSettings['utm_site_default'])
                     : '',
+                // og_image: during an active sale event, prefer the dedicated sale OG image
+                'og_image' => ($settings->evento_sale && $saleOgImageFromCurator)
+                    ? $saleOgImageFromCurator
+                    : ($ogImageFromCurator ?? ($settings->og_image ? url($settings->og_image) : null)),
+                // sale_event: null when evento_sale is off; object with all fields when on
+                'sale_event' => $settings->evento_sale ? [
+                    'name'        => is_string($extraSettings['sale_event_name'] ?? null)
+                        ? trim((string) $extraSettings['sale_event_name'])
+                        : null,
+                    'description' => is_string($extraSettings['sale_event_description'] ?? null)
+                        ? trim((string) $extraSettings['sale_event_description'])
+                        : null,
+                    'start_date'  => is_string($extraSettings['sale_event_start_date'] ?? null)
+                        ? trim((string) $extraSettings['sale_event_start_date'])
+                        : null,
+                    'end_date'    => is_string($extraSettings['sale_event_end_date'] ?? null)
+                        ? trim((string) $extraSettings['sale_event_end_date'])
+                        : null,
+                    'og_image'    => $saleOgImageFromCurator,
+                ] : null,
             ],
             'contact' => [
                 'email' => $settings->contact_email,
