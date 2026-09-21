@@ -41,6 +41,14 @@ const run = async () => {
     if (!content.includes(`<meta name="robots" content="${check.robots}" />`)) {
       fail(`[validate-seo] Robots mismatch in ${check.file}`);
     }
+
+    if (!content.includes('hreflang="es-CL"')) {
+      fail(`[validate-seo] Missing hreflang="es-CL" in ${check.file}`);
+    }
+
+    if (!content.includes('hreflang="x-default"')) {
+      fail(`[validate-seo] Missing hreflang="x-default" in ${check.file}`);
+    }
   }));
 
   const appSource = await readFile(path.join(projectRoot, 'src', 'App.jsx'), 'utf8');

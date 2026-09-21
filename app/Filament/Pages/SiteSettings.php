@@ -535,6 +535,22 @@ class SiteSettings extends Page implements HasForms
                         Tabs\Tab::make('SEO')
                             ->icon('heroicon-o-magnifying-glass')
                             ->schema([
+                                Section::make('Vista Previa en Google (SERP Snippet Preview)')
+                                    ->description('Simulación interactiva de cómo aparece el sitio en Google Search (Desktop y Mobile) con verificación de Hreflang.')
+                                    ->icon('heroicon-o-eye')
+                                    ->schema([
+                                        Placeholder::make('serp_snippet_preview')
+                                            ->hiddenLabel()
+                                            ->content(fn (Get $get): \Illuminate\Contracts\View\View => view('filament.components.serp-snippet-preview', [
+                                                'title' => $get('extra_settings.default_meta_title') ?: ($get('site_name') ? $get('site_name') . ' | Departamentos y Proyectos en Venta' : ''),
+                                                'description' => $get('extra_settings.default_og_description') ?: ($get('site_description') ?: ''),
+                                                'siteUrl' => $get('site_url') ?: 'https://sale.ileben.cl',
+                                                'siteName' => $get('site_name') ?: 'iLeben',
+                                                'locale' => $get('extra_settings.site_locale') ?: 'es-CL',
+                                            ]))
+                                            ->columnSpanFull(),
+                                    ]),
+
                                 Section::make('Optimización para Motores de Búsqueda')
                                     ->schema([
                                         Textarea::make('meta_keywords')
@@ -554,6 +570,7 @@ class SiteSettings extends Page implements HasForms
                                         TextInput::make('extra_settings.default_meta_title')
                                             ->label('Título SEO por defecto')
                                             ->maxLength(120)
+                                            ->live(debounce: 500)
                                             ->helperText('Fallback para el <title> cuando una página no define título propio.'),
 
                                         TextInput::make('extra_settings.default_og_title')
@@ -565,6 +582,7 @@ class SiteSettings extends Page implements HasForms
                                             ->label('Open Graph descripción por defecto')
                                             ->rows(2)
                                             ->maxLength(300)
+                                            ->live(debounce: 500)
                                             ->helperText('Descripción base para compartir en redes sociales.'),
 
                                         TextInput::make('extra_settings.twitter_site')

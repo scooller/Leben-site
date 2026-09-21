@@ -4,6 +4,20 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.21] - 2026-09-21
+
+### 🔍 SEO Internacional (Hreflang) y SERP Snippet Preview en Panel Filament
+
+- **Hreflang Multi-región en Frontend**:
+  - `frontend/index.html`: Enlaces alternativos estáticos `<link rel="alternate" hreflang="es-CL">` y `<link rel="alternate" hreflang="x-default">`.
+  - `frontend/src/services/siteConfig.js`: Métodos `setHreflang()` y `setAlternateLink()` para sincronizar enlaces hreflang dinámicamente con la URL canónica y el locale de configuración (`es-CL`, `es-419`, `es-ES`).
+  - `frontend/scripts/prerender-routes.mjs`: Inyección automática de directivas `hreflang="es-CL"` y `hreflang="x-default"` en todas las páginas prerenderizadas (`/`, `/plantas`, `/f`).
+  - `frontend/scripts/validate-seo.mjs`: Verificación automatizada de consistencia hreflang durante el build.
+- **SERP Snippet Preview en Panel de Configuración**:
+  - `resources/views/filament/components/serp-snippet-preview.blade.php`: Nuevo componente Blade interactivo que simula en tiempo real la apariencia del resultado en Google Search (título en azul, URL miga de pan con favicon, meta descripción).
+  - Selector de vista **Desktop** vs **Mobile** mediante Alpine.js con límites recomendados de caracteres (50-60 para títulos, 120-160 para descripciones) e indicadores visuales de optimización.
+  - `app/Filament/Pages/SiteSettings.php`: Nueva sección "Vista Previa en Google (SERP Snippet Preview)" en la pestaña `SEO`, enlazada reactivamente con `default_meta_title`, `default_og_description`, `site_name` y `site_locale`.
+
 ## [1.9.20] - 2026-09-21
 
 ### 🤖 Protocolos de Descubrimiento IA y Compatibilidad con Agentes (Agent Readiness)
