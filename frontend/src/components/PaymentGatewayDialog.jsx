@@ -174,8 +174,7 @@ function PaymentGatewayDialog({
   }
 
   const isCheckoutReady = Boolean(
-    isAuthenticated
-    && selectedGateway
+    selectedGateway
     && checkoutName
     && checkoutEmail
     && isEmailValid
@@ -419,7 +418,7 @@ function PaymentGatewayDialog({
 
   // Reserve plant when dialog opens
   useEffect(() => {
-    if (!open || !plant || !isAuthenticated) {
+    if (!open || !plant) {
       return;
     }
 
@@ -467,7 +466,7 @@ function PaymentGatewayDialog({
 
     doReserve();
     return () => { cancelled = true; };
-  }, [open, plant, isAuthenticated]);
+  }, [open, plant]);
 
   // Countdown timer
   useEffect(() => {

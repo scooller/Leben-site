@@ -17,6 +17,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Throwable;
@@ -46,8 +47,22 @@ class CheckoutController extends Controller
                 );
             }
 
-            /** @var User $payerUser */
-            $payerUser = $request->user();
+            /** @var User|null $payerUser */
+            $payerUser = $request->user('sanctum') ?? $request->user();
+
+            if (! $payerUser) {
+                $billingEmail = $this->billingEmail($validated);
+                $payerUser = User::firstOrCreate(
+                    ['email' => $billingEmail],
+                    [
+                        'name' => $this->billingName($validated) ?? 'Cliente',
+                        'phone' => $this->billingPhone($validated),
+                        'rut' => $this->billingRut($validated),
+                        'password' => Hash::make(Str::random(32)),
+                        'user_type' => 'customer',
+                    ]
+                );
+            }
 
             // Obtener la planta con su proyecto
             $plant = Plant::with('proyecto')->findOrFail($validated['plant_id']);

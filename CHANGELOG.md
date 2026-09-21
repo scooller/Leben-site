@@ -4,11 +4,14 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
-### 🔄 Cambios
-- Ignorados archivos temporales generados por el Language Server (`lsp-*.php`) en `.gitignore` y `storage/framework/.gitignore`.
-- Añadidas exclusiones a `.gitignore` para carpetas de IDEs (`.idea`, `.fleet`, `.cursor`, `.windsurf`, `.claude`), cachés de pruebas (`.phpunit.cache`, `.pest`), archivos de SO (`.DS_Store`, `Thumbs.db`, `desktop.ini`), `.env.local` y temporales de storage.
-- Limpieza de entradas duplicadas en `.gitignore`.
-- Traducida y actualizada la documentación de `AGENTS.md` al inglés para optimizar la comprensión de agentes IA.
+## [1.9.9] - 2026-09-21
+
+### 🛠️ Correcciones y Flujo Anónimo de Checkout
+- **Reservas y Checkout Anónimos (`routes/api.php`)**: Movidas las rutas de checkout (`POST /api/v1/checkout`) y reservas (`POST /api/v1/reservations`, `DELETE /api/v1/reservations/{sessionToken}`, `GET /api/v1/reservations/planta/{plantId}`) fuera del middleware `auth:sanctum` al grupo público con `token.origin`.
+- **Servicio y Controlador de Reservas (`PlantReservationService.php`, `PlantReservationController.php`)**: Habilitado `$userId` nullable en la creación y extensión de reservas de plantas. Soporte para control y liberación anónima por `session_token` único (UUID).
+- **Controlador de Checkout (`CheckoutController.php`, `CheckoutInitiateRequest.php`)**: Habilitada la autorización pública y resolución automática de clientes anónimos a través de `User::firstOrCreate(...)` vinculando su email de facturación.
+- **Frontend Dialog & Home (`PaymentGatewayDialog.jsx`, `Home.jsx`)**: Eliminadas restricciones que impedían reservar una unidad o completar el proceso de checkout a usuarios no autenticados en el navegador.
+- **Tests Automatizados**: Incorporados tests en `ApiAuthenticationTest` y validada la suite completa de `ManualCheckoutFlowTest`.
 
 ## [1.9.8] - 2026-09-21
 

@@ -122,6 +122,15 @@ Route::prefix('v1')->group(function () {
 		Route::get('/plantas/{id}', [App\Http\Controllers\Api\PlantController::class, 'show']);
 
 		Route::get('/payment-gateways', [App\Http\Controllers\Api\CheckoutController::class, 'availableGateways']);
+
+		// Pasarela de pago y checkout anónimo
+		Route::post('/checkout', [App\Http\Controllers\Api\CheckoutController::class, 'initiate']);
+
+		// Reservas anónimas / públicas
+		Route::get('/reservations/planta/{plantId}', [App\Http\Controllers\Api\PlantReservationController::class, 'status']);
+		Route::get('/reservations/plant/{plantId}', [App\Http\Controllers\Api\PlantReservationController::class, 'status']);
+		Route::post('/reservations', [App\Http\Controllers\Api\PlantReservationController::class, 'reserve']);
+		Route::delete('/reservations/{sessionToken}', [App\Http\Controllers\Api\PlantReservationController::class, 'release']);
 	});
 
 	// Endpoints públicos mínimos
@@ -136,14 +145,6 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'token.origin'])->group(functio
 		return $request->user();
 	});
 	Route::post('/logout', [App\Http\Controllers\Api\AuthController::class, 'logout']);
-
-	// Checkout
-	Route::post('/checkout', [App\Http\Controllers\Api\CheckoutController::class, 'initiate']);
-
-	// Reservas
-	Route::get('/reservations/planta/{plantId}', [App\Http\Controllers\Api\PlantReservationController::class, 'status']);
-	Route::post('/reservations', [App\Http\Controllers\Api\PlantReservationController::class, 'reserve']);
-	Route::delete('/reservations/{sessionToken}', [App\Http\Controllers\Api\PlantReservationController::class, 'release']);
 
 	// Pagos
 	Route::post('/payments', [App\Http\Controllers\Api\PaymentController::class, 'create']);

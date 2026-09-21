@@ -26,16 +26,19 @@ class PlantReservationController extends Controller
     {
         $request->validate([
             'plant_id' => ['required', 'integer', 'exists:plants,id'],
+            'session_token' => ['nullable', 'string', 'max:64'],
         ]);
 
         try {
+            $user = $request->user('sanctum') ?? $request->user();
             $reservation = $this->reservationService->reserve(
                 plantId: (int) $request->input('plant_id'),
-                userId: $request->user()->id,
-                metadata: [
+                userId: $user?->id,
+                metadata: array_filter([
                     'ip' => $request->ip(),
                     'user_agent' => $request->userAgent(),
-                ],
+                    'session_token' => $request->header('X-Session-Token') ?? $request->input('session_token'),
+                ]),
             );
 
             return response()->json([
@@ -71,7 +74,9 @@ class PlantReservationController extends Controller
             ->where('status', 'active')
             ->first();
 
-        if ($reservation && ! (($request->user()?->isAdmin() ?? false) || $reservation->user_id === $request->user()?->id)) {
+        $user = $request->user('sanctum') ?? $request->user();
+
+        if ($reservation && $reservation->user_id !== null && ! (($user?->isAdmin() ?? false) || $reservation->user_id === $user?->id)) {
             return response()->json([
                 'message' => 'No tienes permisos para liberar esta reserva.',
             ], Response::HTTP_FORBIDDEN);

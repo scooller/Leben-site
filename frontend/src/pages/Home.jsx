@@ -1300,22 +1300,6 @@ function Home({ onNavigate, currentPath }) {
 
   // Confirmar checkout con pasarela seleccionada
   const handleConfirmCheckout = async ({ plantId, gateway, sessionToken, turnstileToken, userData }) => {
-    if (!isAuthenticated) {
-      trackEvent('checkout_error', {
-        plant_id: plantId,
-        gateway,
-        reason: 'unauthenticated_user',
-      });
-
-      setCheckoutError({
-        type: 'auth',
-        message: 'Usuario no autenticado',
-        userMessage: 'Debes iniciar sesion antes de pagar.',
-        title: 'Inicio de sesion requerido',
-      });
-      return;
-    }
-
     try {
       setCheckoutLoading(true);
       setCheckoutError(null);

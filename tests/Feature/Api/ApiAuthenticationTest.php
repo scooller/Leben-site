@@ -102,4 +102,74 @@ class ApiAuthenticationTest extends TestCase
             ->assertOk()
             ->assertJsonStructure(['gateways', 'count']);
     }
+
+    public function test_reservations_endpoint_allows_anonymous_reservation_with_api_token(): void
+    {
+        $this->setUpApiToken();
+
+        $project = Proyecto::factory()->create(['is_active' => true]);
+        $plant = Plant::factory()->create([
+            'salesforce_proyecto_id' => $project->salesforce_id,
+            'is_active' => true,
+        ]);
+
+        $response = $this->postJson('/api/v1/reservations', [
+            'plant_id' => $plant->id,
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonStructure([
+                'reservation' => ['id', 'session_token', 'plant_id', 'status', 'expires_at', 'remaining_seconds'],
+            ]);
+    }
+
+    public function test_reservations_endpoint_allows_anonymous_reservation_with_preview_token(): void
+    {
+        $plainToken = \Illuminate\Support\Str::random(64);
+
+        \App\Models\FrontendPreviewLink::query()->create([
+            'name' => 'preview-test-res',
+            'token' => $plainToken,
+            'expires_at' => now()->addHour(),
+        ]);
+
+        $project = Proyecto::factory()->create(['is_active' => true]);
+        $plant = Plant::factory()->create([
+            'salesforce_proyecto_id' => $project->salesforce_id,
+            'is_active' => true,
+        ]);
+
+        $response = $this->postJson('/api/v1/reservations?preview_token='.$plainToken, [
+            'plant_id' => $plant->id,
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonStructure([
+                'reservation' => ['id', 'session_token', 'plant_id', 'status'],
+            ]);
+    }
+
+    public function test_anonymous_user_can_release_reservation_by_token(): void
+    {
+        $this->setUpApiToken();
+
+        $project = Proyecto::factory()->create(['is_active' => true]);
+        $plant = Plant::factory()->create([
+            'salesforce_proyecto_id' => $project->salesforce_id,
+            'is_active' => true,
+        ]);
+
+        $createResponse = $this->postJson('/api/v1/reservations', [
+            'plant_id' => $plant->id,
+        ]);
+
+        $sessionToken = $createResponse->json('reservation.session_token');
+
+        $releaseResponse = $this->deleteJson('/api/v1/reservations/'.$sessionToken);
+
+        $releaseResponse->assertOk()
+            ->assertJson([
+                'message' => 'Reserva liberada exitosamente.',
+            ]);
+    }
 }

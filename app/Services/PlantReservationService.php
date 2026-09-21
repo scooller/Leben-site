@@ -30,7 +30,7 @@ class PlantReservationService
      * @throws InvalidArgumentException If plant does not exist or is not active
      * @throws RuntimeException If plant is already reserved by another user
      */
-    public function reserve(int $plantId, int $userId, array $metadata = []): PlantReservation
+    public function reserve(int $plantId, ?int $userId = null, array $metadata = []): PlantReservation
     {
         return DB::transaction(function () use ($plantId, $userId, $metadata) {
             $plant = Plant::lockForUpdate()->find($plantId);
@@ -47,8 +47,11 @@ class PlantReservationService
                 ->first();
 
             if ($existing) {
-                // If the same user already has the reservation, extend it
-                if ($existing->user_id === $userId) {
+                // If the same user or same session already has the reservation, extend it
+                $sameUser = $userId !== null && $existing->user_id === $userId;
+                $sameSession = ! empty($metadata['session_token']) && $existing->session_token === $metadata['session_token'];
+
+                if ($sameUser || $sameSession) {
                     $existing->update([
                         'expires_at' => now()->addMinutes($this->reservationDurationMinutes()),
                     ]);
