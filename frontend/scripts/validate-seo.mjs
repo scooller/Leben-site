@@ -71,6 +71,11 @@ const run = async () => {
     fail('[validate-seo] Missing api-catalog link in dist/index.html');
   }
 
+  const robotsTxt = await readFile(path.join(distDir, 'robots.txt'), 'utf8');
+  if (!robotsTxt.includes('Content-Signal:') || !robotsTxt.includes('ai-train=no')) {
+    fail('[validate-seo] Missing or invalid Content-Signal in dist/robots.txt');
+  }
+
   if (process.exitCode !== 1) {
     process.stdout.write('SEO validation checks passed.\n');
   }

@@ -80,6 +80,28 @@ Route::get('/sitemap.xml', function () {
         ->header('Content-Type', 'application/xml; charset=UTF-8');
 })->name('sitemap.xml');
 
+Route::get('/robots.txt', function () {
+    $settings = SiteSetting::current();
+    $baseUrl = rtrim((string) ($settings->site_url ?: config('app.frontend_url', url('/'))), '/');
+
+    $content = implode("\n", [
+        'User-agent: *',
+        'Allow: /',
+        'Disallow: /frontend-preview/',
+        'Disallow: /preview-link/',
+        'Disallow: /*preview_token=',
+        'Content-Signal: ai-train=no, search=yes, ai-input=no',
+        '',
+        "Sitemap: {$baseUrl}/sitemap.xml",
+        '',
+    ]);
+
+    return response($content, 200, [
+        'Content-Type' => 'text/plain; charset=UTF-8',
+        'Cache-Control' => 'public, max-age=86400',
+    ]);
+})->name('robots.txt');
+
 Route::match(['GET', 'HEAD'], '/.well-known/api-catalog', function () {
     $settings = SiteSetting::current();
     $baseUrl = rtrim((string) ($settings->site_url ?: config('app.frontend_url', url('/'))), '/');
@@ -117,6 +139,14 @@ Route::match(['GET', 'HEAD'], '/.well-known/api-catalog', function () {
             'Access-Control-Allow-Methods' => 'GET, HEAD, OPTIONS',
         ]);
 })->name('well-known.api-catalog');
+
+Route::get('/llms.txt', function (\App\Services\Agent\MarkdownRepresentationService $markdownService) {
+    return $markdownService->makeResponse($markdownService->renderHomepageMarkdown());
+})->name('llms.txt');
+
+Route::get('/.well-known/llms.txt', function (\App\Services\Agent\MarkdownRepresentationService $markdownService) {
+    return $markdownService->makeResponse($markdownService->renderHomepageMarkdown());
+});
 
 Route::get('/', function () {
     return redirect('/admin');

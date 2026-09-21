@@ -4,6 +4,36 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.16] - 2026-09-21
+
+### 🚦 Preferencias de Uso de Contenido IA (`Content-Signal` en `robots.txt`)
+- **Directivas Content Signals (`frontend/public/robots.txt`, `public/robots.txt`)**:
+  - Incorporada la directiva estándar `Content-Signal: ai-train=no, search=yes, ai-input=no` bajo el bloque `User-agent: *` según el estándar de `contentsignals.org` y el borrador IETF.
+  - Permite la indexación y búsqueda por motores IA (`search=yes`), mientras restringe el entrenamiento de modelos fundacionales (`ai-train=no`) y el uso como input de generación (`ai-input=no`).
+- **Ruta Dinámica en Backend (`routes/web.php`)**:
+  - Creado endpoint `GET /robots.txt` en Laravel para garantizar consistencia entre tests de aplicación y entornos de ejecución web.
+- **Validación Automática de Build (`validate-seo.mjs`)**:
+  - Incorporada aserción para verificar la presencia de `Content-Signal` en `dist/robots.txt` durante `npm run build`.
+- **Tests Automatizados (`ContentSignalsRobotsTest.php`)**:
+  - Nueva prueba unitaria verificando la entrega de `robots.txt` con `Content-Signal` y enlaces a sitemap. Total: 42 tests backend pasando sin fallos.
+
+## [1.9.15] - 2026-09-21
+
+### 📝 Negociación de Contenido Markdown para Agentes IA (`Accept: text/markdown`)
+- **Middleware Global de Negociación (`NegotiateMarkdownForAgents.php`, `bootstrap/app.php`)**:
+  - Implementado middleware global que detecta solicitudes de agentes con cabecera `Accept: text/markdown`.
+  - Entrega una representación limpia en Markdown de la página y catálogo inmobiliario con cabecera `Content-Type: text/markdown; charset=UTF-8`, `Vary: Accept` y estimación de tokens `x-markdown-tokens`.
+  - Mantiene intacta la respuesta HTML tradicional para navegadores y usuarios humanos.
+- **Servicio Generador Markdown (`MarkdownRepresentationService.php`)**:
+  - Generación dinámica de la estructura de proyectos activos, comunas, regiones, canales de contacto y enlaces directos a OpenAPI y API Catalog.
+- **Rutas Estándar `llms.txt` (`routes/web.php`, `frontend/public/`)**:
+  - Habilitados endpoints `GET /llms.txt` y `GET /.well-known/llms.txt` según la convención de `llmstxt.org`.
+  - Creados archivos estáticos `frontend/public/llms.txt` y `frontend/public/index.md` distribuidos en el bundle de Vite.
+- **Servidor Web Apache (`frontend/public/.htaccess`)**:
+  - Incorporadas reglas de reescritura para servir `index.md` automáticamente ante solicitudes `Accept: text/markdown` en la raíz.
+- **Tests Automatizados (`MarkdownContentNegotiationTest.php`)**:
+  - Cobertura completa de negociación con cabecera `Accept`, endpoints `llms.txt` y persistencia de default HTML para navegadores. Total: 41 tests backend pasando.
+
 ## [1.9.14] - 2026-09-21
 
 ### 🤖 Descubrimiento de Agentes IA (RFC 8288 & RFC 9727)
