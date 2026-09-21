@@ -80,6 +80,44 @@ Route::get('/sitemap.xml', function () {
         ->header('Content-Type', 'application/xml; charset=UTF-8');
 })->name('sitemap.xml');
 
+Route::match(['GET', 'HEAD'], '/.well-known/api-catalog', function () {
+    $settings = SiteSetting::current();
+    $baseUrl = rtrim((string) ($settings->site_url ?: config('app.frontend_url', url('/'))), '/');
+    $apiBaseUrl = rtrim(url('/api/v1'), '/');
+
+    $catalog = [
+        'linkset' => [
+            [
+                'anchor' => $baseUrl . '/',
+                'profile' => 'https://www.rfc-editor.org/rfc/rfc9727',
+                'author' => (string) ($settings->site_name ?: 'iLeben'),
+                'item' => [
+                    [
+                        'href' => $apiBaseUrl,
+                        'rel' => 'service-desc',
+                        'type' => 'application/json',
+                        'title' => 'iLeben OpenAPI v1 Specification',
+                    ],
+                    [
+                        'href' => $apiBaseUrl,
+                        'rel' => 'service-doc',
+                        'type' => 'application/json',
+                        'title' => 'iLeben API Documentation',
+                    ],
+                ],
+            ],
+        ],
+    ];
+
+    return response()
+        ->json($catalog, 200, [
+            'Content-Type' => 'application/linkset+json; charset=UTF-8',
+            'Link' => '</.well-known/api-catalog>; rel="api-catalog"',
+            'Access-Control-Allow-Origin' => '*',
+            'Access-Control-Allow-Methods' => 'GET, HEAD, OPTIONS',
+        ]);
+})->name('well-known.api-catalog');
+
 Route::get('/', function () {
     return redirect('/admin');
 });

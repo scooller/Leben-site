@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSiteConfig } from '../contexts/SiteConfigContext';
-import SiteHeader from '../components/SiteHeader';
-import SiteFooter from '../components/SiteFooter';
 import { paymentsService } from '../services/payments';
 import '../styles/payment.scss' with { type: 'css' };
 
@@ -137,8 +135,6 @@ function Payment({ onNavigate, currentPath }) {
 
   return (
     <div className="payment-page">
-      <SiteHeader config={config} currentPath={currentPath} onNavigate={onNavigate} />
-
       <section className="home-container payment-container">
         <div className="wa-stack wa-gap-m">
           <h1 className="payment-title">Resumen de tu pago</h1>
@@ -217,8 +213,6 @@ function Payment({ onNavigate, currentPath }) {
           </wa-card>
         </div>
       </section>
-
-      <SiteFooter config={config} onNavigate={onNavigate} />
     </div>
   );
 }

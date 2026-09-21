@@ -50,7 +50,7 @@ class ProyectoApiFiltersTest extends TestCase
 
         $item = $response->json('data.0');
 
-        $this->assertSame(['id', 'name', 'direccion', 'comuna', 'pagina_web', 'etapa', 'entrega_inmediata', 'telefono', 'horario_atencion', 'salesforce_logo_url', 'salesforce_portada_url', 'descuento_defecto_cotizacion_web', 'descuento_maximo_unidad', 'project_image_id'], array_keys($item));
+        $this->assertSame(['id', 'name', 'direccion', 'comuna', 'pagina_web', 'etapa', 'entrega_inmediata', 'telefono', 'horario_atencion', 'salesforce_logo_url', 'salesforce_portada_url', 'descuento_defecto_cotizacion_web', 'descuento_maximo_unidad', 'project_image_id', 'precio_desde', 'tipologias'], array_keys($item));
         $this->assertArrayNotHasKey('region', $item);
     }
 

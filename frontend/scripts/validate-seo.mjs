@@ -66,6 +66,11 @@ const run = async () => {
     fail('[validate-seo] Missing semantic <h1> heading in Home.jsx');
   }
 
+  const rootDistHtml = await readFile(path.join(distDir, 'index.html'), 'utf8');
+  if (!rootDistHtml.includes('rel="api-catalog"') || !rootDistHtml.includes('/.well-known/api-catalog')) {
+    fail('[validate-seo] Missing api-catalog link in dist/index.html');
+  }
+
   if (process.exitCode !== 1) {
     process.stdout.write('SEO validation checks passed.\n');
   }

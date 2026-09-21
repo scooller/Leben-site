@@ -4,6 +4,40 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.14] - 2026-09-21
+
+### 🤖 Descubrimiento de Agentes IA (RFC 8288 & RFC 9727)
+- **Cabeceras HTTP `Link` (`AddAgentDiscoveryHeaders.php`, `bootstrap/app.php`)**:
+  - Creado middleware `AddAgentDiscoveryHeaders` registrado en el grupo `web` para inyectar cabeceras de respuesta `Link` estándar RFC 8288:
+    - `Link: </.well-known/api-catalog>; rel="api-catalog"`
+    - `Link: </api/v1>; rel="service-desc"; type="application/json"`
+    - `Link: </api/v1>; rel="service-doc"`
+- **Catálogo de API RFC 9727 (`/.well-known/api-catalog`)**:
+  - Endpoint en Laravel (`routes/web.php`) respondiendo a `GET` y `HEAD` con tipo de contenido `application/linkset+json` y estructura estándar `linkset` señalando a la especificación OpenAPI v1 (`/api/v1`).
+  - Archivo físico estático en `frontend/public/.well-known/api-catalog` para compatibilidad con hosting estático o CDN.
+- **Configuración Web Server (`.htaccess`)**:
+  - Actualizado `frontend/public/.htaccess` y `public/.htaccess` con cabeceras `mod_headers` para respuestas `Link` y MIME type `application/linkset+json`.
+- **Frontend DOM (`frontend/index.html`, `validate-seo.mjs`)**:
+  - Incorporadas etiquetas `<link rel="api-catalog">`, `<link rel="service-desc">` y `<link rel="service-doc">` en el `<head>` de `index.html`.
+  - Añadida validación automática en `validate-seo.mjs`.
+- **Tests Automatizados (`AgentDiscoveryHeadersTest.php`)**:
+  - Creada suite de pruebas unitarias verificando cabeceras `Link` en raíz web, respuesta JSON del catálogo y respuesta HTTPS `HEAD` requerida por RFC 9727. 36 tests pasando sin errores.
+
+## [1.9.13] - 2026-09-21
+
+### 🏗️ Arquitectura de Shell y Layout Web Awesome (`<wa-page>`)
+- **Adopción de `<wa-page>` en Shell Principal (`App.jsx`, `App.scss`)**:
+  - Implementado el componente `<wa-page>` como contenedor principal de la aplicación siguiendo la receta oficial de sitio de marketing de Web Awesome.
+  - El shell ahora centraliza de forma persistente el `<SiteHeader />` (`slot="header"` y `slot="navigation"`) y `<SiteFooter />` (`slot="footer"`).
+  - Eliminados los hooks duplicados, event listeners de redimensionamiento manual (`matchMedia`) y el drawer manual (`<wa-drawer>`), reemplazándolos por las capacidades integradas de `<wa-page>` (`data-toggle-nav` y `data-drawer="close"`).
+  - Aplicada la regla de padding cero (`wa-page main { padding: 0 }`) para garantizar banners y secciones hero a sangre (full-bleed).
+  - Incorporadas reglas de estilo con scope `view="desktop"` y `view="mobile"` para ocultar la barra lateral en escritorio y alternar la navegación móvil limpiamente.
+- **Limpieza de Vistas Hijas (`Home.jsx`, `Contact.jsx`, `Payment.jsx`)**:
+  - Eliminadas las instancias repetidas de `<SiteHeader />` y `<SiteFooter />` de todas las páginas y estados de carga/error intermedios, evitando parpadeos de montaje y desincronizaciones de UI.
+- **Tests Automatizados (`ProyectoApiFiltersTest.php`)**:
+  - Actualizada la aserción de campos por defecto en `ProyectoApiFiltersTest` para contemplar los campos computados `precio_desde` y `tipologias`.
+  - Pasada con éxito la suite completa de 33 tests API y validación de prerenderizado/SEO en frontend.
+
 ## [1.9.12] - 2026-09-21
 
 ### 🚀 Optimización SEO Técnico, Marketing & Marcado Semántico LLMO

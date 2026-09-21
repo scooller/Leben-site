@@ -5,8 +5,6 @@ import { trackEvent } from '../utils/tagManager';
 import { getStoredUtmParams } from '../utils/utmSession';
 import { appendSessionUtmsToExternalUrl } from '../utils/externalLinks';
 import { proyectosService } from '../services/proyectos';
-import SiteHeader from '../components/SiteHeader';
-import SiteFooter from '../components/SiteFooter';
 import '../styles/contact.scss' with { type: 'css' };
 
 const CONTACT_RANGE_FIELD = {
@@ -890,8 +888,6 @@ function Contact({ onNavigate, currentPath }) {
   if (isContactLoading) {
     return (
       <div className="contact-page">
-        <SiteHeader config={config} currentPath={currentPath} onNavigate={onNavigate} />
-
         <section className="contact-hero home-container">
           <wa-skeleton effect="pulse" style={{ height: '22rem', width: '100%', borderRadius: '1rem', display: 'block' }}></wa-skeleton>
         </section>
@@ -934,9 +930,7 @@ function Contact({ onNavigate, currentPath }) {
 
   return (
     <div className="contact-page">
-      <SiteHeader config={config} currentPath={currentPath} onNavigate={onNavigate} />
-
-        {/* Hero section */}
+      {/* Hero section */}
       <section className="contact-hero banner">
         {contactHeroDesktopImage ? (
           <picture className="contact-hero-picture">
@@ -1115,8 +1109,6 @@ function Contact({ onNavigate, currentPath }) {
           </div>
         </wa-card> */}
       </section>
-
-      <SiteFooter config={config} onNavigate={onNavigate} />
     </div>
   );
 }

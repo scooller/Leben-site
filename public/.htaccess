@@ -23,3 +23,9 @@
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
 </IfModule>
+
+<IfModule mod_headers.c>
+    Header add Link "</.well-known/api-catalog>; rel=\"api-catalog\""
+    Header add Link "</api/v1>; rel=\"service-desc\"; type=\"application/json\""
+    Header add Link "</api/v1>; rel=\"service-doc\""
+</IfModule>

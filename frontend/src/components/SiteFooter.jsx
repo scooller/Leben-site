@@ -83,91 +83,91 @@ function SiteFooter({ config, onNavigate }) {
   };
 
   return (
-    <>
-    <BlurBar />
-    <footer className="site-footer wa-stack wa-gap-l wa-mt-3xl">
-      {hasLegalText && (
-        <wa-card appearance="filled">
-          <div className="wa-stack wa-gap-s wa-align-items-center wa-text-align-center wa-font-size-xs" style={{ padding: 'var(--wa-space-l)' }}>
-            <div dangerouslySetInnerHTML={{ __html: config.footer_legal_text }} />
-          </div>
-        </wa-card>
-      )}
+    <footer slot="footer" className="site-footer-container wa-mt-3xl">
+      <BlurBar />
+      <div className="site-footer wa-stack wa-gap-l">
+        {hasLegalText && (
+          <wa-card appearance="filled">
+            <div className="wa-stack wa-gap-s wa-align-items-center wa-text-align-center wa-font-size-xs" style={{ padding: 'var(--wa-space-l)' }}>
+              <div dangerouslySetInnerHTML={{ __html: config.footer_legal_text }} />
+            </div>
+          </wa-card>
+        )}
 
-      <wa-card appearance="filled">
-        <section className="wa-stack wa-gap-l" style={{ padding: 'var(--wa-space-l)' }}>
-          <div className="wa-split wa-gap-m wa-align-items-center" style={{ flexWrap: 'wrap' }}>
-            <div className="wa-stack wa-gap-s">
-              {logoSrc ? (
-                <img
-                  src={logoSrc}
-                  alt={config?.site_name || 'Logo'}
-                  style={{ maxWidth: '190px', width: '100%', height: 'auto', objectFit: 'contain' }}
-                />
-              ) : (
-                <strong>{config?.site_name || 'iLeben'}</strong>
+        <wa-card appearance="filled">
+          <section className="wa-stack wa-gap-l" style={{ padding: 'var(--wa-space-l)' }}>
+            <div className="wa-split wa-gap-m wa-align-items-center" style={{ flexWrap: 'wrap' }}>
+              <div className="wa-stack wa-gap-s">
+                {logoSrc ? (
+                  <img
+                    src={logoSrc}
+                    alt={config?.site_name || 'Logo'}
+                    style={{ maxWidth: '190px', width: '100%', height: 'auto', objectFit: 'contain' }}
+                  />
+                ) : (
+                  <strong>{config?.site_name || 'iLeben'}</strong>
+                )}
+
+                {config?.contact?.address && (
+                <div className="contact-link contact-address wa-font-size-sm">
+                  <wa-icon name="location-dot"></wa-icon>
+                  <span>{config.contact.address}</span>
+                </div>
               )}
 
-              {config?.contact?.address && (
-              <div className="contact-link contact-address wa-font-size-sm">
-                <wa-icon name="location-dot"></wa-icon>
-                <span>{config.contact.address}</span>
+                <small className="wa-color-text-quiet wa-font-size-2xs">
+                  Todos los derechos reservados {new Date().getFullYear()}&reg;
+                </small>
               </div>
-            )}
 
-              <small className="wa-color-text-quiet wa-font-size-2xs">
-                Todos los derechos reservados {new Date().getFullYear()}&reg;
-              </small>
-            </div>
-
-            <div className="wa-stack wa-gap-s wa-align-items-center wa-justify-content-center">
-            {socialLinks.length > 0 && (
-              <div className="wa-stack wa-gap-2xs wa-align-items-end" style={{ marginLeft: 'auto' }}>
-                <span>Síguenos en:</span>
-                <div className="wa-cluster wa-gap-xs">
-                  {socialLinks.map((socialItem) => (
-                    <wa-button
-                      appearance="plain"
-                      key={socialItem.key}
-                      href={appendSessionUtmsToExternalUrl(socialItem.url)}
-                      style={{ fontSize: 'var(--wa-font-size-l)' }}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={socialItem.label}
-                      pill
-                    >
-                      <wa-icon name={socialItem.icon} family="brands"></wa-icon>
-                    </wa-button>
-                  ))}
+              <div className="wa-stack wa-gap-s wa-align-items-center wa-justify-content-center">
+              {socialLinks.length > 0 && (
+                <div className="wa-stack wa-gap-2xs wa-align-items-end" style={{ marginLeft: 'auto' }}>
+                  <span>Síguenos en:</span>
+                  <div className="wa-cluster wa-gap-xs">
+                    {socialLinks.map((socialItem) => (
+                      <wa-button
+                        appearance="plain"
+                        key={socialItem.key}
+                        href={appendSessionUtmsToExternalUrl(socialItem.url)}
+                        style={{ fontSize: 'var(--wa-font-size-l)' }}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={socialItem.label}
+                        pill
+                      >
+                        <wa-icon name={socialItem.icon} family="brands"></wa-icon>
+                      </wa-button>
+                    ))}
+                  </div>
                 </div>
+              )}
+              {footerMenuItems.length > 0 && (
+                  <nav className="wa-cluster wa-gap-m wa-justify-content-center wa-text-align-center" aria-label="Menú legal del sitio">
+                  {footerMenuItems.map((menuItem, index) => (
+                      <wa-button
+                      key={`${menuItem.label}-${index}`}
+                      appearance="plain"
+                      variant="neutral"
+                      style={{ fontSize: 'var(--wa-font-size-sm)' }}
+                    href={appendSessionUtmsToExternalUrl(menuItem.url)}
+                      target={menuItem.newTab ? '_blank' : undefined}
+                      rel={menuItem.newTab ? 'noopener noreferrer' : undefined}
+                      onClick={(event) => handleFooterNavigation(event, menuItem.url, menuItem.newTab)}
+                      >
+                      {menuItem.label}
+                      </wa-button>
+                  ))}
+                  </nav>
+              )}
               </div>
-            )}
-            {footerMenuItems.length > 0 && (
-                <nav className="wa-cluster wa-gap-m wa-justify-content-center wa-text-align-center" aria-label="Menú legal del sitio">
-                {footerMenuItems.map((menuItem, index) => (
-                    <wa-button
-                    key={`${menuItem.label}-${index}`}
-                    appearance="plain"
-                    variant="neutral"
-                    style={{ fontSize: 'var(--wa-font-size-sm)' }}
-                  href={appendSessionUtmsToExternalUrl(menuItem.url)}
-                    target={menuItem.newTab ? '_blank' : undefined}
-                    rel={menuItem.newTab ? 'noopener noreferrer' : undefined}
-                    onClick={(event) => handleFooterNavigation(event, menuItem.url, menuItem.newTab)}
-                    >
-                    {menuItem.label}
-                    </wa-button>
-                ))}
-                </nav>
-            )}
             </div>
-          </div>
 
 
-        </section>
-      </wa-card>
+          </section>
+        </wa-card>
+      </div>
     </footer>
-    </>
   );
 }
 

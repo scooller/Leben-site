@@ -6,6 +6,7 @@
     AddType text/javascript .js .mjs
     AddType text/css .css
     AddType application/manifest+json .webmanifest
+    AddType application/linkset+json api-catalog
 </IfModule>
 
 <IfModule mod_expires.c>
@@ -14,6 +15,7 @@
     ExpiresByType application/javascript "access plus 1 year"
     ExpiresByType text/javascript "access plus 1 year"
     ExpiresByType application/json "access plus 1 hour"
+    ExpiresByType application/linkset+json "access plus 1 hour"
     ExpiresByType image/svg+xml "access plus 1 month"
     ExpiresByType image/webp "access plus 1 month"
     ExpiresByType image/avif "access plus 1 month"
@@ -27,6 +29,15 @@
         Header set Cache-Control "no-cache, no-store, must-revalidate"
         Header set Pragma "no-cache"
         Header set Expires "0"
+        Header add Link "</.well-known/api-catalog>; rel=\"api-catalog\""
+        Header add Link "</api/v1>; rel=\"service-desc\"; type=\"application/json\""
+        Header add Link "</api/v1>; rel=\"service-doc\""
+    </FilesMatch>
+
+    <FilesMatch "^api-catalog$">
+        Header set Content-Type "application/linkset+json; charset=UTF-8"
+        Header add Link "</.well-known/api-catalog>; rel=\"api-catalog\""
+        Header set Access-Control-Allow-Origin "*"
     </FilesMatch>
 
     <FilesMatch "\.(js|mjs|css|woff2?)$">

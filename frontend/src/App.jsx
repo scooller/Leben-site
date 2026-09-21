@@ -8,6 +8,8 @@ import { captureUtmParamsFromUrl, cleanTrackedUtmsFromCurrentUrl } from './utils
 import siteConfigService from './services/siteConfig';
 import { resolveSeoPolicy } from './utils/seoPolicy';
 import { removeStructuredData, setStructuredData } from './utils/structuredData';
+import SiteHeader from './components/SiteHeader';
+import SiteFooter from './components/SiteFooter';
 import './App.scss';
 import './styles/maintenance.scss';
 
@@ -262,8 +264,18 @@ function AppContent() {
     siteUrl,
   ]);
 
+  const handleMenuNavigation = useCallback(() => {
+    const menuSection = document.getElementById('menu-section');
+
+    if (!menuSection) {
+      return;
+    }
+
+    menuSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+
   return (
-    <div className="app">
+    <wa-page className="app">
       <MaintenanceMode
         maintenanceMode={config?.maintenance_mode}
         maintenanceMessage={config?.maintenance_message}
@@ -272,6 +284,12 @@ function AppContent() {
         error={globalError}
         onClose={() => setGlobalError(null)}
         duration={5500}
+      />
+      <SiteHeader
+        config={config}
+        currentPath={currentPath}
+        onNavigate={navigate}
+        onMenuClick={handleMenuNavigation}
       />
       <main>
         <Suspense fallback={<AppRouteFallback />}>
@@ -284,7 +302,8 @@ function AppContent() {
           )}
         </Suspense>
       </main>
-    </div>
+      <SiteFooter config={config} onNavigate={navigate} />
+    </wa-page>
   );
 }
 

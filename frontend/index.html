@@ -4,6 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="Permissions-Policy" content="xr-spatial-tracking=()">
+    <!-- RFC 8288 / RFC 9727 Agent Discovery Links -->
+    <link rel="api-catalog" href="/.well-known/api-catalog" type="application/linkset+json" />
+    <link rel="service-desc" href="/api/v1" type="application/json" />
+    <link rel="service-doc" href="/api/v1" />
     <script>
       (function () {
         if (typeof window === 'undefined') return;
