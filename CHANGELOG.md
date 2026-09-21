@@ -5,6 +5,10 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 ## [Unreleased]
 
 ### 🔄 Cambios
+- Ignorados archivos temporales generados por el Language Server (`lsp-*.php`) en `.gitignore` y `storage/framework/.gitignore`.
+- Añadidas exclusiones a `.gitignore` para carpetas de IDEs (`.idea`, `.fleet`, `.cursor`, `.windsurf`, `.claude`), cachés de pruebas (`.phpunit.cache`, `.pest`), archivos de SO (`.DS_Store`, `Thumbs.db`, `desktop.ini`), `.env.local` y temporales de storage.
+- Limpieza de entradas duplicadas en `.gitignore`.
+- Traducida y actualizada la documentación de `AGENTS.md` al inglés para optimizar la comprensión de agentes IA.
 
 ## [1.9.6] - 2026-08-11
 

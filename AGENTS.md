@@ -1,190 +1,278 @@
-# AGENTS.md - Proyecto Leben
+# AGENTS.md - Leben Project
 
-## Resumen Ejecutivo
+## Executive Summary
 
-**Leben** es una plataforma backend-first construida con **Laravel 12** + **Filament 5**, especializada en la gestión de ventas de proyectos inmobiliarios con integración Salesforce, procesamiento de pagos y sincronización de datos en tiempo real.
+**Leben** is a backend-first platform built with **Laravel 12** + **Filament 5**, specializing in sales management for real estate development projects with Salesforce integration, payment processing, and real-time data synchronization.
 
-Versión actual documentada: 1.9.6 (2026-08-11).
+Current documented version: 1.9.6 (2026-08-11).
 
-La aplicación soporta:
-- **Panel administrativo** (Filament) para gestión de proyectos, plantas, asesores y contactos
-- **API REST** pública para integraciones externas (WordPress, PHP, etc.)
-- **Sincronización bidireccional** con Salesforce (leads, casos, asesores)
-- **Gestión de pagos** (Transbank, Mercado Pago)
-- **QR codes** dinámicos para asesores
-- **Formularios de contacto** multi-canal
-- **Short links** con tracking de visitas
+The application supports:
 
----
-
-## Estado del Proyecto (Últimos 30 commits)
-
-### Trabajo Completado Recientemente
-- ✅ **API Proyectos — precio_desde y tipologias**: Campos computados `precio_desde` (min `precio_lista`) y `tipologias` (agrupación por `programa`/`programa2`/`tipo_producto`) en `GET /api/v1/proyectos` y `GET /api/v1/proyectos/{id}`; query `GROUP BY` optimizada
-- ✅ **Bulk Salesforce Sync**: Acción para sincronizar múltiples registros a Salesforce
-- ✅ **Filtrado de campos Salesforce**: Payload de Lead filtrado por campos creables
-- ✅ **OAuth Salesforce**: Autenticación y flujo de callback con caché
-- ✅ **Notificaciones de conexión**: Indicadores visuales de estado Salesforce
-- ✅ **QR Codes**: Generación y gestión en tabla de Asesores
-- ✅ **Normalización de Etapas**: Conversión de etapas de proyectos (proyecto_etapa)
-- ✅ **Website Preview**: Links de vista previa y normalización de URLs
-- ✅ **Settings dinámicos**: Configuración de plantas por página en API
-- ✅ **Importación CSV de contactos**: Progreso en panel, mapeo por canal y trazabilidad del proceso
-- ✅ **Normalización canónica de importación**: `rango_renta` y `apellido` unificados con limpieza de aliases legacy
-- ✅ **Normalización de telefonía**: Persistencia de teléfonos en formato solo dígitos
-- ✅ **UTM mapping robusto**: Aliases de marketing homologados hacia campos UTM y payload Salesforce
-- ✅ **Precios Dinámicos**: Implementación de descuentos máximos por unidad (`descuento_maximo_unidad`) con lógica de aplicación en API de Plantas y Proyectos
-- ✅ **Configuración de Descuentos**: Ajustes en `SiteSettings` para definir fuentes de descuento Salesforce para pricing de la API
-- ✅ **UX en Panel**: Implementación de `filament-dual-scroll` para tablas extensas y mejoras en visibilidad de columnas de contactos
-- ✅ **Mapeo Salesforce Extendido**: Soporte para `descuento_maximo_unidad` y refinamiento en `SalesforceCaseMapper` (resolución de sitio web por canal)
-- ✅ **Normalización de Proyectos**: Sincronización refinada de `Proyect_ID__c` y manejo de campos legacy
-- ✅ **OAuth Token Hardening**: Scope/prompt explícitos para WebServer OAuth y reducción de fallas repetidas `invalid_grant` por reconexión controlada
-- ✅ **Protección de Cola Salesforce**: `CreateSalesforceCaseJob` omite reintentos cuando OAuth está marcado como desconectado hasta reconexión manual en panel
-- ✅ **Seguridad API — token.origin**: Middleware corregido para rechazar tokens inválidos/ausentes; usa `PersonalAccessToken::findToken()` sin depender de sesión
-- ✅ **Seguridad API — site-config**: `payment_gateways.*.config`, `price_source` y `price_percentage_source` ocultos en respuesta pública; visibles solo con token válido
-- ✅ **Auto-reconexión Salesforce OAuth**: Tokens OAuth persistidos cifrados en DB (`SiteSetting.extra_settings`); se restauran automáticamente en caché tras `cache:clear` o restart de Redis, sin requerir login manual
-- ✅ **Comando `salesforce:refresh-token`**: Scheduler operativo con `cron('0 */20 * * *')`; si hay token en caché, sincroniza backup en DB sin forzar refresh
-- ✅ **Panel — Proyectos inactivos visibles**: El selector de proyecto en SiteSettings ahora muestra proyectos inactivos con prefijo `[Inactivo]` en lugar de ocultarlos
-- ✅ **Auto-reconexión reforzada en cola**: `CreateSalesforceCaseJob` intenta auto-reconexión tanto por flag de desconexión como por ausencia de token en caché
-
-### Módulos Activos
-1. **Salesforce Integration** - Sincronización de leads/casos, OAuth, caché
-2. **Contact Submissions** - Formulario público con validación, canales y sincronización Salesforce
-3. **Plant Management** - Plantas con filtros, precios y links
-4. **Asesor Management** - Asesores con avatares, WhatsApp, QR codes
-5. **Proyecto Management** - Proyectos con normalización de etapas y relaciones
-6. **Short Links** - Links cortos con tracking y UTM
-7. **Payments** - Transbank y Mercado Pago integrados con webhooks y estado de transacciones
-8. **Activity Logging** - Registros de auditoría y sincronización
+- **Administrative Panel** (Filament) for managing projects, units/floor plans ("plantas"), sales advisors ("asesores"), and contact leads
+- **Public REST API** for external consumer integrations (WordPress, custom frontends, PHP sites)
+- **Bidirectional Synchronization** with Salesforce (leads, cases, advisors)
+- **Payment Processing** (Transbank, Mercado Pago)
+- **Dynamic QR Codes** for sales advisors
+- **Multi-channel Contact Forms**
+- **Short Links** with visit and conversion tracking
 
 ---
 
-## Arquitectura de Directorios
+***
+
+## Mandatory Directives (EVERY session, no exceptions)
+
+1. **Ponytail always ON** — before writing ANY code, read `.agents/skills/ponytail/SKILL.md` (or `~/.copilot/installed-plugins/ponytail/ponytail/skills/ponytail/SKILL.md`) and apply it: simplest solution, YAGNI first, stdlib/native before deps, one line before fifty. Never over-engineer.
+2. **Answer in caveman mode** — load `.agents/skills/caveman/SKILL.md` and respond with `/caveman` style: terse, compressed, technically complete. Less tokens, same accuracy.
+3. **Graphify before/after code** — `graphify-out/graph.json` exists, so:
+   - BEFORE answering codebase questions: `rtk graphify query "<question>"`
+   - Relationships: `rtk graphify path "<A>" "<B>"` / `rtk graphify explain "<concept>"`
+   - AFTER modifying code: `rtk graphify update .` — always, no excuses.
+4. **RTK prefix** — every terminal command runs as `rtk <command>` when available.
+5. **tgrep for search** — use `tgrep` as the primary CLI search tool for fast codebase searching (classes, functions, strings, configs). Ripgrep-compatible syntax: `tgrep "query"`, `tgrep "query" -g "*.jsx"`.
+6. **Build** — `rtk npm run build:all`, never bare `npm run build`.
+7. **Version on every change** — WHENEVER project files are modified:
+   - Bump `version` in `package.json` (semantic: patch = fix/refactor, minor = feature, major = breaking).
+   - Add an entry to `CHANGELOG.md` (Keep a Changelog format) describing the changes.
+   - Both must stay in sync (same version in `package.json` and `CHANGELOG.md`).
+
+***
+
+## Agent Roles (CaveCrew)
+
+All agent personas are defined in `.agents/`. Each agent has a specific role and **must not** act outside its scope.
+
+### 🔨 Builder — `.agents/cavecrew-builder.md`
+
+- Responsible for **writing, generating, and modifying code**.
+- Reads skills from `.agents/skills/` before implementing any feature.
+- Follows project workflows defined in `.agents/workflows/`.
+- Must check `.agents/docs/` for architectural decisions before coding.
+
+### 🔍 Investigator — `.agents/cavecrew-investigator.md`
+
+- Responsible for **research, analysis, and information gathering**.
+- Reads `.agents/docs/` as primary source of truth.
+- Reports findings in structured Markdown format.
+- Does **not** modify code — only produces reports or recommendations.
+
+### 🔎 Reviewer — `.agents/cavecrew-reviewer.md`
+
+- Responsible for **code review, quality assurance, and validation**.
+- Uses `.github/ISSUE_TEMPLATE/` to report issues found during review.
+- Triggers or references `.github/workflows/` for CI validation.
+- Must flag any deviation from standards defined in `.agents/docs/`.
+
+***
+
+### Agent Guidance by Stack
+
+- If Laravel is detected, prefer Laravel conventions, service classes, validation layers, migrations, queues, and config-driven development.
+- If WordPress is detected, prefer hooks, template hierarchy, plugin/theme separation, and WordPress coding standards.
+- If React or Vite is detected, preserve the current component structure, build scripts, and asset pipeline.
+- In React projects, always prefer Redux Toolkit (RTK) for global state, slices, async flows, and store structure unless the task explicitly requires another solution.
+- If graph, node-based, relationship, or visual data flow features are required, always prefer Graphify as the first-choice library or pattern unless the repository already standardizes a different tool.
+- If jQuery is present, do not remove it unless the task explicitly includes refactoring.
+- If Bootstrap is present, reuse its utility and component system before adding custom UI patterns.
+
+***
+
+## Skills
+
+Reusable skill modules are located in `.agents/skills/`.
+
+- Before implementing any feature, the **Builder** agent **must** check if a relevant skill exists.
+- Skills are composable — multiple skills can be combined in a single workflow.
+- To add a new skill, create a `.md` file in `.agents/skills/` following the existing naming convention.
+
+***
+
+## Project Status (Recent Commits)
+
+### Recently Completed Work
+
+- ✅ **Git & Workspace Cleanliness**: Ignored Language Server Protocol temporary files (`lsp-*.php`), test caches, OS artifacts, and IDE configs in `.gitignore`.
+- ✅ **Salesforce OAuth — Proactive Refresh**: Integrated proactive token refresh (`isTokenExpiringSoon()`, `proactiveRefresh()`, `executeWithTokenProtection()`) before token expiration; updated scheduler to run every 45 minutes; visual expiration countdown & status badges in Filament SiteSettings.
+- ✅ **Projects API — precio_desde & tipologias**: Computed fields `precio_desde` (minimum `precio_lista` among active units) and `tipologias` (grouping by `programa`/`programa2`/`tipo_producto`) on `GET /api/v1/proyectos` and `GET /api/v1/proyectos/{id}` using optimized SQL `GROUP BY`.
+- ✅ **Bulk Salesforce Sync**: Filament table bulk action to sync multiple contact records to Salesforce.
+- ✅ **Salesforce Field Filtering**: Lead payload dynamically filtered against creatable Salesforce fields.
+- ✅ **OAuth Salesforce**: Authentication and callback flow with token cache backup.
+- ✅ **Connection Status Notifications**: Visual connection state indicators for Salesforce in Filament.
+- ✅ **QR Codes**: Generation and display in the Advisors table.
+- ✅ **Stage Normalization**: Conversion and slugification of project development stages (`proyecto_etapa`).
+- ✅ **Website Preview**: Secure preview links and normalized URLs.
+- ✅ **Dynamic Settings**: Configurable plants-per-page for API responses.
+- ✅ **CSV Contact Submissions Import**: Filament wizard with progress tracking, per-channel mapping, and historical dry-run traceability.
+- ✅ **Canonical Import Normalization**: Unified `rango_renta` and `apellido` handling with legacy alias cleanup.
+- ✅ **Phone Number Normalization**: Persistence of phone numbers strictly formatted as digits.
+- ✅ **Robust UTM Mapping**: Marketing UTM aliases mapped consistently to DB columns and Salesforce payloads.
+- ✅ **Dynamic Pricing**: Implementation of unit maximum discounts (`descuento_maximo_unidad`) applied in Plants and Projects APIs.
+- ✅ **Discount Configuration**: `SiteSettings` controls to select active Salesforce discount sources for pricing calculations.
+- ✅ **Filament UX**: Integration of `filament-dual-scroll` for wide tables and improved column toggle visibility.
+- ✅ **Extended Salesforce Mapping**: Support for `descuento_maximo_unidad` and `SalesforceCaseMapper` channel-to-website resolution.
+- ✅ **Project Normalization**: Refined `Proyect_ID__c` synchronization and legacy column handling.
+- ✅ **OAuth Token Hardening**: Explicit WebServer OAuth scope/prompt and retry limiters for `invalid_grant` errors.
+- ✅ **Salesforce Queue Protection**: `CreateSalesforceCaseJob` avoids burning retry attempts when OAuth is disconnected.
+- ✅ **API Security — token.origin**: Middleware validates API origin tokens using `PersonalAccessToken::findToken()` without relying on session state.
+- ✅ **API Security — site-config**: Sensitive gateway configurations (`payment_gateways.*.config`, `price_source`, `price_percentage_source`) hidden in public responses; visible only with valid origin tokens.
+- ✅ **Salesforce OAuth Auto-reconnect**: Encrypted OAuth token backups in DB (`SiteSetting.extra_settings`), automatically restoring cached tokens after `cache:clear` or Redis restarts.
+- ✅ **Artisan Command `salesforce:refresh-token`**: Scheduled background worker (`cron('*/45 * * * *')`) performing proactive refresh or database backup synchronization.
+- ✅ **Panel — Inactive Projects Visible**: Project selector in SiteSettings displays inactive projects with an `[Inactivo]` prefix instead of omitting them.
+- ✅ **Reinforced Queue Auto-reconnection**: `CreateSalesforceCaseJob` attempts silent reconnect when cache tokens are absent or disconnected.
+
+### Active Modules
+
+1. **Salesforce Integration** - Lead/Case synchronization, OAuth, SOQL caching, proactive token renewal
+2. **Contact Submissions** - Public submission forms with validation, channel routing, and automated Salesforce dispatch
+3. **Plant Management** - Real estate units ("plantas") with filters, pricing calculations, discounts, and floor plan media
+4. **Asesor Management** - Sales reps with avatars, WhatsApp redirects, and dynamic QR codes
+5. **Proyecto Management** - Development projects with normalized stages, advisor assignments, and associated units
+6. **Short Links** - Short links with click tracking and UTM parameter propagation
+7. **Payments** - Transbank Webpay Plus and Mercado Pago integrations with webhooks and transaction states
+8. **Activity Logging** - Audit trails for synchronization and critical system events
+
+---
+
+## Directory Architecture
 
 ```
 app/
-├── Services/           # Servicios de dominio
+├── Services/           # Domain and integration services
 │   ├── Salesforce/    # SalesforceService, SalesforceCaseMapper, etc.
-│   ├── Payment/       # Pasarelas de pago
-│   ├── FinMail/       # Gestión de correos
-│   └── ShortLink/     # Manejo de links cortos
-├── Models/            # Modelos Eloquent (Asesor, Plant, Proyecto, etc.)
-├── Jobs/              # Trabajos encolados
+│   ├── Payment/       # Payment gateways (Transbank, MercadoPago)
+│   ├── FinMail/       # Transactional email management
+│   └── ShortLink/     # Short link generation and redirection
+├── Models/            # Eloquent models (Asesor, Plant, Proyecto, etc.)
+├── Jobs/              # Queue jobs (Salesforce sync, emails, bulk imports)
 ├── Http/
-│   ├── Controllers/   # Controllers API y OAuth
-│   ├── Requests/      # Form Requests con validación
-│   └── Resources/     # API Resources
-├── Filament/          # Panel administrativo
-│   ├── Resources/     # Recursos de tablas/formularios
-│   ├── Pages/         # Páginas customizadas
-│   ├── Widgets/       # Widgets del dashboard
-│   └── Actions/       # Acciones en tablas/registros
+│   ├── Controllers/   # API and OAuth controllers
+│   ├── Requests/      # Form Requests with validation rules
+│   └── Resources/     # Eloquent API Resources
+├── Filament/          # Administrative panel
+│   ├── Resources/     # CRUD resources (forms, tables, actions)
+│   ├── Pages/         # Custom Filament pages (SiteSettings, Import)
+│   ├── Widgets/       # Dashboard widgets
+│   └── Actions/       # Reusable table and record actions
 ├── Mail/              # Mailable classes
-├── Observers/         # Observadores de modelos
-└── Enums/             # Enumeraciones (PaymentGateway, ReservationStatus, etc.)
+├── Observers/         # Model observers (audit trails, auto-sync)
+└── Enums/             # Business enums (PaymentGateway, ReservationStatus, etc.)
 
 database/
-├── migrations/        # Migraciones de BD
-├── factories/         # Factories para testing
-└── seeders/          # Seeders
+├── migrations/        # Database migrations
+├── factories/         # Model factories for testing
+└── seeders/          # Database seeders
 
-frontend/             # React app (separada, Vite)
-tests/                # Tests PHPUnit
+frontend/             # React application (Vite-based)
+tests/                # PHPUnit test suite (Feature and Unit)
 routes/
-├── api.php           # API routes (v1)
-├── web.php           # Web routes
-└── console.php       # Comandos Artisan
+├── api.php           # Public API routes (v1)
+├── web.php           # Web routes, OAuth endpoints, short link redirects
+└── console.php       # Console commands and scheduled tasks
 ```
 
 ---
 
-## Modelos Principales
+## Core Models
 
-| Modelo | Propósito | Características |
-|--------|-----------|-----------------|
-| **Asesor** | Vendedor/representante de ventas | Avatar, WhatsApp redirect, QR code |
-| **Plant** | Departamento/unidad inmobiliaria | Precio, imágenes, filters (piso, type) |
-| **Proyecto** | Proyecto inmobiliario | Etapa normalizada, asesores, plantas |
-| **ContactSubmission** | Formulario de contacto | Canal, validación, sincronización Salesforce |
-| **ContactChannel** | Tipo de canal (sale, info, etc.) | Configuración de comportamiento |
-| **Payment** | Registro de pago | Gateway (transbank/mercadopago), estado |
-| **ShortLink** | Link corto para tracking | URL destino, visitas, UTM |
-| **PlantReservation** | Reserva temporal de planta | Usuario, estado, validación |
-| **SiteSetting** | Configuración global | Key-value dinámico |
-| **FrontendPreviewLink** | Link de vista previa | Token, expira |
+| Model | Purpose | Key Features |
+| ------- | --------- | -------------- |
+| **Asesor** | Real estate sales representative | Avatar, WhatsApp redirection, QR code generation |
+| **Plant** | Housing unit / floor plan within a project | Pricing, discounts, image assets, filters (floor, typology, status) |
+| **Proyecto** | Real estate project development | Normalized stage, assigned advisors, associated units |
+| **ContactSubmission** | Customer inquiry / lead form | Channel routing, input validation, Salesforce synchronization |
+| **ContactChannel** | Channel definition (sale, info, customer service) | Behavior configuration, target website routing |
+| **Payment** | Payment transaction record | Gateway (Transbank / Mercado Pago), transaction state, webhook payload |
+| **ShortLink** | Shortened tracking URL | Target destination URL, visit counter, UTM tracking |
+| **PlantReservation** | Temporary unit hold / reservation | Customer details, reservation status, expiration validation |
+| **SiteSetting** | Dynamic global key-value configuration | API settings, payment credentials, encrypted OAuth backups |
+| **FrontendPreviewLink** | Temporary frontend preview link | Secure token, automatic expiration |
 
 ---
 
-## Servicios Clave
+## Key Services
 
 ### SalesforceService
+
 ```php
-// Ubicación: app/Services/Salesforce/SalesforceService.php
-// Responsabilidades:
-- Consultas SOQL con caché (Cache::remember)
-- Mapeo de objetos Salesforce a modelos Laravel
-- Sincronización de campos filtrados
-- Gestión de OAuth y tokens
-- tryAutoReconnect(): restaura tokens desde backup en DB y llama Forrest::refresh() silenciosamente
-- updateTokenBackup(): persiste el access token renovado de vuelta en DB tras cada refresh
+// Location: app/Services/Salesforce/SalesforceService.php
+// Responsibilities:
+- Cached SOQL queries (Cache::remember)
+- Salesforce object-to-Eloquent model mapping
+- Payload filtering against creatable Salesforce fields
+- OAuth authentication and token lifecycle management
+- isTokenExpiringSoon(): detects tokens nearing expiration
+- proactiveRefresh(): refreshes tokens before silent expiration
+- executeWithTokenProtection(): wraps calls with auto-refresh and reconnection fallbacks
+- tryAutoReconnect(): restores tokens from DB backup and triggers Forrest::refresh()
+- updateTokenBackup(): persists renewed access tokens back to DB SiteSettings
 ```
 
 ### PaymentGateway Services
+
 ```php
 // Transbank: app/Services/Payment/TransbankService.php
 // Mercado Pago: app/Services/Payment/MercadoPagoService.php
-// Responsabilidades:
-- Crear transacciones
-- Procesar webhooks
-- Actualizar estado de pagos
+// Responsibilities:
+- Creating payment transactions
+- Processing incoming webhook notifications
+- Updating payment records and triggering post-payment hooks
 ```
 
 ### ShortLink Service
+
 ```php
-// Generación de links cortos
-// Tracking de visitas
-// Construcción de URLs con UTM
+// Location: app/Services/ShortLink/ShortLinkService.php
+// Responsibilities:
+- Generating short hash identifiers
+- Tracking clicks, user agents, and IP addresses
+- Appending and preserving marketing UTM parameters
 ```
 
 ---
 
-## API Endpoints Principales
+## Main API Endpoints
 
-### Contactos
-```
-POST   /api/v1/contact-submissions       # Crear contacto
-GET    /api/v1/contact-submissions/:id   # Ver contacto
-```
+### Contacts
 
-### Plantas
 ```
-GET    /api/v1/plants                     # Listar plantas
-GET    /api/v1/plants/:id                 # Detalles planta
-GET    /api/v1/plants/:id/advisors        # Asesores de planta
+POST   /api/v1/contact-submissions       # Submit contact inquiry
+GET    /api/v1/contact-submissions/:id   # Retrieve contact inquiry details
 ```
 
-### Asesores
+### Plants (Units / Floor Plans)
+
 ```
-GET    /api/v1/advisors                   # Listar asesores
-GET    /api/v1/advisors/:id/shortlink     # QR/Short link del asesor
+GET    /api/v1/plants                     # List units with pagination & filters
+GET    /api/v1/plants/:id                 # Unit details
+GET    /api/v1/plants/:id/advisors        # Assigned sales advisors for unit
 ```
 
-### Proyectos
+### Advisors (Asesores)
+
 ```
-GET    /api/v1/projects                   # Listar proyectos
-GET    /api/v1/projects/:id/plants        # Plantas del proyecto
+GET    /api/v1/advisors                   # List sales advisors
+GET    /api/v1/advisors/:id/shortlink     # QR code / short link for advisor
 ```
 
-### Pagos
+### Projects (Proyectos)
+
 ```
-POST   /api/v1/payments                   # Crear pago
-POST   /api/v1/payments/transbank/webhook # Webhook Transbank
-POST   /api/v1/payments/mercadopago/webhook # Webhook Mercado Pago
+GET    /api/v1/projects                   # List projects (with precio_desde & tipologias)
+GET    /api/v1/projects/:id               # Project details
+GET    /api/v1/projects/:id/plants        # Associated units of project
+```
+
+### Payments
+
+```
+POST   /api/v1/payments                   # Initialize payment transaction
+POST   /api/v1/payments/transbank/webhook # Transbank Webpay webhook
+POST   /api/v1/payments/mercadopago/webhook # Mercado Pago webhook
 ```
 
 ---
 
-## Variables de Configuración (.env)
+## Configuration Variables (.env)
 
 ```ini
 # Salesforce
@@ -195,7 +283,7 @@ SALESFORCE_CONSUMER_KEY=
 SALESFORCE_CONSUMER_SECRET=
 SALESFORCE_REDIRECT_URI=
 
-# Pagos
+# Payment Gateways
 TRANSBANK_COMMERCE_CODE=
 TRANSBANK_API_KEY=
 MERCADOPAGO_TOKEN=
@@ -204,138 +292,154 @@ MERCADOPAGO_WEBHOOK_TOKEN=
 # Short Links
 SHORT_LINK_DOMAIN=
 
-# API
-TURNSTILE_TOKEN=  # Cloudflare Turnstile para CAPTCHA
+# API & Security
+TURNSTILE_TOKEN=  # Cloudflare Turnstile CAPTCHA secret
 
 # Cache
-CACHE_DRIVER=redis  # Recomendado para Salesforce
+CACHE_DRIVER=redis  # Recommended for reliable Salesforce token caching
 ```
 
 ---
 
-## Convenciones del Proyecto
+## Project Conventions
 
-### Nombres y Códigos
-- **Proyecto**: Usa `proyecto_etapa` (slug normalizado, ej: "venta", "pre_venta")
-- **Asesor**: Identificado por ID o email en Salesforce
-- **Plant/Planta**: Unidad inmobiliaria dentro de proyecto
+### Naming Conventions & Identifiers
 
-### Enums Principales
+- **Proyecto**: Uses `proyecto_etapa` (normalized slug, e.g., `"venta"`, `"pre_venta"`).
+- **Asesor**: Identified by internal ID, email, or Salesforce User ID.
+- **Plant / Planta**: Unit or typology within a real estate development.
+- **Database**: `snake_case` table and column names.
+- **Code**: `camelCase` variables/methods, `PascalCase` classes and enums.
+
+### Primary Enums
+
 ```php
 PaymentGateway::Transbank | MercadoPago
 PaymentStatus::Pending | Approved | Failed | Refunded
 ReservationStatus::Reserved | Cancelled | Completed
 ShortLinkStatus::Active | Expired | Disabled
-ContactChannel::Sale | Info | Complaint  // Configurables
+ContactChannel::Sale | Info | Complaint  // Configurable per channel
 ```
 
-### Patrones de Código
-- **Services** para lógica de integración (Salesforce, Pagos)
-- **Jobs** para operaciones asincrónicas (sincronización, emails)
-- **Observers** para eventos de modelos (auditoría, sincronización)
-- **Form Requests** para validación con reglas complejas
-- **API Resources** para formato de respuestas
+### Architectural Patterns
+
+- **Services**: Handle third-party integrations (Salesforce, Transbank, Mercado Pago).
+- **Jobs**: Handle asynchronous or heavy background operations (Salesforce sync, email delivery).
+- **Observers**: Monitor model lifecycle events (audit logging, automated sync triggers).
+- **Form Requests**: Centralize validation rules, sanitization, and custom error messages.
+- **API Resources**: Format and structure JSON responses for external consumers.
 
 ---
 
 ## Testing
 
-**Cobertura actual:**
-- Tests unitarios para Salesforce (SalesforceCaseMapper, lead field cache)
-- Tests de normalización de etapas
-- Tests para validación de form requests
+**Current test coverage:**
 
-**Ejecutar tests:**
+- Unit tests for Salesforce mapping (`SalesforceCaseMapper`, lead field filtering, proactive refresh)
+- Feature tests for public API endpoints (projects, plants, advisors, contact submissions)
+- Feature tests for stage normalization and query filters
+- Feature tests for payment webhooks and short link redirection
+
+**Running tests:**
+
 ```bash
-php artisan test --compact                    # Todos
-php artisan test --compact tests/Feature/...  # Por file
-php artisan test --compact --filter=testName  # Por test
+php artisan test --compact                             # Run full test suite
+php artisan test --compact tests/Feature/ExampleTest.php # Run specific test file
+php artisan test --compact --filter=testMethodName      # Run specific test method
 ```
 
 ---
 
-## Cambios Recientes por Área
+## Recent Changes by Functional Area
 
-### Salesforce
-- Bulk sync action en tabla ContactSubmissions
-- Filtrado dinámico de campos creables (Lead)
-- Manejo robusto de tokens expirados
-- Caché ampliado para consultas SOQL
-- OAuth con flujo authenticate/callback
-- **Auto-reconexión silenciosa**: tokens OAuth persistidos en `SiteSetting.extra_settings` (`token_cache_backup`, `refresh_token_cache_backup`); `CreateSalesforceCaseJob` llama `tryAutoReconnect()` cuando no hay token en caché
-- **Refresh/sincronización programada**: `salesforce:refresh-token` corre con `cron('0 */20 * * *')`; con token en caché sincroniza backup, y sin token intenta auto-reconexión
+### Salesforce Integration
 
-### Contactos
-- Validación por canal (sale, info, etc.)
-- Sincronización automática a Salesforce
-- Rate limiting (throttle:10,1)
-- Importación CSV con selección de canal previa al mapeo
-- Mapeo dinámico de columnas con aliases históricos y normalización consistente
-- Comando de normalización histórica `contact:normalize-rango-renta-key` con `--dry-run`
+- Bulk sync action in the ContactSubmissions table
+- Dynamic creatable field filtering for Leads
+- Proactive token renewal (`isTokenExpiringSoon()` and `proactiveRefresh()`) before silent expiration
+- Centralized exception and reconnect handling in `executeWithTokenProtection()`
+- Encrypted token backups in `SiteSetting.extra_settings` (`token_cache_backup`, `refresh_token_cache_backup`)
+- Scheduled task (`salesforce:refresh-token`) running every 45 minutes
 
-### Plantas & Proyectos
-- Normalización de etapas (proyecto_etapa)
-- Filtros por piso, tipo
-- Precios con descuento
-- Ordenamiento dinámico
+### Contacts & Leads
 
-### UI/Frontend
-- Estilos centralizados
-- Upload de archivos con límite mayor
-- Website preview links
-- QR code en Asesores
-- Ajustes de formato en Curator (`MediaForm`) y test de QR short link para mantener consistencia (sin cambios funcionales)
-- Selector de proyecto en SiteSettings muestra proyectos inactivos con prefijo `[Inactivo]` (no los oculta)
+- Multi-channel validation (sale, info, customer service)
+- Automated queued dispatch to Salesforce
+- Rate limiting protection (`throttle:10,1`)
+- CSV import wizard with pre-mapping channel selection and progress dashboard
+- Dynamic column mapping with legacy alias support and phone digit sanitation
+- Historical normalization command `contact:normalize-rango-renta-key` with `--dry-run`
 
----
+### Plants & Projects
 
-## Estado Operativo Actual
+- Normalized development stages (`proyecto_etapa`)
+- Computed pricing: `precio_desde` (minimum active unit price) and `tipologias` aggregation
+- Unit discount caps (`descuento_maximo_unidad`) with dynamic pricing rules
+- Configurable pagination and discount sources via `SiteSettings`
 
-### Salesforce OAuth — Auto-reconexión
-**Estado**: Implementado y validado con pruebas focalizadas
+### UI & Filament Panel
 
-**Flujo**:
-1. Tras OAuth exitoso, `SalesforceOAuthController::callback()` persiste `forrest_token` y `forrest_refresh_token` en `SiteSetting.extra_settings.salesforce_oauth`
-2. `CreateSalesforceCaseJob` chequea `isSalesforceOAuthMarkedDisconnected()` primero (fast path); luego si no hay token en caché, llama `tryAutoReconnect()`
-3. `tryAutoReconnect()` restaura ambos tokens al caché y llama `Forrest::refresh()` → Salesforce entrega nuevo access token sin intervención del usuario
-4. `salesforce:refresh-token` (scheduler `cron('0 */20 * * *')`) sincroniza backups si hay token en caché; si no hay token, intenta auto-reconexión desde DB
-
-**Requisito post-deploy**: Reconectar OAuth manualmente una vez en `/admin/site-settings` para generar el backup inicial en DB.
-
-**Comandos operativos**:
-- `php artisan salesforce:refresh-token` — sincroniza backups o intenta auto-reconexión según estado de token
+- Centralized custom styling
+- `filament-dual-scroll` integration for wide table UX
+- QR code preview and download in Advisors table
+- Website preview links with token expiration
+- Inactive project display with `[Inactivo]` prefix in selectors
 
 ---
 
-### Contact Submissions - Importación CSV
-**Estado**: Implementado y validado con pruebas focalizadas
+## Current Operational State
 
-**Cobertura funcional activa**:
-- Wizard de importación con canal seleccionado antes del mapeo
-- Página de progreso de importación en panel administrativo
-- Dry-run para validación previa sin persistencia
-- Normalización de campos canónicos (`rango_renta`, `apellido`, `phone`)
-- Mapeo y enriquecimiento UTM para integraciones de marketing/Salesforce
+### Salesforce OAuth — Auto-reconnect & Proactive Refresh
 
-**Comando operativo**:
+**Status**: Implemented and verified with automated tests.
+
+**Workflow**:
+
+1. Following successful OAuth authorization, `SalesforceOAuthController::callback()` persists `forrest_token` and `forrest_refresh_token` into `SiteSetting.extra_settings.salesforce_oauth`.
+2. `CreateSalesforceCaseJob` first verifies `isSalesforceOAuthMarkedDisconnected()` (fast-fail check); if tokens are missing from cache, it calls `tryAutoReconnect()`.
+3. `tryAutoReconnect()` restores tokens to application cache and invokes `Forrest::refresh()`, fetching a new access token without user intervention.
+4. Scheduled worker `salesforce:refresh-token` runs every 45 minutes to proactively refresh tokens before expiration or re-sync database backups.
+
+**Post-deployment requirement**: Connect Salesforce OAuth once via `/admin/site-settings` to seed the initial database backup tokens.
+
+**Operational Commands**:
+
+- `php artisan salesforce:refresh-token` — Proactively refreshes nearing-expiration tokens or synchronizes DB backups.
+
+---
+
+### Contact Submissions — CSV Import
+
+**Status**: Implemented and verified with automated tests.
+
+**Capabilities**:
+
+- Multi-step import wizard with mandatory channel selection before mapping.
+- Background progress monitoring in the administrative panel.
+- Dry-run verification mode to test CSV parsing without database persistence.
+- Canonical field normalization (`rango_renta`, `apellido`, digits-only `phone`).
+- Automatic UTM tagging and Salesforce payload enrichment.
+
+**Operational Commands**:
+
 - `php artisan contact:normalize-rango-renta-key --dry-run`
 - `php artisan contact:normalize-rango-renta-key`
 
 ---
 
-## Dependencias Principales
+## Primary Dependencies
 
 ```json
 {
   "filament/filament": "5.0",
   "laravel/framework": "^12.0",
   "laravel/sanctum": "^4.3",
-  "omniphx/forrest": "^2.20",          // Salesforce
-  "mercadopago/dx-php": "^3.8",        // Mercado Pago
-  "transbank/transbank-sdk": "^5.1",   // Transbank
-  "lara-zeus/qr": "^3.0",              // QR codes
-  "spatie/laravel-permission": "^7.3", // RBAC
-  "finity-labs/fin-mail": "*"          // Email
+  "omniphx/forrest": "^2.20",          // Salesforce OAuth & REST client
+  "mercadopago/dx-php": "^3.8",        // Mercado Pago SDK
+  "transbank/transbank-sdk": "^5.1",   // Transbank SDK
+  "lara-zeus/qr": "^3.0",              // QR code generator
+  "spatie/laravel-permission": "^7.3", // Role-based access control
+  "finity-labs/fin-mail": "*"          // Transactional email management
 }
 ```
 
@@ -442,7 +546,7 @@ This application is a Laravel application and its main Laravel ecosystems packag
 ## Constructors
 
 - Use PHP 8 constructor property promotion in `__construct()`.
-    - `public function __construct(public GitHub $github) { }`
+  - `public function __construct(public GitHub $github) { }`
 - Do not allow empty `__construct()` methods with zero parameters unless the constructor is private.
 
 ## Type Declarations
@@ -707,6 +811,7 @@ Authenticate before testing panel functionality. Filament uses Livewire, so use 
 ### Common Mistakes
 
 **Commonly Incorrect Namespaces:**
+
 - Form fields (TextInput, Select, etc.): `Filament\Forms\Components\`
 - Infolist entries (for read-only views) (TextEntry, IconEntry, etc.): `Filament\Forms\Components\`
 - Layout components (Grid, Section, Fieldset, Tabs, Wizard, etc.): `Filament\Schemas\Components\`
@@ -715,10 +820,49 @@ Authenticate before testing panel functionality. Filament uses Livewire, so use 
 - Icons: `Filament\Support\Icons\Heroicon` enum (e.g., `Heroicon::PencilSquare`)
 
 **Recent breaking changes to Filament:**
+
 - File visibility is `private` by default. Use `->visibility('public')` for public access.
 - `Grid`, `Section`, and `Fieldset` no longer span all columns by default.
 
 </laravel-boost-guidelines>
 
+***
 
+## Workflows
 
+### Agent Workflows — `.agents/workflows/`
+
+These define step-by-step processes agents should follow for common tasks (e.g., feature development, bug fixing, code review). Always prefer an existing workflow over improvising a process.
+
+### GitHub Actions — `.github/workflows/`
+
+These are automated CI/CD pipelines. Agents **must not modify** these files unless explicitly instructed. Agents can **read** them to understand what validations run on PRs and commits.
+
+***
+
+## GitHub Issue Templates — `.github/ISSUE_TEMPLATE/`
+
+When an agent needs to report a bug, request a feature, or log a finding:
+
+1. Use the appropriate template from `.github/ISSUE_TEMPLATE/`.
+2. Fill all required fields — do not submit incomplete issues.
+3. Link the issue to the relevant workflow or skill if applicable.
+
+***
+
+## Operating Rules for All Agents
+
+1. **Read before acting** — always consult `.agents/docs/` and the relevant agent `.md` file before starting a task.
+2. **Detect the stack first** — inspect the codebase before assuming Laravel, WordPress, React, or another framework.
+3. **Use existing skills** — never reinvent logic that already exists in `.agents/skills/`.
+4. **Follow workflows** — use `.agents/workflows/` as the execution guide for tasks.
+5. **Respect role boundaries** — Builder builds, Investigator researches, Reviewer reviews.
+6. **Do not modify CI/CD** — `.github/workflows/` are protected; propose changes via PR only.
+7. **Document everything** — any new skill, workflow, or agent role must have its own `.md` file.
+8. **Use issue templates** — when logging findings or bugs, always use `.github/ISSUE_TEMPLATE/`.
+9. **Preserve project conventions** — match the existing architecture, naming, style, and dependency choices unless instructed otherwise.
+10. **Use RTK by default** — in React applications, global state and async data flows must default to Redux Toolkit unless the repository explicitly uses another standard.
+11. **Use Graphify by default** — in graph-based or relationship-driven interfaces, Graphify is the preferred solution unless an existing project dependency already defines another tool.
+12. **Use tgrep for searching** — `tgrep` is the preferred search CLI across the codebase; use it proactively before modifying code.
+
+***
