@@ -534,6 +534,16 @@ class SiteSetting extends Model
             'custom_css' => $settings->custom_css,
             'header_scripts' => $settings->header_scripts,
             'footer_scripts' => $settings->footer_scripts,
+            'conversion_scripts' => [
+                'enabled' => (bool) ($extraSettings['conversion_scripts_enabled'] ?? false),
+                'debug' => (bool) ($extraSettings['conversion_scripts_debug'] ?? false),
+                'post_contact_script' => is_string($extraSettings['post_contact_script'] ?? null)
+                    ? trim((string) $extraSettings['post_contact_script'])
+                    : null,
+                'post_payment_script' => is_string($extraSettings['post_payment_script'] ?? null)
+                    ? trim((string) $extraSettings['post_payment_script'])
+                    : null,
+            ],
             'plants_per_page' => (int) ($settings->plants_per_page ?? 12),
             'maintenance_mode' => $settings->maintenance_mode && ! $isPreviewAuthorized,
             'maintenance_message' => $settings->maintenance_message,

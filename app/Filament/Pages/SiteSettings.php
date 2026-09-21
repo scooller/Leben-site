@@ -979,6 +979,34 @@ class SiteSettings extends Page implements HasForms
                                             ->helperText('Scripts que se insertarán antes de </body>'),
                                     ])
                                     ->columns(2),
+
+                                Section::make('Scripts de Conversión / Píxel (Formularios y Pagos)')
+                                    ->description('Ejecuta píxeles o scripts personalizados (Meta Pixel, Google Tag, afiliación, webhooks) al completar con éxito los formularios de contacto o de pago. Soporta etiquetas <script>, <noscript><img ...>, tags <img> o URLs directas.')
+                                    ->schema([
+                                        Toggle::make('extra_settings.conversion_scripts_enabled')
+                                            ->label('Activar Scripts de Conversión')
+                                            ->default(false)
+                                            ->live()
+                                            ->helperText('Habilita la ejecución automática de scripts tras envíos exitosos.'),
+
+                                        Toggle::make('extra_settings.conversion_scripts_debug')
+                                            ->label('Modo Depuración (Consola)')
+                                            ->default(false)
+                                            ->helperText('Si está activo, muestra logs detallados en la consola del navegador ([Conversion Tracker]) y emite el evento pixel_tracker_dispatched.'),
+
+                                        Textarea::make('extra_settings.post_contact_script')
+                                            ->label('Script Post-Contacto')
+                                            ->rows(6)
+                                            ->placeholder('<script>' . "\n" . '  if (typeof fbq === "function") {' . "\n" . '    fbq("track", "Lead", { name: "{name}", email: "{email}" });' . "\n" . '  }' . "\n" . '</script>')
+                                            ->helperText('Se dispara inmediatamente tras enviar con éxito el formulario de contacto. Tokens disponibles: {form_id}, {channel}, {name}, {email}, {phone}, {rut}, {project_id}.'),
+
+                                        Textarea::make('extra_settings.post_payment_script')
+                                            ->label('Script Post-Pago / Reserva')
+                                            ->rows(6)
+                                            ->placeholder('<script>' . "\n" . '  if (typeof fbq === "function") {' . "\n" . '    fbq("track", "Purchase", { value: {amount}, currency: "CLP" });' . "\n" . '  }' . "\n" . '</script>')
+                                            ->helperText('Se dispara tras iniciar un checkout, enviar comprobante o confirmar el pago con éxito. Tokens disponibles: {payment_id}, {order_id}, {amount}, {gateway}, {unit_id}, {project_id}, {customer_email}, {customer_name}, {customer_phone}, {customer_rut}.'),
+                                    ])
+                                    ->columns(1),
                             ]),
 
                         Tabs\Tab::make('Pasarelas de Pago')

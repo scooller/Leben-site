@@ -174,4 +174,34 @@ class SiteSettingFrontendConfigTest extends TestCase
         $this->assertArrayHasKey('image_mobile', $payload['hero']['contact']);
         $this->assertSame('Hero contacto', $payload['hero']['contact']['alt']);
     }
+
+    /**
+     * Ensure conversion_scripts is persisted in extra_settings and exposed in forFrontend().
+     */
+    public function test_for_frontend_includes_conversion_scripts(): void
+    {
+        SiteSetting::current()->update([
+            'extra_settings' => [
+                'conversion_scripts_enabled' => true,
+                'conversion_scripts_debug' => true,
+                'post_contact_script' => "<script>fbq('track', 'Lead', { name: '{name}' });</script>",
+                'post_payment_script' => "<script>fbq('track', 'Purchase', { value: {amount} });</script>",
+            ],
+        ]);
+
+        $payload = SiteSetting::forFrontend();
+
+        $this->assertArrayHasKey('conversion_scripts', $payload);
+        $this->assertTrue($payload['conversion_scripts']['enabled']);
+        $this->assertTrue($payload['conversion_scripts']['debug']);
+        $this->assertSame("<script>fbq('track', 'Lead', { name: '{name}' });</script>", $payload['conversion_scripts']['post_contact_script']);
+        $this->assertSame("<script>fbq('track', 'Purchase', { value: {amount} });</script>", $payload['conversion_scripts']['post_payment_script']);
+
+        $response = $this->getJson('/api/v1/site-config');
+        $response->assertOk();
+        $response->assertJsonPath('conversion_scripts.enabled', true);
+        $response->assertJsonPath('conversion_scripts.debug', true);
+        $response->assertJsonPath('conversion_scripts.post_contact_script', "<script>fbq('track', 'Lead', { name: '{name}' });</script>");
+        $response->assertJsonPath('conversion_scripts.post_payment_script', "<script>fbq('track', 'Purchase', { value: {amount} });</script>");
+    }
 }

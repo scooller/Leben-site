@@ -9,6 +9,7 @@ import siteConfigService from '../services/siteConfig';
 import { isRetryableError } from '../utils/errorHandler';
 import { getConfiguredEntregaAliases, getProjectSlugsByAlias, getStageKeysByAlias } from '../utils/stageAlias';
 import { trackEvent, trackPageView } from '../utils/tagManager';
+import { triggerPaymentConversion } from '../utils/conversionTracker';
 import { resolveSeoPolicy } from '../utils/seoPolicy';
 import { removeStructuredData, setStructuredData } from '../utils/structuredData';
 import '../styles/home.scss' with { type: 'css' };
@@ -1358,6 +1359,19 @@ function Home({ onNavigate, currentPath }) {
         flow: response.flow === 'manual' ? 'manual' : 'redirect',
       });
 
+      triggerPaymentConversion(config?.conversion_scripts, {
+        payment_id: response?.payment?.id || response?.payment_id || response?.id || '',
+        order_id: response?.order_id || response?.buy_order || response?.payment?.buy_order || '',
+        amount: response?.amount || response?.payment?.amount || plantForCheckout?.precio_final || '',
+        gateway,
+        unit_id: plantId,
+        project_id: plantForCheckout?.proyecto_id || plantForCheckout?.proyecto || '',
+        customer_email: userData?.email || '',
+        customer_name: userData?.name || '',
+        customer_phone: userData?.phone || '',
+        customer_rut: userData?.rut || '',
+      });
+
       if (response.flow === 'manual') {
         setManualPayment(response);
         setCheckoutLoading(false);
@@ -1390,6 +1404,19 @@ function Home({ onNavigate, currentPath }) {
     try {
       setManualProofLoading(true);
       const response = await CheckoutService.submitManualProof(paymentId, proofFile);
+
+      triggerPaymentConversion(config?.conversion_scripts, {
+        payment_id: paymentId,
+        order_id: manualPayment?.order_id || manualPayment?.buy_order || '',
+        amount: manualPayment?.amount || '',
+        gateway: 'manual',
+        unit_id: manualPayment?.unit_id || plantForCheckout?.id || '',
+        project_id: plantForCheckout?.proyecto_id || plantForCheckout?.proyecto || '',
+        customer_email: manualPayment?.customer_email || '',
+        customer_name: manualPayment?.customer_name || '',
+        customer_phone: manualPayment?.customer_phone || '',
+        customer_rut: manualPayment?.customer_rut || '',
+      });
 
       setManualPayment((current) => (current ? {
         ...current,

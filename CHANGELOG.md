@@ -4,6 +4,27 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.19] - 2026-09-21
+
+### ✅ Scripts de Conversión y Píxel Post-Formularios (Contacto y Pago) — Estilo mow-plugin
+
+- **Backend (Filament & Model)**:
+  - `SiteSettings.php`: Nueva sección "Scripts de Conversión / Píxel (Formularios y Pagos)" dentro de la pestaña `Personalización`.
+    - Campos: `extra_settings.conversion_scripts_enabled` (toggle general), `extra_settings.conversion_scripts_debug` (logs en consola del navegador), `extra_settings.post_contact_script` (textarea script tras enviar contacto), `extra_settings.post_payment_script` (textarea script tras pagar o iniciar reserva).
+  - `SiteSetting.php`: `forFrontend()` expone el objeto `conversion_scripts` con `enabled`, `debug`, `post_contact_script` y `post_payment_script`.
+- **Frontend (React / Vite)**:
+  - `utils/conversionTracker.js` (nuevo): Motor multiformato basado en la arquitectura de `scooller/mow-plugin`:
+    - Ejecuta bloques `<script>` creando elementos DOM reales en `<head>`/`<body>`.
+    - Extrae `<img>` de bloques `<noscript>` y dispara peticiones GET invisibles (beacons 1x1).
+    - Soporta tags directos `<img>` y URLs limpias.
+    - Reemplazo dinámico de variables (`{form_id}`, `{name}`, `{email}`, `{phone}`, `{amount}`, `{order_id}`, `{gateway}`, `{unit_id}`, etc.).
+    - Dispara `CustomEvent('pixel_tracker_dispatched')` en `window` para observabilidad.
+  - `Contact.jsx`: Dispara `triggerContactConversion` tras enviar formulario de contacto con éxito.
+  - `Home.jsx`: Dispara `triggerPaymentConversion` tras iniciar checkout o enviar comprobante manual.
+  - `Payment.jsx`: Dispara `triggerPaymentConversion` idempotentemente tras confirmar transacción aprobada.
+- **Tests Automatizados**:
+  - `SiteSettingFrontendConfigTest.php`: Nueva prueba `test_for_frontend_includes_conversion_scripts()` verificando persistencia y entrega en `/api/v1/site-config`. Total suite: 436 tests pasando.
+
 ## [1.9.18] - 2026-09-21
 
 ### ✅ SEO Estructurado — Evento Sale/Cyber (controlado desde backend)

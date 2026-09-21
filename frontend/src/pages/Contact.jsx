@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSiteConfig } from '../contexts/SiteConfigContext';
 import contactSubmissionsService from '../services/contactSubmissions';
 import { trackEvent } from '../utils/tagManager';
+import { triggerContactConversion } from '../utils/conversionTracker';
 import { getStoredUtmParams } from '../utils/utmSession';
 import { appendSessionUtmsToExternalUrl } from '../utils/externalLinks';
 import { proyectosService } from '../services/proyectos';
@@ -686,10 +687,17 @@ function Contact({ onNavigate, currentPath }) {
         project: values.proyecto || null,
       });
 
-      // TODO: Parche comentado temporalmente - Facebook Pixel Lead tracking
-      // if (typeof window !== 'undefined' && typeof window.fbq === 'function') {
-      //   window.fbq('track', 'Lead');
-      // }
+      triggerContactConversion(config?.conversion_scripts, {
+        form_id: 'contact',
+        channel: channelSlug || 'sale',
+        name: values.nombre || values.name || '',
+        email: values.email || values.correo || '',
+        phone: values.telefono || values.phone || '',
+        rut: values.rut || '',
+        project_id: values.proyecto || '',
+        income_range: selectedRangeSubmissionValue || '',
+        commune: values.comuna || '',
+      });
 
       setSubmitSuccess('Tu mensaje fue enviado correctamente.');
       setFieldErrors({});
