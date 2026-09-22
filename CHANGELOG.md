@@ -4,6 +4,26 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.23] - 2026-09-22
+
+### 🏷️ Control Dinámico de UTM Campaign para Evento Sale y SEO
+
+- **Panel Filament (`app/Filament/Pages/SiteSettings.php`)**:
+  - Nuevo campo `extra_settings.sale_utm_campaign` ("UTM Campaign Evento Sale") ubicado inmediatamente debajo de `extra_settings.utm_campaign_default` en la pestaña `SEO`.
+  - Deshabilitado reactivamente cuando `evento_sale` es `false`, habilitándose únicamente cuando `evento_sale` está activo.
+- **Configuración y API (`app/Models/SiteSetting.php`)**:
+  - `SiteSetting::forFrontend()` expone `sale_utm_campaign`, `sale_campaign_override` y `sale_event.utm_campaign`.
+  - Resolución inteligente de campaña para evento sale con fallback en cascada: `sale_utm_campaign` -> `sale_event_name` -> `utm_campaign_default`.
+- **Mapeo de Leads Salesforce (`app/Services/Salesforce/SalesforceCaseMapper.php`)**:
+  - Cuando `evento_sale === true`: sobreescribe `utm_campaign` con la campaña del evento sale en curso (ej: `CyberMonday`).
+  - Cuando `evento_sale === false`: comportamiento normal sin sobreescritura forzada, preservando los UTM de la URL o el formulario entrante y aplicando el fallback configurado (`utm_campaign_default`) solo ante la ausencia de parámetros.
+- **Frontend y Gestión de Sesión UTM (`frontend/src/utils/utmSession.js` & `SiteConfigContext.jsx`)**:
+  - Se eliminó el reemplazo incondicional hardcodeado de `utm_campaign`.
+  - `setUtmDefaultOverrides` ahora recibe opciones `{ isSaleEvent, saleCampaignOverride }` forzando la sobreescritura de campaña en sesión únicamente cuando el evento sale está activo.
+- **Pruebas Automatizadas**:
+  - Nuevos tests unitarios en `SalesforceCaseMapperTest` validando sobreescritura estricta con `sale_utm_campaign` en modo sale y preservación intacta de campañas normales cuando sale está desactivado.
+  - Verificación de payload en `SiteSettingFrontendConfigTest`.
+
 ## [1.9.22] - 2026-09-22
 
 ### 📖 Actualización Exhaustiva de Documentación de API (`API_USAGE.md`)

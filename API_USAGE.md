@@ -114,7 +114,7 @@ Campos clave devueltos:
 - `mostrar_plantas`: booleano general de visibilidad de inventario
 - `evento_sale`: booleano indicador de campana sale activa
 - `plants_per_page`: cantidad de unidades por pagina configurada (default: 12)
-- `seo`: metadatos, og_image dinamica, datos del evento sale (`sale_event`) y defaults UTM
+- `seo`: metadatos, og_image dinamica, datos del evento sale (`sale_event`), campana sale forzada (`sale_campaign_override`, `sale_utm_campaign`) y defaults UTM (`utm_campaign_default`)
 - `conversion_scripts`: integracion de scripts post-contacto y post-pago
 - `hero`: imagenes desktop/mobile y posters de video para home y contacto
 - `footer_menu`, `contact_page`, `social`

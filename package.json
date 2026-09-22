@@ -1,10 +1,11 @@
 {
     "name": "leben-site",
-    "version": "1.9.22",
+    "version": "1.9.23",
     "private": true,
     "type": "module",
     "scripts": {
         "build": "vite build",
+        "build:all": "vite build && npm --prefix frontend run build",
         "dev": "vite"
     },
     "devDependencies": {

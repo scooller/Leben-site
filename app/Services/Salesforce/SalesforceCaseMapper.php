@@ -72,10 +72,16 @@ class SalesforceCaseMapper
 		$utmMedium = $this->fieldValue($fields, ['utm_medium', 'audiencia'])
 			?: $this->fieldValue($fields, ['medio_de_llegada', 'medio_llegada', 'origen_del_prospecto', 'origen_prospecto'])
 			?: $utmMediumDefault;
+		$saleCampaign = null;
+		if ($settings->evento_sale) {
+			$saleCampaign = $this->normalizeFieldValue($extraSettings['sale_utm_campaign'] ?? null)
+				?: $this->normalizeFieldValue($extraSettings['sale_event_name'] ?? null)
+				?: $this->normalizeFieldValue($extraSettings['utm_campaign_default'] ?? null);
+		}
 		$utmCampaignDefault = $isCsvImport
 			? null
 			: $this->normalizeFieldValue($extraSettings['utm_campaign_default'] ?? null);
-		$utmCampaign = $this->resolveUtmCampaign($fields, $utmCampaignDefault, $settings);
+		$utmCampaign = $this->resolveUtmCampaign($fields, $utmCampaignDefault, $settings, $saleCampaign);
 		$utmContentDefault = $this->normalizeFieldValue($extraSettings['utm_content_default'] ?? null) ?: 'none';
 		$utmContent = $this->fieldValue($fields, ['utm_content', 'pieza_grafica']) ?: $utmContentDefault;
 		$utmTermDefault = $isCsvImport
@@ -566,26 +572,30 @@ class SalesforceCaseMapper
 	/**
 	 * @param  array<string, mixed>  $fields
 	 */
-	private function resolveUtmCampaign(array $fields, ?string $defaultValue, SiteSetting $settings): string
+	private function resolveUtmCampaign(array $fields, ?string $defaultValue, SiteSetting $settings, ?string $saleCampaign = null): string
 	{
-		$normalizedDefaultValue = trim((string) $defaultValue);
+		$normalizedSaleCampaign = trim((string) $saleCampaign);
 
-		// Solo se usa el valor por defecto de campaña cuando el evento SALE está activo.
-		if (($settings->evento_sale === true) && $normalizedDefaultValue !== '') {
-			return $normalizedDefaultValue;
+		// Cuando evento SALE está activo y hay campaña de Sale, sobreescribe siempre
+		if (($settings->evento_sale === true) && $normalizedSaleCampaign !== '') {
+			return $normalizedSaleCampaign;
 		}
 
 		$campaign = $this->fieldValue($fields, ['utm_campaign', 'campana', 'nombre_de_la_campana']);
 
-		if ($campaign === null) {
-			return 'auto-tagging';
+		if ($campaign !== null && trim($campaign) !== '') {
+			$normalizedCampaign = trim($campaign);
+			if (! in_array(strtolower($normalizedCampaign), ['auto-tagging', 'campaign'], true)) {
+				return $normalizedCampaign;
+			}
 		}
 
-		if (in_array(strtolower(trim($campaign)), ['auto-tagging', 'campaign'], true)) {
-			return 'auto-tagging';
+		$normalizedDefaultValue = trim((string) $defaultValue);
+		if ($normalizedDefaultValue !== '' && ! in_array(strtolower($normalizedDefaultValue), ['auto-tagging', 'campaign'], true)) {
+			return $normalizedDefaultValue;
 		}
 
-		return $campaign;
+		return 'auto-tagging';
 	}
 
 	/**

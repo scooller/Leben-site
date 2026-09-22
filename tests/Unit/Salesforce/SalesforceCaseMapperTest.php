@@ -261,6 +261,100 @@ class SalesforceCaseMapperTest extends TestCase
 		$this->assertSame('campana-especifica', $payload['utm_campaign__c'] ?? null);
 	}
 
+	public function test_it_overwrites_campaign_with_sale_utm_campaign_when_sale_event_is_active(): void
+	{
+		config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');
+		config()->set('services.salesforce.lead_status', 'En Contacto');
+
+		SiteSetting::current()->update([
+			'site_name' => 'iLeben',
+			'evento_sale' => true,
+			'extra_settings' => [
+				'utm_campaign_default' => 'campaign',
+				'sale_utm_campaign' => 'CyberMonday',
+			],
+			'contact_form_fields' => [
+				['key' => 'name', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
+				['key' => 'project_name', 'label' => 'Proyecto', 'type' => 'text', 'required' => false],
+			],
+		]);
+
+		Proyecto::query()->create([
+			'salesforce_id' => 'a0J8c00000sdXCYBER',
+			'name' => 'Edificio Cyber',
+			'slug' => 'edificio-cyber',
+			'is_active' => true,
+		]);
+
+		$submission = ContactSubmission::query()->create([
+			'name' => 'Cyber User',
+			'email' => 'cyber@example.com',
+			'phone' => '56912345678',
+			'rut' => '11.111.111-1',
+			'fields' => [
+				'name' => 'Cyber User',
+				'lastname' => 'Test',
+				'project_name' => 'Edificio Cyber',
+				'utm_source' => 'facebook',
+				'utm_medium' => 'cpc',
+				'utm_campaign' => 'incoming-ad-campaign',
+			],
+			'submitted_at' => now(),
+		]);
+
+		$payload = app(SalesforceCaseMapper::class)->mapLead($submission);
+
+		$this->assertSame('CyberMonday', $payload['Nombre_de_la_Campa_a__c'] ?? null);
+		$this->assertSame('CyberMonday', $payload['utm_campaign__c'] ?? null);
+	}
+
+	public function test_it_does_not_use_sale_utm_campaign_when_sale_event_is_disabled(): void
+	{
+		config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');
+		config()->set('services.salesforce.lead_status', 'En Contacto');
+
+		SiteSetting::current()->update([
+			'site_name' => 'iLeben',
+			'evento_sale' => false,
+			'extra_settings' => [
+				'utm_campaign_default' => 'campaign',
+				'sale_utm_campaign' => 'CyberMonday',
+			],
+			'contact_form_fields' => [
+				['key' => 'name', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
+				['key' => 'project_name', 'label' => 'Proyecto', 'type' => 'text', 'required' => false],
+			],
+		]);
+
+		Proyecto::query()->create([
+			'salesforce_id' => 'a0J8c00000sdXCYBER2',
+			'name' => 'Edificio Normal',
+			'slug' => 'edificio-normal',
+			'is_active' => true,
+		]);
+
+		$submission = ContactSubmission::query()->create([
+			'name' => 'Normal User',
+			'email' => 'normal@example.com',
+			'phone' => '56912345678',
+			'rut' => '11.111.111-1',
+			'fields' => [
+				'name' => 'Normal User',
+				'lastname' => 'Test',
+				'project_name' => 'Edificio Normal',
+				'utm_source' => 'google',
+				'utm_medium' => 'cpc',
+				'utm_campaign' => 'summer-promo',
+			],
+			'submitted_at' => now(),
+		]);
+
+		$payload = app(SalesforceCaseMapper::class)->mapLead($submission);
+
+		$this->assertSame('summer-promo', $payload['Nombre_de_la_Campa_a__c'] ?? null);
+		$this->assertSame('summer-promo', $payload['utm_campaign__c'] ?? null);
+	}
+
 	public function test_it_uses_site_setting_defaults_for_missing_utm_fields(): void
 	{
 		config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');

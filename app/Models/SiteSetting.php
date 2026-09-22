@@ -425,6 +425,17 @@ class SiteSetting extends Model
         $priceSource = $extraSettings['price_source'] ?? 'final';
         $pricePercentageSource = $extraSettings['price_percentage_source'] ?? 'web_discount';
 
+        $saleUtmCampaign = null;
+        if ($settings->evento_sale) {
+            if (is_string($extraSettings['sale_utm_campaign'] ?? null) && trim((string) $extraSettings['sale_utm_campaign']) !== '') {
+                $saleUtmCampaign = trim((string) $extraSettings['sale_utm_campaign']);
+            } elseif (is_string($extraSettings['sale_event_name'] ?? null) && trim((string) $extraSettings['sale_event_name']) !== '') {
+                $saleUtmCampaign = trim((string) $extraSettings['sale_event_name']);
+            } elseif (is_string($extraSettings['utm_campaign_default'] ?? null) && trim((string) $extraSettings['utm_campaign_default']) !== '') {
+                $saleUtmCampaign = trim((string) $extraSettings['utm_campaign_default']);
+            }
+        }
+
         return [
             'site_name' => $settings->site_name,
             'site_description' => $settings->site_description,
@@ -483,6 +494,10 @@ class SiteSetting extends Model
                 'utm_campaign_default' => is_string($extraSettings['utm_campaign_default'] ?? null)
                     ? trim((string) $extraSettings['utm_campaign_default'])
                     : 'campaign',
+                'sale_utm_campaign' => is_string($extraSettings['sale_utm_campaign'] ?? null)
+                    ? trim((string) $extraSettings['sale_utm_campaign'])
+                    : null,
+                'sale_campaign_override' => $saleUtmCampaign,
                 'utm_term_default' => is_string($extraSettings['utm_term_default'] ?? null)
                     ? trim((string) $extraSettings['utm_term_default'])
                     : 'none',
@@ -501,6 +516,7 @@ class SiteSetting extends Model
                     'name'        => is_string($extraSettings['sale_event_name'] ?? null)
                         ? trim((string) $extraSettings['sale_event_name'])
                         : null,
+                    'utm_campaign'=> $saleUtmCampaign,
                     'description' => is_string($extraSettings['sale_event_description'] ?? null)
                         ? trim((string) $extraSettings['sale_event_description'])
                         : null,

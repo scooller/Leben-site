@@ -91,6 +91,7 @@ class SiteSettingFrontendConfigTest extends TestCase
                 'utm_source_default' => 'direct',
                 'utm_medium_default' => 'organic',
                 'utm_campaign_default' => 'campaign',
+                'sale_utm_campaign' => 'CyberMonday',
                 'utm_term_default' => 'none',
                 'utm_content_default' => 'none',
                 'utm_site_default' => 'demo.ileben.cl',
@@ -153,6 +154,9 @@ class SiteSettingFrontendConfigTest extends TestCase
         $this->assertSame('direct', $payload['seo']['utm_source_default']);
         $this->assertSame('organic', $payload['seo']['utm_medium_default']);
         $this->assertSame('campaign', $payload['seo']['utm_campaign_default']);
+        $this->assertSame('CyberMonday', $payload['seo']['sale_utm_campaign']);
+        $this->assertSame('CyberMonday', $payload['seo']['sale_campaign_override']);
+        $this->assertSame('CyberMonday', $payload['seo']['sale_event']['utm_campaign']);
         $this->assertSame('none', $payload['seo']['utm_term_default']);
         $this->assertSame('none', $payload['seo']['utm_content_default']);
         $this->assertSame('demo.ileben.cl', $payload['seo']['utm_site_default']);

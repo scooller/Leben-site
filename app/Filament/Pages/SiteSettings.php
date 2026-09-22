@@ -615,7 +615,14 @@ class SiteSettings extends Page implements HasForms
                                             ->label('UTM Campaign por defecto')
                                             ->default('campaign')
                                             ->maxLength(100)
-                                            ->helperText('Valor por defecto para utm_campaign cuando no llega en la URL (ej: campaign).'),
+                                            ->helperText('Valor por defecto para utm_campaign cuando no llega en la URL y evento sale no está activo (ej: campaign).'),
+
+                                        TextInput::make('extra_settings.sale_utm_campaign')
+                                            ->label('UTM Campaign Evento Sale')
+                                            ->placeholder('ej: CyberMonday')
+                                            ->maxLength(100)
+                                            ->disabled(fn (Get $get): bool => ! (bool) $get('evento_sale'))
+                                            ->helperText('Sobreescribe utm_campaign durante el Evento Sale. Solo editable cuando Evento Sale está activo.'),
 
                                         TextInput::make('extra_settings.utm_source_default')
                                             ->label('UTM Source por defecto')
