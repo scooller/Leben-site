@@ -1,306 +1,295 @@
 # Guia de uso de la API (iLeben)
 
-Guia operativa basada en la implementacion actual del proyecto.
+Guia operativa exhaustiva basada en la implementacion actual del proyecto.
 
 Fuentes verificadas:
-- routes/api.php
-- app/Http/Controllers/Api/*
-- app/Http/Requests/*
-- app/Http/Middleware/EnsureTokenOriginIsAuthorized.php
-- routes/web.php (retornos y webhooks de pago)
-- git log reciente en main (HEAD: precio_desde + tipologias en API de proyectos)
+- `routes/api.php`
+- `routes/web.php`
+- `app/Http/Controllers/Api/*`
+- `app/Http/Requests/*`
+- `app/Http/Middleware/EnsureTokenOriginIsAuthorized.php`
+- Modelos Eloquent (`SiteSetting`, `Proyecto`, `Plant`, `PlantReservation`, `Payment`, `FrontendPreviewLink`)
+- Suite de pruebas automatizadas en `tests/Feature/Api/*` y `tests/Feature/Feature/Api/*`
 
-## 1. Base URL y descubrimiento
+---
 
-Base URL versionada:
-- /api/v1
+## 1. Base URL, descubrimiento y protocolos para agentes
 
-Endpoint de descubrimiento rapido:
-- GET /api/v1
+### 1.1 Base URL versionada
+- `/api/v1`
 
-Este endpoint devuelve un JSON estilo OpenAPI base con paths, tags y esquema de seguridad.
+### 1.2 Descubrimiento OpenAPI base
+- **GET** `/api/v1`
+Devuelve la especificacion base OpenAPI 3.0.3 en formato JSON describiendo los endpoints, tags y esquema de seguridad Bearer.
+
+### 1.3 Descubrimiento ampliado y protocolos comerciales / agentes
+El sistema expone puntos de entrada estandarizados para integraciones modernas, frontends y agentes autonomos:
+- **GET** `/openapi.json`: Documento OpenAPI 3.1.0 ampliado con extensiones MPP (Machine Payment Protocol / `x-payment-info`) para operaciones que involucran checkout y reservas.
+- **GET** `/.well-known/api-catalog`: Especificacion RFC 9727 (Linkset JSON) con enlaces a descriptor OpenAPI y documentacion.
+- **GET** `/.well-known/acp.json`: Descubrimiento de protocolo de comercio para agentes (Agentic Commerce Protocol - ACP 1.0).
+- **GET** `/.well-known/ucp`: Especificacion Universal Commerce Protocol (UCP 1.0) con endpoints de catalogo, reservas y checkout.
+- **GET** `/.well-known/ai-catalog.json`: Manifiesto ARD (Agentic Resource Discovery 1.0) con identificador did:web y consultas semanticas representativas.
+- **GET** `/.well-known/mcp/server-card.json`: Tarjeta de servidor Model Context Protocol (MCP SEP-1649) con transporte streamable-http (`/mcp`).
+- **GET** `/.well-known/agent-skills/index.json`: Indice de habilidades de agentes (Agent Skills RFC v0.2.0): `catalog-search`, `unit-reservation` y `auth-md`.
+- **GET** `/auth.md` y `/.well-known/oauth-authorization-server`: Especificacion Auth.md y metadatos de autorizacion OAuth 2.0 (RFC 8414).
+- **GET** `/llms.txt` y `/.well-known/llms.txt`: Resumen de documentacion en texto plano para modelos LLM.
+
+---
 
 ## 2. Seguridad y autenticacion
 
-### 2.1 Login y token Sanctum
+La API implementa tres niveles de acceso segun el tipo de operacion:
 
-Para obtener token:
-- POST /api/v1/login
+| Nivel | Middleware | Requisitos | Endpoints tipicos |
+|---|---|---|---|
+| **Nivel 1: Publico absoluto** | Ninguno (o throttle) | Ningun token requerido | `/site-config`, `/contact-submissions`, `/login`, `/register`, `/payments/public-status/{id}` |
+| **Nivel 2: Catalogo y Checkout Anonimo** | `token.origin` | Header `Authorization: Bearer <api_token>` + origen autorizado (`Origin`, `Referer` o `X-Authorized-Url`) | `/proyectos`, `/plantas`, `/payment-gateways`, `/reservations`, `/checkout` |
+| **Nivel 3: Usuario Autenticado** | `auth:sanctum`, `token.origin` | Bearer token de usuario Sanctum + origen autorizado | `/me`, `/logout`, `/payments`, `/production-sync/export` |
 
-Body:
+### 2.1 Login y obtencion de token Sanctum
+Para operaciones que requieren contexto de usuario registrado o roles administrativos:
+- **POST** `/api/v1/login`
+- **POST** `/api/v1/register`
+
+Body de Login:
 ```json
 {
-  "email": "admin@dominio.com",
+  "email": "usuario@dominio.com",
   "password": "tu-password"
 }
 ```
 
-Respuesta esperada:
+Respuesta exitosa (200):
 ```json
 {
   "user": {
     "id": 1,
-    "name": "Admin",
-    "email": "admin@dominio.com"
+    "name": "Usuario Demo",
+    "email": "usuario@dominio.com"
   },
   "token": "1|token-plano-sanctum"
 }
 ```
 
-### 2.2 Middleware token.origin (obligatorio en la mayoria de endpoints)
+### 2.2 Middleware `token.origin`
+Protege el inventario y el proceso transaccional contra scraping no autorizado y reutilizacion fuera de dominio:
+1. Valida la existencia del Bearer token en `PersonalAccessToken::findToken(...)`.
+2. Verifica que el token no este expirado (`expires_at`).
+3. Si el token tiene configurada una URL autorizada (`authorized_url`), valida que coincida con `Origin`, `Referer` o `X-Authorized-Url`.
 
-Ademas del Bearer token, la API valida origen autorizado por token.
-
-Requisitos:
-- Header Authorization: Bearer <token>
-- Header de origen: Origin o Referer o X-Authorized-Url
-- El origen debe coincidir con la URL autorizada del token (si el token tiene authorized_url configurada)
+**Excepcion / Bypass de previsualizacion:**
+Si la solicitud cuenta con autorizacion valida de enlace de previsualizacion (`FrontendPreviewLink::isAuthorizedForRequest`), como en entornos de staging o preview de Filament (`preview_token`), el middleware `token.origin` permite el acceso automaticamente sin exigir token estatico.
 
 Errores comunes:
-- 401 Token de acceso requerido
-- 401 Token de acceso invalido o expirado
-- 403 La URL de origen no esta autorizada para este token
+- `401 Token de acceso requerido.` (Falta header Authorization)
+- `401 Token de acceso inválido o expirado.` (Token inexistente o caducado)
+- `403 La URL de origen no está autorizada para este token.` (Origen no coincide)
+
+---
 
 ## 3. Rate limiting
 
-- POST /api/v1/login: throttle 5 por minuto
-- POST /api/v1/register: throttle 5 por minuto
-- POST /api/v1/contact-submissions: throttle 10 por minuto
+Límites configurados por endpoint y direccion IP:
+- **POST** `/api/v1/login`: 5 intentos por minuto (`throttle:5,1`)
+- **POST** `/api/v1/register`: 5 intentos por minuto (`throttle:5,1`)
+- **POST** `/api/v1/contact-submissions`: 10 envíos por minuto (`throttle:10,1`)
+- **GET** `/s/{slug}` (redirección shortlinks): 120 por minuto (`throttle:120,1`)
+- **GET** `/go/asesores/{asesor}/whatsapp`: 120 por minuto (`throttle:120,1`)
 
-## 4. Endpoints publicos
+---
 
-### 4.1 Descubrimiento y configuracion
+## 4. Endpoints publicos (sin token)
 
-- GET /api/v1
-- GET /api/v1/site-config
+### 4.1 Configuracion del sitio
+- **GET** `/api/v1/site-config`
 
-Notas:
-- /api/v1/site-config usa SiteSetting::forFrontend(...)
-- Si se envia Bearer token valido, el payload puede incluir datos adicionales para cliente autorizado
+Retorna la parametrizacion dinamica para renderizar el frontend (colores de marca, logos Curator, SEO, scripts de conversion y estado de mantenimiento).
 
-### 4.2 Contacto
+**Comportamiento de seguridad:**
+- Si la solicitud se realiza **sin** un Bearer token valido, la configuracion sensible de pasarelas (`gateway_transbank_config`, `gateway_mercadopago_config`, `gateway_manual_config`), `price_source` y `price_percentage_source` se omiten de la respuesta.
+- Si se envia un Bearer token valido en `Authorization: Bearer <token>`, el payload incluye el bloque completo `payment_gateways`.
 
-- POST /api/v1/contact-submissions
+Campos clave devueltos:
+- `site_name`, `site_description`, `site_url`
+- `mostrar_plantas`: booleano general de visibilidad de inventario
+- `evento_sale`: booleano indicador de campana sale activa
+- `plants_per_page`: cantidad de unidades por pagina configurada (default: 12)
+- `seo`: metadatos, og_image dinamica, datos del evento sale (`sale_event`) y defaults UTM
+- `conversion_scripts`: integracion de scripts post-contacto y post-pago
+- `hero`: imagenes desktop/mobile y posters de video para home y contacto
+- `footer_menu`, `contact_page`, `social`
 
-Body minimo recomendado:
+### 4.2 Envio de formulario de contacto
+- **POST** `/api/v1/contact-submissions`
+
+Registra consultas de clientes, enriquece parametros UTM, asocia canal de contacto y encola la creacion automatica del Lead en Salesforce.
+
+Headers opcionales:
+- `X-Contact-Channel`: slug o identificador del canal (si no viene en el body).
+- `Origin` / `Referer`: utilizados para autocompletar `utm_site` si no fue enviado.
+
+Body JSON:
 ```json
 {
   "channel": "sale",
   "fields": {
     "name": "Juan Perez",
     "email": "juan@example.com",
-    "message": "Quiero mas informacion",
     "phone": "+56911111111",
+    "message": "Consulta sobre departamento 2D en Torre Central",
     "proyecto": "torre-central",
     "comuna": "Santiago",
+    "rango_renta": "1.500.000 a 2.000.000",
     "utm_source": "google",
     "utm_medium": "cpc",
-    "utm_campaign": "invierno"
+    "utm_campaign": "lanzamiento"
   },
-  "turnstile_token": "token-si-esta-configurado"
+  "turnstile_token": "0.xxxx.yyyy"
 }
 ```
 
-Reglas relevantes:
-- channel se resuelve por body channel o header X-Contact-Channel
-- fields es obligatorio y dinamico (depende de SiteSettings/canal)
-- Si Turnstile esta habilitado, turnstile_token es obligatorio y se valida server-side
-- El backend enriquece utm_site automaticamente con Origin/Referer/X-Source-Site cuando falta
-
-Respuesta 201:
-```json
-{
-  "message": "Tu mensaje fue enviado correctamente.",
-  "id": 123
-}
-```
+Reglas y comportamiento:
+- `channel`: obligatorio (por body o header `X-Contact-Channel`).
+- `fields`: array asociativo con los valores del formulario. El telefono se normaliza persistentemente solo con digitos.
+- `turnstile_token`: si Cloudflare Turnstile esta habilitado en configuracion, es validado del lado del servidor.
+- `utm_site`: si no se especifica en `fields`, el backend lo infiere del dominio de origen.
+- Respuesta exitosa: `201 Created` con `{"message": "Tu mensaje fue enviado correctamente.", "id": 123}`.
 
 ### 4.3 Estado publico de pago
+- **GET** `/api/v1/payments/public-status/{id}?token={uuid}`
 
-- GET /api/v1/payments/public-status/{id}?token={uuid}
+Permite a la pantalla de resultado del frontend consultar el estado de una transaccion sin necesidad de autenticacion de usuario.
+- Requiere parametro query `token` correspondiente al `public_status_token` UUID emitido durante el checkout.
+- Retorna: `id`, `gateway`, `gateway_tx_id`, `amount`, `currency`, `status`, `status_label`, `updated_at`.
+- Codigos de error: `422` (falta parametro token), `404` (pago o token inexistente).
 
-Uso:
-- Se utiliza para pantalla publica de resultado de pago
-- Requiere token de estado (public_status_token) generado durante checkout
+---
 
-Respuestas:
-- 200: estado del pago
-- 422: falta token query param
-- 404: token invalido
+## 5. Endpoints de catalogo, reservas y checkout (token.origin)
 
-## 5. Endpoints de catalogo (sin auth:sanctum, pero con token.origin)
-
-Estos endpoints no piden sesion de usuario, pero SI requieren Bearer token valido y origen autorizado.
-
-- GET /api/v1/proyectos
-- GET /api/v1/proyectos/{id}
-- GET /api/v1/plantas
-- GET /api/v1/plantas/{id}
-- GET /api/v1/plantas/filtros-ubicacion
-- GET /api/v1/plantas/proyecto/{projectSlug}/unidad/{unitName}
+Estos endpoints requieren `Authorization: Bearer <api_token>` y origen autorizado, pero **no** exigen sesion de usuario logueado (`auth:sanctum`).
 
 ### 5.1 Proyectos
 
-Filtros soportados (principales):
-- region
-- comuna
-- etapa
-- q (busqueda)
-- entrega_inmediata (true/false)
-- tipo (acepta lista)
-- perPage
-- fields o campos (seleccion de campos)
-- include_plantas (en detalle)
-- include_asesores (en detalle) — agrega array `asesores` con asesores activos del proyecto
+#### Listado de proyectos
+- **GET** `/api/v1/proyectos`
 
-- Campos de cada asesor: id, full_name, first_name, last_name, email, whatsapp_owner, resolved_avatar_url
+Filtros query disponibles:
+- `region`: nombre exacto de la region.
+- `comuna`: nombre exacto de la comuna.
+- `etapa`: etapa de desarrollo normalizada (`blanco`, `verde`, `entrega_inmediata`, `en_construccion`, `venta`, `pre_venta`).
+- `q`: busqueda por texto libre en nombre, comuna, region o direccion.
+- `entrega_inmediata`: `1` / `0` o `true` / `false`.
+- `tipo`: tipo o tipos de proyecto (admite valor unico o array/separado por comas).
+- `perPage`: paginacion (1 a 100, default: 15).
+- `fields` / `campos`: seleccion de campos especificos separados por coma (ej: `id,name,comuna,precio_desde,tipologias`).
 
-- resolved_avatar_url prioriza imagen Curator media sobre avatar_url estatico
+Campos calculados por defecto:
+- `precio_desde`: Menor `precio_lista` entre todas las plantas activas del proyecto. `null` si no posee plantas.
+- `tipologias`: Agrupacion estructurada de plantas activas por dormitorios (`programa`), banos (`programa2`) y tipo de producto.
 
-- Sin este parametro, `asesores` se omite de la respuesta
-
-Campos computados nuevos (disponibles en listado y detalle por defecto):
-
-| Campo | Descripcion |
-|-------|-------------|
-| `precio_desde` | Precio de lista (`precio_lista`) mas bajo entre las plantas activas del proyecto. `null` si no tiene plantas. |
-| `tipologias` | Array de agrupaciones de plantas activas por combinacion de `programa` (dormitorios) + `programa2` (banos) + `tipo_producto`. Array vacio si no tiene plantas. |
-
-Estructura de cada elemento en `tipologias`:
-
+Ejemplo de elemento en `tipologias`:
 ```json
 {
   "programa": "2 dormitorios",
-  "programa2": "1 bano",
+  "programa2": "2 banos",
   "tipo_producto": "DEPARTAMENTO",
-  "cantidad": 12,
-  "precio_desde": 2800.00,
-  "superficie_util_min": 48.00,
-  "superficie_util_max": 52.00
+  "cantidad": 8,
+  "precio_desde": 3150.00,
+  "superficie_util_min": 52.4,
+  "superficie_util_max": 58.2
 }
 ```
 
-- Solo se consideran plantas activas (`is_active = 1`).
-- Ambos campos aparecen por defecto. Si se usa `?fields=` sin incluirlos, se omiten.
+#### Detalle de proyecto
+- **GET** `/api/v1/proyectos/{id}`
 
-Ejemplo (detalle con plantas y asesores):
-```bash
-curl -H "Authorization: Bearer TOKEN" \
-  -H "Origin: https://frontend.cliente.com" \
-  "https://tu-dominio.com/api/v1/proyectos/3?include_plantas=1&include_asesores=1"
-```
+Parametros query:
+- `include_plantas`: `1` o `true` para incluir array de unidades (`plantas`).
+- `include_asesores`: `1` o `true` para incluir array de asesores activos asignados (`asesores`).
+- `evento_sale`: `1` o `0` para calcular precios y descuentos de plantas bajo modalidad sale.
+- `fields` / `campos`: seleccion de campos del proyecto.
 
-Ejemplo (listado simple):
-```bash
-curl -H "Authorization: Bearer TOKEN" \
-  -H "Origin: https://frontend.cliente.com" \
-  "https://tu-dominio.com/api/v1/proyectos?region=Metropolitana&perPage=12"
-```
-
-Respuesta de listado (ejemplo con `precio_desde` y `tipologias`):
+Estructura de asesor incluido:
 ```json
 {
-  "data": [
-    {
-      "id": 3,
-      "name": "Torre Central",
-      "precio_desde": 2800.00,
-      "tipologias": [
-        {
-          "programa": "2 dormitorios",
-          "programa2": "1 bano",
-          "tipo_producto": "DEPARTAMENTO",
-          "cantidad": 12,
-          "precio_desde": 2800.00,
-          "superficie_util_min": 48.00,
-          "superficie_util_max": 52.00
-        }
-      ]
-    }
-  ],
-  "current_page": 1,
-  "per_page": 15,
-  "total": 1
+  "id": 4,
+  "full_name": "Maria Gonzalez",
+  "first_name": "Maria",
+  "last_name": "Gonzalez",
+  "email": "mgonzalez@ileben.cl",
+  "whatsapp_owner": "+56987654321",
+  "resolved_avatar_url": "https://dominio.com/curator/media/avatar.webp"
 }
 ```
 
-### 5.2 Plantas
+### 5.2 Plantas (Unidades / Inventario)
 
-Filtros soportados (principales):
-- proyecto_id o project_id — filtra por ID de proyecto (accepta lista separada por coma)
-- salesforce_proyecto_id — filtra por Salesforce ID del proyecto
-- project_slug o slug — filtra por slug del proyecto
-- comuna_slug
-- catalog_slug
-- comuna, provincia, region
-- programa (dormitorios), programa2 (banos)
-- piso
-- orientacion
-- tipo_producto, tipo_producto_slug, tipo_slug
-- entrega
-- disponible o available
-- is_active — filtro por estado activo de la planta. Sin este parámetro se retornan todas las plantas (activas e inactivas). 1=solo activas, 0=solo inactivas
-- evento_sale — filtro evento sale. Solo aplica cuando se envía explícitamente via URL. 1=solo unidades sale con pricing evento, 0=no sale con pricing normal. Sin parámetro no filtra y usa pricing normal (descuento del proyecto)
-- min_precio, max_precio
-- perPage, page
+#### Listado de plantas
+- **GET** `/api/v1/plantas`
 
-Campos utiles en respuesta:
-- is_available
-- is_paid
-- precio_final
-- cover_image_media e interior_image_media
-- cover_image_url e interior_image_url
-- asesores
-- proyecto
+Filtros soportados:
+- `proyecto_id` o `project_id`: ID numerico o lista separada por comas.
+- `salesforce_proyecto_id`: Salesforce ID del proyecto (admite lista).
+- `project_slug` o `slug`: slug del proyecto.
+- `catalog_slug`: resuelve coincidencias contra slug de proyecto o comuna.
+- `comuna_slug`: slug de comuna.
+- `comuna`, `provincia`, `region`: filtros geograficos del proyecto.
+- `programa`: filtro de dormitorios (`ST`, `1`, `2`, `2D`...).
+- `programa2`: filtro de banos (`1`, `2`, `1B`...).
+- `piso`: numero de piso.
+- `orientacion`: orientacion cardinal (`Norte`, `Sur`, `Oriente`, `Poniente`, etc.).
+- `tipo_producto`: tipo exacto (ej: `DEPARTAMENTO`, `CASA`).
+- `tipo_producto_slug` o `tipo_slug`: slug del tipo de producto.
+- `entrega`: etapa de entrega del proyecto.
+- `disponible` o `available`: `1` (sin reserva activa ni pago completado), `0` (con reserva o pagada).
+- `is_active`: `1` (solo activas), `0` (solo inactivas). Si se omite, retorna todas.
+- `evento_sale`: `1` (solo unidades con `unidad_sale = true` con descuento de unidad), `0` (solo unidades sin sale). Si se omite, no filtra por sale y aplica el descuento general del proyecto.
+- `min_precio`, `max_precio`: rango sobre `precio_base`.
+- `perPage`: cantidad por pagina (default determinado por `plants_per_page` de SiteSetting, max 100).
 
-## 6. Endpoints protegidos (auth:sanctum + token.origin)
+Campos dinamicos devueltos en cada planta:
+- `precio_final`: Precio calculado considerando precio de lista y descuento aplicable (`porcentaje_maximo_unidad` si `evento_sale=1`, o `descuento_defecto_cotizacion_web` del proyecto en modo normal).
+- `is_available`: booleano (`true` si no tiene reserva activa ni pago finalizado).
+- `is_paid`: booleano (`true` si cuenta con reserva o pago completado).
+- `cover_image_url`, `interior_image_url`, `cover_image_media`, `interior_image_media`.
+- `asesores`: lista de asesores asignados a la unidad (o heredados del proyecto si la unidad no tiene asesor asignado).
 
-Estos endpoints requieren usuario autenticado + Bearer token + origen autorizado:
+#### Detalle de planta por ID
+- **GET** `/api/v1/plantas/{id}`
 
-- GET /api/v1/me
-- POST /api/v1/logout
-- GET /api/v1/production-sync/export
-- GET /api/v1/payment-gateways
-- POST /api/v1/checkout
-- GET /api/v1/reservations/planta/{plantId}
-- POST /api/v1/reservations
-- DELETE /api/v1/reservations/{sessionToken}
-- POST /api/v1/payments
-- GET /api/v1/payments
-- GET /api/v1/payments/{id}
-- POST /api/v1/payments/{id}/manual-proof
+Parametros query:
+- `evento_sale`: `1` o `0` para resolver el calculo de precio con descuento de evento.
 
-### 6.1 Checkout
+#### Detalle de planta por proyecto y unidad (Ruta semantica)
+- **GET** `/api/v1/plantas/proyecto/{projectSlug}/unidad/{unitName}`
 
-- POST /api/v1/checkout
+Permite consultar directamente una unidad usando el slug del proyecto y el nombre de la planta (ej: `/plantas/proyecto/torre-central/unidad/Depto-101` o `/plantas/proyecto/torre-central/unidad/depto-101`).
+- Soporta parametro query `evento_sale`.
 
-Body requerido:
+#### Catalogo de filtros de ubicacion
+- **GET** `/api/v1/plantas/filtros-ubicacion`
+
+Devuelve las opciones unicas actualmente disponibles en proyectos y plantas activas:
 ```json
 {
-  "plant_id": 10,
-  "quantity": 1,
-  "gateway": "transbank",
-  "name": "Juan Perez",
-  "email": "juan@example.com",
-  "phone": "+56911111111",
-  "rut": "12345678-5",
-  "session_token": "opcional-no-manual"
+  "regions": ["Metropolitana de Santiago", "Los Lagos"],
+  "comunas": ["Santiago", "Providencia", "Puerto Varas"],
+  "comunas_by_region": {
+    "Metropolitana de Santiago": ["Providencia", "Santiago"],
+    "Los Lagos": ["Puerto Varas"]
+  },
+  "orientaciones": ["Nor-Oriente", "Sur", "Poniente"],
+  "tipos_producto": ["DEPARTAMENTO", "CASA"],
+  "pisos": ["2", "3", "4"],
+  "entregas": ["En Blanco", "En Verde", "Entrega Inmediata"]
 }
 ```
 
-Reglas clave:
-- gateway: transbank, mercadopago, manual
-- session_token es obligatorio si gateway = manual
-- Para manual, debe existir reserva activa valida
+### 5.3 Pasarelas de pago disponibles
+- **GET** `/api/v1/payment-gateways?plant_id={id}`
 
-Respuesta exitosa tipica:
-- transbank: gateway, redirect_url, token, payment_id, payment_status_token
-- mercadopago: gateway, redirect_url, preference_id
-- manual: flow, payment_id, reference, instructions, bank_accounts, expires_at
-
-### 6.2 Pasarelas disponibles
-
-- GET /api/v1/payment-gateways?plant_id={id}
+Devuelve las pasarelas habilitadas para la unidad consultada (valida que el proyecto tenga codigo de comercio para Transbank o datos de cuenta bancaria para pago manual).
 
 Respuesta:
 ```json
@@ -311,116 +300,178 @@ Respuesta:
       "name": "Webpay (Transbank)",
       "flow": "redirect",
       "description": "Paga con tarjeta de credito o debito"
+    },
+    {
+      "id": "manual",
+      "name": "Transferencia Bancaria",
+      "flow": "manual",
+      "description": "Transfiere directamente a la cuenta del proyecto"
     }
   ],
-  "count": 1
+  "count": 2
 }
 ```
 
-### 6.3 Reservas
+### 5.4 Reservas temporales (Plant Reservations)
 
-- POST /api/v1/reservations
+Permite bloquear temporalmente una unidad durante el proceso de seleccion o pago.
+
+- **POST** `/api/v1/reservations`: Crear reserva temporal.
+  - Body: `{"plant_id": 10, "session_token": "opcional-uuid"}`
+  - Respuesta 201: Contiene `session_token`, `expires_at` y `remaining_seconds`.
+  - Si la unidad ya esta reservada por otra sesion devuelve `409 Conflict`.
+- **GET** `/api/v1/reservations/planta/{plantId}` (Alias: `/api/v1/reservations/plant/{plantId}`):
+  - Consulta publica de estado de reserva para despliegue de badges de disponibilidad.
+- **DELETE** `/api/v1/reservations/{sessionToken}`:
+  - Libera la reserva si el usuario cancela o cierra el dialogo de checkout.
+
+### 5.5 Inicio de Checkout
+- **POST** `/api/v1/checkout`
+
+Inicia la pasarela seleccionada para reservar o comprar una unidad. Si el cliente no esta autenticado, el sistema busca o crea automaticamente un usuario con rol `customer`.
 
 Body:
 ```json
 {
-  "plant_id": 10
+  "plant_id": 10,
+  "quantity": 1,
+  "gateway": "transbank",
+  "name": "Juan Perez",
+  "email": "juan@example.com",
+  "phone": "+56911111111",
+  "rut": "12345678-5",
+  "session_token": "token-reserva-si-aplica"
 }
 ```
 
-Respuesta 201:
-```json
-{
-  "reservation": {
-    "id": 90,
-    "session_token": "abc123...",
-    "plant_id": 10,
-    "status": "active",
-    "expires_at": "2026-06-02T19:10:00Z",
-    "remaining_seconds": 900
-  }
-}
-```
+Pasarelas soportadas:
+1. `transbank`: Genera transaccion Webpay Plus. Devuelve `redirect_url`, `token`, `payment_id`, `payment_status_token`.
+2. `mercadopago`: Genera preferencia Mercado Pago. Devuelve `redirect_url`, `preference_id`.
+3. `manual`: Requiere `session_token` activo. Devuelve instrucciones de transferencia, datos bancarios del proyecto (`bank_accounts`), codigo de referencia y fecha limite (`expires_at`).
 
-- GET /api/v1/reservations/planta/{plantId}
-- DELETE /api/v1/reservations/{sessionToken}
+---
 
-Nota importante:
-- La ruta correcta es /reservations/planta/{plantId}
+## 6. Endpoints protegidos para usuarios autenticados (`auth:sanctum` + `token.origin`)
 
-### 6.4 Pagos
+Estos endpoints requieren sesion de usuario iniciada mediante Bearer token Sanctum y validacion de origen.
 
-- POST /api/v1/payments
-- GET /api/v1/payments
-- GET /api/v1/payments/{id}
+### 6.1 Perfil y sesion
+- **GET** `/api/v1/me`: Datos del usuario autenticado.
+- **POST** `/api/v1/logout`: Revoca el token actual del usuario.
 
-Comprobante manual:
-- POST /api/v1/payments/{id}/manual-proof
-- Content-Type: multipart/form-data
-- Campos:
-  - proof (requerido, jpg/jpeg/png/pdf/heic/heif, max 5MB)
-  - notes (opcional)
+### 6.2 Exportacion para sincronizacion de produccion (Solo Admin)
+- **GET** `/api/v1/production-sync/export`
+- Requiere que el usuario autenticado sea administrador (`$request->user()->isAdmin()`).
+- Devuelve snapshot completo para importacion en entornos de staging (`site_settings`, `projects`, `plants`).
 
-## 7. Endpoints web de retorno/webhook de pasarelas (fuera de /api/v1)
+### 6.3 Gestion directa de pagos del usuario
+- **POST** `/api/v1/payments`: Crear registro de pago.
+- **GET** `/api/v1/payments`: Listado paginado de los pagos asociados al usuario autenticado.
+- **GET** `/api/v1/payments/{id}`: Detalle de pago propio.
+- **POST** `/api/v1/payments/{id}/manual-proof`:
+  - Permite adjuntar comprobante de transferencia bancaria para un pago manual.
+  - Content-Type: `multipart/form-data`.
+  - Campos: `proof` (archivo requerido, formatos: jpg, jpeg, png, pdf, heic, heif; max 5MB), `notes` (opcional).
 
-Definidos en routes/web.php:
+---
 
-Transbank:
-- GET /payments/transbank/redirect
-- GET|POST /payments/transbank/return
+## 7. Endpoints web, retornos y utilitarios (fuera de `/api/v1`)
 
-Mercado Pago:
-- POST /payments/mercadopago/webhook
-- GET /payments/mercadopago/return
+Definidos en `routes/web.php`:
 
-Paginas de resultado:
-- GET /payments/success/{payment?}
-- GET /payments/failed/{payment?}
-- GET /payments/pending/{payment?}
+### 7.1 Retornos y webhooks de pasarelas
+- **Transbank:**
+  - **GET** `/payments/transbank/redirect`: Pagina puente que despacha POST `token_ws` hacia Transbank.
+  - **GET|POST** `/payments/transbank/return`: Retorno del navegador / confirmacion tras completar el pago en Webpay.
+- **Mercado Pago:**
+  - **POST** `/payments/mercadopago/webhook`: Webhook IPN para notificaciones de pago asincronas.
+  - **GET** `/payments/mercadopago/return`: Retorno del cliente desde Mercado Pago.
+- **Paginas de resultado del checkout:**
+  - **GET** `/payments/success/{payment?}`
+  - **GET** `/payments/failed/{payment?}`
+  - **GET** `/payments/pending/{payment?}`
+
+### 7.2 Acortador y enlaces dinamicos de asesores
+- **GET** `/s/{slug}`: Redireccion de enlace corto con registro de clic, User-Agent, IP y propagacion automatica de parametros UTM.
+- **GET** `/go/asesores/{asesor}/whatsapp`: Redireccion directa al WhatsApp del asesor comercial preservando campana de origen.
+- **GET** `/curator/{path}`: Servidor seguro de archivos multimedia gestionados por Filament Curator.
+
+---
 
 ## 8. Ejemplos cURL rapidos
 
-### Login
+### Consulta de catalogo de proyectos con origen autorizado
 ```bash
-curl -X POST "https://tu-dominio.com/api/v1/login" \
-  -H "Content-Type: application/json" \
-  -d '{"email":"admin@dominio.com","password":"secret"}'
+curl -X GET "https://tu-dominio.com/api/v1/proyectos?region=Metropolitana&perPage=10" \
+  -H "Authorization: Bearer TU_API_TOKEN" \
+  -H "Origin: https://sale.ileben.cl"
 ```
 
-### Catalogo de plantas con token.origin
+### Consulta de plantas con filtro de disponibilidad y evento sale
 ```bash
-curl "https://tu-dominio.com/api/v1/plantas?proyecto_id=3&disponible=1" \
-  -H "Authorization: Bearer TOKEN" \
-  -H "Origin: https://frontend.cliente.com"
+curl -X GET "https://tu-dominio.com/api/v1/plantas?disponible=1&evento_sale=1&programa=2D" \
+  -H "Authorization: Bearer TU_API_TOKEN" \
+  -H "Origin: https://sale.ileben.cl"
 ```
 
-### Reserva + checkout manual
+### Detalle semantico de unidad
 ```bash
-curl -X POST "https://tu-dominio.com/api/v1/reservations" \
-  -H "Authorization: Bearer TOKEN" \
-  -H "Origin: https://frontend.cliente.com" \
-  -H "Content-Type: application/json" \
-  -d '{"plant_id":10}'
+curl -X GET "https://tu-dominio.com/api/v1/plantas/proyecto/edificio-parque/unidad/Depto-402" \
+  -H "Authorization: Bearer TU_API_TOKEN" \
+  -H "Origin: https://sale.ileben.cl"
+```
 
-curl -X POST "https://tu-dominio.com/api/v1/checkout" \
-  -H "Authorization: Bearer TOKEN" \
-  -H "Origin: https://frontend.cliente.com" \
+### Envio de formulario de contacto
+```bash
+curl -X POST "https://tu-dominio.com/api/v1/contact-submissions" \
   -H "Content-Type: application/json" \
+  -H "Origin: https://sale.ileben.cl" \
   -d '{
-    "plant_id":10,
-    "quantity":1,
-    "gateway":"manual",
-    "name":"Juan Perez",
-    "email":"juan@example.com",
-    "phone":"+56911111111",
-    "rut":"12345678-5",
-    "session_token":"TOKEN_RESERVA"
+    "channel": "sale",
+    "fields": {
+      "name": "Maria Lopez",
+      "email": "mlopez@example.com",
+      "phone": "+56998877665",
+      "message": "Solicitud de cotizacion",
+      "proyecto": "edificio-parque"
+    }
   }'
 ```
 
+### Reserva temporal de unidad
+```bash
+curl -X POST "https://tu-dominio.com/api/v1/reservations" \
+  -H "Authorization: Bearer TU_API_TOKEN" \
+  -H "Origin: https://sale.ileben.cl" \
+  -H "Content-Type: application/json" \
+  -d '{"plant_id": 25}'
+```
+
+### Iniciar checkout con Webpay (Transbank)
+```bash
+curl -X POST "https://tu-dominio.com/api/v1/checkout" \
+  -H "Authorization: Bearer TU_API_TOKEN" \
+  -H "Origin: https://sale.ileben.cl" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "plant_id": 25,
+    "quantity": 1,
+    "gateway": "transbank",
+    "name": "Maria Lopez",
+    "email": "mlopez@example.com",
+    "phone": "+56998877665",
+    "rut": "15234567-8"
+  }'
+```
+
+---
+
 ## 9. Notas operativas
 
-- En este proyecto, incluso endpoints de catalogo requieren token API por middleware token.origin.
-- Si el frontend recibe 403 en API con token valido, revisar Origin/Referer/X-Authorized-Url contra authorized_url del token.
-- Para integraciones de pago, usar /api/v1/checkout como punto de entrada y dejar retornos/webhooks en rutas web.
-- Para documentacion tecnica extensa de pagos, revisar PAYMENTS.md.
+1. **Token API en Catalogo:** Todo el catalogo de proyectos, plantas y flujo anonimo de checkout esta protegido por `token.origin`. Se debe configurar un token en Sanctum con la `authorized_url` del frontend consumidor (o wildcard si aplica).
+2. **Previsualizacion sin Token:** Enlaces con `preview_token` valido generado desde Filament (`FrontendPreviewLink`) tienen pase automatico para acceder al catalogo y configuracion sin levantar error 401/403.
+3. **Visibilidad de Pasarelas:** La configuracion privada de credenciales de pago en `/api/v1/site-config` no se entrega a clientes publicos no autenticados para evitar fuga de configuracion sensible.
+4. **Calculo de Precios:** El campo `precio_final` de cada planta computa automaticamente el descuento aplicable:
+   - Si no hay evento sale o `evento_sale=0`: utiliza `descuento_defecto_cotizacion_web` del proyecto.
+   - Si `evento_sale=1`: filtra exclusivamente unidades `unidad_sale=true` y descuenta segun `porcentaje_maximo_unidad`.
+5. **Separacion de Responsabilidades:** Las operaciones transaccionales complejas (iniciar checkout, webhook de pasarela, retorno del navegador) estan separadas: la API solo inicia la transaccion (`/api/v1/checkout`) y entrega las URLs de redireccion hacia rutas web (`/payments/*`) encargadas de procesar la respuesta del proveedor.

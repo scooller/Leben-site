@@ -4,6 +4,25 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.22] - 2026-09-22
+
+### 📖 Actualización Exhaustiva de Documentación de API (`API_USAGE.md`)
+
+- **Corrección de Niveles de Autorización**:
+  - Reclasificados endpoints de reservas (`POST /api/v1/reservations`, `GET /api/v1/reservations/planta/{plantId}`, `DELETE /api/v1/reservations/{sessionToken}`), pasarelas (`GET /api/v1/payment-gateways`) y checkout anónimo (`POST /api/v1/checkout`) como protegidos únicamente por `token.origin` (no requieren `auth:sanctum`).
+  - Documentado alias en inglés `GET /api/v1/reservations/plant/{plantId}`.
+  - Documentado bypass de previsualización para `FrontendPreviewLink` (staging y preview de Filament) en el middleware `token.origin`.
+- **Protocolos de Descubrimiento y Agentes**:
+  - Incorporada documentación de especificación OpenAPI 3.1.0 con Machine Payment Protocol (`/openapi.json`), RFC 9727 (`/.well-known/api-catalog`), ACP 1.0 (`/.well-known/acp.json`), UCP 1.0 (`/.well-known/ucp`), MCP SEP-1649 (`/.well-known/mcp/server-card.json`), ARD 1.0 (`/.well-known/ai-catalog.json`), Agent Skills (`/.well-known/agent-skills/index.json`) y Auth.md (`/auth.md`).
+- **Seguridad en Configuración de Sitio (`/api/v1/site-config`)**:
+  - Detallado comportamiento de enmascaramiento seguro de credenciales de pasarelas de pago (`gateway_transbank_config`, `gateway_mercadopago_config`, `gateway_manual_config`), `price_source` y `price_percentage_source` ante peticiones públicas no autenticadas.
+- **Catálogo, Filtros y Rutas Semánticas de Plantas**:
+  - Documentada la ruta semántica `GET /api/v1/plantas/proyecto/{projectSlug}/unidad/{unitName}`.
+  - Documentado endpoint de catálogo de filtros `GET /api/v1/plantas/filtros-ubicacion` y estructura de respuesta.
+  - Detallados todos los filtros disponibles (`is_active`, `evento_sale`, `disponible`, `catalog_slug`, `comuna_slug`, `programa`, `programa2`, etc.) y reglas de cálculo de `precio_final` en modo normal vs sale.
+- **Proyectos y Campos Computados**:
+  - Documentados campos `precio_desde`, `tipologias`, `descuento_defecto_cotizacion_web`, `descuento_maximo_unidad` y parámetros `include_asesores`, `include_plantas` y `evento_sale`.
+
 ## [1.9.21] - 2026-09-21
 
 ### 🔍 SEO Internacional (Hreflang) y SERP Snippet Preview en Panel Filament
