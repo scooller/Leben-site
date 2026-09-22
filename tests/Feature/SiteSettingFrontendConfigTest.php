@@ -157,6 +157,8 @@ class SiteSettingFrontendConfigTest extends TestCase
         $this->assertSame('CyberMonday', $payload['seo']['sale_utm_campaign']);
         $this->assertSame('CyberMonday', $payload['seo']['sale_campaign_override']);
         $this->assertSame('CyberMonday', $payload['seo']['sale_event']['utm_campaign']);
+        $this->assertArrayHasKey('sale_utm_campaign_channels', $payload['seo']);
+        $this->assertArrayHasKey('sale_utm_campaign_channel_slugs', $payload['seo']);
         $this->assertSame('none', $payload['seo']['utm_term_default']);
         $this->assertSame('none', $payload['seo']['utm_content_default']);
         $this->assertSame('demo.ileben.cl', $payload['seo']['utm_site_default']);

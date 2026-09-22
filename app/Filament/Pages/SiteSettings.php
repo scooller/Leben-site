@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Filament\Actions\SyncFromProductionAction;
 use App\Filament\Actions\SyncPlantsAction;
 use App\Filament\Actions\SyncProjectsAction;
+use App\Models\ContactChannel;
 use App\Models\Proyecto;
 use App\Models\SiteSetting;
 use Awcodes\Curator\Components\Forms\CuratorPicker;
@@ -101,6 +102,13 @@ class SiteSettings extends Page implements HasForms
         $data = $settings->toArray();
 
         data_set($data, 'extra_settings.qr', $settings->qrOptions());
+
+        if (data_get($data, 'extra_settings.sale_utm_campaign_channels') === null) {
+            $defaultChannel = ContactChannel::getDefault();
+            if ($defaultChannel) {
+                data_set($data, 'extra_settings.sale_utm_campaign_channels', [(string) $defaultChannel->id]);
+            }
+        }
 
         $this->form->fill($data);
 
@@ -623,6 +631,22 @@ class SiteSettings extends Page implements HasForms
                                             ->maxLength(100)
                                             ->disabled(fn (Get $get): bool => ! (bool) $get('evento_sale'))
                                             ->helperText('Sobreescribe utm_campaign durante el Evento Sale. Solo editable cuando Evento Sale está activo.'),
+
+                                        Select::make('extra_settings.sale_utm_campaign_channels')
+                                            ->label('Canales a sobreescribir en Evento Sale')
+                                            ->multiple()
+                                            ->searchable()
+                                            ->options(fn (): array => ContactChannel::query()
+                                                ->where('is_active', true)
+                                                ->orderBy('name')
+                                                ->get()
+                                                ->mapWithKeys(fn (ContactChannel $channel): array => [
+                                                    (string) $channel->id => $channel->is_default ? "{$channel->name} (Por defecto)" : $channel->name,
+                                                ])
+                                                ->all())
+                                            ->default(fn (): array => array_values(array_filter([(string) ContactChannel::getDefault()?->id])))
+                                            ->disabled(fn (Get $get): bool => ! (bool) $get('evento_sale'))
+                                            ->helperText('Selecciona qué canales de contacto tendrán su UTM Campaign sobreescrito por la campaña Sale cuando el Evento Sale esté activo. Por defecto, solo el canal por defecto. Si no se selecciona ninguno, no se sobreescribe ningún canal.'),
 
                                         TextInput::make('extra_settings.utm_source_default')
                                             ->label('UTM Source por defecto')

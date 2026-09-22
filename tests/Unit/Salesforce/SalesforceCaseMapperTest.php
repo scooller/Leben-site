@@ -261,10 +261,26 @@ class SalesforceCaseMapperTest extends TestCase
 		$this->assertSame('campana-especifica', $payload['utm_campaign__c'] ?? null);
 	}
 
-	public function test_it_overwrites_campaign_with_sale_utm_campaign_when_sale_event_is_active(): void
+	public function test_it_overwrites_campaign_with_sale_utm_campaign_when_sale_event_is_active_for_default_channel(): void
 	{
 		config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');
 		config()->set('services.salesforce.lead_status', 'En Contacto');
+
+		$defaultChannel = ContactChannel::getDefault() ?? ContactChannel::query()->create([
+			'slug' => 'default-test',
+			'name' => 'Venta Default Test',
+			'is_active' => true,
+			'is_default' => true,
+		]);
+
+		$otherChannel = ContactChannel::query()->firstOrCreate(
+			['slug' => 'general-test'],
+			[
+				'name' => 'General Web Test',
+				'is_active' => true,
+				'is_default' => false,
+			]
+		);
 
 		SiteSetting::current()->update([
 			'site_name' => 'iLeben',
@@ -286,7 +302,8 @@ class SalesforceCaseMapperTest extends TestCase
 			'is_active' => true,
 		]);
 
-		$submission = ContactSubmission::query()->create([
+		$saleSubmission = ContactSubmission::query()->create([
+			'contact_channel_id' => $defaultChannel->id,
 			'name' => 'Cyber User',
 			'email' => 'cyber@example.com',
 			'phone' => '56912345678',
@@ -302,16 +319,181 @@ class SalesforceCaseMapperTest extends TestCase
 			'submitted_at' => now(),
 		]);
 
-		$payload = app(SalesforceCaseMapper::class)->mapLead($submission);
+		$otherSubmission = ContactSubmission::query()->create([
+			'contact_channel_id' => $otherChannel->id,
+			'name' => 'Other User',
+			'email' => 'other@example.com',
+			'phone' => '56912345678',
+			'rut' => '11.111.111-2',
+			'fields' => [
+				'name' => 'Other User',
+				'lastname' => 'Test',
+				'project_name' => 'Edificio Cyber',
+				'utm_source' => 'facebook',
+				'utm_medium' => 'cpc',
+				'utm_campaign' => 'organic-campaign',
+			],
+			'submitted_at' => now(),
+		]);
 
-		$this->assertSame('CyberMonday', $payload['Nombre_de_la_Campa_a__c'] ?? null);
-		$this->assertSame('CyberMonday', $payload['utm_campaign__c'] ?? null);
+		$salePayload = app(SalesforceCaseMapper::class)->mapLead($saleSubmission->load('channel'));
+		$otherPayload = app(SalesforceCaseMapper::class)->mapLead($otherSubmission->load('channel'));
+
+		// Canal por defecto sí es sobreescrito con la campaña Sale
+		$this->assertSame('CyberMonday', $salePayload['Nombre_de_la_Campa_a__c'] ?? null);
+		$this->assertSame('CyberMonday', $salePayload['utm_campaign__c'] ?? null);
+
+		// Otro canal NO es sobreescrito, conserva su campaña original
+		$this->assertSame('organic-campaign', $otherPayload['Nombre_de_la_Campa_a__c'] ?? null);
+		$this->assertSame('organic-campaign', $otherPayload['utm_campaign__c'] ?? null);
+	}
+
+	public function test_it_only_overwrites_sale_utm_campaign_for_selected_channels_in_site_settings(): void
+	{
+		config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');
+		config()->set('services.salesforce.lead_status', 'En Contacto');
+
+		$channelA = ContactChannel::query()->firstOrCreate(
+			['slug' => 'landing-a-test'],
+			[
+				'name' => 'Landing A Test',
+				'is_active' => true,
+				'is_default' => false,
+			]
+		);
+
+		$channelB = ContactChannel::query()->firstOrCreate(
+			['slug' => 'landing-b-test'],
+			[
+				'name' => 'Landing B Test',
+				'is_active' => true,
+				'is_default' => false,
+			]
+		);
+
+		// Seleccionamos explícitamente solo el canal B
+		SiteSetting::current()->update([
+			'site_name' => 'iLeben',
+			'evento_sale' => true,
+			'extra_settings' => [
+				'utm_campaign_default' => 'campaign',
+				'sale_utm_campaign' => 'CyberMonday',
+				'sale_utm_campaign_channels' => [(string) $channelB->id],
+			],
+			'contact_form_fields' => [
+				['key' => 'name', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
+				['key' => 'project_name', 'label' => 'Proyecto', 'type' => 'text', 'required' => false],
+			],
+		]);
+
+		Proyecto::query()->create([
+			'salesforce_id' => 'a0J8c00000sdXCYBER3',
+			'name' => 'Edificio B',
+			'slug' => 'edificio-b',
+			'is_active' => true,
+		]);
+
+		$submissionA = ContactSubmission::query()->create([
+			'contact_channel_id' => $channelA->id,
+			'name' => 'User A',
+			'email' => 'a@example.com',
+			'phone' => '56912345678',
+			'rut' => '11.111.111-1',
+			'fields' => [
+				'name' => 'User A',
+				'lastname' => 'Test',
+				'project_name' => 'Edificio B',
+				'utm_campaign' => 'my-campaign-a',
+			],
+			'submitted_at' => now(),
+		]);
+
+		$submissionB = ContactSubmission::query()->create([
+			'contact_channel_id' => $channelB->id,
+			'name' => 'User B',
+			'email' => 'b@example.com',
+			'phone' => '56912345678',
+			'rut' => '11.111.111-2',
+			'fields' => [
+				'name' => 'User B',
+				'lastname' => 'Test',
+				'project_name' => 'Edificio B',
+				'utm_campaign' => 'my-campaign-b',
+			],
+			'submitted_at' => now(),
+		]);
+
+		$payloadA = app(SalesforceCaseMapper::class)->mapLead($submissionA->load('channel'));
+		$payloadB = app(SalesforceCaseMapper::class)->mapLead($submissionB->load('channel'));
+
+		// Canal A no está en la lista seleccionada -> no se sobreescribe
+		$this->assertSame('my-campaign-a', $payloadA['utm_campaign__c'] ?? null);
+
+		// Canal B está en la lista seleccionada -> sí se sobreescribe
+		$this->assertSame('CyberMonday', $payloadB['utm_campaign__c'] ?? null);
+	}
+
+	public function test_it_does_not_overwrite_sale_campaign_when_selected_channels_is_empty(): void
+	{
+		config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');
+		config()->set('services.salesforce.lead_status', 'En Contacto');
+
+		$channel = ContactChannel::getDefault() ?? ContactChannel::query()->firstOrCreate(
+			['slug' => 'sale-empty-test'],
+			['name' => 'Sale Empty Test', 'is_active' => true, 'is_default' => true]
+		);
+
+		// Lista explícitamente vacía
+		SiteSetting::current()->update([
+			'site_name' => 'iLeben',
+			'evento_sale' => true,
+			'extra_settings' => [
+				'utm_campaign_default' => 'campaign',
+				'sale_utm_campaign' => 'CyberMonday',
+				'sale_utm_campaign_channels' => [],
+			],
+			'contact_form_fields' => [
+				['key' => 'name', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
+				['key' => 'project_name', 'label' => 'Proyecto', 'type' => 'text', 'required' => false],
+			],
+		]);
+
+		Proyecto::query()->create([
+			'salesforce_id' => 'a0J8c00000sdXCYBER4',
+			'name' => 'Edificio Empty',
+			'slug' => 'edificio-empty',
+			'is_active' => true,
+		]);
+
+		$submission = ContactSubmission::query()->create([
+			'contact_channel_id' => $channel->id,
+			'name' => 'User Empty',
+			'email' => 'empty@example.com',
+			'phone' => '56912345678',
+			'rut' => '11.111.111-1',
+			'fields' => [
+				'name' => 'User Empty',
+				'lastname' => 'Test',
+				'project_name' => 'Edificio Empty',
+				'utm_campaign' => 'preserve-me',
+			],
+			'submitted_at' => now(),
+		]);
+
+		$payload = app(SalesforceCaseMapper::class)->mapLead($submission->load('channel'));
+
+		$this->assertSame('preserve-me', $payload['utm_campaign__c'] ?? null);
 	}
 
 	public function test_it_does_not_use_sale_utm_campaign_when_sale_event_is_disabled(): void
 	{
 		config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');
 		config()->set('services.salesforce.lead_status', 'En Contacto');
+
+		$channel = ContactChannel::getDefault() ?? ContactChannel::query()->firstOrCreate(
+			['slug' => 'sale-normal-test'],
+			['name' => 'Sale Normal Test', 'is_active' => true, 'is_default' => true]
+		);
 
 		SiteSetting::current()->update([
 			'site_name' => 'iLeben',
@@ -334,6 +516,7 @@ class SalesforceCaseMapperTest extends TestCase
 		]);
 
 		$submission = ContactSubmission::query()->create([
+			'contact_channel_id' => $channel->id,
 			'name' => 'Normal User',
 			'email' => 'normal@example.com',
 			'phone' => '56912345678',
@@ -349,7 +532,7 @@ class SalesforceCaseMapperTest extends TestCase
 			'submitted_at' => now(),
 		]);
 
-		$payload = app(SalesforceCaseMapper::class)->mapLead($submission);
+		$payload = app(SalesforceCaseMapper::class)->mapLead($submission->load('channel'));
 
 		$this->assertSame('summer-promo', $payload['Nombre_de_la_Campa_a__c'] ?? null);
 		$this->assertSame('summer-promo', $payload['utm_campaign__c'] ?? null);

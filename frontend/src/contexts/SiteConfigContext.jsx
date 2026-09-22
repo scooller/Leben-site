@@ -105,7 +105,15 @@ export const SiteConfigProvider = ({ children }) => {
       }
 
       const isSale = Boolean(data?.evento_sale);
-      const saleCampaignOverride = isSale
+      const currentChannelSlug = (typeof window !== 'undefined' && window.location)
+        ? (new URLSearchParams(window.location.search).get('channel') || 'sale')
+        : 'sale';
+      const allowedChannelSlugs = Array.isArray(data?.seo?.sale_utm_campaign_channel_slugs)
+        ? data.seo.sale_utm_campaign_channel_slugs
+        : null;
+      const isChannelEligible = !allowedChannelSlugs || allowedChannelSlugs.includes(currentChannelSlug);
+
+      const saleCampaignOverride = isSale && isChannelEligible
         ? (data?.seo?.sale_campaign_override || data?.seo?.sale_event?.utm_campaign || data?.seo?.sale_utm_campaign || null)
         : null;
 

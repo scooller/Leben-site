@@ -4,7 +4,25 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
-## [1.9.23] - 2026-09-22
+## [1.9.24] - 2026-09-22
+
+### 🎯 Sobreescritura Selectiva de UTM Campaign por Canal de Contacto en Evento Sale
+
+- **Panel Filament (`app/Filament/Pages/SiteSettings.php`)**:
+  - Nuevo selector múltiple `extra_settings.sale_utm_campaign_channels` ("Canales a sobreescribir en Evento Sale") en la pestaña `SEO`, permitiendo elegir 1 o más canales de contacto activos.
+  - Visualización del canal por defecto con sufijo `(Por defecto)`.
+  - Valor por defecto: canal por defecto (`ContactChannel::getDefault()`).
+  - Deshabilitado reactivamente cuando `evento_sale` está inactivo.
+- **Configuración y API (`app/Models/SiteSetting.php`)**:
+  - `SiteSetting::forFrontend()` expone `sale_utm_campaign_channels` (IDs) y `sale_utm_campaign_channel_slugs` (slugs) en la sección `seo`.
+- **Mapeo de Leads Salesforce (`app/Services/Salesforce/SalesforceCaseMapper.php`)**:
+  - Método `shouldOverrideCampaignForSale()` que verifica si el canal del submission (`contact_channel_id`, relación o slug/dominio) pertenece a los canales habilitados para sobreescritura de Sale.
+  - Si el canal no está en la lista de canales permitidos, **NO sobreescribe** `utm_campaign`, preservando la campaña que envió el cliente o canal externo.
+  - Si no hay canales configurados o la lista está vacía, no sobreescribe ningún canal.
+- **Frontend (`frontend/src/contexts/SiteConfigContext.jsx`)**:
+  - `saleCampaignOverride` en sesión solo se aplica si el slug del canal actual (`?channel=` o fallback `'sale'`) se encuentra en `sale_utm_campaign_channel_slugs`.
+- **Pruebas Automatizadas**:
+  - Nuevas pruebas en `SalesforceCaseMapperTest` verificando: sobreescritura solo para canales seleccionados, no sobreescritura para canales no seleccionados, comportamiento ante lista vacía, y no sobreescritura cuando evento sale está inactivo. Total suite: 450 tests pasando.
 
 ### 🏷️ Control Dinámico de UTM Campaign para Evento Sale y SEO
 

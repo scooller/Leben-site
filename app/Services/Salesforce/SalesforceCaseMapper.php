@@ -2,6 +2,7 @@
 
 namespace App\Services\Salesforce;
 
+use App\Models\ContactChannel;
 use App\Models\ContactSubmission;
 use App\Models\Proyecto;
 use App\Models\SiteSetting;
@@ -73,7 +74,7 @@ class SalesforceCaseMapper
 			?: $this->fieldValue($fields, ['medio_de_llegada', 'medio_llegada', 'origen_del_prospecto', 'origen_prospecto'])
 			?: $utmMediumDefault;
 		$saleCampaign = null;
-		if ($settings->evento_sale) {
+		if ($this->shouldOverrideCampaignForSale($submission, $settings, $fields, $website)) {
 			$saleCampaign = $this->normalizeFieldValue($extraSettings['sale_utm_campaign'] ?? null)
 				?: $this->normalizeFieldValue($extraSettings['sale_event_name'] ?? null)
 				?: $this->normalizeFieldValue($extraSettings['utm_campaign_default'] ?? null);
@@ -567,6 +568,80 @@ class SalesforceCaseMapper
 		$normalized = ltrim($normalized, '.');
 
 		return $normalized !== '' ? $normalized : null;
+	}
+
+	/**
+	 * @param  array<string, mixed>  $fields
+	 */
+	private function shouldOverrideCampaignForSale(ContactSubmission $submission, SiteSetting $settings, array $fields, ?string $website): bool
+	{
+		if (! $settings->evento_sale) {
+			return false;
+		}
+
+		$extraSettings = is_array($settings->extra_settings) ? $settings->extra_settings : [];
+
+		$saleCampaign = $this->normalizeFieldValue($extraSettings['sale_utm_campaign'] ?? null)
+			?: $this->normalizeFieldValue($extraSettings['sale_event_name'] ?? null)
+			?: $this->normalizeFieldValue($extraSettings['utm_campaign_default'] ?? null);
+
+		if ($saleCampaign === null || trim($saleCampaign) === '') {
+			return false;
+		}
+
+		$channel = $this->resolveSubmissionChannel($submission, $fields, $website);
+
+		$hasExplicitSetting = array_key_exists('sale_utm_campaign_channels', $extraSettings);
+		$configuredChannels = $hasExplicitSetting
+			? (array) $extraSettings['sale_utm_campaign_channels']
+			: array_values(array_filter([(string) ContactChannel::getDefault()?->id]));
+
+		if (empty($configuredChannels)) {
+			return false;
+		}
+
+		if ($channel === null) {
+			return false;
+		}
+
+		$allowedIdentifiers = array_map('strval', $configuredChannels);
+
+		return in_array((string) $channel->id, $allowedIdentifiers, true)
+			|| in_array((string) $channel->slug, $allowedIdentifiers, true);
+	}
+
+	/**
+	 * @param  array<string, mixed>  $fields
+	 */
+	private function resolveSubmissionChannel(ContactSubmission $submission, array $fields, ?string $website): ?ContactChannel
+	{
+		if ($submission->relationLoaded('channel') && $submission->channel !== null) {
+			return $submission->channel;
+		}
+
+		if ($submission->contact_channel_id) {
+			$channel = ContactChannel::query()->find($submission->contact_channel_id);
+			if ($channel !== null) {
+				return $channel;
+			}
+		}
+
+		$channelSlug = $this->fieldValue($fields, ['channel', 'contact_channel', 'canal']);
+		if ($channelSlug !== null && trim($channelSlug) !== '') {
+			$channel = ContactChannel::findBySlug(trim($channelSlug));
+			if ($channel !== null) {
+				return $channel;
+			}
+		}
+
+		if ($website !== null && trim($website) !== '') {
+			$channel = ContactChannel::findByDomain($website);
+			if ($channel !== null) {
+				return $channel;
+			}
+		}
+
+		return ContactChannel::getDefault();
 	}
 
 	/**

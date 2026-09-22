@@ -498,6 +498,15 @@ class SiteSetting extends Model
                     ? trim((string) $extraSettings['sale_utm_campaign'])
                     : null,
                 'sale_campaign_override' => $saleUtmCampaign,
+                'sale_utm_campaign_channels' => array_key_exists('sale_utm_campaign_channels', $extraSettings)
+                    ? array_values((array) $extraSettings['sale_utm_campaign_channels'])
+                    : array_values(array_filter([(string) ContactChannel::getDefault()?->id])),
+                'sale_utm_campaign_channel_slugs' => array_values(ContactChannel::query()
+                    ->whereIn('id', array_key_exists('sale_utm_campaign_channels', $extraSettings)
+                        ? (array) $extraSettings['sale_utm_campaign_channels']
+                        : array_values(array_filter([(string) ContactChannel::getDefault()?->id])))
+                    ->pluck('slug')
+                    ->all()),
                 'utm_term_default' => is_string($extraSettings['utm_term_default'] ?? null)
                     ? trim((string) $extraSettings['utm_term_default'])
                     : 'none',
