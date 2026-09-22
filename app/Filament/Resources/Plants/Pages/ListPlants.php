@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Plants\Pages;
 
 use App\Filament\Actions\EraseAllPlantsAction;
+use App\Filament\Actions\ResetSalePlantsAction;
 use App\Filament\Actions\SyncPlantsAction;
 use App\Filament\Resources\Plants\PlantResource;
 use Filament\Actions\CreateAction;
@@ -22,6 +23,7 @@ class ListPlants extends ListRecords
         return [
             CreateAction::make(),
             SyncPlantsAction::make(),
+            ResetSalePlantsAction::make(),
             EraseAllPlantsAction::make(),
         ];
     }

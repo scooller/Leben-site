@@ -4,7 +4,18 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
-## [1.9.24] - 2026-09-22
+## [1.9.25] - 2026-09-22
+
+### 🔄 Acción de Reseteo de Unidades Sale en Plantas
+
+- **Panel Filament (`app/Filament/Actions/ResetSalePlantsAction.php`)**:
+  - Nueva acción `ResetSalePlantsAction` que desmarca masivamente todas las plantas asignadas como `unidad_sale = true` estableciéndolas en `false`.
+  - Cuadro modal de confirmación (`¿Estás seguro de que deseas quitar todas las unidades Sale?...`) con advertencia clara y feedback de cuántas plantas fueron reseteadas.
+  - Permite reiniciar la selección de unidades sale para reasignar nuevas plantas desde la tabla o mediante acciones masivas.
+- **Página de Listado de Plantas (`app/Filament/Resources/Plants/Pages/ListPlants.php`)**:
+  - Incorporado botón de cabecera `"Resetear plantas Sale"` accesible directamente en el panel administrativo de Plantas.
+- **Pruebas Automatizadas**:
+  - Nuevas pruebas de integración en `ResetSalePlantsActionTest` validando reseteo exitoso, manejo de estado vacío y registro de la acción en la cabecera del recurso. Total suite: 453 tests pasando.
 
 ### 🎯 Sobreescritura Selectiva de UTM Campaign por Canal de Contacto en Evento Sale
 
