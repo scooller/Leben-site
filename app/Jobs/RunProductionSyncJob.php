@@ -17,12 +17,25 @@ class RunProductionSyncJob implements ShouldQueue
     use Queueable;
     use SerializesModels;
 
+    public string $syncId = '';
+
+    public ?string $baseUrl = null;
+
+    public ?string $token = null;
+
+    public ?string $authorizedUrl = null;
+
     public function __construct(
-        public string $syncId,
-        public ?string $baseUrl = null,
-        public ?string $token = null,
-        public ?string $authorizedUrl = null,
-    ) {}
+        string $syncId,
+        ?string $baseUrl = null,
+        ?string $token = null,
+        ?string $authorizedUrl = null,
+    ) {
+        $this->syncId = $syncId;
+        $this->baseUrl = $baseUrl;
+        $this->token = $token;
+        $this->authorizedUrl = $authorizedUrl;
+    }
 
     public function handle(ProductionSyncService $service, ProductionSyncProgressTracker $tracker): void
     {

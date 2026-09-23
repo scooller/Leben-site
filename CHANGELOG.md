@@ -18,9 +18,10 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 - **Sincronización desde Producción y Soporte para Entornos Locales**:
   - `EnsureTokenOriginIsAuthorized`: normalización y compatibilidad flexible para orígenes loopback (`127.0.0.1` y `localhost` con cualquier puerto o ruta como `/admin`), permitiendo que tokens generados en producción con URLs locales como `http://127.0.0.1:8000/admin` o `http://localhost:8000` autentiquen sin error 403.
   - `ProductionSyncService`: soporte para recibir parámetros opcionales (`$baseUrl`, `$token`, `$authorizedUrl`) en `fetchSnapshot()` y fallback inteligente a `config('app.url')` o `http://127.0.0.1:8000`.
-  - `RunProductionSyncJob`: soporte para pasar credenciales y origen al job en cola.
-  - `SyncFromProductionAction`: nuevo modal interactivo que permite ingresar o pre-llenar URL de producción, Token Bearer Sanctum y URL autorizada de origen (`http://127.0.0.1:8000/admin`), disponible en entornos locales y de prueba.
+  - `RunProductionSyncJob`: inicialización segura de propiedades con valores por defecto para evitar errores de des-serialización en colas.
+  - `SyncFromProductionAction`: nuevo modal interactivo que permite ingresar o pre-llenar URL de producción, Token Bearer Sanctum, URL autorizada de origen (`http://127.0.0.1:8000/admin`), y opción `run_in_background` (por defecto apagada para ejecutar de inmediato de forma sincrónica sin requerir worker `queue:work` activo).
   - `ProductionSyncProgress`: detección de timeout (`checkTimeout`) cuando la sincronización excede el tiempo límite configurado (`services.production_sync.timeout`, por defecto 120s), registrando el mensaje de error fatal directamente en el *Log en vivo* y cambiando el estado a fallido.
+  - `ActivityLogResource`: eliminada alerta falsa de log de error (`Accion erronea se esperaba prune y llego export`) al cargar acciones de cabecera en el panel.
   - `ListPlants`: añadido botón de cabecera `"Sincronizar desde producción"` para importar datos directamente desde el listado de plantas.
   - `SyncFromProductionCommand`: nuevo comando Artisan `php artisan production:sync` con soporte para opciones `--base-url=`, `--token=` y `--authorized-url=`.
 - **Pruebas Automatizadas (`tests/Feature/Filament/PlantsTableNaturalSortingTest.php`, `tests/Feature/Filament/ProductionSyncProgressTimeoutTest.php`)**:
