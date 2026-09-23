@@ -64,9 +64,14 @@ trait EnrichesPlantPayload
         return $payload;
     }
 
-    private function resolveApiDiscountPercentage(Plant $plant, ?bool $eventoSale): float
+    private function resolveApiDiscountPercentage(Plant $plant, ?bool $eventoSale = null, ?string $percentageSource = null): float
     {
-        return $eventoSale === true
+        if ($percentageSource === null) {
+            $extraSettings = SiteSetting::current()->extra_settings;
+            $percentageSource = is_array($extraSettings) ? ($extraSettings['price_percentage_source'] ?? 'web_discount') : 'web_discount';
+        }
+
+        return $percentageSource === 'max_unit'
             ? (float) ($plant->proyecto?->descuento_maximo_unidad ?? 0)
             : (float) ($plant->proyecto?->descuento_defecto_cotizacion_web ?? 0);
     }

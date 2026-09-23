@@ -201,12 +201,18 @@ class Plant extends Model
             ->latest('id');
     }
 
-    public function resolveFinalPrice(bool $eventoSaleActivo = false): float
+    public function resolveFinalPrice(string|bool|null $percentageSource = null): float
     {
         $precioLista = (float) ($this->precio_lista ?? 0);
         $precioBase = (float) ($this->precio_base ?? 0);
 
-        $porcentajeDescuento = $eventoSaleActivo
+        if ($percentageSource === null) {
+            $extraSettings = SiteSetting::current()->extra_settings;
+            $percentageSource = is_array($extraSettings) ? ($extraSettings['price_percentage_source'] ?? 'web_discount') : 'web_discount';
+        }
+
+        $isMaxUnit = $percentageSource === 'max_unit' || $percentageSource === true;
+        $porcentajeDescuento = $isMaxUnit
             ? (float) ($this->proyecto?->descuento_maximo_unidad ?? 0)
             : (float) ($this->proyecto?->descuento_defecto_cotizacion_web ?? 0);
 

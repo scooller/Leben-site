@@ -4,6 +4,28 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.33] - 2026-09-23
+
+### 🏷️ Desacople de Descuentos respecto a Evento Sale y Alineación con Pasarelas de Pago
+
+- **Configuración de Sitio (`app/Models/SiteSetting.php`)**:
+  - `forFrontend()` expone `price_source` y `price_percentage_source` en la raíz del payload público (`/api/v1/site-config`), asegurando disponibilidad directa para el frontend sin requerir token bearer.
+- **Backend y API (`app/Models/Plant.php`, `EnrichesPlantPayload.php`, `PlantController.php`)**:
+  - `Plant::resolveFinalPrice()` y `EnrichesPlantPayload::resolveApiDiscountPercentage()` resuelven el porcentaje de descuento exclusivamente a partir de la configuración `extra_settings.price_percentage_source` (`max_unit` -> `descuento_maximo_unidad`, `web_discount` -> `descuento_defecto_cotizacion_web`), independientemente de si `evento_sale` está activo o inactivo.
+  - En `PlantController::index()`, el ordenamiento SQL (`orderByDiscountExpression`) ordena utilizando la fuente configurada en `price_percentage_source` en lugar del booleano `evento_sale`.
+- **Frontend React (`frontend/src/pages/Home.jsx`)**:
+  - `mapPlant` calcula el porcentaje de descuento aplicando la fuente definida en `config.price_percentage_source`.
+  - `evento_sale` cumple su rol visual: conmuta la etiqueta de precio a `"Precio Sale: "` cuando está activo y `"Precio Final: "` cuando está inactivo (o `"Precio Base: "` si `price_source === 'base'`).
+- **Pruebas Automatizadas**:
+  - Actualizadas pruebas en `PlantTest.php` y `PlantApiFiltersTest.php` verificando la independencia del cálculo del precio final respecto a `evento_sale`.
+
+## [1.9.32] - 2026-09-23
+
+### 🔒 SiteSettings: Preservación de Claves no Expuestas en extra_settings
+
+- **Panel Filament (`app/Filament/Pages/SiteSettings.php`)**:
+  - En `save()`, incorporada fusión `array_merge` entre las configuraciones existentes de `extra_settings` y los datos del formulario, previniendo la sobreescritura accidental de metadatos o tokens no expuestos en componentes (ej. `salesforce_oauth`).
+
 ## [1.9.31] - 2026-09-23
 
 ### ⚙️ SiteSettings: Eliminación de Configuración 'Descuento expuesto en API'

@@ -933,7 +933,7 @@ class PlantApiFiltersTest extends TestCase
         $this->assertSame(['LOW', 'MID', 'HIGH'], collect($response->json('data'))->pluck('name')->all());
     }
 
-    public function test_it_returns_precio_final_field_based_on_evento_sale_state(): void
+    public function test_it_returns_precio_final_field_based_on_price_percentage_source(): void
     {
         $project = Proyecto::factory()->create([
             'is_active' => true,
@@ -947,16 +947,32 @@ class PlantApiFiltersTest extends TestCase
             'unidad_sale' => true,
         ]);
 
-        $withoutSaleResponse = $this->getJson('/api/v1/plantas/'.$plant->id);
-        $withoutSaleResponse->assertOk();
-        $withoutSaleResponse->assertJsonPath('precio_final', 150);
+        // Default / web_discount source -> 200 - 25% = 150 (regardless of evento_sale)
+        $defaultResponse = $this->getJson('/api/v1/plantas/'.$plant->id);
+        $defaultResponse->assertOk();
+        $defaultResponse->assertJsonPath('precio_final', 150);
 
         $withSaleResponse = $this->getJson('/api/v1/plantas/'.$plant->id.'?evento_sale=1');
         $withSaleResponse->assertOk();
-        $withSaleResponse->assertJsonPath('precio_final', 180);
+        $withSaleResponse->assertJsonPath('precio_final', 150);
+
+        // When configured as max_unit -> 200 - 10% = 180 (regardless of evento_sale)
+        \App\Models\SiteSetting::current()->update([
+            'extra_settings' => [
+                'price_percentage_source' => 'max_unit',
+            ],
+        ]);
+
+        $maxUnitResponse = $this->getJson('/api/v1/plantas/'.$plant->id);
+        $maxUnitResponse->assertOk();
+        $maxUnitResponse->assertJsonPath('precio_final', 180);
+
+        $maxUnitWithSaleResponse = $this->getJson('/api/v1/plantas/'.$plant->id.'?evento_sale=1');
+        $maxUnitWithSaleResponse->assertOk();
+        $maxUnitWithSaleResponse->assertJsonPath('precio_final', 180);
     }
 
-    public function test_it_uses_plant_max_unit_discount_for_api_price_when_evento_sale(): void
+    public function test_it_uses_configured_discount_source_independent_of_evento_sale(): void
     {
         $project = Proyecto::factory()->create([
             'is_active' => true,
@@ -970,15 +986,13 @@ class PlantApiFiltersTest extends TestCase
             'unidad_sale' => true,
         ]);
 
-        // evento_sale=1 → uses proyecto.descuento_maximo_unidad (30%): 200 - 30% = 140
+        // Default web_discount (5%): 200 - 5% = 190, both with and without evento_sale
         $response = $this->getJson('/api/v1/plantas/'.$plant->id.'?evento_sale=1');
-
         $response->assertOk();
-        $response->assertJsonPath('precio_final', 140);
+        $response->assertJsonPath('precio_final', 190);
         $response->assertJsonPath('proyecto.descuento_defecto_cotizacion_web', 5);
         $response->assertJsonPath('proyecto.descuento_maximo_unidad', 30);
 
-        // evento_sale=0 → uses descuento_defecto_cotizacion_web (5%): 200 - 5% = 190
         $responseNormal = $this->getJson('/api/v1/plantas/'.$plant->id);
         $responseNormal->assertOk();
         $responseNormal->assertJsonPath('precio_final', 190);

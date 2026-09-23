@@ -245,7 +245,10 @@ class PlantController extends Controller
         $projectMaxDiscountExpression = '(SELECT p.descuento_maximo_unidad FROM proyectos p WHERE p.salesforce_id = plants.salesforce_proyecto_id LIMIT 1)';
         $projectDefaultDiscountExpression = '(SELECT p.descuento_defecto_cotizacion_web FROM proyectos p WHERE p.salesforce_id = plants.salesforce_proyecto_id LIMIT 1)';
 
-        $orderByDiscountExpression = $eventoSale === true
+        $extraSettings = SiteSetting::current()->extra_settings;
+        $pricePercentageSource = is_array($extraSettings) ? ($extraSettings['price_percentage_source'] ?? 'web_discount') : 'web_discount';
+
+        $orderByDiscountExpression = $pricePercentageSource === 'max_unit'
             ? "COALESCE({$projectMaxDiscountExpression}, 0)"
             : "COALESCE({$projectDefaultDiscountExpression}, 0)";
 

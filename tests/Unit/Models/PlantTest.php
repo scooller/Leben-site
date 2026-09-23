@@ -85,10 +85,11 @@ class PlantTest extends TestCase
         ]);
     }
 
-    public function test_it_resolves_final_price_using_default_discount_when_sale_event_is_inactive(): void
+    public function test_it_resolves_final_price_using_default_discount_when_source_is_web_discount(): void
     {
         $proyecto = Proyecto::factory()->create([
             'descuento_defecto_cotizacion_web' => 25,
+            'descuento_maximo_unidad' => 10,
         ]);
 
         $plant = Plant::factory()->create([
@@ -98,10 +99,10 @@ class PlantTest extends TestCase
             'porcentaje_maximo_unidad' => 5,
         ]);
 
-        $this->assertSame(150.0, $plant->resolveFinalPrice(false));
+        $this->assertSame(150.0, $plant->resolveFinalPrice('web_discount'));
     }
 
-    public function test_it_resolves_final_price_using_porcentaje_maximo_when_sale_event_is_active(): void
+    public function test_it_resolves_final_price_using_porcentaje_maximo_when_source_is_max_unit(): void
     {
         $proyecto = Proyecto::factory()->create([
             'descuento_defecto_cotizacion_web' => 25,
@@ -114,6 +115,6 @@ class PlantTest extends TestCase
             'precio_lista' => 200,
         ]);
 
-        $this->assertSame(180.0, $plant->resolveFinalPrice(true));
+        $this->assertSame(180.0, $plant->resolveFinalPrice('max_unit'));
     }
 }

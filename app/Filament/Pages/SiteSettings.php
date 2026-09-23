@@ -1374,7 +1374,13 @@ class SiteSettings extends Page implements HasForms
         try {
             $data = $this->form->getState();
 
-            SiteSetting::current()->update($data);
+            $settings = SiteSetting::current();
+            $existingExtra = is_array($settings->extra_settings) ? $settings->extra_settings : [];
+            if (isset($data['extra_settings']) && is_array($data['extra_settings'])) {
+                $data['extra_settings'] = array_merge($existingExtra, $data['extra_settings']);
+            }
+
+            $settings->update($data);
 
             Notification::make()
                 ->success()

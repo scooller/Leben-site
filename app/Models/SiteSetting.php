@@ -443,6 +443,12 @@ class SiteSetting extends Model
             'footer_menu' => is_array($settings->footer_menu) ? $settings->footer_menu : [],
             'footer_legal_text' => $settings->footer_legal_text,
             'evento_sale' => (bool) $settings->evento_sale,
+            'price_source' => in_array($priceSource, ['final', 'base'], true)
+                ? $priceSource
+                : 'final',
+            'price_percentage_source' => in_array($pricePercentageSource, ['max_unit', 'web_discount'], true)
+                ? $pricePercentageSource
+                : 'web_discount',
             'mostrar_plantas' => $mostrarPlantas,
             'catalogo_no_disponible_titulo' => $extraSettings['catalogo_no_disponible_titulo'] ?? 'Próximamente',
             'catalogo_no_disponible_mensaje' => $extraSettings['catalogo_no_disponible_mensaje'] ?? 'El catálogo de plantas no está disponible por el momento.',

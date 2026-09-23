@@ -139,7 +139,8 @@ const formatSeoPrice = (amount) => {
 function Home({ onNavigate, currentPath }) {
   const { config, loading: configLoading, colorMode, toggleColorMode } = useSiteConfig();
   const isSaleEventActive = Boolean(config?.evento_sale);
-  const priceSource = config?.payment_gateways?.price_source === 'base' ? 'base' : 'final';
+  const priceSource = (config?.price_source || config?.payment_gateways?.price_source) === 'base' ? 'base' : 'final';
+  const pricePercentageSource = (config?.price_percentage_source || config?.payment_gateways?.price_percentage_source) === 'max_unit' ? 'max_unit' : 'web_discount';
   const showPlants = Boolean(config?.mostrar_plantas ?? false);
   // Optimistic: while config is loading assume catalog is visible so all data fetches
   // fire immediately in parallel with the site-config request instead of waiting for it.
@@ -622,7 +623,9 @@ function Home({ onNavigate, currentPath }) {
     const precioLista = Number(plant.precio_lista) || 0;
     const descuentoMaximoUnidad = Number(plant.proyecto?.descuento_maximo_unidad) || 0;
     const descuentoDefectoCotizacionWeb = Number(plant.proyecto?.descuento_defecto_cotizacion_web) || 0;
-    const porcentajeAplicado = isSaleEventActive ? descuentoMaximoUnidad : descuentoDefectoCotizacionWeb;
+    const porcentajeAplicado = pricePercentageSource === 'max_unit'
+      ? descuentoMaximoUnidad
+      : descuentoDefectoCotizacionWeb;
     const precioCalculadoPorPorcentaje = porcentajeAplicado > 0 && precioLista > 0
       ? Math.max(0, precioLista - ((precioLista * porcentajeAplicado) / 100))
       : 0;
@@ -635,7 +638,7 @@ function Home({ onNavigate, currentPath }) {
       : (precioFinal > 0 ? precioFinal : precioBase);
     const precioSeleccionadoEtiqueta = priceSource === 'base' || (priceSource !== 'base' && precioFinal <= 0)
       ? 'Precio Base: '
-      : 'Precio Final: ';
+      : (isSaleEventActive ? 'Precio Sale: ' : 'Precio Final: ');
     const discountPercentage = precioLista > 0 && precioSeleccionado > 0 && precioSeleccionado < precioLista
       ? Math.max(0, Math.round(Math.abs(((precioLista - precioSeleccionado) / precioLista) * 100)))
       : 0;
@@ -686,7 +689,7 @@ function Home({ onNavigate, currentPath }) {
       isReserved: !!plant.active_reservation,
       tipoProducto: `${plant.tipo_producto ?? ''}`.trim().toUpperCase(),
     };
-  }, [isSaleEventActive, priceSource]);
+  }, [isSaleEventActive, priceSource, pricePercentageSource]);
 
   useEffect(() => {
     if (!canRenderPlantsCatalog) {
