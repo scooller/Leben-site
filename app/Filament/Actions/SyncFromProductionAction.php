@@ -47,7 +47,7 @@ class SyncFromProductionAction
                 Toggle::make('run_in_background')
                     ->label('Ejecutar en segundo plano')
                     ->helperText('Actívalo solo si tienes "php artisan queue:work" ejecutándose en tu terminal. Si está desactivado, sincroniza inmediatamente.')
-                    ->default(false),
+                    ->default(true),
             ])
             ->action(function (array $data): void {
                 $syncId = (string) Str::uuid();
