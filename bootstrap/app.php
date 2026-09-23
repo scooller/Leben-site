@@ -14,6 +14,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        $middleware->append(\App\Http\Middleware\NegotiateMarkdownForAgents::class);
+
+        $middleware->web(append: [
+            \App\Http\Middleware\AddAgentDiscoveryHeaders::class,
+        ]);
+
         $middleware->api(prepend: [
             \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
         ]);
@@ -33,6 +39,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->validateCsrfTokens(except: [
             'api/*',
+            'payments/*',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

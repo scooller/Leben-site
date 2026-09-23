@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Filament\Actions\SyncFromProductionAction;
 use App\Filament\Actions\SyncPlantsAction;
 use App\Filament\Actions\SyncProjectsAction;
+use App\Models\ContactChannel;
 use App\Models\Proyecto;
 use App\Models\SiteSetting;
 use Awcodes\Curator\Components\Forms\CuratorPicker;
@@ -12,6 +13,7 @@ use Awcodes\Curator\Components\Forms\RichEditor\AttachCuratorMediaPlugin;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\ColorPicker;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\RichEditor;
@@ -100,6 +102,13 @@ class SiteSettings extends Page implements HasForms
         $data = $settings->toArray();
 
         data_set($data, 'extra_settings.qr', $settings->qrOptions());
+
+        if (data_get($data, 'extra_settings.sale_utm_campaign_channels') === null) {
+            $defaultChannel = ContactChannel::getDefault();
+            if ($defaultChannel) {
+                data_set($data, 'extra_settings.sale_utm_campaign_channels', [(string) $defaultChannel->id]);
+            }
+        }
 
         $this->form->fill($data);
 
@@ -534,6 +543,22 @@ class SiteSettings extends Page implements HasForms
                         Tabs\Tab::make('SEO')
                             ->icon('heroicon-o-magnifying-glass')
                             ->schema([
+                                Section::make('Vista Previa en Google (SERP Snippet Preview)')
+                                    ->description('Simulación interactiva de cómo aparece el sitio en Google Search (Desktop y Mobile) con verificación de Hreflang.')
+                                    ->icon('heroicon-o-eye')
+                                    ->schema([
+                                        Placeholder::make('serp_snippet_preview')
+                                            ->hiddenLabel()
+                                            ->content(fn (Get $get): \Illuminate\Contracts\View\View => view('filament.components.serp-snippet-preview', [
+                                                'title' => $get('extra_settings.default_meta_title') ?: ($get('site_name') ? $get('site_name') . ' | Departamentos y Proyectos en Venta' : ''),
+                                                'description' => $get('extra_settings.default_og_description') ?: ($get('site_description') ?: ''),
+                                                'siteUrl' => $get('site_url') ?: 'https://sale.ileben.cl',
+                                                'siteName' => $get('site_name') ?: 'iLeben',
+                                                'locale' => $get('extra_settings.site_locale') ?: 'es-CL',
+                                            ]))
+                                            ->columnSpanFull(),
+                                    ]),
+
                                 Section::make('Optimización para Motores de Búsqueda')
                                     ->schema([
                                         Textarea::make('meta_keywords')
@@ -553,6 +578,7 @@ class SiteSettings extends Page implements HasForms
                                         TextInput::make('extra_settings.default_meta_title')
                                             ->label('Título SEO por defecto')
                                             ->maxLength(120)
+                                            ->live(debounce: 500)
                                             ->helperText('Fallback para el <title> cuando una página no define título propio.'),
 
                                         TextInput::make('extra_settings.default_og_title')
@@ -564,6 +590,7 @@ class SiteSettings extends Page implements HasForms
                                             ->label('Open Graph descripción por defecto')
                                             ->rows(2)
                                             ->maxLength(300)
+                                            ->live(debounce: 500)
                                             ->helperText('Descripción base para compartir en redes sociales.'),
 
                                         TextInput::make('extra_settings.twitter_site')
@@ -596,7 +623,30 @@ class SiteSettings extends Page implements HasForms
                                             ->label('UTM Campaign por defecto')
                                             ->default('campaign')
                                             ->maxLength(100)
-                                            ->helperText('Valor por defecto para utm_campaign cuando no llega en la URL (ej: campaign).'),
+                                            ->helperText('Valor por defecto para utm_campaign cuando no llega en la URL y evento sale no está activo (ej: campaign).'),
+
+                                        TextInput::make('extra_settings.sale_utm_campaign')
+                                            ->label('UTM Campaign Evento Sale')
+                                            ->placeholder('ej: CyberMonday')
+                                            ->maxLength(100)
+                                            ->disabled(fn (Get $get): bool => ! (bool) $get('evento_sale'))
+                                            ->helperText('Sobreescribe utm_campaign durante el Evento Sale. Solo editable cuando Evento Sale está activo.'),
+
+                                        Select::make('extra_settings.sale_utm_campaign_channels')
+                                            ->label('Canales a sobreescribir en Evento Sale')
+                                            ->multiple()
+                                            ->searchable()
+                                            ->options(fn (): array => ContactChannel::query()
+                                                ->where('is_active', true)
+                                                ->orderBy('name')
+                                                ->get()
+                                                ->mapWithKeys(fn (ContactChannel $channel): array => [
+                                                    (string) $channel->id => $channel->is_default ? "{$channel->name} (Por defecto)" : $channel->name,
+                                                ])
+                                                ->all())
+                                            ->default(fn (): array => array_values(array_filter([(string) ContactChannel::getDefault()?->id])))
+                                            ->disabled(fn (Get $get): bool => ! (bool) $get('evento_sale'))
+                                            ->helperText('Selecciona qué canales de contacto tendrán su UTM Campaign sobreescrito por la campaña Sale cuando el Evento Sale esté activo. Por defecto, solo el canal por defecto. Si no se selecciona ninguno, no se sobreescribe ningún canal.'),
 
                                         TextInput::make('extra_settings.utm_source_default')
                                             ->label('UTM Source por defecto')
@@ -630,6 +680,38 @@ class SiteSettings extends Page implements HasForms
                                         CuratorPicker::make('extra_settings.og_image_id')
                                             ->label('Imagen Open Graph')
                                             ->helperText('Selecciona una imagen desde Curator para compartir en redes sociales (ideal: 1200x630px).'),
+                                    ])
+                                    ->columns(1),
+
+                                Section::make('Evento Sale — SEO')
+                                    ->description('Campos de SEO estructurado para Google durante eventos Cyber/Sale. Se activan automáticamente cuando "Evento Sale" está habilitado.')
+                                    ->icon('heroicon-o-tag')
+                                    ->collapsed()
+                                    ->visible(fn (Get $get): bool => (bool) $get('evento_sale'))
+                                    ->schema([
+                                        TextInput::make('extra_settings.sale_event_name')
+                                            ->label('Nombre del evento')
+                                            ->maxLength(120)
+                                            ->placeholder('CyberDay 2025, Sale de Verano...')
+                                            ->helperText('Nombre visible en los schemas JSON-LD (SpecialAnnouncement y SaleEvent de Google).'),
+
+                                        Textarea::make('extra_settings.sale_event_description')
+                                            ->label('Descripción del evento')
+                                            ->rows(2)
+                                            ->maxLength(300)
+                                            ->helperText('Descripción corta del evento para schema.org. Ej: "Departamentos con descuento exclusivo por CyberDay".'),
+
+                                        DatePicker::make('extra_settings.sale_event_start_date')
+                                            ->label('Fecha de inicio')
+                                            ->helperText('Fecha de inicio del evento (ISO 8601). Usada en SpecialAnnouncement datePosted y SaleEvent startDate.'),
+
+                                        DatePicker::make('extra_settings.sale_event_end_date')
+                                            ->label('Fecha de término')
+                                            ->helperText('Fecha de término del evento. Usada en SpecialAnnouncement expires y SaleEvent endDate.'),
+
+                                        CuratorPicker::make('extra_settings.sale_og_image_id')
+                                            ->label('Imagen OG del evento (opcional)')
+                                            ->helperText('Si se selecciona, reemplaza la imagen Open Graph estándar durante el evento (ideal: 1200x630px). Deja vacío para usar la imagen OG general.'),
                                     ])
                                     ->columns(1),
                             ]),
@@ -946,6 +1028,34 @@ class SiteSettings extends Page implements HasForms
                                             ->helperText('Scripts que se insertarán antes de </body>'),
                                     ])
                                     ->columns(2),
+
+                                Section::make('Scripts de Conversión / Píxel (Formularios y Pagos)')
+                                    ->description('Ejecuta píxeles o scripts personalizados (Meta Pixel, Google Tag, afiliación, webhooks) al completar con éxito los formularios de contacto o de pago. Soporta etiquetas <script>, <noscript><img ...>, tags <img> o URLs directas.')
+                                    ->schema([
+                                        Toggle::make('extra_settings.conversion_scripts_enabled')
+                                            ->label('Activar Scripts de Conversión')
+                                            ->default(false)
+                                            ->live()
+                                            ->helperText('Habilita la ejecución automática de scripts tras envíos exitosos.'),
+
+                                        Toggle::make('extra_settings.conversion_scripts_debug')
+                                            ->label('Modo Depuración (Consola)')
+                                            ->default(false)
+                                            ->helperText('Si está activo, muestra logs detallados en la consola del navegador ([Conversion Tracker]) y emite el evento pixel_tracker_dispatched.'),
+
+                                        Textarea::make('extra_settings.post_contact_script')
+                                            ->label('Script Post-Contacto')
+                                            ->rows(6)
+                                            ->placeholder('<script>' . "\n" . '  if (typeof fbq === "function") {' . "\n" . '    fbq("track", "Lead", { name: "{name}", email: "{email}" });' . "\n" . '  }' . "\n" . '</script>')
+                                            ->helperText('Se dispara inmediatamente tras enviar con éxito el formulario de contacto. Tokens disponibles: {form_id}, {channel}, {name}, {email}, {phone}, {rut}, {project_id}.'),
+
+                                        Textarea::make('extra_settings.post_payment_script')
+                                            ->label('Script Post-Pago / Reserva')
+                                            ->rows(6)
+                                            ->placeholder('<script>' . "\n" . '  if (typeof fbq === "function") {' . "\n" . '    fbq("track", "Purchase", { value: {amount}, currency: "CLP" });' . "\n" . '  }' . "\n" . '</script>')
+                                            ->helperText('Se dispara tras iniciar un checkout, enviar comprobante o confirmar el pago con éxito. Tokens disponibles: {payment_id}, {order_id}, {amount}, {gateway}, {unit_id}, {project_id}, {customer_email}, {customer_name}, {customer_phone}, {customer_rut}.'),
+                                    ])
+                                    ->columns(1),
                             ]),
 
                         Tabs\Tab::make('Pasarelas de Pago')

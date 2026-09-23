@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api;
 
+use App\Models\Asesor;
 use App\Models\Plant;
 use App\Models\Proyecto;
 use App\Models\SiteSetting;
@@ -57,14 +58,24 @@ class ProductionSyncExportApiTest extends TestCase
             'name' => 'Proyecto Export',
         ]);
 
+        $advisor = Asesor::factory()->create([
+            'salesforce_id' => 'SF-ASESOR-001',
+            'first_name' => 'Ana',
+            'last_name' => 'Asesora',
+            'email' => 'ana@example.com',
+            'is_active' => true,
+        ]);
+        $advisor->proyectos()->attach($project->id);
+
         Plant::factory()->create([
             'salesforce_product_id' => 'SF-PLANT-001',
             'salesforce_proyecto_id' => $project->salesforce_id,
+            'asesor_id' => $advisor->id,
             'name' => 'Planta Export',
             'is_active' => true,
         ]);
 
-        $user = User::factory()->create();
+        $user = User::factory()->create(['user_type' => 'admin']);
         $token = $user->createToken('production-sync', ['*']);
         $token->accessToken->forceFill([
             'authorized_url' => 'https://dev.ileben.cl',
@@ -77,10 +88,25 @@ class ProductionSyncExportApiTest extends TestCase
 
         $response->assertOk()
             ->assertJsonPath('site_settings.site_name', 'Leben QA')
+            ->assertJsonPath('advisors.0.salesforce_id', 'SF-ASESOR-001')
+            ->assertJsonPath('advisors.0.proyectos_salesforce_ids.0', 'SF-PROJ-001')
             ->assertJsonPath('projects.0.salesforce_id', 'SF-PROJ-001')
             ->assertJsonPath('plants.0.salesforce_product_id', 'SF-PLANT-001')
+            ->assertJsonPath('plants.0.asesor_salesforce_id', 'SF-ASESOR-001')
             ->assertJsonMissingPath('site_settings.extra_settings.salesforce_oauth')
             ->assertJsonMissingPath('site_settings.extra_settings.hero_url')
             ->assertJsonPath('site_settings.extra_settings.public_value', 'ok');
+    }
+
+    public function test_production_sync_export_forbidden_for_non_admin_user(): void
+    {
+        $user = User::factory()->create(['user_type' => 'customer']);
+        $token = $user->createToken('production-sync', ['*']);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$token->plainTextToken,
+        ])->getJson('/api/v1/production-sync/export');
+
+        $response->assertStatus(403);
     }
 }

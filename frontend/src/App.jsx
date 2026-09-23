@@ -8,6 +8,9 @@ import { captureUtmParamsFromUrl, cleanTrackedUtmsFromCurrentUrl } from './utils
 import siteConfigService from './services/siteConfig';
 import { resolveSeoPolicy } from './utils/seoPolicy';
 import { removeStructuredData, setStructuredData } from './utils/structuredData';
+import { buildSpecialAnnouncementSchema, buildSaleEventSchema } from './utils/saleEventSchema';
+import SiteHeader from './components/SiteHeader';
+import SiteFooter from './components/SiteFooter';
 import './App.scss';
 import './styles/maintenance.scss';
 
@@ -224,13 +227,22 @@ function AppContent() {
       socialLinks.twitter,
     ].filter(Boolean);
 
+    const contactAddress = config?.contact?.address;
+
     const organizationSchema = {
       '@context': 'https://schema.org',
-      '@type': 'Organization',
+      '@type': ['Organization', 'RealEstateAgent'],
       name: config?.site_name || 'iLeben',
       url: siteUrl,
       logo: config?.logo || config?.logo_dark || config?.favicon || undefined,
       description: config?.site_description || undefined,
+      address: contactAddress
+        ? {
+          '@type': 'PostalAddress',
+          streetAddress: contactAddress,
+          addressCountry: 'CL',
+        }
+        : undefined,
       sameAs: sameAs.length > 0 ? sameAs : undefined,
       contactPoint: config?.contact?.phone || config?.contact?.email
         ? [{
@@ -250,6 +262,7 @@ function AppContent() {
       removeStructuredData('organization');
     };
   }, [
+    config?.contact?.address,
     config?.contact?.email,
     config?.contact?.phone,
     config?.favicon,
@@ -261,8 +274,48 @@ function AppContent() {
     siteUrl,
   ]);
 
+  // Inject / remove sale event JSON-LD schemas whenever the backend toggle changes.
+  // config.seo.sale_event is null when evento_sale is off, object with fields when on.
+  useEffect(() => {
+    const saleEvent = config?.seo?.sale_event ?? null;
+    const siteName  = config?.site_name || 'iLeben';
+
+    if (saleEvent) {
+      const announcement = buildSpecialAnnouncementSchema(siteUrl, saleEvent, siteName);
+      const event        = buildSaleEventSchema(siteUrl, saleEvent, siteName);
+
+      if (announcement) setStructuredData('sale-announcement', announcement);
+      else               removeStructuredData('sale-announcement');
+
+      if (event) setStructuredData('sale-event', event);
+      else        removeStructuredData('sale-event');
+    } else {
+      removeStructuredData('sale-announcement');
+      removeStructuredData('sale-event');
+    }
+
+    return () => {
+      removeStructuredData('sale-announcement');
+      removeStructuredData('sale-event');
+    };
+  }, [
+    config?.seo?.sale_event,
+    config?.site_name,
+    siteUrl,
+  ]);
+
+  const handleMenuNavigation = useCallback(() => {
+    const menuSection = document.getElementById('menu-section');
+
+    if (!menuSection) {
+      return;
+    }
+
+    menuSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+
   return (
-    <div className="app">
+    <wa-page className="app">
       <MaintenanceMode
         maintenanceMode={config?.maintenance_mode}
         maintenanceMessage={config?.maintenance_message}
@@ -271,6 +324,12 @@ function AppContent() {
         error={globalError}
         onClose={() => setGlobalError(null)}
         duration={5500}
+      />
+      <SiteHeader
+        config={config}
+        currentPath={currentPath}
+        onNavigate={navigate}
+        onMenuClick={handleMenuNavigation}
       />
       <main>
         <Suspense fallback={<AppRouteFallback />}>
@@ -285,7 +344,8 @@ function AppContent() {
           )}
         </Suspense>
       </main>
-    </div>
+      <SiteFooter config={config} onNavigate={navigate} />
+    </wa-page>
   );
 }
 

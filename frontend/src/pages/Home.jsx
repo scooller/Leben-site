@@ -5,12 +5,11 @@ import { proyectosService } from '../services/proyectos';
 import CheckoutService from '../services/checkout';
 import { authService } from '../services/auth';
 import ErrorNotification from '../components/ErrorNotification';
-import SiteHeader from '../components/SiteHeader';
-import SiteFooter from '../components/SiteFooter';
 import siteConfigService from '../services/siteConfig';
 import { isRetryableError } from '../utils/errorHandler';
 import { getConfiguredEntregaAliases, getProjectSlugsByAlias, getStageKeysByAlias } from '../utils/stageAlias';
 import { trackEvent, trackPageView } from '../utils/tagManager';
+import { triggerPaymentConversion } from '../utils/conversionTracker';
 import { resolveSeoPolicy } from '../utils/seoPolicy';
 import { removeStructuredData, setStructuredData } from '../utils/structuredData';
 import '../styles/home.scss' with { type: 'css' };
@@ -21,24 +20,6 @@ const PaymentGatewayDialog = lazy(() => import('../components/PaymentGatewayDial
 const PLANT_DETAIL_BASE_PATH = '/p';
 const FILTER_BASE_PATH = '/f';
 const PLANT_TYPE_FILTER_OPTIONS = ['DEPARTAMENTO', 'ESTACIONAMIENTO', 'BODEGA', 'LOCAL'];
-
-const SORT_OPTIONS = {
-  NAME_ASC: 'name-asc',
-  NAME_DESC: 'name-desc',
-  PRICE_ASC: 'price-asc',
-  PRICE_DESC: 'price-desc',
-  OFFER_ASC: 'offer-asc',
-  OFFER_DESC: 'offer-desc',
-};
-
-const SORT_TO_API = {
-  [SORT_OPTIONS.NAME_ASC]: { sortBy: 'name_project_plant', sortDirection: 'asc' },
-  [SORT_OPTIONS.NAME_DESC]: { sortBy: 'name_project_plant', sortDirection: 'desc' },
-  [SORT_OPTIONS.PRICE_ASC]: { sortBy: 'price_base', sortDirection: 'asc' },
-  [SORT_OPTIONS.PRICE_DESC]: { sortBy: 'price_base', sortDirection: 'desc' },
-  [SORT_OPTIONS.OFFER_ASC]: { sortBy: 'offer_discount', sortDirection: 'asc' },
-  [SORT_OPTIONS.OFFER_DESC]: { sortBy: 'offer_discount', sortDirection: 'desc' },
-};
 
 const slugifySegment = (value) => (
   `${value ?? ''}`
@@ -220,7 +201,6 @@ function Home({ onNavigate, currentPath }) {
   const [selectedRegion, setSelectedRegion] = useState('');
   const [selectedPrecioMin, setSelectedPrecioMin] = useState('');
   const [selectedPrecioMax, setSelectedPrecioMax] = useState('');
-  const [selectedSort, setSelectedSort] = useState(null);
 
   // Estados temporales para filtros (antes de aplicar)
   const [tempProyecto, setTempProyecto] = useState([]);
@@ -288,13 +268,6 @@ function Home({ onNavigate, currentPath }) {
 
     return `${value}`;
   };
-
-  const sortedPlants = useMemo(() => plants, [plants]);
-
-  const handleSortChange = useCallback((sortOption) => {
-    setSelectedSort(sortOption);
-    setPage(1);
-  }, []);
 
   const filteredComunaOptions = useMemo(() => comunaOptions, [comunaOptions]);
 
@@ -489,6 +462,11 @@ function Home({ onNavigate, currentPath }) {
       }
     }
 
+    let ogImage = seoConfig.og_image;
+    if (isDetailPage) {
+      ogImage = selectedPlantDetail?.imageUrl || selectedPlantDetail?.coverImage || seoConfig.og_image;
+    }
+
     siteConfigService.applySeo({
       title,
       description,
@@ -496,7 +474,7 @@ function Home({ onNavigate, currentPath }) {
       author: seoConfig.meta_author,
       canonical,
       robots: seoPolicy.robots || seoConfig.robots_default || 'index,follow',
-      ogImage: seoConfig.og_image,
+      ogImage,
       ogType,
       ogSiteName: siteName,
       ogLocale: seoConfig.site_locale || 'es-CL',
@@ -535,9 +513,28 @@ function Home({ onNavigate, currentPath }) {
       ? 'https://schema.org/SoldOut'
       : 'https://schema.org/InStock';
 
+    const hasPostalAddress = Boolean(selectedPlantDetail.proyectoDireccion || selectedPlantDetail.proyectoComuna);
+    const postalAddress = hasPostalAddress
+      ? {
+        '@type': 'PostalAddress',
+        streetAddress: selectedPlantDetail.proyectoDireccion || undefined,
+        addressLocality: selectedPlantDetail.proyectoComuna || undefined,
+        addressRegion: selectedPlantDetail.proyectoRegion || undefined,
+        addressCountry: 'CL',
+      }
+      : undefined;
+
+    const floorSize = selectedPlantDetail.superficieUtil > 0
+      ? {
+        '@type': 'QuantitativeValue',
+        value: selectedPlantDetail.superficieUtil,
+        unitCode: 'MTK',
+      }
+      : undefined;
+
     const productSchema = {
       '@context': 'https://schema.org',
-      '@type': 'Product',
+      '@type': ['Product', 'RealEstateListing'],
       name: productName,
       url: detailUrl,
       category: selectedPlantDetail.tipoProducto || 'Inmobiliario',
@@ -555,6 +552,13 @@ function Home({ onNavigate, currentPath }) {
         priceCurrency: 'CLF',
         price: Number.isFinite(numericPrice) && numericPrice > 0 ? numericPrice : undefined,
         itemCondition: 'https://schema.org/NewCondition',
+      },
+      about: {
+        '@type': selectedPlantDetail.tipoProducto === 'CASA' ? 'SingleFamilyResidence' : 'Apartment',
+        name: productName,
+        numberOfRooms: selectedPlantDetail.programa || undefined,
+        floorSize,
+        address: postalAddress,
       },
     };
 
@@ -630,8 +634,8 @@ function Home({ onNavigate, currentPath }) {
       ? precioBase
       : (precioFinal > 0 ? precioFinal : precioBase);
     const precioSeleccionadoEtiqueta = priceSource === 'base' || (priceSource !== 'base' && precioFinal <= 0)
-      ? 'Precio Base:'
-      : 'Precio Final:';
+      ? 'Precio Base: '
+      : 'Precio Final: ';
     const discountPercentage = precioLista > 0 && precioSeleccionado > 0 && precioSeleccionado < precioLista
       ? Math.max(0, Math.round(Math.abs(((precioLista - precioSeleccionado) / precioLista) * 100)))
       : 0;
@@ -661,18 +665,21 @@ function Home({ onNavigate, currentPath }) {
       proyectoDescripcion: plant.proyecto?.descripcion,
       proyectoDireccion: plant.proyecto?.direccion,
       proyectoComuna: plant.proyecto?.comuna,
+      proyectoRegion: plant.proyecto?.region,
       proyectoEtapa: plant.proyecto?.etapa,
+      superficieUtil: Number(plant.superficie_util) || 0,
+      superficieTotal: Number(plant.superficie_total_principal) || 0,
       asesores: advisorsSource.map((asesor) => ({
-          id: asesor.id,
-          fullName: asesor.full_name,
-          firstName: asesor.first_name,
-          lastName: asesor.last_name,
-          email: asesor.email,
-          whatsapp: asesor.whatsapp_owner,
-          whatsappRedirectUrl: `${asesor.whatsapp_redirect_url ?? ''}`.trim() || null,
-          manualAvatarUrl: `${asesor.avatar_manual_url ?? asesor.avatar_image_media?.url ?? ''}`.trim() || null,
-          avatarUrl: asesor.avatar_url,
-        })),
+        id: asesor.id,
+        fullName: asesor.full_name,
+        firstName: asesor.first_name,
+        lastName: asesor.last_name,
+        email: asesor.email,
+        whatsapp: asesor.whatsapp_owner,
+        whatsappRedirectUrl: `${asesor.whatsapp_redirect_url ?? ''}`.trim() || null,
+        manualAvatarUrl: `${asesor.avatar_manual_url ?? asesor.avatar_image_media?.url ?? ''}`.trim() || null,
+        avatarUrl: asesor.avatar_url,
+      })),
       isPaid: !!plant.is_paid,
       isAvailable: !!plant.is_available,
       isReserved: !!plant.active_reservation,
@@ -768,11 +775,6 @@ function Home({ onNavigate, currentPath }) {
         page,
         // available: true,
       };
-
-      if (selectedSort && SORT_TO_API[selectedSort]) {
-        filters.sort_by = SORT_TO_API[selectedSort].sortBy;
-        filters.sort_direction = SORT_TO_API[selectedSort].sortDirection;
-      }
 
       if (routeFilters.legacySlug) {
         filters.catalog_slug = routeFilters.legacySlug;
@@ -898,7 +900,6 @@ function Home({ onNavigate, currentPath }) {
     selectedRegion,
     selectedPrecioMin,
     selectedPrecioMax,
-    selectedSort,
     isSaleEventActive,
     canRenderPlantsCatalog,
     mapPlant,
@@ -1332,22 +1333,6 @@ function Home({ onNavigate, currentPath }) {
 
   // Confirmar checkout con pasarela seleccionada
   const handleConfirmCheckout = async ({ plantId, gateway, sessionToken, turnstileToken, userData }) => {
-    if (!isAuthenticated) {
-      trackEvent('checkout_error', {
-        plant_id: plantId,
-        gateway,
-        reason: 'unauthenticated_user',
-      });
-
-      setCheckoutError({
-        type: 'auth',
-        message: 'Usuario no autenticado',
-        userMessage: 'Debes iniciar sesion antes de pagar.',
-        title: 'Inicio de sesion requerido',
-      });
-      return;
-    }
-
     try {
       setCheckoutLoading(true);
       setCheckoutError(null);
@@ -1372,6 +1357,19 @@ function Home({ onNavigate, currentPath }) {
         plant_id: plantId,
         gateway,
         flow: response.flow === 'manual' ? 'manual' : 'redirect',
+      });
+
+      triggerPaymentConversion(config?.conversion_scripts, {
+        payment_id: response?.payment?.id || response?.payment_id || response?.id || '',
+        order_id: response?.order_id || response?.buy_order || response?.payment?.buy_order || '',
+        amount: response?.amount || response?.payment?.amount || plantForCheckout?.precio_final || '',
+        gateway,
+        unit_id: plantId,
+        project_id: plantForCheckout?.proyecto_id || plantForCheckout?.proyecto || '',
+        customer_email: userData?.email || '',
+        customer_name: userData?.name || '',
+        customer_phone: userData?.phone || '',
+        customer_rut: userData?.rut || '',
       });
 
       if (response.flow === 'manual') {
@@ -1407,6 +1405,19 @@ function Home({ onNavigate, currentPath }) {
       setManualProofLoading(true);
       const response = await CheckoutService.submitManualProof(paymentId, proofFile);
 
+      triggerPaymentConversion(config?.conversion_scripts, {
+        payment_id: paymentId,
+        order_id: manualPayment?.order_id || manualPayment?.buy_order || '',
+        amount: manualPayment?.amount || '',
+        gateway: 'manual',
+        unit_id: manualPayment?.unit_id || plantForCheckout?.id || '',
+        project_id: plantForCheckout?.proyecto_id || plantForCheckout?.proyecto || '',
+        customer_email: manualPayment?.customer_email || '',
+        customer_name: manualPayment?.customer_name || '',
+        customer_phone: manualPayment?.customer_phone || '',
+        customer_rut: manualPayment?.customer_rut || '',
+      });
+
       setManualPayment((current) => (current ? {
         ...current,
         proofSubmitted: true,
@@ -1420,125 +1431,109 @@ function Home({ onNavigate, currentPath }) {
 
   if (configLoading) {
     return (
-      <>
-        <SiteHeader
-          config={config}
-          currentPath={currentPath}
-          onNavigate={onNavigate}
-          onMenuClick={handleMenuNavigation}
-        />
       <div className="home-container">
-        <div className="loading-skeletons wa-stack wa-gap-l">
-          <wa-card appearance="filled">
-            <div className="wa-stack wa-gap-s" style={{ padding: '1.5rem' }}>
-              <wa-skeleton effect="pulse" style={{ height: '28px', width: '35%', margin: '0 auto' }}></wa-skeleton>
-              <wa-skeleton effect="pulse" style={{ height: '18px', width: '60%', margin: '0 auto' }}></wa-skeleton>
-            </div>
-          </wa-card>
-
-          <div className="wa-stack wa-gap-xs">
-            <wa-skeleton effect="pulse" style={{ height: '26px', width: '220px' }}></wa-skeleton>
-            <wa-skeleton effect="pulse" style={{ height: '16px', width: '320px' }}></wa-skeleton>
-          </div>
-
-          <wa-card appearance="outlined">
-            <div className="wa-stack wa-gap-m" style={{ padding: '1rem' }}>
-              <wa-skeleton effect="pulse" style={{ height: '18px', width: '140px' }}></wa-skeleton>
-              <div className="wa-cluster wa-gap-s">
-                <wa-skeleton effect="pulse" style={{ height: '42px', width: '220px' }}></wa-skeleton>
-                <wa-skeleton effect="pulse" style={{ height: '42px', width: '160px' }}></wa-skeleton>
-                <wa-skeleton effect="pulse" style={{ height: '42px', width: '140px' }}></wa-skeleton>
-                <wa-skeleton effect="pulse" style={{ height: '42px', width: '150px' }}></wa-skeleton>
-                <wa-skeleton effect="pulse" style={{ height: '42px', width: '150px' }}></wa-skeleton>
+          <div className="loading-skeletons wa-stack wa-gap-l">
+            <wa-card appearance="filled">
+              <div className="wa-stack wa-gap-s" style={{ padding: '1.5rem' }}>
+                <wa-skeleton effect="pulse" style={{ height: '28px', width: '35%', margin: '0 auto' }}></wa-skeleton>
+                <wa-skeleton effect="pulse" style={{ height: '18px', width: '60%', margin: '0 auto' }}></wa-skeleton>
               </div>
-              <div className="wa-cluster wa-gap-s">
-                <wa-skeleton effect="pulse" style={{ height: '34px', width: '150px' }}></wa-skeleton>
-                <wa-skeleton effect="pulse" style={{ height: '34px', width: '150px' }}></wa-skeleton>
-              </div>
+            </wa-card>
+
+            <div className="wa-stack wa-gap-xs">
+              <wa-skeleton effect="pulse" style={{ height: '26px', width: '220px' }}></wa-skeleton>
+              <wa-skeleton effect="pulse" style={{ height: '16px', width: '320px' }}></wa-skeleton>
             </div>
-          </wa-card>
 
-          <div className="plants-grid wa-grid">
-            {[...Array(6)].map((_, i) => (
-              <wa-card key={i} className="skeleton-card" appearance="filled">
-                <wa-skeleton slot="media" effect="pulse" style={{ height: '220px' }}></wa-skeleton>
-
-                <div slot="header" className="wa-stack wa-gap-xs" style={{ width: '100%' }}>
-                  <wa-skeleton effect="pulse" style={{ height: '18px', width: '65%' }}></wa-skeleton>
-                  <wa-skeleton effect="pulse" style={{ height: '18px', width: '45%' }}></wa-skeleton>
+            <wa-card appearance="outlined">
+              <div className="wa-stack wa-gap-m" style={{ padding: '1rem' }}>
+                <wa-skeleton effect="pulse" style={{ height: '18px', width: '140px' }}></wa-skeleton>
+                <div className="wa-cluster wa-gap-s">
+                  <wa-skeleton effect="pulse" style={{ height: '42px', width: '220px' }}></wa-skeleton>
+                  <wa-skeleton effect="pulse" style={{ height: '42px', width: '160px' }}></wa-skeleton>
+                  <wa-skeleton effect="pulse" style={{ height: '42px', width: '140px' }}></wa-skeleton>
+                  <wa-skeleton effect="pulse" style={{ height: '42px', width: '150px' }}></wa-skeleton>
+                  <wa-skeleton effect="pulse" style={{ height: '42px', width: '150px' }}></wa-skeleton>
                 </div>
-
-                <div slot="header-actions">
-                  <wa-skeleton effect="pulse" style={{ height: '24px', width: '70px' }}></wa-skeleton>
+                <div className="wa-cluster wa-gap-s">
+                  <wa-skeleton effect="pulse" style={{ height: '34px', width: '150px' }}></wa-skeleton>
+                  <wa-skeleton effect="pulse" style={{ height: '34px', width: '150px' }}></wa-skeleton>
                 </div>
+              </div>
+            </wa-card>
 
-                <div className="wa-split wa-align-items-center">
-                  <wa-skeleton effect="pulse" style={{ height: '16px', width: '35%' }}></wa-skeleton>
-                  <div className="wa-cluster wa-gap-xs">
-                    <wa-skeleton effect="pulse" style={{ height: '24px', width: '65px' }}></wa-skeleton>
-                    <wa-skeleton effect="pulse" style={{ height: '24px', width: '65px' }}></wa-skeleton>
+            <div className="plants-grid wa-grid">
+              {[...Array(6)].map((_, i) => (
+                <wa-card key={i} className="skeleton-card" appearance="filled">
+                  <wa-skeleton slot="media" effect="pulse" style={{ height: '220px' }}></wa-skeleton>
+
+                  <div slot="header" className="wa-stack wa-gap-xs" style={{ width: '100%' }}>
+                    <wa-skeleton effect="pulse" style={{ height: '18px', width: '65%' }}></wa-skeleton>
+                    <wa-skeleton effect="pulse" style={{ height: '18px', width: '45%' }}></wa-skeleton>
                   </div>
-                </div>
 
-                <div slot="footer" className="wa-stack wa-gap-xs">
-                  <wa-skeleton effect="pulse" style={{ height: '14px', width: '48%' }}></wa-skeleton>
-                  <wa-skeleton effect="pulse" style={{ height: '28px', width: '38%' }}></wa-skeleton>
-                </div>
+                  <div slot="header-actions">
+                    <wa-skeleton effect="pulse" style={{ height: '24px', width: '70px' }}></wa-skeleton>
+                  </div>
 
-                <div slot="footer-actions">
-                  <wa-button-group label="Skeleton actions">
-                    <wa-button size="s" disabled>
-                      <wa-skeleton effect="pulse" style={{ height: '14px', width: '72px' }}></wa-skeleton>
-                    </wa-button>
-                    <wa-button size="s" variant="brand" disabled>
-                      <wa-skeleton effect="pulse" style={{ height: '14px', width: '56px' }}></wa-skeleton>
-                    </wa-button>
-                  </wa-button-group>
-                </div>
-              </wa-card>
-            ))}
+                  <div className="wa-split wa-align-items-center">
+                    <wa-skeleton effect="pulse" style={{ height: '16px', width: '35%' }}></wa-skeleton>
+                    <div className="wa-cluster wa-gap-xs">
+                      <wa-skeleton effect="pulse" style={{ height: '24px', width: '65px' }}></wa-skeleton>
+                      <wa-skeleton effect="pulse" style={{ height: '24px', width: '65px' }}></wa-skeleton>
+                    </div>
+                  </div>
+
+                  <div slot="footer" className="wa-stack wa-gap-xs">
+                    <wa-skeleton effect="pulse" style={{ height: '14px', width: '48%' }}></wa-skeleton>
+                    <wa-skeleton effect="pulse" style={{ height: '28px', width: '38%' }}></wa-skeleton>
+                  </div>
+
+                  <div slot="footer-actions">
+                    <wa-button-group label="Skeleton actions">
+                      <wa-button size="s" disabled>
+                        <wa-skeleton effect="pulse" style={{ height: '14px', width: '72px' }}></wa-skeleton>
+                      </wa-button>
+                      <wa-button size="s" variant="brand" disabled>
+                        <wa-skeleton effect="pulse" style={{ height: '14px', width: '56px' }}></wa-skeleton>
+                      </wa-button>
+                    </wa-button-group>
+                  </div>
+                </wa-card>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
-      </>
     );
   }
 
   if (error) {
     return (
-      <>
-        <SiteHeader
-          config={config}
-          currentPath={currentPath}
-          onNavigate={onNavigate}
-          onMenuClick={handleMenuNavigation}
-        />
       <div className="home-container">
-        <wa-card>
+          <wa-card>
             <div slot="header">
-                <h2>{error.title || 'Error'}</h2>
+              <h2>{error.title || 'Error'}</h2>
             </div>
             <wa-callout variant="danger">
-                <wa-icon slot="icon" name="circle-exclamation"></wa-icon>
-                <strong>No se pudieron cargar las plantas</strong>
-                <div style={{ marginTop: '8px' }}>
-                    {error.userMessage || error.message}
-                </div>
+              <wa-icon slot="icon" name="circle-exclamation"></wa-icon>
+              <strong>No se pudieron cargar las plantas</strong>
+              <div style={{ marginTop: '8px' }}>
+                {error.userMessage || error.message}
+              </div>
             </wa-callout>
             <div style={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
-            <wa-button onClick={() => loadPlants()} variant="primary">
+              <wa-button onClick={() => loadPlants()} variant="brand">
                 <wa-icon slot="start" name="arrow-rotate-right" animation="spin"></wa-icon>
                 Reintentar
-            </wa-button>
-            {error.canRetry && (
-            <wa-button onClick={() => window.location.reload()} variant="default">
-                Recargar página
-            </wa-button>
-            )}
+              </wa-button>
+              {error.canRetry && (
+                <wa-button onClick={() => window.location.reload()}>
+                  Recargar página
+                </wa-button>
+              )}
             </div>
-        </wa-card>
-      </div>
-      </>
+          </wa-card>
+        </div>
     );
   }
 
@@ -1553,15 +1548,8 @@ function Home({ onNavigate, currentPath }) {
 
   return (
     <>
-    <SiteHeader
-      config={config}
-      currentPath={currentPath}
-      onNavigate={onNavigate}
-      onMenuClick={handleMenuNavigation}
-    />
-
-    {/* Hero Section */}
-    <div className='video-home wa-position-relative wa-overflow-hidden wa-justify-content-center box-shadow-1'>
+      {/* Hero Section */}
+      <div className='video-home wa-position-relative wa-overflow-hidden wa-justify-content-center box-shadow-1'>
         {/* <div className="hero-section wa-position-absolute wa-z-index-1">
             <h1>{config?.site_name}</h1>
             <p>{config?.site_description}</p>
@@ -1595,28 +1583,32 @@ function Home({ onNavigate, currentPath }) {
               onCanPlay={() => setVideoPlaying(true)}
               onLoadedMetadata={() => setVideoPlaying(true)}
             >
-                <source src={homeHeroMobileVideo} type="video/mp4" media="(max-width: 768px)" />
-                <source src={homeHeroDesktopVideo} type="video/mp4" media="(min-width: 769px)" />
-                Tu navegador no soporta el video.
+              <source src={homeHeroMobileVideo} type="video/mp4" media="(max-width: 768px)" />
+              <source src={homeHeroDesktopVideo} type="video/mp4" media="(min-width: 769px)" />
+              Tu navegador no soporta el video.
             </video>
           </>
         )}
         {homeHeroDisclaimer ? (
           <wa-badge className="hero-disclaimer" appearance="filled" variant="neutral" pill><sup>*</sup>{homeHeroDisclaimer}</wa-badge>
         ) : null}
-    </div>
-    <div className="home-container" ref={heroRef} id="menu-section">
+      </div>
+      <div className="home-container" ref={heroRef} id="menu-section">
         {/* Header de Plantas */}
         <div className="plants-header">
-            <div className="wa-cluster wa-gap-s wa-align-items-center plants-header-main">
-                <h2>{config?.site_name}</h2>
-                {activeFilterCount > 0 && (
-                <wa-badge variant="brand" pill>
-                    {activeFilterCount} {activeFilterCount === 1 ? 'filtro' : 'filtros'} activo{activeFilterCount === 1 ? '' : 's'}
-                </wa-badge>
-                )}
-            </div>
-            <p>{config?.site_description}</p>
+          <div className="wa-cluster wa-gap-s wa-align-items-center plants-header-main">
+            <h1 className="wa-heading-l" style={{ margin: 0 }}>
+              {selectedProyecto.length === 1 && proyectos.find((p) => `${p.salesforce_id}` === `${selectedProyecto[0]}`)
+                ? `Departamentos en Venta — ${proyectos.find((p) => `${p.salesforce_id}` === `${selectedProyecto[0]}`).name}`
+                : (config?.site_name ? `${config.site_name} | Departamentos y Proyectos Inmobiliarios` : 'Departamentos y Proyectos Inmobiliarios')}
+            </h1>
+            {activeFilterCount > 0 && (
+              <wa-badge variant="brand" pill>
+                {activeFilterCount} {activeFilterCount === 1 ? 'filtro' : 'filtros'} activo{activeFilterCount === 1 ? '' : 's'}
+              </wa-badge>
+            )}
+          </div>
+          <p>{config?.site_description}</p>
         </div>
 
         <nav className="seo-breadcrumbs" aria-label="Breadcrumb">
@@ -1635,56 +1627,55 @@ function Home({ onNavigate, currentPath }) {
 
         {/* Filtros */}
         {canRenderPlantsCatalog ? (
-        <>
-        <wa-details className="filters-details wa-mb-m">
-            <span slot="summary">
+          <>
+            <wa-details className="filters-details wa-mb-m">
+              <span slot="summary">
                 <wa-icon name="filter-circle-dollar"></wa-icon> Filtros
-            </span>
-                <wa-card
+              </span>
+              <wa-card
                 appearance="filled"
                 style={{ '--spacing': 'var(--wa-space-xs)', backgroundColor: 'var(--wa-color-surface-lowered)' }}
-                >
-                    <div className="wa-grid wa-gap-m filters-inputs" style={{ '--min-column-size': '14rem' }}>
-                        <wa-select
-                            placeholder="Todos los proyectos"
-                            size="s"
-                            value={tempProyecto}
-                            onChange={(e) => {
-                            const value = getMultiSelectValue(e);
-                            setTempProyecto(value);
-                            }}
-                            multiple
-                            clearable
-                        >
-                            <span slot='label'><wa-icon name="building"></wa-icon> Proyecto</span>
-                            {proyectos.map((proyecto) => (
-                            <wa-option key={proyecto.id} value={proyecto.salesforce_id}>
-                                <wa-icon name="building" slot="start"></wa-icon>{proyecto.name}
-                            </wa-option>
-                            ))}
-                        </wa-select>
+              >
+                <div className="wa-grid wa-gap-m filters-inputs" style={{ '--min-column-size': '14rem' }}>
+                  <wa-select
+                    placeholder="Todos los proyectos"
+                    size="s"
+                    value={tempProyecto}
+                    onChange={(e) => {
+                      const value = getMultiSelectValue(e);
+                      setTempProyecto(value);
+                    }}
+                    multiple
+                    with-clear
+                  >
+                    <span slot='label'><wa-icon name="building"></wa-icon> Proyecto</span>
+                    {proyectos.map((proyecto) => (
+                      <wa-option key={proyecto.id} value={proyecto.salesforce_id}>
+                        <wa-icon name="building" slot="start"></wa-icon>{proyecto.name}
+                      </wa-option>
+                    ))}
+                  </wa-select>
 
-                        <wa-select
-                            placeholder="Todos"
-                            size="s"
-                            value={tempDormitorios}
-                            onChange={(e) => {
-                            const value = getMultiSelectValue(e);
-                            setTempDormitorios(value);
-                            }}
-                            with-clear
-                            multiple
-                            clearable
-                        >
-                            <span slot='label'><wa-icon name="bed"></wa-icon> Dormitorios</span>
-                            <wa-option value="ST"><wa-icon name="bed" slot="start"></wa-icon>Studio</wa-option>
-                            <wa-option value="1D"><wa-icon name="bed" slot="start"></wa-icon>1 Dormitorio</wa-option>
-                            <wa-option value="2D"><wa-icon name="bed" slot="start"></wa-icon>2 Dormitorios</wa-option>
-                            <wa-option value="3D"><wa-icon name="bed" slot="start"></wa-icon>3 Dormitorios</wa-option>
-                            <wa-option value="4D"><wa-icon name="bed" slot="start"></wa-icon>4 Dormitorios</wa-option>
-                        </wa-select>
+                  <wa-select
+                    placeholder="Todos"
+                    size="s"
+                    value={tempDormitorios}
+                    onChange={(e) => {
+                      const value = getMultiSelectValue(e);
+                      setTempDormitorios(value);
+                    }}
+                    with-clear
+                    multiple
+                  >
+                    <span slot='label'><wa-icon name="bed"></wa-icon> Dormitorios</span>
+                    <wa-option value="ST"><wa-icon name="bed" slot="start"></wa-icon>Studio</wa-option>
+                    <wa-option value="1D"><wa-icon name="bed" slot="start"></wa-icon>1 Dormitorio</wa-option>
+                    <wa-option value="2D"><wa-icon name="bed" slot="start"></wa-icon>2 Dormitorios</wa-option>
+                    <wa-option value="3D"><wa-icon name="bed" slot="start"></wa-icon>3 Dormitorios</wa-option>
+                    <wa-option value="4D"><wa-icon name="bed" slot="start"></wa-icon>4 Dormitorios</wa-option>
+                  </wa-select>
 
-                        {/* <wa-select
+                  {/* <wa-select
                             placeholder="Todos"
                             size="s"
                             value={tempBanos}
@@ -1694,7 +1685,6 @@ function Home({ onNavigate, currentPath }) {
                             }}
                             with-clear
                             multiple
-                            clearable
                         >
                             <span slot='label'><wa-icon name="bath"></wa-icon> Baños</span>
                             <wa-option value="1B"><wa-icon name="bath" slot="start"></wa-icon>1 Baño</wa-option>
@@ -1702,7 +1692,7 @@ function Home({ onNavigate, currentPath }) {
                             <wa-option value="3B"><wa-icon name="bath" slot="start"></wa-icon>3 Baños</wa-option>
                         </wa-select> */}
 
-                        {/* <wa-select
+                  {/* <wa-select
                             with-clear
                             placeholder="Todos"
                             size="s"
@@ -1712,7 +1702,6 @@ function Home({ onNavigate, currentPath }) {
                             setTempPiso(value);
                             }}
                             multiple
-                            clearable
                         >
                             <span slot='label'><wa-icon name="arrow-right-to-city"></wa-icon> Piso</span>
                             {pisoOptions.map((piso) => (
@@ -1722,316 +1711,231 @@ function Home({ onNavigate, currentPath }) {
                             ))}
                         </wa-select> */}
 
-                        <wa-select
-                            with-clear
-                            placeholder="Todos"
-                            size="s"
-                            value={tempTipoProducto}
-                            onChange={(e) => {
-                            const value = getSingleSelectValue(e);
-                            setTempTipoProducto(value);
-                            }}
-                            clearable
-                          >
-                            <span slot='label'><wa-icon name="city"></wa-icon> Tipo de planta</span>
-                            <wa-option value="DEPARTAMENTO"><wa-icon name="building" slot="start"></wa-icon>Departamento</wa-option>
-                            <wa-option value="ESTACIONAMIENTO"><wa-icon name="square-parking" slot="start"></wa-icon>Estacionamiento</wa-option>
-                            <wa-option value="BODEGA"><wa-icon name="box-archive" slot="start"></wa-icon>Bodega</wa-option>
-                            <wa-option value="LOCAL"><wa-icon name="store" slot="start"></wa-icon>Local</wa-option>
-                        </wa-select>
+                  <wa-select
+                    with-clear
+                    placeholder="Todos"
+                    size="s"
+                    value={tempTipoProducto}
+                    onChange={(e) => {
+                      const value = getSingleSelectValue(e);
+                      setTempTipoProducto(value);
+                    }}
+                  >
+                    <span slot='label'><wa-icon name="city"></wa-icon> Tipo de planta</span>
+                    <wa-option value="DEPARTAMENTO"><wa-icon name="building" slot="start"></wa-icon>Departamento</wa-option>
+                    <wa-option value="ESTACIONAMIENTO"><wa-icon name="square-parking" slot="start"></wa-icon>Estacionamiento</wa-option>
+                    <wa-option value="BODEGA"><wa-icon name="box-archive" slot="start"></wa-icon>Bodega</wa-option>
+                    <wa-option value="LOCAL"><wa-icon name="store" slot="start"></wa-icon>Local</wa-option>
+                  </wa-select>
 
-                          <wa-select
-                            with-clear
-                            placeholder="Todas"
-                            size="s"
-                            value={tempOrientacion}
-                            onChange={(e) => {
-                            const value = getSingleSelectValue(e);
-                            setTempOrientacion(value);
-                            }}
-                            clearable
-                          >
-                            <span slot='label'><wa-icon name="compass"></wa-icon> Orientación</span>
-                            {orientacionOptions.map((orientacion) => (
-                            <wa-option key={orientacion} value={orientacion}>
-                              <wa-icon name="compass" slot="start"></wa-icon>{orientacion}
-                            </wa-option>
-                            ))}
-                          </wa-select>
+                  <wa-select
+                    with-clear
+                    placeholder="Todas"
+                    size="s"
+                    value={tempOrientacion}
+                    onChange={(e) => {
+                      const value = getSingleSelectValue(e);
+                      setTempOrientacion(value);
+                    }}
+                  >
+                    <span slot='label'><wa-icon name="compass"></wa-icon> Orientación</span>
+                    {orientacionOptions.map((orientacion) => (
+                      <wa-option key={orientacion} value={orientacion}>
+                        <wa-icon name="compass" slot="start"></wa-icon>{orientacion}
+                      </wa-option>
+                    ))}
+                  </wa-select>
 
-                          <wa-select
-                            with-clear
-                            placeholder="Todas"
-                            size="s"
-                            value={tempEntrega}
-                            onChange={(e) => {
-                            const value = getSingleSelectValue(e);
-                            setTempEntrega(value);
-                            }}
-                            clearable
-                          >
-                            <span slot='label'><wa-icon name="key"></wa-icon> Entrega</span>
-                            {entregaOptions.map((entrega) => (
-                            <wa-option key={entrega} value={entrega}>
-                              <wa-icon name="key" slot="start"></wa-icon>{entrega}
-                            </wa-option>
-                            ))}
-                          </wa-select>
+                  <wa-select
+                    with-clear
+                    placeholder="Todas"
+                    size="s"
+                    value={tempEntrega}
+                    onChange={(e) => {
+                      const value = getSingleSelectValue(e);
+                      setTempEntrega(value);
+                    }}
+                  >
+                    <span slot='label'><wa-icon name="key"></wa-icon> Entrega</span>
+                    {entregaOptions.map((entrega) => (
+                      <wa-option key={entrega} value={entrega}>
+                        <wa-icon name="key" slot="start"></wa-icon>{entrega}
+                      </wa-option>
+                    ))}
+                  </wa-select>
 
-                        <wa-select
-                            with-clear
-                            size="s"
-                            placeholder="Todas"
-                            value={tempComuna}
-                            onChange={(e) => {
-                            const value = getMultiSelectValue(e);
-                            setTempComuna(value);
-                            }}
-                            multiple
-                            clearable
-                        >
-                            <span slot='label'><wa-icon name="map-location"></wa-icon> Comuna</span>
-                            {filteredComunaOptions.map((comuna) => (
-                            <wa-option key={comuna} value={comuna}>
-                                <wa-icon name="map-location" slot="start"></wa-icon>{comuna}
-                            </wa-option>
-                            ))}
-                        </wa-select>
+                  <wa-select
+                    with-clear
+                    size="s"
+                    placeholder="Todas"
+                    value={tempComuna}
+                    onChange={(e) => {
+                      const value = getMultiSelectValue(e);
+                      setTempComuna(value);
+                    }}
+                    multiple
+                  >
+                    <span slot='label'><wa-icon name="map-location"></wa-icon> Comuna</span>
+                    {filteredComunaOptions.map((comuna) => (
+                      <wa-option key={comuna} value={comuna}>
+                        <wa-icon name="map-location" slot="start"></wa-icon>{comuna}
+                      </wa-option>
+                    ))}
+                  </wa-select>
 
-                        <wa-input
-                            type="number"
-                            placeholder="Desde UF"
-                            value={tempPrecioMin}
-                            max='9999'
-                            size="s"
-                            onChange={(e) => {
-                                const value = e.target.value || '';
-                                setTempPrecioMin(value);
-                            }}
-                        >
-                            <span slot='label'><wa-icon name="dollar-sign"></wa-icon> Precio Mínimo</span>
-                            <wa-icon slot="start" name="dollar-sign"></wa-icon>
-                        </wa-input>
+                  <wa-input
+                    type="number"
+                    placeholder="Desde UF"
+                    value={tempPrecioMin}
+                    max='9999'
+                    size="s"
+                    onChange={(e) => {
+                      const value = e.target.value || '';
+                      setTempPrecioMin(value);
+                    }}
+                  >
+                    <span slot='label'><wa-icon name="dollar-sign"></wa-icon> Precio Mínimo</span>
+                    <wa-icon slot="start" name="dollar-sign"></wa-icon>
+                  </wa-input>
 
-                        <wa-input
-                            type="number"
-                            placeholder="Hasta UF"
-                            max='9999'
-                            size="s"
-                            value={tempPrecioMax}
-                            onChange={(e) => {
-                                const value = e.target.value || '';
-                                setTempPrecioMax(value);
-                            }}
-                        >
-                            <span slot='label'><wa-icon name="dollar-sign"></wa-icon> Precio Máximo</span>
-                            <wa-icon slot="start" name="dollar-sign"></wa-icon>
-                        </wa-input>
-                    </div>
+                  <wa-input
+                    type="number"
+                    placeholder="Hasta UF"
+                    max='9999'
+                    size="s"
+                    value={tempPrecioMax}
+                    onChange={(e) => {
+                      const value = e.target.value || '';
+                      setTempPrecioMax(value);
+                    }}
+                  >
+                    <span slot='label'><wa-icon name="dollar-sign"></wa-icon> Precio Máximo</span>
+                    <wa-icon slot="start" name="dollar-sign"></wa-icon>
+                  </wa-input>
+                </div>
 
-                    <div className="wa-cluster wa-gap-s filters-actions wa-mt-l">
-                        <wa-button
-                            variant="brand"
-                            onClick={handleApplyFilters}
-                        >
-                            <wa-icon slot="start" name="filter"></wa-icon>
-                        Aplicar Filtros
-                      </wa-button>
+                <div className="wa-cluster wa-gap-s filters-actions wa-mt-l">
+                  <wa-button
+                    variant="brand"
+                    onClick={handleApplyFilters}
+                  >
+                    <wa-icon slot="start" name="filter"></wa-icon>
+                    Aplicar Filtros
+                  </wa-button>
 
-                        {activeFilterCount > 0 && (
-                            <wa-button
-                            variant="neutral"
-                            onClick={handleClearFilters}
-                            >
-                            <wa-icon slot="start" name="filter-circle-xmark"></wa-icon>
-                            Limpiar Filtros
-                            </wa-button>
-                        )}
-                    </div>
-                </wa-card>
-        </wa-details>
+                  {activeFilterCount > 0 && (
+                    <wa-button
+                      variant="neutral"
+                      onClick={handleClearFilters}
+                    >
+                      <wa-icon slot="start" name="filter-circle-xmark"></wa-icon>
+                      Limpiar Filtros
+                    </wa-button>
+                  )}
+                </div>
+              </wa-card>
+            </wa-details>
 
-      <div className="plants-toolbar">
-        <div className="plants-toolbar-summary">
-          <span className="plants-toolbar-summary-label">Plantas encontradas</span>
-          <strong>{totalPlants || plants.length}</strong>
-        </div>
+            {/* Plantas Grid */}
+            <Suspense fallback={null}>
+              <PlantsGrid
+                plants={plants}
+                isSaleEventActive={isSaleEventActive}
+                saleLogoUrl={config?.logo_sale || null}
+                loading={loading}
+                checkoutLoading={checkoutLoading}
+                onQuickCheckout={handleQuickCheckout}
+                onDetailBlocked={(message) => {
+                  setCheckoutError({
+                    type: 'validation',
+                    title: 'Planta no disponible',
+                    userMessage: message,
+                  });
+                }}
+                selectedPlant={selectedPlantDetail}
+                onSelectPlant={handleSelectPlantDetail}
+                onClosePlantDetail={handleClosePlantDetail}
+                totalPlants={totalPlants}
+                page={page}
+                totalPages={totalPages}
+                onPageChange={setPage}
+              />
+            </Suspense>
 
-        <div className="plants-toolbar-sort">
-          <span className="plants-toolbar-sort-label">Ordenar por</span>
+            {/* Diálogo - Selección de Pasarela de Pago */}
+            {gatewayDialogOpen ? (
+              <Suspense fallback={null}>
+                <PaymentGatewayDialog
+                  open={gatewayDialogOpen}
+                  onClose={() => {
+                    const wasManualPaymentFlow = Boolean(manualPayment);
 
-          <div className="plants-toolbar-groups">
-            <div className="plants-sort-group">
-              <span className="plants-sort-group-title">Nombre</span>
-              <wa-button-group label="Ordenar por nombre">
-                <wa-button
-                  size="small"
-                  appearance={selectedSort === SORT_OPTIONS.NAME_ASC ? 'accent' : 'outlined'}
-                  variant={selectedSort === SORT_OPTIONS.NAME_ASC ? 'brand' : 'neutral'}
-                  onClick={() => handleSortChange(SORT_OPTIONS.NAME_ASC)}
-                >
-                  ASC
-                </wa-button>
-                <wa-button
-                  size="small"
-                  appearance={selectedSort === SORT_OPTIONS.NAME_DESC ? 'accent' : 'outlined'}
-                  variant={selectedSort === SORT_OPTIONS.NAME_DESC ? 'brand' : 'neutral'}
-                  onClick={() => handleSortChange(SORT_OPTIONS.NAME_DESC)}
-                >
-                  DESC
-                </wa-button>
-              </wa-button-group>
-            </div>
+                    setGatewayDialogOpen(false);
+                    setPlantForCheckout(null);
+                    setManualPayment(null);
 
-            <div className="plants-sort-group">
-              <span className="plants-sort-group-title">Precio</span>
-              <wa-button-group label="Ordenar por precio">
-                <wa-button
-                  size="small"
-                  appearance={selectedSort === SORT_OPTIONS.PRICE_ASC ? 'accent' : 'outlined'}
-                  variant={selectedSort === SORT_OPTIONS.PRICE_ASC ? 'brand' : 'neutral'}
-                  onClick={() => handleSortChange(SORT_OPTIONS.PRICE_ASC)}
-                >
-                  ASC
-                </wa-button>
-                <wa-button
-                  size="small"
-                  appearance={selectedSort === SORT_OPTIONS.PRICE_DESC ? 'accent' : 'outlined'}
-                  variant={selectedSort === SORT_OPTIONS.PRICE_DESC ? 'brand' : 'neutral'}
-                  onClick={() => handleSortChange(SORT_OPTIONS.PRICE_DESC)}
-                >
-                  DESC
-                </wa-button>
-              </wa-button-group>
-            </div>
+                    if (wasManualPaymentFlow) {
+                      setSelectedPlantDetail(null);
+                      onNavigate?.('/');
+                    }
+                  }}
+                  plant={plantForCheckout}
+                  gateways={gateways}
+                  loading={checkoutLoading}
+                  checkoutError={checkoutError}
+                  manualPayment={manualPayment}
+                  manualProofLoading={manualProofLoading}
+                  isAuthenticated={isAuthenticated}
+                  onConfirm={handleConfirmCheckout}
+                  onSubmitManualProof={handleManualProofSubmission}
+                />
+              </Suspense>
+            ) : null}
 
-            <div className="plants-sort-group">
-              <span className="plants-sort-group-title">Mejor oferta</span>
-              <wa-button-group label="Ordenar por mejor oferta">
-                <wa-button
-                  size="small"
-                  appearance={selectedSort === SORT_OPTIONS.OFFER_ASC ? 'accent' : 'outlined'}
-                  variant={selectedSort === SORT_OPTIONS.OFFER_ASC ? 'brand' : 'neutral'}
-                  onClick={() => handleSortChange(SORT_OPTIONS.OFFER_ASC)}
-                >
-                  ASC
-                </wa-button>
-                <wa-button
-                  size="small"
-                  appearance={selectedSort === SORT_OPTIONS.OFFER_DESC ? 'accent' : 'outlined'}
-                  variant={selectedSort === SORT_OPTIONS.OFFER_DESC ? 'brand' : 'neutral'}
-                  onClick={() => handleSortChange(SORT_OPTIONS.OFFER_DESC)}
-                >
-                  DESC
-                </wa-button>
-              </wa-button-group>
-            </div>
-          </div>
-        </div>
+            {/* Notificación de errores de checkout */}
+            <ErrorNotification
+              error={checkoutError}
+              onClose={() => setCheckoutError(null)}
+              duration={6000}
+            />
+          </>
+        ) : (
+          <wa-card className="wa-mb-l">
+            <wa-callout variant="brand">
+              <wa-icon slot="icon" name="clock"></wa-icon>
+              <strong>{catalogUnavailableTitle}</strong>
+              <div
+                style={{ marginTop: '8px' }}
+                dangerouslySetInnerHTML={{ __html: catalogUnavailableMessage }}
+              />
+            </wa-callout>
+          </wa-card>
+        )}
       </div>
 
-      {/* Plantas Grid */}
-      <Suspense fallback={null}>
-        <PlantsGrid
-          plants={sortedPlants}
-          isSaleEventActive={isSaleEventActive}
-          saleLogoUrl={config?.logo_sale || null}
-          loading={loading}
-          checkoutLoading={checkoutLoading}
-          onQuickCheckout={handleQuickCheckout}
-          onDetailBlocked={(message) => {
-            setCheckoutError({
-              type: 'validation',
-              title: 'Planta no disponible',
-              userMessage: message,
-            });
-          }}
-          selectedPlant={selectedPlantDetail}
-          onSelectPlant={handleSelectPlantDetail}
-          onClosePlantDetail={handleClosePlantDetail}
-          totalPlants={totalPlants}
-          page={page}
-          totalPages={totalPages}
-          onPageChange={setPage}
-        />
-      </Suspense>
+      {routePlantLoading && (
+        <wa-dialog open className="route-plant-loading-dialog">
+          <span slot="label">
+            <wa-icon name="spinner" animation="spin"></wa-icon> Cargando planta...
+          </span>
+          <div className="wa-stack wa-gap-s route-plant-loading-content">
+            <span>Estamos obteniendo la información de la unidad seleccionada.</span>
+          </div>
+        </wa-dialog>
+      )}
 
-      {/* Diálogo - Selección de Pasarela de Pago */}
-      {gatewayDialogOpen ? (
-        <Suspense fallback={null}>
-          <PaymentGatewayDialog
-            open={gatewayDialogOpen}
-            onClose={() => {
-              const wasManualPaymentFlow = Boolean(manualPayment);
-
-              setGatewayDialogOpen(false);
-              setPlantForCheckout(null);
-              setManualPayment(null);
-
-              if (wasManualPaymentFlow) {
-                setSelectedPlantDetail(null);
-                onNavigate?.('/');
-              }
-            }}
-            plant={plantForCheckout}
-            gateways={gateways}
-            loading={checkoutLoading}
-            checkoutError={checkoutError}
-            manualPayment={manualPayment}
-            manualProofLoading={manualProofLoading}
-            isAuthenticated={isAuthenticated}
-            onConfirm={handleConfirmCheckout}
-            onSubmitManualProof={handleManualProofSubmission}
-          />
-        </Suspense>
-      ) : null}
-
-      {/* Notificación de errores de checkout */}
-      <ErrorNotification
-        error={checkoutError}
-        onClose={() => setCheckoutError(null)}
-        duration={6000}
-      />
-        </>
-        ) : (
-        <wa-card className="wa-mb-l">
-          <wa-callout variant="brand">
-            <wa-icon slot="icon" name="clock"></wa-icon>
-            <strong>{catalogUnavailableTitle}</strong>
-            <div
-              style={{ marginTop: '8px' }}
-              dangerouslySetInnerHTML={{ __html: catalogUnavailableMessage }}
-            />
-          </wa-callout>
-        </wa-card>
-        )}
-    </div>
-
-    <SiteFooter config={config} onNavigate={onNavigate} />
-
-    {routePlantLoading && (
-      <wa-dialog open className="route-plant-loading-dialog">
-        <span slot="label">
-          <wa-icon name="spinner" animation="spin"></wa-icon> Cargando planta...
-        </span>
-        <div className="wa-stack wa-gap-s route-plant-loading-content">
-          <span>Estamos obteniendo la información de la unidad seleccionada.</span>
-        </div>
-      </wa-dialog>
-    )}
-
-    <wa-button
-      variant="neutral"
-      appearance="filled"
-      onClick={toggleColorMode}
-      className="theme-floating-toggle box-shadow-2"
-      id="theme-toggle-button"
-    >
+      <wa-button
+        variant="neutral"
+        appearance="filled"
+        onClick={toggleColorMode}
+        className="theme-floating-toggle box-shadow-2"
+        id="theme-toggle-button"
+      >
         <wa-icon name={colorMode === 'dark' ? 'sun' : 'cloud-moon'} label={colorMode === 'dark' ? 'Modo claro' : 'Modo oscuro'}></wa-icon>
-    </wa-button>
-    <wa-tooltip for="theme-toggle-button" placement="top">
-      Cambiar a {colorMode === 'dark' ? 'modo claro' : 'modo oscuro'}
-    </wa-tooltip>
+      </wa-button>
+      <wa-tooltip for="theme-toggle-button" placement="top">
+        Cambiar a {colorMode === 'dark' ? 'modo claro' : 'modo oscuro'}
+      </wa-tooltip>
     </>
   );
 }

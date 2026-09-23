@@ -421,8 +421,20 @@ class SiteSetting extends Model
         $contactHeroDesktopImage = Media::query()->find($extraSettings['contact_hero_image_desktop_id'] ?? $extraSettings['contact_hero_image_id'] ?? null)?->url;
         $contactHeroMobileImage = Media::query()->find($extraSettings['contact_hero_image_mobile_id'] ?? $extraSettings['contact_hero_image_id'] ?? null)?->url;
         $ogImageFromCurator = Media::query()->find($extraSettings['og_image_id'] ?? null)?->url;
+        $saleOgImageFromCurator = Media::query()->find($extraSettings['sale_og_image_id'] ?? null)?->url;
         $priceSource = $extraSettings['price_source'] ?? 'final';
         $pricePercentageSource = $extraSettings['price_percentage_source'] ?? 'web_discount';
+
+        $saleUtmCampaign = null;
+        if ($settings->evento_sale) {
+            if (is_string($extraSettings['sale_utm_campaign'] ?? null) && trim((string) $extraSettings['sale_utm_campaign']) !== '') {
+                $saleUtmCampaign = trim((string) $extraSettings['sale_utm_campaign']);
+            } elseif (is_string($extraSettings['sale_event_name'] ?? null) && trim((string) $extraSettings['sale_event_name']) !== '') {
+                $saleUtmCampaign = trim((string) $extraSettings['sale_event_name']);
+            } elseif (is_string($extraSettings['utm_campaign_default'] ?? null) && trim((string) $extraSettings['utm_campaign_default']) !== '') {
+                $saleUtmCampaign = trim((string) $extraSettings['utm_campaign_default']);
+            }
+        }
 
         return [
             'site_name' => $settings->site_name,
@@ -473,7 +485,6 @@ class SiteSetting extends Model
                 'site_locale' => is_string($extraSettings['site_locale'] ?? null)
                     ? trim((string) $extraSettings['site_locale'])
                     : 'es-CL',
-                'og_image' => $ogImageFromCurator ?? ($settings->og_image ? url($settings->og_image) : null),
                 'utm_source_default' => is_string($extraSettings['utm_source_default'] ?? null)
                     ? trim((string) $extraSettings['utm_source_default'])
                     : 'direct',
@@ -483,6 +494,19 @@ class SiteSetting extends Model
                 'utm_campaign_default' => is_string($extraSettings['utm_campaign_default'] ?? null)
                     ? trim((string) $extraSettings['utm_campaign_default'])
                     : 'campaign',
+                'sale_utm_campaign' => is_string($extraSettings['sale_utm_campaign'] ?? null)
+                    ? trim((string) $extraSettings['sale_utm_campaign'])
+                    : null,
+                'sale_campaign_override' => $saleUtmCampaign,
+                'sale_utm_campaign_channels' => array_key_exists('sale_utm_campaign_channels', $extraSettings)
+                    ? array_values((array) $extraSettings['sale_utm_campaign_channels'])
+                    : array_values(array_filter([(string) ContactChannel::getDefault()?->id])),
+                'sale_utm_campaign_channel_slugs' => array_values(ContactChannel::query()
+                    ->whereIn('id', array_key_exists('sale_utm_campaign_channels', $extraSettings)
+                        ? (array) $extraSettings['sale_utm_campaign_channels']
+                        : array_values(array_filter([(string) ContactChannel::getDefault()?->id])))
+                    ->pluck('slug')
+                    ->all()),
                 'utm_term_default' => is_string($extraSettings['utm_term_default'] ?? null)
                     ? trim((string) $extraSettings['utm_term_default'])
                     : 'none',
@@ -492,6 +516,27 @@ class SiteSetting extends Model
                 'utm_site_default' => is_string($extraSettings['utm_site_default'] ?? null)
                     ? trim((string) $extraSettings['utm_site_default'])
                     : '',
+                // og_image: during an active sale event, prefer the dedicated sale OG image
+                'og_image' => ($settings->evento_sale && $saleOgImageFromCurator)
+                    ? $saleOgImageFromCurator
+                    : ($ogImageFromCurator ?? ($settings->og_image ? url($settings->og_image) : null)),
+                // sale_event: null when evento_sale is off; object with all fields when on
+                'sale_event' => $settings->evento_sale ? [
+                    'name'        => is_string($extraSettings['sale_event_name'] ?? null)
+                        ? trim((string) $extraSettings['sale_event_name'])
+                        : null,
+                    'utm_campaign'=> $saleUtmCampaign,
+                    'description' => is_string($extraSettings['sale_event_description'] ?? null)
+                        ? trim((string) $extraSettings['sale_event_description'])
+                        : null,
+                    'start_date'  => is_string($extraSettings['sale_event_start_date'] ?? null)
+                        ? trim((string) $extraSettings['sale_event_start_date'])
+                        : null,
+                    'end_date'    => is_string($extraSettings['sale_event_end_date'] ?? null)
+                        ? trim((string) $extraSettings['sale_event_end_date'])
+                        : null,
+                    'og_image'    => $saleOgImageFromCurator,
+                ] : null,
             ],
             'contact' => [
                 'email' => $settings->contact_email,
@@ -514,6 +559,16 @@ class SiteSetting extends Model
             'custom_css' => $settings->custom_css,
             'header_scripts' => $settings->header_scripts,
             'footer_scripts' => $settings->footer_scripts,
+            'conversion_scripts' => [
+                'enabled' => (bool) ($extraSettings['conversion_scripts_enabled'] ?? false),
+                'debug' => (bool) ($extraSettings['conversion_scripts_debug'] ?? false),
+                'post_contact_script' => is_string($extraSettings['post_contact_script'] ?? null)
+                    ? trim((string) $extraSettings['post_contact_script'])
+                    : null,
+                'post_payment_script' => is_string($extraSettings['post_payment_script'] ?? null)
+                    ? trim((string) $extraSettings['post_payment_script'])
+                    : null,
+            ],
             'plants_per_page' => (int) ($settings->plants_per_page ?? 12),
             'maintenance_mode' => $settings->maintenance_mode && ! $isPreviewAuthorized,
             'maintenance_message' => $settings->maintenance_message,

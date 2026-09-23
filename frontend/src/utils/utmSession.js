@@ -40,7 +40,7 @@ const resolveDefaultValue = (config) => {
   return normalizeUtmValue(effectiveDefaultValue);
 };
 
-export const setUtmDefaultOverrides = (overrides = {}) => {
+export const setUtmDefaultOverrides = (overrides = {}, options = {}) => {
   if (!overrides || typeof overrides !== 'object') {
     return;
   }
@@ -55,7 +55,10 @@ export const setUtmDefaultOverrides = (overrides = {}) => {
 
   const storedValues = readStoredUtms();
   const nextValues = { ...storedValues };
-  const forcedCampaignOverride = normalizeUtmValue(utmDefaultOverrides.utm_campaign);
+  const isSaleActive = Boolean(options?.isSaleEvent);
+  const forcedCampaignOverride = isSaleActive && normalizeUtmValue(options?.saleCampaignOverride) !== ''
+    ? normalizeUtmValue(options.saleCampaignOverride)
+    : '';
 
   const legacyDefaultValuesByKey = {
     utm_campaign: ['auto-tagging', 'campaign'],

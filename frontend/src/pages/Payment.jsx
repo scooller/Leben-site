@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSiteConfig } from '../contexts/SiteConfigContext';
-import SiteHeader from '../components/SiteHeader';
-import SiteFooter from '../components/SiteFooter';
 import { paymentsService } from '../services/payments';
+import { triggerPaymentConversion } from '../utils/conversionTracker';
 import '../styles/payment.scss' with { type: 'css' };
 
 const RESULT_TEXT = {
@@ -73,6 +72,7 @@ function Payment({ onNavigate, currentPath }) {
   const [loading, setLoading] = useState(false);
   const [payment, setPayment] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
+  const conversionFiredRef = useRef(false);
 
   const queryParams = useMemo(() => {
     const params = new URLSearchParams(window.location.search || '');
@@ -110,6 +110,22 @@ function Payment({ onNavigate, currentPath }) {
         }
 
         setPayment(response);
+
+        if (!conversionFiredRef.current && (response?.status === 'approved' || queryParams.result === 'ok')) {
+          conversionFiredRef.current = true;
+          triggerPaymentConversion(config?.conversion_scripts, {
+            payment_id: response?.id || queryParams.paymentId || '',
+            order_id: response?.buy_order || response?.gateway_tx_id || '',
+            amount: response?.amount || '',
+            gateway: response?.gateway || queryParams.gateway || '',
+            unit_id: response?.plant_id || response?.unit_id || '',
+            project_id: response?.project_id || '',
+            customer_email: response?.customer_email || '',
+            customer_name: response?.customer_name || '',
+            customer_phone: response?.customer_phone || '',
+            customer_rut: response?.customer_rut || '',
+          });
+        }
       } catch (error) {
         if (cancelled) {
           return;
@@ -137,8 +153,6 @@ function Payment({ onNavigate, currentPath }) {
 
   return (
     <div className="payment-page">
-      <SiteHeader config={config} currentPath={currentPath} onNavigate={onNavigate} />
-
       <section className="home-container payment-container">
         <div className="wa-stack wa-gap-m">
           <h1 className="payment-title">Resumen de tu pago</h1>
@@ -217,8 +231,6 @@ function Payment({ onNavigate, currentPath }) {
           </wa-card>
         </div>
       </section>
-
-      <SiteFooter config={config} onNavigate={onNavigate} />
     </div>
   );
 }

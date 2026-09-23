@@ -1,0 +1,28 @@
+{
+  "$schema": "https://raw.githubusercontent.com/modelcontextprotocol/modelcontextprotocol/main/schema/server-card.json",
+  "serverInfo": {
+    "name": "ileben-real-estate-mcp",
+    "title": "iLeben Real Estate MCP Server",
+    "version": "1.0.0",
+    "description": "Model Context Protocol server for searching real-estate developments, floor plans, and initiating unit reservations in Chile."
+  },
+  "transport": {
+    "type": "streamable-http",
+    "endpoint": "https://sale.ileben.cl/mcp"
+  },
+  "capabilities": {
+    "tools": {
+      "list": true,
+      "call": true
+    },
+    "resources": {
+      "subscribe": false,
+      "list": true,
+      "read": true
+    },
+    "prompts": {
+      "list": true,
+      "get": true
+    }
+  }
+}

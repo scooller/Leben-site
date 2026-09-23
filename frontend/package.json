@@ -1,7 +1,7 @@
 {
   "name": "frontend",
   "private": true,
-  "version": "0.1.5",
+  "version": "0.1.11",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@fancyapps/ui": "^6.1.14",
-    "@web.awesome.me/webawesome-pro": "^3.7.0",
+    "@web.awesome.me/webawesome-pro": "^3.13.0",
     "axios": "^1.16.1",
     "gsap": "^3.15",
     "react": "^19.2.6",

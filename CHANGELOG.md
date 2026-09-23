@@ -4,7 +4,328 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
-### 🔄 Cambios
+## [1.9.27] - 2026-09-23
+
+### 👥 Sincronización de Asesores desde Producción y Vinculación con Proyectos y Plantas
+
+- **Exportación de Producción (`app/Http/Controllers/Api/ProductionSyncController.php`, `app/Models/Asesor.php`)**:
+  - Incorporada colección `advisors` en el payload de exportación (`/api/v1/production-sync/export`), incluyendo `salesforce_id`, nombres, email, WhatsApp, avatar, estado activo y sus `proyectos_salesforce_ids` asociados.
+  - Añadido `asesor_salesforce_id` en el `syncPayload()` de `Plant` para permitir la posterior vinculación de asesores a plantas.
+- **Servicio de Sincronización (`app/Services/ProductionSync/ProductionSyncService.php`)**:
+  - Incorporada descarga e importación de asesores mediante `syncAdvisor()` con resolución inteligente por `salesforce_id` (o fallback por `email`).
+  - Sincronización automática de relaciones en tabla pivote `asesor_proyecto` mapeando los `proyectos_salesforce_ids`.
+  - Vinculación automática en `syncPlant()` del `asesor_id` correspondiente a partir del `asesor_salesforce_id`.
+  - Orden de sincronización estructurado: `site_settings` -> `projects` -> `advisors` -> `plants`.
+- **Trabajo y Comandos (`app/Jobs/RunProductionSyncJob.php`, `app/Console/Commands/SyncFromProductionCommand.php`)**:
+  - Actualizado conteo de pasos totales y mensajes de log final para informar asesores creados y actualizados.
+  - Salida de consola Artisan en `production:sync` incluye desglose de asesores recibidos y procesados.
+- **Pruebas Automatizadas (`tests/Feature/Api/ProductionSyncExportApiTest.php`, `tests/Unit/Services/ProductionSyncServiceTest.php`)**:
+  - Pruebas unitarias y de integración actualizadas verificando la exportación, creación, actualización y asociación bidireccional de asesores y plantas. Suite completa pasando (458 tests, 1907 aserciones).
+
+## [1.9.26] - 2026-09-23
+
+### 🔢 Orden Natural en Tabla de Plantas (Nombre, Precios, Porcentajes, Piso)
+
+- **Panel Filament (`app/Filament/Resources/Plants/Tables/PlantsTable.php`)**:
+  - Implementado orden natural para la columna `name` (`Nombre`): ordenación numérica real (`21, 202, 1001, 1003`) evitando el orden lexicográfico de texto (`1001, 1003, 202`) tanto en orden ASC como DESC.
+  - Implementado orden natural para la columna `piso` (`Piso`) considerando números de piso como enteros.
+  - Corregido orden numérico en `precio_base`, `precio_lista` y `precio_final`: en ASC los registros sin precio se ubican al final sin estorbar las unidades con precio, y en DESC los registros con precio máximo aparecen primero.
+  - Implementado orden numérico para `porcentaje_maximo_unidad` y `proyecto.descuento_defecto_cotizacion_web`.
+- **Relación de Plantas en Proyecto (`app/Filament/Resources/Proyectos/RelationManagers/PlantasRelationManager.php`)**:
+  - Añadido orden natural numérico para `name`, `piso` y `precio_lista`.
+- **Sincronización desde Producción y Soporte para Entornos Locales**:
+  - `EnsureTokenOriginIsAuthorized`: normalización y compatibilidad flexible para orígenes loopback (`127.0.0.1` y `localhost` con cualquier puerto o ruta como `/admin`), permitiendo que tokens generados en producción con URLs locales como `http://127.0.0.1:8000/admin` o `http://localhost:8000` autentiquen sin error 403.
+  - `ProductionSyncService`: soporte para recibir parámetros opcionales (`$baseUrl`, `$token`, `$authorizedUrl`) en `fetchSnapshot()` y fallback inteligente a `config('app.url')` o `http://127.0.0.1:8000`.
+  - `RunProductionSyncJob`: inicialización segura de propiedades con valores por defecto para evitar errores de des-serialización en colas.
+  - `SyncFromProductionAction`: nuevo modal interactivo que permite ingresar o pre-llenar URL de producción, Token Bearer Sanctum, URL autorizada de origen (`http://127.0.0.1:8000/admin`), y opción `run_in_background` (por defecto apagada para ejecutar de inmediato de forma sincrónica sin requerir worker `queue:work` activo).
+  - `ProductionSyncProgress`: detección de timeout (`checkTimeout`) cuando la sincronización excede el tiempo límite configurado (`services.production_sync.timeout`, por defecto 120s), registrando el mensaje de error fatal directamente en el *Log en vivo* y cambiando el estado a fallido.
+  - `ActivityLogResource`: eliminada alerta falsa de log de error (`Accion erronea se esperaba prune y llego export`) al cargar acciones de cabecera en el panel.
+  - `ListPlants`: añadido botón de cabecera `"Sincronizar desde producción"` para importar datos directamente desde el listado de plantas.
+  - `SyncFromProductionCommand`: nuevo comando Artisan `php artisan production:sync` con soporte para opciones `--base-url=`, `--token=` y `--authorized-url=`.
+- **Pruebas Automatizadas (`tests/Feature/Filament/PlantsTableNaturalSortingTest.php`, `tests/Feature/Filament/ProductionSyncProgressTimeoutTest.php`)**:
+  - Nuevas pruebas feature verificando el orden natural ASC y DESC de nombres, precios y porcentajes, y el manejo de timeout en la pantalla de progreso.
+
+## [1.9.25] - 2026-09-22
+
+### 🔄 Acción de Reseteo de Unidades Sale en Plantas
+
+- **Panel Filament (`app/Filament/Actions/ResetSalePlantsAction.php`)**:
+  - Nueva acción `ResetSalePlantsAction` que desmarca masivamente todas las plantas asignadas como `unidad_sale = true` estableciéndolas en `false`.
+  - Cuadro modal de confirmación (`¿Estás seguro de que deseas quitar todas las unidades Sale?...`) con advertencia clara y feedback de cuántas plantas fueron reseteadas.
+  - Permite reiniciar la selección de unidades sale para reasignar nuevas plantas desde la tabla o mediante acciones masivas.
+- **Página de Listado de Plantas (`app/Filament/Resources/Plants/Pages/ListPlants.php`)**:
+  - Incorporado botón de cabecera `"Resetear plantas Sale"` accesible directamente en el panel administrativo de Plantas.
+- **Pruebas Automatizadas**:
+  - Nuevas pruebas de integración en `ResetSalePlantsActionTest` validando reseteo exitoso, manejo de estado vacío y registro de la acción en la cabecera del recurso. Total suite: 453 tests pasando.
+
+### 🎯 Sobreescritura Selectiva de UTM Campaign por Canal de Contacto en Evento Sale
+
+- **Panel Filament (`app/Filament/Pages/SiteSettings.php`)**:
+  - Nuevo selector múltiple `extra_settings.sale_utm_campaign_channels` ("Canales a sobreescribir en Evento Sale") en la pestaña `SEO`, permitiendo elegir 1 o más canales de contacto activos.
+  - Visualización del canal por defecto con sufijo `(Por defecto)`.
+  - Valor por defecto: canal por defecto (`ContactChannel::getDefault()`).
+  - Deshabilitado reactivamente cuando `evento_sale` está inactivo.
+- **Configuración y API (`app/Models/SiteSetting.php`)**:
+  - `SiteSetting::forFrontend()` expone `sale_utm_campaign_channels` (IDs) y `sale_utm_campaign_channel_slugs` (slugs) en la sección `seo`.
+- **Mapeo de Leads Salesforce (`app/Services/Salesforce/SalesforceCaseMapper.php`)**:
+  - Método `shouldOverrideCampaignForSale()` que verifica si el canal del submission (`contact_channel_id`, relación o slug/dominio) pertenece a los canales habilitados para sobreescritura de Sale.
+  - Si el canal no está en la lista de canales permitidos, **NO sobreescribe** `utm_campaign`, preservando la campaña que envió el cliente o canal externo.
+  - Si no hay canales configurados o la lista está vacía, no sobreescribe ningún canal.
+- **Frontend (`frontend/src/contexts/SiteConfigContext.jsx`)**:
+  - `saleCampaignOverride` en sesión solo se aplica si el slug del canal actual (`?channel=` o fallback `'sale'`) se encuentra en `sale_utm_campaign_channel_slugs`.
+- **Pruebas Automatizadas**:
+  - Nuevas pruebas en `SalesforceCaseMapperTest` verificando: sobreescritura solo para canales seleccionados, no sobreescritura para canales no seleccionados, comportamiento ante lista vacía, y no sobreescritura cuando evento sale está inactivo. Total suite: 450 tests pasando.
+
+### 🏷️ Control Dinámico de UTM Campaign para Evento Sale y SEO
+
+- **Panel Filament (`app/Filament/Pages/SiteSettings.php`)**:
+  - Nuevo campo `extra_settings.sale_utm_campaign` ("UTM Campaign Evento Sale") ubicado inmediatamente debajo de `extra_settings.utm_campaign_default` en la pestaña `SEO`.
+  - Deshabilitado reactivamente cuando `evento_sale` es `false`, habilitándose únicamente cuando `evento_sale` está activo.
+- **Configuración y API (`app/Models/SiteSetting.php`)**:
+  - `SiteSetting::forFrontend()` expone `sale_utm_campaign`, `sale_campaign_override` y `sale_event.utm_campaign`.
+  - Resolución inteligente de campaña para evento sale con fallback en cascada: `sale_utm_campaign` -> `sale_event_name` -> `utm_campaign_default`.
+- **Mapeo de Leads Salesforce (`app/Services/Salesforce/SalesforceCaseMapper.php`)**:
+  - Cuando `evento_sale === true`: sobreescribe `utm_campaign` con la campaña del evento sale en curso (ej: `CyberMonday`).
+  - Cuando `evento_sale === false`: comportamiento normal sin sobreescritura forzada, preservando los UTM de la URL o el formulario entrante y aplicando el fallback configurado (`utm_campaign_default`) solo ante la ausencia de parámetros.
+- **Frontend y Gestión de Sesión UTM (`frontend/src/utils/utmSession.js` & `SiteConfigContext.jsx`)**:
+  - Se eliminó el reemplazo incondicional hardcodeado de `utm_campaign`.
+  - `setUtmDefaultOverrides` ahora recibe opciones `{ isSaleEvent, saleCampaignOverride }` forzando la sobreescritura de campaña en sesión únicamente cuando el evento sale está activo.
+- **Pruebas Automatizadas**:
+  - Nuevos tests unitarios en `SalesforceCaseMapperTest` validando sobreescritura estricta con `sale_utm_campaign` en modo sale y preservación intacta de campañas normales cuando sale está desactivado.
+  - Verificación de payload en `SiteSettingFrontendConfigTest`.
+
+## [1.9.22] - 2026-09-22
+
+### 📖 Actualización Exhaustiva de Documentación de API (`API_USAGE.md`)
+
+- **Corrección de Niveles de Autorización**:
+  - Reclasificados endpoints de reservas (`POST /api/v1/reservations`, `GET /api/v1/reservations/planta/{plantId}`, `DELETE /api/v1/reservations/{sessionToken}`), pasarelas (`GET /api/v1/payment-gateways`) y checkout anónimo (`POST /api/v1/checkout`) como protegidos únicamente por `token.origin` (no requieren `auth:sanctum`).
+  - Documentado alias en inglés `GET /api/v1/reservations/plant/{plantId}`.
+  - Documentado bypass de previsualización para `FrontendPreviewLink` (staging y preview de Filament) en el middleware `token.origin`.
+- **Protocolos de Descubrimiento y Agentes**:
+  - Incorporada documentación de especificación OpenAPI 3.1.0 con Machine Payment Protocol (`/openapi.json`), RFC 9727 (`/.well-known/api-catalog`), ACP 1.0 (`/.well-known/acp.json`), UCP 1.0 (`/.well-known/ucp`), MCP SEP-1649 (`/.well-known/mcp/server-card.json`), ARD 1.0 (`/.well-known/ai-catalog.json`), Agent Skills (`/.well-known/agent-skills/index.json`) y Auth.md (`/auth.md`).
+- **Seguridad en Configuración de Sitio (`/api/v1/site-config`)**:
+  - Detallado comportamiento de enmascaramiento seguro de credenciales de pasarelas de pago (`gateway_transbank_config`, `gateway_mercadopago_config`, `gateway_manual_config`), `price_source` y `price_percentage_source` ante peticiones públicas no autenticadas.
+- **Catálogo, Filtros y Rutas Semánticas de Plantas**:
+  - Documentada la ruta semántica `GET /api/v1/plantas/proyecto/{projectSlug}/unidad/{unitName}`.
+  - Documentado endpoint de catálogo de filtros `GET /api/v1/plantas/filtros-ubicacion` y estructura de respuesta.
+  - Detallados todos los filtros disponibles (`is_active`, `evento_sale`, `disponible`, `catalog_slug`, `comuna_slug`, `programa`, `programa2`, etc.) y reglas de cálculo de `precio_final` en modo normal vs sale.
+- **Proyectos y Campos Computados**:
+  - Documentados campos `precio_desde`, `tipologias`, `descuento_defecto_cotizacion_web`, `descuento_maximo_unidad` y parámetros `include_asesores`, `include_plantas` y `evento_sale`.
+
+## [1.9.21] - 2026-09-21
+
+### 🔍 SEO Internacional (Hreflang) y SERP Snippet Preview en Panel Filament
+
+- **Hreflang Multi-región en Frontend**:
+  - `frontend/index.html`: Enlaces alternativos estáticos `<link rel="alternate" hreflang="es-CL">` y `<link rel="alternate" hreflang="x-default">`.
+  - `frontend/src/services/siteConfig.js`: Métodos `setHreflang()` y `setAlternateLink()` para sincronizar enlaces hreflang dinámicamente con la URL canónica y el locale de configuración (`es-CL`, `es-419`, `es-ES`).
+  - `frontend/scripts/prerender-routes.mjs`: Inyección automática de directivas `hreflang="es-CL"` y `hreflang="x-default"` en todas las páginas prerenderizadas (`/`, `/plantas`, `/f`).
+  - `frontend/scripts/validate-seo.mjs`: Verificación automatizada de consistencia hreflang durante el build.
+- **SERP Snippet Preview en Panel de Configuración**:
+  - `resources/views/filament/components/serp-snippet-preview.blade.php`: Nuevo componente Blade interactivo que simula en tiempo real la apariencia del resultado en Google Search (título en azul, URL miga de pan con favicon, meta descripción).
+  - Selector de vista **Desktop** vs **Mobile** mediante Alpine.js con límites recomendados de caracteres (50-60 para títulos, 120-160 para descripciones) e indicadores visuales de optimización.
+  - `app/Filament/Pages/SiteSettings.php`: Nueva sección "Vista Previa en Google (SERP Snippet Preview)" en la pestaña `SEO`, enlazada reactivamente con `default_meta_title`, `default_og_description`, `site_name` y `site_locale`.
+
+## [1.9.20] - 2026-09-21
+
+### 🤖 Protocolos de Descubrimiento IA y Compatibilidad con Agentes (Agent Readiness)
+
+- **Negociación de Contenido Markdown (`Accept: text/markdown`)**:
+  - `NegotiateMarkdownForAgents.php`: Resolvió código 403 sirviendo directamente representación en Markdown con cabeceras `Content-Type: text/markdown; charset=UTF-8`, `Vary: Accept` y `x-markdown-tokens` para solicitudes públicas.
+  - `frontend/public/.htaccess`: Incorporado permiso explícito `Require all granted` / `Allow from all` para extensiones `.md`, `.txt`, `.json` y `.xml` evitando bloqueos del servidor web Apache, y regla de reescritura para negociar `index.md`.
+  - `frontend/public/index.md` y `MarkdownRepresentationService.php`: Catálogo enriquecido con todos los enlaces de descubrimiento para agentes y desarrolladores.
+- **Autenticación y Registro de Agentes (`Auth.md`)**:
+  - `frontend/public/auth.md` y ruta `GET /auth.md` en Laravel: Encabezado obligatorio `# Auth.md - iLeben Agent Authentication and Registration`, especificación de provisión de agentes (`POST /agent/register`), tipos de identidad (`anonymous`, `identity_assertion`), tipos de credenciales (`bearer_token`, `api_key`), scopes y endpoints de reclamo/revocación.
+- **Descubrimiento OAuth 2.0 y OpenID Connect**:
+  - `/.well-known/oauth-authorization-server`: Metadatos de servidor de autorización (RFC 8414) con bloque `agent_auth` para registro automatizado de agentes.
+  - `/.well-known/openid-configuration`: Metadatos estándar OIDC para autenticación federada.
+- **Metadatos de Recursos Protegidos OAuth (RFC 9728)**:
+  - `/.well-known/oauth-protected-resource`: Documento JSON con `resource`, `authorization_servers`, `scopes_supported` y `bearer_methods_supported: ["header"]`.
+- **Tarjeta de Servidor MCP (SEP-1649)**:
+  - `/.well-known/mcp/server-card.json`: Especificación para servidores Model Context Protocol con transporte Streamable HTTP (`/mcp`) y declaración de capacidades (herramientas, recursos, prompts).
+- **Índice de Descubrimiento de Habilidades de Agentes (Agent Skills RFC v0.2.0)**:
+  - `/.well-known/agent-skills/index.json`: Índice de habilidades con esquema `$schema: https://schemas.agentskills.io/discovery/0.2.0/schema.json` y hashes SHA-256 criptográficos verificados.
+  - Habilidades publicadas: `catalog-search/SKILL.md`, `unit-reservation/SKILL.md`, `auth-md/SKILL.md`.
+- **Integración WebMCP en Navegador**:
+  - `frontend/src/services/webMcp.js`: Implementación de la API WebMCP de W3C / Chrome EPP. Registra las herramientas `search_projects`, `get_plant_details`, `contact_sales_advisor` y `reserve_unit` mediante `navigator.modelContext.provideContext()` y `navigator.modelContext.registerTool()`, con shim reactivo para detección inmediata en escaneos pasivos.
+  - `frontend/src/main.jsx`: Inicialización automática durante la carga de página.
+- **Manifiesto ARD (Agentic Resource Discovery)**:
+  - `/.well-known/ai-catalog.json`: Manifiesto con formato `specVersion: "1.0"`, identificador DID Web, entradas URN AIR (`urn:air:<domain>:...`) y consultas semánticas representativas (`representativeQueries`).
+  - `robots.txt`: Incorporada directiva `Agentmap: https://sale.ileben.cl/.well-known/ai-catalog.json`.
+  - `frontend/index.html`: Enlaces `<link rel="ai-catalog">` y `<link rel="mcp-server-card">` en cabecera HTML.
+- **Tests Automatizados**:
+  - `tests/Feature/Api/AgentReadinessDiscoveryTest.php`: 10 nuevos tests de características validando estructura, encabezados CORS y payloads de todos los protocolos (446 tests en total pasando).
+
+## [1.9.19] - 2026-09-21
+
+### ✅ Scripts de Conversión y Píxel Post-Formularios (Contacto y Pago) — Estilo mow-plugin
+
+- **Backend (Filament & Model)**:
+  - `SiteSettings.php`: Nueva sección "Scripts de Conversión / Píxel (Formularios y Pagos)" dentro de la pestaña `Personalización`.
+    - Campos: `extra_settings.conversion_scripts_enabled` (toggle general), `extra_settings.conversion_scripts_debug` (logs en consola del navegador), `extra_settings.post_contact_script` (textarea script tras enviar contacto), `extra_settings.post_payment_script` (textarea script tras pagar o iniciar reserva).
+  - `SiteSetting.php`: `forFrontend()` expone el objeto `conversion_scripts` con `enabled`, `debug`, `post_contact_script` y `post_payment_script`.
+- **Frontend (React / Vite)**:
+  - `utils/conversionTracker.js` (nuevo): Motor multiformato basado en la arquitectura de `scooller/mow-plugin`:
+    - Ejecuta bloques `<script>` creando elementos DOM reales en `<head>`/`<body>`.
+    - Extrae `<img>` de bloques `<noscript>` y dispara peticiones GET invisibles (beacons 1x1).
+    - Soporta tags directos `<img>` y URLs limpias.
+    - Reemplazo dinámico de variables (`{form_id}`, `{name}`, `{email}`, `{phone}`, `{amount}`, `{order_id}`, `{gateway}`, `{unit_id}`, etc.).
+    - Dispara `CustomEvent('pixel_tracker_dispatched')` en `window` para observabilidad.
+  - `Contact.jsx`: Dispara `triggerContactConversion` tras enviar formulario de contacto con éxito.
+  - `Home.jsx`: Dispara `triggerPaymentConversion` tras iniciar checkout o enviar comprobante manual.
+  - `Payment.jsx`: Dispara `triggerPaymentConversion` idempotentemente tras confirmar transacción aprobada.
+- **Tests Automatizados**:
+  - `SiteSettingFrontendConfigTest.php`: Nueva prueba `test_for_frontend_includes_conversion_scripts()` verificando persistencia y entrega en `/api/v1/site-config`. Total suite: 436 tests pasando.
+
+## [1.9.18] - 2026-09-21
+
+### ✅ SEO Estructurado — Evento Sale/Cyber (controlado desde backend)
+
+**Backend:**
+- `SiteSettings.php` (Filament): nueva Section "Evento Sale — SEO" en el tab SEO, visible solo cuando `evento_sale` está activo. Campos: `sale_event_name`, `sale_event_description`, `sale_event_start_date`, `sale_event_end_date`, `sale_og_image_id` (CuratorPicker).
+- `SiteSetting.php` (Model): se agrega `DatePicker` al import de Filament; `forFrontend()` expone `seo.sale_event` (null cuando inactivo, objeto con 5 campos cuando activo); `seo.og_image` ahora prefiere `sale_og_image` durante el evento.
+
+**Frontend:**
+- `utils/saleEventSchema.js` (nuevo): builders `buildSpecialAnnouncementSchema` y `buildSaleEventSchema` que generan JSON-LD schema.org desde los datos del backend.
+- `App.jsx`: nuevo `useEffect` que inyecta/elimina los dos schemas (`ileben-jsonld-sale-announcement`, `ileben-jsonld-sale-event`) reactivamente cuando `config.seo.sale_event` cambia. Limpieza automática en unmount.
+
+**Sin cambios en el comportamiento** cuando `evento_sale` está desactivado (sale_event === null → schemas no se inyectan).
+
+## [1.9.17] - 2026-09-21
+
+### ✅ Agent Commerce Protocol Discovery (ACP, UCP, MPP)
+
+- **ACP** (`/.well-known/acp.json`): Agentic Commerce Protocol discovery document. Declares `protocol.name: "acp"`, `api_base_url`, `transports: ["http"]`, and `capabilities.services` (real-estate-catalog, property-listings, contact-submissions, reservations, payments).
+- **UCP** (`/.well-known/ucp`): Universal Commerce Protocol discovery document. Includes `protocol_version`, `services` (catalog, reservations, checkout), `capabilities` (payment_methods: transbank, mercadopago, card; currencies: CLP), and `endpoints` map.
+- **MPP** (`/openapi.json`): Full OpenAPI 3.1 document with `x-payment-info` extensions on payable operations (catalog, checkout). Maps Transbank / Mercado Pago to MPP `card` payment method. Includes top-level `x-service-info` with categories.
+- **llms.txt** (`MarkdownRepresentationService`): Updated "Recursos para Agentes" section to advertise the three new discovery endpoints and the Transbank/Mercado Pago payment methods.
+- x402 (crypto) **descartado** — no aplica ya que los métodos de pago son Transbank y Mercado Pago (no cripto).
+
+## [1.9.16] - 2026-09-21
+
+### 🚦 Preferencias de Uso de Contenido IA (`Content-Signal` en `robots.txt`)
+- **Directivas Content Signals (`frontend/public/robots.txt`, `public/robots.txt`)**:
+  - Incorporada la directiva estándar `Content-Signal: ai-train=no, search=yes, ai-input=no` bajo el bloque `User-agent: *` según el estándar de `contentsignals.org` y el borrador IETF.
+  - Permite la indexación y búsqueda por motores IA (`search=yes`), mientras restringe el entrenamiento de modelos fundacionales (`ai-train=no`) y el uso como input de generación (`ai-input=no`).
+- **Ruta Dinámica en Backend (`routes/web.php`)**:
+  - Creado endpoint `GET /robots.txt` en Laravel para garantizar consistencia entre tests de aplicación y entornos de ejecución web.
+- **Validación Automática de Build (`validate-seo.mjs`)**:
+  - Incorporada aserción para verificar la presencia de `Content-Signal` en `dist/robots.txt` durante `npm run build`.
+- **Tests Automatizados (`ContentSignalsRobotsTest.php`)**:
+  - Nueva prueba unitaria verificando la entrega de `robots.txt` con `Content-Signal` y enlaces a sitemap. Total: 42 tests backend pasando sin fallos.
+
+## [1.9.15] - 2026-09-21
+
+### 📝 Negociación de Contenido Markdown para Agentes IA (`Accept: text/markdown`)
+- **Middleware Global de Negociación (`NegotiateMarkdownForAgents.php`, `bootstrap/app.php`)**:
+  - Implementado middleware global que detecta solicitudes de agentes con cabecera `Accept: text/markdown`.
+  - Entrega una representación limpia en Markdown de la página y catálogo inmobiliario con cabecera `Content-Type: text/markdown; charset=UTF-8`, `Vary: Accept` y estimación de tokens `x-markdown-tokens`.
+  - Mantiene intacta la respuesta HTML tradicional para navegadores y usuarios humanos.
+- **Servicio Generador Markdown (`MarkdownRepresentationService.php`)**:
+  - Generación dinámica de la estructura de proyectos activos, comunas, regiones, canales de contacto y enlaces directos a OpenAPI y API Catalog.
+- **Rutas Estándar `llms.txt` (`routes/web.php`, `frontend/public/`)**:
+  - Habilitados endpoints `GET /llms.txt` y `GET /.well-known/llms.txt` según la convención de `llmstxt.org`.
+  - Creados archivos estáticos `frontend/public/llms.txt` y `frontend/public/index.md` distribuidos en el bundle de Vite.
+- **Servidor Web Apache (`frontend/public/.htaccess`)**:
+  - Incorporadas reglas de reescritura para servir `index.md` automáticamente ante solicitudes `Accept: text/markdown` en la raíz.
+- **Tests Automatizados (`MarkdownContentNegotiationTest.php`)**:
+  - Cobertura completa de negociación con cabecera `Accept`, endpoints `llms.txt` y persistencia de default HTML para navegadores. Total: 41 tests backend pasando.
+
+## [1.9.14] - 2026-09-21
+
+### 🤖 Descubrimiento de Agentes IA (RFC 8288 & RFC 9727)
+- **Cabeceras HTTP `Link` (`AddAgentDiscoveryHeaders.php`, `bootstrap/app.php`)**:
+  - Creado middleware `AddAgentDiscoveryHeaders` registrado en el grupo `web` para inyectar cabeceras de respuesta `Link` estándar RFC 8288:
+    - `Link: </.well-known/api-catalog>; rel="api-catalog"`
+    - `Link: </api/v1>; rel="service-desc"; type="application/json"`
+    - `Link: </api/v1>; rel="service-doc"`
+- **Catálogo de API RFC 9727 (`/.well-known/api-catalog`)**:
+  - Endpoint en Laravel (`routes/web.php`) respondiendo a `GET` y `HEAD` con tipo de contenido `application/linkset+json` y estructura estándar `linkset` señalando a la especificación OpenAPI v1 (`/api/v1`).
+  - Archivo físico estático en `frontend/public/.well-known/api-catalog` para compatibilidad con hosting estático o CDN.
+- **Configuración Web Server (`.htaccess`)**:
+  - Actualizado `frontend/public/.htaccess` y `public/.htaccess` con cabeceras `mod_headers` para respuestas `Link` y MIME type `application/linkset+json`.
+- **Frontend DOM (`frontend/index.html`, `validate-seo.mjs`)**:
+  - Incorporadas etiquetas `<link rel="api-catalog">`, `<link rel="service-desc">` y `<link rel="service-doc">` en el `<head>` de `index.html`.
+  - Añadida validación automática en `validate-seo.mjs`.
+- **Tests Automatizados (`AgentDiscoveryHeadersTest.php`)**:
+  - Creada suite de pruebas unitarias verificando cabeceras `Link` en raíz web, respuesta JSON del catálogo y respuesta HTTPS `HEAD` requerida por RFC 9727. 36 tests pasando sin errores.
+
+## [1.9.13] - 2026-09-21
+
+### 🏗️ Arquitectura de Shell y Layout Web Awesome (`<wa-page>`)
+- **Adopción de `<wa-page>` en Shell Principal (`App.jsx`, `App.scss`)**:
+  - Implementado el componente `<wa-page>` como contenedor principal de la aplicación siguiendo la receta oficial de sitio de marketing de Web Awesome.
+  - El shell ahora centraliza de forma persistente el `<SiteHeader />` (`slot="header"` y `slot="navigation"`) y `<SiteFooter />` (`slot="footer"`).
+  - Eliminados los hooks duplicados, event listeners de redimensionamiento manual (`matchMedia`) y el drawer manual (`<wa-drawer>`), reemplazándolos por las capacidades integradas de `<wa-page>` (`data-toggle-nav` y `data-drawer="close"`).
+  - Aplicada la regla de padding cero (`wa-page main { padding: 0 }`) para garantizar banners y secciones hero a sangre (full-bleed).
+  - Incorporadas reglas de estilo con scope `view="desktop"` y `view="mobile"` para ocultar la barra lateral en escritorio y alternar la navegación móvil limpiamente.
+- **Limpieza de Vistas Hijas (`Home.jsx`, `Contact.jsx`, `Payment.jsx`)**:
+  - Eliminadas las instancias repetidas de `<SiteHeader />` y `<SiteFooter />` de todas las páginas y estados de carga/error intermedios, evitando parpadeos de montaje y desincronizaciones de UI.
+- **Tests Automatizados (`ProyectoApiFiltersTest.php`)**:
+  - Actualizada la aserción de campos por defecto en `ProyectoApiFiltersTest` para contemplar los campos computados `precio_desde` y `tipologias`.
+  - Pasada con éxito la suite completa de 33 tests API y validación de prerenderizado/SEO en frontend.
+
+## [1.9.12] - 2026-09-21
+
+### 🚀 Optimización SEO Técnico, Marketing & Marcado Semántico LLMO
+- **Schema.org Enriquecido (`App.jsx`, `Home.jsx`)**:
+  - Incorporado tipo `RealEstateAgent` y dirección postal (`PostalAddress`) en la entidad principal `Organization`.
+  - Evolucionado el marcado estructurado de plantas a `['Product', 'RealEstateListing']` incorporando el objeto `about` de tipo `Apartment` / `SingleFamilyResidence`, con dormitorios (`programa`), superficie m² (`QuantitativeValue`) y dirección postal completa (`streetAddress`, `addressLocality`, `addressRegion`, país `CL`).
+- **SEO & Jerarquía Semántica (`Home.jsx`)**:
+  - Activado y promovido el encabezado principal a `<h1>` semántico con texto contextual dinámico según proyecto seleccionado o catálogo general.
+  - Sincronización reactiva de `og:image` de la unidad seleccionada en páginas de detalle de planta para vistas previas en redes sociales y mensajería.
+- **Validación**: Compilación frontend exitosa (`npm run build`), prerenderizado de rutas completado y 27 tests de backend pasando sin errores.
+
+### 🔄 Migración de Componentes y Atributos Web Awesome
+- **Migración a sintaxis moderna de Web Awesome 3.x (`Home.jsx`, `Contact.jsx`, `PlantDetailDialog.jsx`)**:
+  - Reemplazado atributo obsoleto `clearable` por el estándar oficial `with-clear` en elementos `<wa-select>`.
+  - Reemplazado atributo obsoleto `variant="primary"` por `variant="brand"` en `<wa-button>` y `<wa-tag>`.
+  - Removido `variant="default"` en `<wa-button>` reemplazándolo por el tratamiento por defecto del componente (`neutral`).
+- **Servicio Web Awesome (`webAwesome.js`)**: Agregada la importación faltante del componente `<wa-spinner>` (`@web.awesome.me/webawesome-pro/dist/components/spinner/spinner.js`).
+
+## [1.9.10] - 2026-09-21
+
+### 📦 Dependencias Frontend
+- **Actualización de Web Awesome Pro (`frontend/package.json`)**: Actualizado `@web.awesome.me/webawesome-pro` de `^3.7.0` a `^3.13.0`.
+- **Configuración de Autenticación NPM (`frontend/.env`)**: Actualizado el token de autenticación para el registro privado de Cloudsmith (`WEBAWESOME_NPM_TOKEN`).
+- **Build Frontend**: Compilación y prerenderizado validados sin errores con Vite y SEO check.
+
+## [1.9.9] - 2026-09-21
+
+### 🛠️ Correcciones y Flujo Anónimo de Checkout
+- **Reservas y Checkout Anónimos (`routes/api.php`)**: Movidas las rutas de checkout (`POST /api/v1/checkout`) y reservas (`POST /api/v1/reservations`, `DELETE /api/v1/reservations/{sessionToken}`, `GET /api/v1/reservations/planta/{plantId}`) fuera del middleware `auth:sanctum` al grupo público con `token.origin`.
+- **Servicio y Controlador de Reservas (`PlantReservationService.php`, `PlantReservationController.php`)**: Habilitado `$userId` nullable en la creación y extensión de reservas de plantas. Soporte para control y liberación anónima por `session_token` único (UUID).
+- **Controlador de Checkout (`CheckoutController.php`, `CheckoutInitiateRequest.php`)**: Habilitada la autorización pública y resolución automática de clientes anónimos a través de `User::firstOrCreate(...)` vinculando su email de facturación.
+- **Frontend Dialog & Home (`PaymentGatewayDialog.jsx`, `Home.jsx`)**: Eliminadas restricciones que impedían reservar una unidad o completar el proceso de checkout a usuarios no autenticados en el navegador.
+- **Tests Automatizados**: Incorporados tests en `ApiAuthenticationTest` y validada la suite completa de `ManualCheckoutFlowTest`.
+
+## [1.9.8] - 2026-09-21
+
+### 🛠️ Correcciones
+- **Ruta `payment-gateways` pública en API (`routes/api.php`)**: Movido el endpoint `GET /api/v1/payment-gateways` fuera del middleware `auth:sanctum` al grupo de catálogo con `token.origin`. Esto permite a los visitantes del frontend explorar y seleccionar pasarelas disponibles sin requerir inicio de sesión previo.
+- **Soporte de Enlaces Preview (`EnsureTokenOriginIsAuthorized.php`)**: Permitido acceso a rutas protegidas por `token.origin` para enlaces preview autorizados (`FrontendPreviewLink::isAuthorizedForRequest()`) sin requerir un token Bearer estático.
+- **Tests Automatizados**: Añadidos tests en `ApiAuthenticationTest` para verificar el acceso no autenticado a `payment-gateways` con token de API y con token preview.
+
+## [1.9.7] - 2026-09-21
+
+### 🔒 Parches de Seguridad
+- **Path Traversal en Curator (`routes/web.php`)**: Implementada validación de `realpath` y confinamiento de directorio sobre `storage/app/public` en la ruta `/curator/{path}` para prevenir acceso arbitrario a archivos del sistema (e.g. `.env`).
+- **Control de Acceso en Sync Export (`ProductionSyncController.php`)**: Requerida verificación administrativa (`isAdmin()`) en `GET /api/v1/production-sync/export` para impedir que usuarios registrados sin privilegios extraigan configuraciones sensibles de pasarelas de pago y datos del sistema.
+- **Exención CSRF para Webhooks de Pago (`bootstrap/app.php`)**: Añadida la ruta `payments/*` a `validateCsrfTokens(except: ...)` para garantizar la recepción confiable de notificaciones POST externas de Mercado Pago y Transbank.
+- **Tests Automatizados**: Añadido `CuratorRouteSecurityTest` y ampliado `ProductionSyncExportApiTest` para validar defensas.
+
+## [1.9.6] - 2026-08-11
+
+### ✨ Nuevas características
+
+#### API de Proyectos — `precio_desde` y `tipologias`
+- Agregados campos computados `precio_desde` y `tipologias` a los endpoints `GET /api/v1/proyectos` y `GET /api/v1/proyectos/{id}`.
+- `precio_desde`: precio de lista (`precio_lista`) más bajo entre las plantas activas del proyecto.
+- `tipologias`: agrupación de plantas activas por `programa` (dormitorios) + `programa2` (baños) + `tipo_producto`, con cantidad de unidades, precio mínimo, superficie útil min/max.
+- Cálculo vía query `GROUP BY` optimizada (no carga plantas a memoria).
+- Ambos campos aparecen por defecto en ambos endpoints y se omiten si el cliente usa `?fields=` sin incluirlos.
+- Tests feature cubriendo listado, detalle, proyecto sin plantas, exclusión de plantas inactivas y selección de campos.
 
 #### Salesforce OAuth — Auto-Refresh Proactivo
 - Refactorización para implementar auto-refresh proactivo de tokens antes de que expiren silenciosamente.

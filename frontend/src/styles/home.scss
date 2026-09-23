@@ -96,47 +96,50 @@ html.wa-light {
 
 /* Video */
 .video-home {
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  position: relative;
+
+  .hero-video {
+    aspect-ratio: 3.36 / 1;
     width: 100%;
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    position: relative;
-    .hero-video{
-        aspect-ratio: 3.36 / 1;
-        width: 100%;
-        display: block;
-        object-fit: cover;
-        margin: 0;
-    }
-    .hero-video-poster {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        object-fit:contain;
-        z-index: 0;
-    }
-    &::after {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-    }
+    display: block;
+    object-fit: cover;
+    margin: 0;
+  }
 
-      .hero-disclaimer {
-        position: absolute;
-        left: 1rem;
-        bottom: 1rem;
-        backdrop-filter: blur(10px);
-        box-shadow: 0 10px 24px rgba(var(--wa-color-black-rgb), 0.18);
-        z-index: 1;
+  .hero-video-poster {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    z-index: 0;
+  }
 
-        sup {
-          margin-right: 0.2rem;
-        }
-      }
+  &::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .hero-disclaimer {
+    position: absolute;
+    left: 1rem;
+    bottom: 1rem;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 10px 24px rgba(var(--wa-color-black-rgb), 0.18);
+    z-index: 1;
+
+    sup {
+      margin-right: 0.2rem;
+    }
+  }
 }
 
 /* Plants Header */
@@ -302,27 +305,32 @@ html.wa-dark {
       opacity: 1;
       scale: 1;
     }
+
     cursor: pointer;
 	height: 100%;
 
     .plant-price-wrapper {
       width: 40%;
+
       .prices-list {
         .price-text {
           font-size: var(--wa-font-size-s);
           color: var(--wa-color-text-quiet);
         }
+
         .price-label {
           font-size: var(--wa-font-size-s);
           text-decoration: line-through;
           opacity: 0.7;
         }
       }
+
       .prices-sale {
         .price-text {
           font-size: var(--wa-font-size-s);
           color: var(--wa-color-brand);
         }
+
         .price-label {
           font-size: var(--wa-font-size-l);
           font-weight: var(--wa-font-weight-bold);
@@ -334,21 +342,24 @@ html.wa-dark {
       box-shadow: 0 12px 24px rgba(var(--wa-color-black-rgb), 0.15);
       transition: all 0.3s ease;
     }
+
     .plant-media {
       position: relative;
     }
 
-    .plant-image{
+    .plant-image {
       display: block;
       width: 100%;
       border-bottom: 1px solid rgba(var(--wa-color-white-rgb), 0.1);
     }
 
     &--reserved {
-      opacity: 0.7!important;
+      opacity: 0.7 !important;
       cursor: not-allowed;
+
       .plant-media {
         filter: grayscale(100%);
+
         &::after {
           content: "Reservado";
           position: absolute;
@@ -360,6 +371,7 @@ html.wa-dark {
           font-size: var(--wa-font-size-4xl);
         }
       }
+
       &:hover {
         box-shadow: none;
         filter: blur(1.5px);
@@ -383,44 +395,46 @@ html.wa-dark {
 }
 
 .discount-seal {
-    align-items: center;
-    background: radial-gradient(circle at 30% 30%, #ff5a5a 0%, #e3002a 55%, #b30021 100%);
-    border: 2px solid #ffffff;
-    border-radius: 999px;
-    box-shadow: 0 6px 16px rgba(227, 0, 42, 0.35);
-    color: #ffffff;
-    display: inline-flex;
-    flex-direction: row;
-    width: 4.55rem;
-    height: 4.55rem;
-    justify-content: center;
-    line-height: 1;
-    padding: 0.25rem;
-    position: absolute;
-    right: 0.75rem;
-    text-align: center;
-    text-transform: uppercase;
-    top: 0.75rem;
-    z-index: 2;
-    .discount-seal-value {
-        font-size: 1.6rem;
-        font-weight: 800;
-        letter-spacing: 0.02em;
-    }
+  align-items: center;
+  background: radial-gradient(circle at 30% 30%, #ff5a5a 0%, #e3002a 55%, #b30021 100%);
+  border: 2px solid #ffffff;
+  border-radius: 999px;
+  box-shadow: 0 6px 16px rgba(227, 0, 42, 0.35);
+  color: #ffffff;
+  display: inline-flex;
+  flex-direction: row;
+  width: 4.55rem;
+  height: 4.55rem;
+  justify-content: center;
+  line-height: 1;
+  padding: 0.25rem;
+  position: absolute;
+  right: 0.75rem;
+  text-align: center;
+  text-transform: uppercase;
+  top: 0.75rem;
+  z-index: 2;
 
-    .discount-seal-label {
-        display: flex;
-        flex-direction: column;
-        font-size: 0.3rem;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        margin-top: 0.2rem;
-        opacity: 0.95;
-        .simbol {
-            font-size: 1rem;
-            line-height: 0.8;
-        }
+  .discount-seal-value {
+    font-size: 1.6rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+  }
+
+  .discount-seal-label {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.3rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    margin-top: 0.2rem;
+    opacity: 0.95;
+
+    .simbol {
+      font-size: 1rem;
+      line-height: 0.8;
     }
+  }
 }
 
 .project-logo-badge {
@@ -450,6 +464,7 @@ html.wa-dark {
   bottom: 0.75rem;
   z-index: 2;
 }
+
 .plant-comuna-badge {
   align-items: center;
   left: 0.75rem;
@@ -480,50 +495,56 @@ html.wa-dark {
   min-height: 260px;
 }
 
-.plant-detail-media > a {
+.plant-detail-media>a {
   display: block;
   height: 100%;
 }
 
 // Dialogo de plantas
-.plant-detail-dialog{
-    &::part(footer) {
-        width: 100%;
-    }
-    .prices-list{
-        .price-text{
-            font-size: var(--wa-font-size-l);
-            color: var(--wa-color-text-quiet);
-        }
-        .price-label{
-            font-size: var(--wa-font-size-l);
-            text-decoration: line-through;
-            opacity: 0.7;
-        }
-    }
-    .prices-sale{
-        .price-text{
-            font-size: var(--wa-font-size-xl);
-            color: var(--wa-color-brand);
-        }
-        .price-label{
-            font-size: var(--wa-font-size-3xl);
-        }
+.plant-detail-dialog {
+  &::part(footer) {
+    width: 100%;
+  }
+
+  .prices-list {
+    .price-text {
+      font-size: var(--wa-font-size-l);
+      color: var(--wa-color-text-quiet);
     }
 
-    &-footer {
-        align-items: center;
-        display: flex;
-        justify-content: space-between;
-        width: 100%;
-        .price-detail{
-            width: 60%;
-            @media (max-width: 768px) {
-                width: 100%;
-                text-align: center;
-            }
-        }
+    .price-label {
+      font-size: var(--wa-font-size-l);
+      text-decoration: line-through;
+      opacity: 0.7;
     }
+  }
+
+  .prices-sale {
+    .price-text {
+      font-size: var(--wa-font-size-xl);
+      color: var(--wa-color-brand);
+    }
+
+    .price-label {
+      font-size: var(--wa-font-size-3xl);
+    }
+  }
+
+  &-footer {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+
+    .price-detail {
+      width: 60%;
+
+      @media (max-width: 768px) {
+        width: 100%;
+        text-align: center;
+      }
+    }
+  }
 }
 
 .plant-detail-image {
@@ -531,7 +552,7 @@ html.wa-dark {
   display: block;
   height: 100%;
   max-height: none;
-  object-fit: contain;
+  object-fit: cover;
   width: 100%;
 }
 
@@ -745,141 +766,148 @@ html.wa-dark {
 }
 
 @media (max-width: 768px) {
-    .video-home{
-        .hero-video{
-            aspect-ratio: 0.94 / 1;
-        }
-
-        .hero-disclaimer {
-            left: 0.75rem;
-            right: 0.75rem;
-            bottom: 0.75rem;
-            max-width: none;
-        }
+  .video-home {
+    .hero-video {
+      aspect-ratio: 0.94 / 1;
     }
 
-    .plants-grid {
-        wa-card.plant-card {
-            .plant-price-wrapper {
-                width: 100%;
-                margin-bottom: 1rem;
-            }
-        }
+    .hero-disclaimer {
+      left: 0.75rem;
+      right: 0.75rem;
+      bottom: 0.75rem;
+      max-width: none;
     }
+  }
 
-    // Dialogo de plantas
-    .plant-detail-dialog{
-        .prices-list{
-            .price-text{
-                font-size: var(--wa-font-size-m);
-            }
-            .price-label{
-                font-size: var(--wa-font-size-m);
-            }
-        }
-        .prices-sale{
-            .price-text{
-                font-size: var(--wa-font-size-l);
-            }
-            .price-label{
-                font-size: var(--wa-font-size-xl);
-            }
-        }
-    }
-
-    // Tarjetas de plantas
+  .plants-grid {
     wa-card.plant-card {
-        .plant-price-wrapper {
-            width: 100%;
-            .prices-list {
-                .price-text {
-                    font-size: var(--wa-font-size-xs);
-                }
-                .price-label {
-                    font-size: var(--wa-font-size-xs);
-                }
-            }
-            .prices-sale {
-                .price-text {
-                    font-size: var(--wa-font-size-xs);
-                }
-                .price-label {
-                    font-size: var(--wa-font-size-l);
-                }
-            }
-        }
-    }
-
-    .plant-detail-dialog-footer {
-        flex-direction: column-reverse;
-        gap: var(--wa-space-xs);
-    }
-
-    .plant-detail-dialog-footer wa-button {
+      .plant-price-wrapper {
         width: 100%;
+        margin-bottom: 1rem;
+      }
+    }
+  }
+
+  // Dialogo de plantas
+  .plant-detail-dialog {
+    .prices-list {
+      .price-text {
+        font-size: var(--wa-font-size-m);
+      }
+
+      .price-label {
+        font-size: var(--wa-font-size-m);
+      }
     }
 
-    .plant-detail-media {
-        min-height: 220px;
-    }
+    .prices-sale {
+      .price-text {
+        font-size: var(--wa-font-size-l);
+      }
 
-    .plant-detail-dialog::part(panel) {
-        height: 100dvh;
-        max-height: 100dvh;
+      .price-label {
+        font-size: var(--wa-font-size-xl);
+      }
     }
+  }
 
-    .discount-seal {
-        height: 52px;
-        min-width: 52px;
-        right: 0.6rem;
-        top: 0.6rem;
-    }
+  // Tarjetas de plantas
+  wa-card.plant-card {
+    .plant-price-wrapper {
+      width: 100%;
 
-    .project-logo-badge {
-        left: 0.6rem;
-        max-width: min(42%, 136px);
-        min-height: 36px;
-        padding: 0.25rem 0.4rem;
-        top: 0.6rem;
-    }
+      .prices-list {
+        .price-text {
+          font-size: var(--wa-font-size-xs);
+        }
 
-    .project-logo-image {
-        max-height: 30px;
-    }
+        .price-label {
+          font-size: var(--wa-font-size-xs);
+        }
+      }
 
-    .sale-logo-badge {
-        left: 0.6rem;
-        max-width: min(42%, 136px);
-        min-height: 36px;
-        padding: 0.25rem 0.4rem;
-        bottom: 0.6rem;
-        top: auto;
-    }
+      .prices-sale {
+        .price-text {
+          font-size: var(--wa-font-size-xs);
+        }
 
-    .sale-logo-badge-with-project-logo {
-        bottom: 0.6rem;
-        top: auto;
+        .price-label {
+          font-size: var(--wa-font-size-l);
+        }
+      }
     }
+  }
 
-    .sale-logo-image {
-        max-height: 30px;
-    }
+  .plant-detail-dialog-footer {
+    flex-direction: column-reverse;
+    gap: var(--wa-space-xs);
+  }
 
-    .checkout-summary-content,
-    .checkout-buyer-content {
-        padding: var(--wa-space-s);
-    }
+  .plant-detail-dialog-footer wa-button {
+    width: 100%;
+  }
 
-    .gateway-radio-group {
-        padding: var(--wa-space-2xs) var(--wa-space-xs);
-    }
+  .plant-detail-media {
+    min-height: 220px;
+  }
 
-    .discount-seal-value {
-        font-size: 0.8rem;
-    }
+  .plant-detail-dialog::part(panel) {
+    height: 100dvh;
+    max-height: 100dvh;
+  }
 
-    .discount-seal-label {
-        font-size: 0.48rem;
-        margin-top: 0.1rem;
-    }
+  .discount-seal {
+    height: 65px;
+    width: 65px;
+    right: 0.6rem;
+    top: 0.6rem;
+  }
+
+  .project-logo-badge {
+    left: 0.6rem;
+    max-width: min(42%, 136px);
+    min-height: 36px;
+    padding: 0.25rem 0.4rem;
+    top: 0.6rem;
+  }
+
+  .project-logo-image {
+    max-height: 30px;
+  }
+
+  .sale-logo-badge {
+    left: 0.6rem;
+    max-width: min(42%, 136px);
+    min-height: 36px;
+    padding: 0.25rem 0.4rem;
+    bottom: 0.6rem;
+    top: auto;
+  }
+
+  .sale-logo-badge-with-project-logo {
+    bottom: 0.6rem;
+    top: auto;
+  }
+
+  .sale-logo-image {
+    max-height: 30px;
+  }
+
+  .checkout-summary-content,
+  .checkout-buyer-content {
+    padding: var(--wa-space-s);
+  }
+
+  .gateway-radio-group {
+    padding: var(--wa-space-2xs) var(--wa-space-xs);
+  }
+
+  .discount-seal-value {
+    font-size: 0.8rem;
+  }
+
+  .discount-seal-label {
+    font-size: 0.48rem;
+    margin-top: 0.1rem;
+  }
 }

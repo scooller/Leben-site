@@ -17,12 +17,30 @@ class RunProductionSyncJob implements ShouldQueue
     use Queueable;
     use SerializesModels;
 
-    public function __construct(public string $syncId) {}
+    public string $syncId = '';
+
+    public ?string $baseUrl = null;
+
+    public ?string $token = null;
+
+    public ?string $authorizedUrl = null;
+
+    public function __construct(
+        string $syncId,
+        ?string $baseUrl = null,
+        ?string $token = null,
+        ?string $authorizedUrl = null,
+    ) {
+        $this->syncId = $syncId;
+        $this->baseUrl = $baseUrl;
+        $this->token = $token;
+        $this->authorizedUrl = $authorizedUrl;
+    }
 
     public function handle(ProductionSyncService $service, ProductionSyncProgressTracker $tracker): void
     {
         $tracker->addLog($this->syncId, 'Descargando datos desde producción.');
-        $snapshot = $service->fetchSnapshot();
+        $snapshot = $service->fetchSnapshot($this->baseUrl, $this->token, $this->authorizedUrl);
 
         $error = trim((string) data_get($snapshot, 'meta.error', ''));
 
@@ -32,7 +50,10 @@ class RunProductionSyncJob implements ShouldQueue
             return;
         }
 
-        $totalSteps = 1 + count((array) ($snapshot['projects'] ?? [])) + count((array) ($snapshot['plants'] ?? []));
+        $totalSteps = 1
+            + count((array) ($snapshot['projects'] ?? []))
+            + count((array) ($snapshot['advisors'] ?? []))
+            + count((array) ($snapshot['plants'] ?? []));
         $tracker->setTotalSteps($this->syncId, $totalSteps);
         $tracker->addLog($this->syncId, 'Sincronización iniciada.');
 
@@ -42,8 +63,10 @@ class RunProductionSyncJob implements ShouldQueue
         $tracker->addLog(
             $this->syncId,
             sprintf(
-                'Sincronización finalizada. Configuración: %s. Proyectos: %d creados, %d actualizados. Plantas: %d creadas, %d actualizadas.',
+                'Sincronización finalizada. Configuración: %s. Asesores: %d creados, %d actualizados. Proyectos: %d creados, %d actualizados. Plantas: %d creadas, %d actualizadas.',
                 $result['site_settings'],
+                $result['advisors']['created'],
+                $result['advisors']['updated'],
                 $result['projects']['created'],
                 $result['projects']['updated'],
                 $result['plants']['created'],

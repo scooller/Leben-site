@@ -104,14 +104,33 @@ export const SiteConfigProvider = ({ children }) => {
         });
       }
 
-      setUtmDefaultOverrides({
-        utm_source: data?.seo?.utm_source_default,
-        utm_medium: data?.seo?.utm_medium_default,
-        utm_campaign: data?.seo?.utm_campaign_default,
-        utm_term: data?.seo?.utm_term_default,
-        utm_content: data?.seo?.utm_content_default,
-        utm_site: data?.seo?.utm_site_default,
-      });
+      const isSale = Boolean(data?.evento_sale);
+      const currentChannelSlug = (typeof window !== 'undefined' && window.location)
+        ? (new URLSearchParams(window.location.search).get('channel') || 'sale')
+        : 'sale';
+      const allowedChannelSlugs = Array.isArray(data?.seo?.sale_utm_campaign_channel_slugs)
+        ? data.seo.sale_utm_campaign_channel_slugs
+        : null;
+      const isChannelEligible = !allowedChannelSlugs || allowedChannelSlugs.includes(currentChannelSlug);
+
+      const saleCampaignOverride = isSale && isChannelEligible
+        ? (data?.seo?.sale_campaign_override || data?.seo?.sale_event?.utm_campaign || data?.seo?.sale_utm_campaign || null)
+        : null;
+
+      setUtmDefaultOverrides(
+        {
+          utm_source: data?.seo?.utm_source_default,
+          utm_medium: data?.seo?.utm_medium_default,
+          utm_campaign: data?.seo?.utm_campaign_default,
+          utm_term: data?.seo?.utm_term_default,
+          utm_content: data?.seo?.utm_content_default,
+          utm_site: data?.seo?.utm_site_default,
+        },
+        {
+          isSaleEvent: isSale,
+          saleCampaignOverride,
+        }
+      );
 
       setError(null);
 

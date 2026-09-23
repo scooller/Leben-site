@@ -214,6 +214,27 @@ class SiteConfigService {
     link.setAttribute('href', canonicalUrl);
   }
 
+  setHreflang(url, locale = 'es-CL') {
+    if (!url) return;
+
+    this.setAlternateLink(url, locale);
+    this.setAlternateLink(url, 'x-default');
+  }
+
+  setAlternateLink(href, hreflang) {
+    if (!href || !hreflang) return;
+
+    let link = document.querySelector(`link[rel='alternate'][hreflang='${hreflang}']`);
+    if (!link) {
+      link = document.createElement('link');
+      link.setAttribute('rel', 'alternate');
+      link.setAttribute('hreflang', hreflang);
+      document.head.appendChild(link);
+    }
+
+    link.setAttribute('href', href);
+  }
+
   /**
    * Establecer meta tags
    * @param {Object} seo - Objeto con información SEO
@@ -305,6 +326,7 @@ class SiteConfigService {
 
     if (canonical) {
       this.setCanonical(canonical);
+      this.setHreflang(canonical, seo.ogLocale || 'es-CL');
       this.setMetaTag('og:url', canonical, 'property');
     }
 

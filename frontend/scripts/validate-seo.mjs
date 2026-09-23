@@ -41,6 +41,14 @@ const run = async () => {
     if (!content.includes(`<meta name="robots" content="${check.robots}" />`)) {
       fail(`[validate-seo] Robots mismatch in ${check.file}`);
     }
+
+    if (!content.includes('hreflang="es-CL"')) {
+      fail(`[validate-seo] Missing hreflang="es-CL" in ${check.file}`);
+    }
+
+    if (!content.includes('hreflang="x-default"')) {
+      fail(`[validate-seo] Missing hreflang="x-default" in ${check.file}`);
+    }
   }));
 
   const appSource = await readFile(path.join(projectRoot, 'src', 'App.jsx'), 'utf8');
@@ -50,8 +58,30 @@ const run = async () => {
     fail('[validate-seo] Missing organization structured data hook in App.jsx');
   }
 
+  if (!appSource.includes("'RealEstateAgent'")) {
+    fail('[validate-seo] Missing RealEstateAgent type in organization schema');
+  }
+
   if (!homeSource.includes("setStructuredData('product'")) {
     fail('[validate-seo] Missing product structured data hook in Home.jsx');
+  }
+
+  if (!homeSource.includes("'RealEstateListing'")) {
+    fail('[validate-seo] Missing RealEstateListing schema in Home.jsx');
+  }
+
+  if (!homeSource.includes('<h1')) {
+    fail('[validate-seo] Missing semantic <h1> heading in Home.jsx');
+  }
+
+  const rootDistHtml = await readFile(path.join(distDir, 'index.html'), 'utf8');
+  if (!rootDistHtml.includes('rel="api-catalog"') || !rootDistHtml.includes('/.well-known/api-catalog')) {
+    fail('[validate-seo] Missing api-catalog link in dist/index.html');
+  }
+
+  const robotsTxt = await readFile(path.join(distDir, 'robots.txt'), 'utf8');
+  if (!robotsTxt.includes('Content-Signal:') || !robotsTxt.includes('ai-train=no')) {
+    fail('[validate-seo] Missing or invalid Content-Signal in dist/robots.txt');
   }
 
   if (process.exitCode !== 1) {

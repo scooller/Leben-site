@@ -1,0 +1,26 @@
+{
+  "$schema": "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
+  "skills": [
+    {
+      "name": "catalog-search",
+      "type": "skill-md",
+      "description": "Search and inspect real estate projects, communes, and available housing units in Chile",
+      "url": "https://sale.ileben.cl/.well-known/agent-skills/catalog-search/SKILL.md",
+      "digest": "sha256:20574a739eb3ad45de0792cb49690287dfc4af4ecaefd05bf5d9238c495a7162"
+    },
+    {
+      "name": "unit-reservation",
+      "type": "skill-md",
+      "description": "Initiate and track unit reservations for real estate developments",
+      "url": "https://sale.ileben.cl/.well-known/agent-skills/unit-reservation/SKILL.md",
+      "digest": "sha256:e8004a617f90c168b1d44e40791f88176c3b768d0ab5829261652f9ececfca9b"
+    },
+    {
+      "name": "auth-md",
+      "type": "skill-md",
+      "description": "Register and authenticate autonomous AI agents with the iLeben API",
+      "url": "https://sale.ileben.cl/.well-known/agent-skills/auth-md/SKILL.md",
+      "digest": "sha256:525d111db91c8b351344d640e04dca1592722318cb88b408cfa94520b2ac94db"
+    }
+  ]
+}

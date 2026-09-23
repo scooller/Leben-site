@@ -1,0 +1,23 @@
+{
+  "linkset": [
+    {
+      "anchor": "https://sale.ileben.cl/",
+      "profile": "https://www.rfc-editor.org/rfc/rfc9727",
+      "author": "iLeben",
+      "item": [
+        {
+          "href": "https://sale.ileben.cl/api/v1",
+          "rel": "service-desc",
+          "type": "application/json",
+          "title": "iLeben OpenAPI v1 Specification"
+        },
+        {
+          "href": "https://sale.ileben.cl/api/v1",
+          "rel": "service-doc",
+          "type": "application/json",
+          "title": "iLeben API Documentation"
+        }
+      ]
+    }
+  ]
+}

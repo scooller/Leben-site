@@ -72,6 +72,20 @@ const applyHeadTags = (html, route) => {
     `<link rel="canonical" href="${route.canonical}" />`
   );
 
+  updated = upsertTag(
+    updated,
+    /<link\s+rel=["']alternate["']\s+hreflang=["']es-CL["'][^>]*>/i,
+    `<link rel="alternate" hreflang="es-CL" href="${route.canonical}" />`,
+    `<link rel="alternate" hreflang="es-CL" href="${route.canonical}" />`
+  );
+
+  updated = upsertTag(
+    updated,
+    /<link\s+rel=["']alternate["']\s+hreflang=["']x-default["'][^>]*>/i,
+    `<link rel="alternate" hreflang="x-default" href="${route.canonical}" />`,
+    `<link rel="alternate" hreflang="x-default" href="${route.canonical}" />`
+  );
+
   return updated;
 };
 

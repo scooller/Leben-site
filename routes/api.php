@@ -44,8 +44,8 @@ Route::prefix('v1')->group(function () {
 				'/contact-submissions' => ['post' => ['tags' => ['Config'], 'operationId' => 'storeContactSubmission', 'summary' => 'Enviar formulario de contacto', 'security' => [], 'requestBody' => ['required' => true, 'content' => ['application/json' => ['schema' => ['type' => 'object']]]], 'responses' => ['201' => ['description' => 'Contacto recibido'], '422' => ['description' => 'Error de validación']]]],
 				'/login' => ['post' => ['tags' => ['Auth'], 'operationId' => 'login', 'summary' => 'Login de usuario', 'security' => [], 'requestBody' => ['required' => true, 'content' => ['application/json' => ['schema' => ['type' => 'object']]]], 'responses' => ['200' => ['description' => 'Autenticado'], '422' => ['description' => 'Error de validación']]]],
 				'/register' => ['post' => ['tags' => ['Auth'], 'operationId' => 'register', 'summary' => 'Registro de usuario', 'security' => [], 'requestBody' => ['required' => true, 'content' => ['application/json' => ['schema' => ['type' => 'object']]]], 'responses' => ['201' => ['description' => 'Usuario creado'], '422' => ['description' => 'Error de validación']]]],
-				'/proyectos' => ['get' => ['tags' => ['Proyectos'], 'operationId' => 'listProyectos', 'summary' => 'Listado de proyectos', 'security' => [['bearerAuth' => []]], 'responses' => ['200' => ['description' => 'Listado paginado'], '401' => ['description' => 'No autenticado']]]],
-				'/proyectos/{id}' => ['get' => ['tags' => ['Proyectos'], 'operationId' => 'getProyecto', 'summary' => 'Detalle de proyecto', 'security' => [['bearerAuth' => []]], 'parameters' => [['$ref' => '#/components/parameters/Id'], ['name' => 'include_plantas', 'in' => 'query', 'required' => false, 'schema' => ['type' => 'boolean'], 'description' => 'Incluir plantas asociadas al proyecto'], ['name' => 'include_asesores', 'in' => 'query', 'required' => false, 'schema' => ['type' => 'boolean'], 'description' => 'Incluir asesores activos asociados al proyecto'], ['name' => 'campos', 'in' => 'query', 'required' => false, 'schema' => ['type' => 'string'], 'description' => 'Selección de campos (campos=id,name,direccion,... o fields=...)']], 'responses' => ['200' => ['description' => 'Detalle de proyecto (con plantas y/o asesores si se solicitan)'], '401' => ['description' => 'No autenticado'], '404' => ['description' => 'No encontrado']]]],
+				'/proyectos' => ['get' => ['tags' => ['Proyectos'], 'operationId' => 'listProyectos', 'summary' => 'Listado de proyectos', 'security' => [['bearerAuth' => []]], 'responses' => ['200' => ['description' => 'Listado paginado. Incluye precio_desde (min precio_lista de plantas activas) y tipologias (agrupacion por dormitorios/banos/tipo) por defecto.'], '401' => ['description' => 'No autenticado']]]],
+				'/proyectos/{id}' => ['get' => ['tags' => ['Proyectos'], 'operationId' => 'getProyecto', 'summary' => 'Detalle de proyecto', 'security' => [['bearerAuth' => []]], 'parameters' => [['$ref' => '#/components/parameters/Id'], ['name' => 'include_plantas', 'in' => 'query', 'required' => false, 'schema' => ['type' => 'boolean'], 'description' => 'Incluir plantas asociadas al proyecto'], ['name' => 'include_asesores', 'in' => 'query', 'required' => false, 'schema' => ['type' => 'boolean'], 'description' => 'Incluir asesores activos asociados al proyecto'], ['name' => 'campos', 'in' => 'query', 'required' => false, 'schema' => ['type' => 'string'], 'description' => 'Selección de campos (campos=id,name,direccion,... o fields=...). Campos computados disponibles: precio_desde, tipologias']], 'responses' => ['200' => ['description' => 'Detalle de proyecto (con plantas y/o asesores si se solicitan). Incluye precio_desde y tipologias por defecto.'], '401' => ['description' => 'No autenticado'], '404' => ['description' => 'No encontrado']]]],
 				'/plantas' => ['get' => ['tags' => ['Plantas'], 'operationId' => 'listPlantas', 'summary' => 'Listado de plantas', 'security' => [['bearerAuth' => []]], 'parameters' => [['name' => 'proyecto_id', 'in' => 'query', 'required' => false, 'schema' => ['type' => 'integer'], 'description' => 'ID de proyecto (alias: project_id)'], ['name' => 'salesforce_proyecto_id', 'in' => 'query', 'required' => false, 'schema' => ['type' => 'string'], 'description' => 'Salesforce ID del proyecto'], ['name' => 'project_slug', 'in' => 'query', 'required' => false, 'schema' => ['type' => 'string'], 'description' => 'Slug del proyecto (alias: slug)'], ['name' => 'is_active', 'in' => 'query', 'required' => false, 'schema' => ['type' => 'boolean'], 'description' => 'Filtro por estado activo de la planta. Sin este parámetro se retornan todas las plantas (activas e inactivas). 1=activas, 0=inactivas'], ['name' => 'programa', 'in' => 'query', 'required' => false, 'schema' => ['type' => 'string'], 'description' => 'Filtro dormitorios (ej: 2D)'], ['name' => 'piso', 'in' => 'query', 'required' => false, 'schema' => ['type' => 'string'], 'description' => 'Filtro piso'], ['name' => 'orientacion', 'in' => 'query', 'required' => false, 'schema' => ['type' => 'string'], 'description' => 'Filtro orientación'], ['name' => 'disponible', 'in' => 'query', 'required' => false, 'schema' => ['type' => 'boolean'], 'description' => 'Solo plantas disponibles (alias: available)'], ['name' => 'region', 'in' => 'query', 'required' => false, 'schema' => ['type' => 'string'], 'description' => 'Filtro región del proyecto'], ['name' => 'comuna', 'in' => 'query', 'required' => false, 'schema' => ['type' => 'string'], 'description' => 'Filtro comuna del proyecto'], ['name' => 'evento_sale', 'in' => 'query', 'required' => false, 'schema' => ['type' => 'boolean'], 'description' => 'Filtro evento sale. Solo aplica cuando se envía explícitamente (1=solo unidades sale, 0=no sale). Sin parámetro no filtra y usa pricing normal']], 'responses' => ['200' => ['description' => 'Listado paginado'], '401' => ['description' => 'No autenticado']]]],
 				'/plantas/filtros-ubicacion' => ['get' => ['tags' => ['Plantas'], 'operationId' => 'getPlantasFiltrosUbicacion', 'summary' => 'Catálogo de regiones y comunas disponibles', 'security' => [['bearerAuth' => []]], 'responses' => ['200' => ['description' => 'Catálogo de filtros de ubicación'], '401' => ['description' => 'No autenticado']]]],
 				'/plantas/{id}' => ['get' => ['tags' => ['Plantas'], 'operationId' => 'getPlanta', 'summary' => 'Detalle de planta', 'security' => [['bearerAuth' => []]], 'parameters' => [['$ref' => '#/components/parameters/Id']], 'responses' => ['200' => ['description' => 'Detalle de planta'], '401' => ['description' => 'No autenticado'], '404' => ['description' => 'No encontrado']]]],
@@ -120,6 +120,17 @@ Route::prefix('v1')->group(function () {
 		Route::get('/plantas/filtros-ubicacion', [App\Http\Controllers\Api\PlantController::class, 'locationFilters']);
 		Route::get('/plantas/proyecto/{projectSlug}/unidad/{unitName}', [App\Http\Controllers\Api\PlantController::class, 'showByProjectSlugAndUnitName']);
 		Route::get('/plantas/{id}', [App\Http\Controllers\Api\PlantController::class, 'show']);
+
+		Route::get('/payment-gateways', [App\Http\Controllers\Api\CheckoutController::class, 'availableGateways']);
+
+		// Pasarela de pago y checkout anónimo
+		Route::post('/checkout', [App\Http\Controllers\Api\CheckoutController::class, 'initiate']);
+
+		// Reservas anónimas / públicas
+		Route::get('/reservations/planta/{plantId}', [App\Http\Controllers\Api\PlantReservationController::class, 'status']);
+		Route::get('/reservations/plant/{plantId}', [App\Http\Controllers\Api\PlantReservationController::class, 'status']);
+		Route::post('/reservations', [App\Http\Controllers\Api\PlantReservationController::class, 'reserve']);
+		Route::delete('/reservations/{sessionToken}', [App\Http\Controllers\Api\PlantReservationController::class, 'release']);
 	});
 
 	// Endpoints públicos mínimos
@@ -134,17 +145,6 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'token.origin'])->group(functio
 		return $request->user();
 	});
 	Route::post('/logout', [App\Http\Controllers\Api\AuthController::class, 'logout']);
-
-	// Checkout
-	Route::post('/checkout', [App\Http\Controllers\Api\CheckoutController::class, 'initiate']);
-
-	// Pasarelas disponibles
-	Route::get('/payment-gateways', [App\Http\Controllers\Api\CheckoutController::class, 'availableGateways']);
-
-	// Reservas
-	Route::get('/reservations/planta/{plantId}', [App\Http\Controllers\Api\PlantReservationController::class, 'status']);
-	Route::post('/reservations', [App\Http\Controllers\Api\PlantReservationController::class, 'reserve']);
-	Route::delete('/reservations/{sessionToken}', [App\Http\Controllers\Api\PlantReservationController::class, 'release']);
 
 	// Pagos
 	Route::post('/payments', [App\Http\Controllers\Api\PaymentController::class, 'create']);

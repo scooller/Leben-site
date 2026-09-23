@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Arr;
 
 class Asesor extends Model
 {
@@ -34,6 +35,37 @@ class Asesor extends Model
     {
         return [
             'is_active' => 'boolean',
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function syncPayload(): array
+    {
+        $payload = Arr::only($this->attributesToArray(), self::syncableFields());
+        $payload['proyectos_salesforce_ids'] = $this->proyectos()
+            ->pluck('salesforce_id')
+            ->filter()
+            ->values()
+            ->all();
+
+        return $payload;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function syncableFields(): array
+    {
+        return [
+            'salesforce_id',
+            'first_name',
+            'last_name',
+            'email',
+            'whatsapp_owner',
+            'avatar_url',
+            'is_active',
         ];
     }
 

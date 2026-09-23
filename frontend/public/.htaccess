@@ -6,6 +6,8 @@
     AddType text/javascript .js .mjs
     AddType text/css .css
     AddType application/manifest+json .webmanifest
+    AddType application/linkset+json api-catalog
+    AddType text/markdown .md
 </IfModule>
 
 <IfModule mod_expires.c>
@@ -14,6 +16,7 @@
     ExpiresByType application/javascript "access plus 1 year"
     ExpiresByType text/javascript "access plus 1 year"
     ExpiresByType application/json "access plus 1 hour"
+    ExpiresByType application/linkset+json "access plus 1 hour"
     ExpiresByType image/svg+xml "access plus 1 month"
     ExpiresByType image/webp "access plus 1 month"
     ExpiresByType image/avif "access plus 1 month"
@@ -22,11 +25,51 @@
     ExpiresByType image/x-icon "access plus 1 month"
 </IfModule>
 
+<IfModule mod_authz_core.c>
+    <FilesMatch "\.(md|txt|json|xml)$">
+        Require all granted
+    </FilesMatch>
+</IfModule>
+<IfModule !mod_authz_core.c>
+    <FilesMatch "\.(md|txt|json|xml)$">
+        Order allow,deny
+        Allow from all
+    </FilesMatch>
+</IfModule>
+
 <IfModule mod_headers.c>
     <FilesMatch "^index\.html$">
         Header set Cache-Control "no-cache, no-store, must-revalidate"
         Header set Pragma "no-cache"
         Header set Expires "0"
+        Header add Link "</.well-known/api-catalog>; rel=\"api-catalog\""
+        Header add Link "</.well-known/ai-catalog.json>; rel=\"ai-catalog\""
+        Header add Link "</api/v1>; rel=\"service-desc\"; type=\"application/json\""
+        Header add Link "</api/v1>; rel=\"service-doc\""
+    </FilesMatch>
+
+    <FilesMatch "^api-catalog$">
+        Header set Content-Type "application/linkset+json; charset=UTF-8"
+        Header add Link "</.well-known/api-catalog>; rel=\"api-catalog\""
+        Header set Access-Control-Allow-Origin "*"
+    </FilesMatch>
+
+    <FilesMatch "^(oauth-authorization-server|oauth-protected-resource|ucp|openid-configuration)$">
+        Header set Content-Type "application/json; charset=UTF-8"
+        Header set Access-Control-Allow-Origin "*"
+        Header set Access-Control-Allow-Methods "GET, HEAD, OPTIONS"
+    </FilesMatch>
+
+    <FilesMatch "(\.md|llms\.txt)$">
+        Header set Content-Type "text/markdown; charset=UTF-8"
+        Header set Vary "Accept"
+        Header set x-markdown-tokens "250"
+        Header add Link "</.well-known/api-catalog>; rel=\"api-catalog\""
+        Header add Link "</.well-known/ai-catalog.json>; rel=\"ai-catalog\""
+        Header add Link "</api/v1>; rel=\"service-desc\"; type=\"application/json\""
+        Header add Link "</api/v1>; rel=\"service-doc\""
+        Header set Access-Control-Allow-Origin "*"
+        Header set Access-Control-Allow-Methods "GET, HEAD, OPTIONS"
     </FilesMatch>
 
     <FilesMatch "\.(js|mjs|css|woff2?)$">
@@ -34,17 +77,26 @@
     </FilesMatch>
 
     <FilesMatch "\.(json|webmanifest)$">
+        Header set Content-Type "application/json; charset=UTF-8"
+        Header set Access-Control-Allow-Origin "*"
+        Header set Access-Control-Allow-Methods "GET, HEAD, OPTIONS"
         Header set Cache-Control "public, max-age=3600"
     </FilesMatch>
 </IfModule>
 
 <IfModule mod_deflate.c>
-    AddOutputFilterByType DEFLATE text/plain text/html text/css text/javascript application/javascript application/json application/xml image/svg+xml
+    AddOutputFilterByType DEFLATE text/plain text/html text/css text/javascript application/javascript application/json application/xml image/svg+xml text/markdown
 </IfModule>
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteBase /
+
+    # Markdown negotiation for AI Agents (serve index.md unless specific markdown like auth.md is requested)
+    RewriteCond %{HTTP:Accept} text/markdown [NC]
+    RewriteCond %{REQUEST_URI} !^/auth\.md$
+    RewriteCond %{REQUEST_URI} !\.md$ [NC]
+    RewriteRule ^ index.md [L]
 
     RewriteRule ^(contacto|pago)/?$ index.html [L]
 

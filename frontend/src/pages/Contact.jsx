@@ -2,11 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSiteConfig } from '../contexts/SiteConfigContext';
 import contactSubmissionsService from '../services/contactSubmissions';
 import { trackEvent } from '../utils/tagManager';
+import { triggerContactConversion } from '../utils/conversionTracker';
 import { getStoredUtmParams } from '../utils/utmSession';
 import { appendSessionUtmsToExternalUrl } from '../utils/externalLinks';
 import { proyectosService } from '../services/proyectos';
-import SiteHeader from '../components/SiteHeader';
-import SiteFooter from '../components/SiteFooter';
 import '../styles/contact.scss' with { type: 'css' };
 
 const CONTACT_RANGE_FIELD = {
@@ -688,10 +687,17 @@ function Contact({ onNavigate, currentPath }) {
         project: values.proyecto || null,
       });
 
-      // TODO: Parche comentado temporalmente - Facebook Pixel Lead tracking
-      // if (typeof window !== 'undefined' && typeof window.fbq === 'function') {
-      //   window.fbq('track', 'Lead');
-      // }
+      triggerContactConversion(config?.conversion_scripts, {
+        form_id: 'contact',
+        channel: channelSlug || 'sale',
+        name: values.nombre || values.name || '',
+        email: values.email || values.correo || '',
+        phone: values.telefono || values.phone || '',
+        rut: values.rut || '',
+        project_id: values.proyecto || '',
+        income_range: selectedRangeSubmissionValue || '',
+        commune: values.comuna || '',
+      });
 
       setSubmitSuccess('Tu mensaje fue enviado correctamente.');
       setFieldErrors({});
@@ -834,7 +840,7 @@ function Contact({ onNavigate, currentPath }) {
             placeholder={field.placeholder || 'Selecciona una opción'}
             required={field.required || isRequiredSelectionField}
             disabled={field.disabled}
-            clearable={!field.required && !isRequiredSelectionField}
+            with-clear={!field.required && !isRequiredSelectionField ? '' : undefined}
             onChange={(event) => handleFieldChange(field, event.target.value || '')}
           >
             {renderFieldLabel(field)}
@@ -890,8 +896,6 @@ function Contact({ onNavigate, currentPath }) {
   if (isContactLoading) {
     return (
       <div className="contact-page">
-        <SiteHeader config={config} currentPath={currentPath} onNavigate={onNavigate} />
-
         <section className="contact-hero home-container">
           <wa-skeleton effect="pulse" style={{ height: '22rem', width: '100%', borderRadius: '1rem', display: 'block' }}></wa-skeleton>
         </section>
@@ -934,9 +938,7 @@ function Contact({ onNavigate, currentPath }) {
 
   return (
     <div className="contact-page">
-      <SiteHeader config={config} currentPath={currentPath} onNavigate={onNavigate} />
-
-        {/* Hero section */}
+      {/* Hero section */}
       <section className="contact-hero banner">
         {contactHeroDesktopImage ? (
           <picture className="contact-hero-picture">
@@ -1115,8 +1117,6 @@ function Contact({ onNavigate, currentPath }) {
           </div>
         </wa-card> */}
       </section>
-
-      <SiteFooter config={config} onNavigate={onNavigate} />
     </div>
   );
 }

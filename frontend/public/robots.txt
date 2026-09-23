@@ -3,5 +3,7 @@ Allow: /
 Disallow: /frontend-preview/
 Disallow: /preview-link/
 Disallow: /*preview_token=
+Content-Signal: ai-train=no, search=yes, ai-input=no
 
 Sitemap: https://sale.ileben.cl/sitemap.xml
+Agentmap: https://sale.ileben.cl/.well-known/ai-catalog.json

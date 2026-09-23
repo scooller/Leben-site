@@ -91,6 +91,7 @@ class SiteSettingFrontendConfigTest extends TestCase
                 'utm_source_default' => 'direct',
                 'utm_medium_default' => 'organic',
                 'utm_campaign_default' => 'campaign',
+                'sale_utm_campaign' => 'CyberMonday',
                 'utm_term_default' => 'none',
                 'utm_content_default' => 'none',
                 'utm_site_default' => 'demo.ileben.cl',
@@ -153,6 +154,11 @@ class SiteSettingFrontendConfigTest extends TestCase
         $this->assertSame('direct', $payload['seo']['utm_source_default']);
         $this->assertSame('organic', $payload['seo']['utm_medium_default']);
         $this->assertSame('campaign', $payload['seo']['utm_campaign_default']);
+        $this->assertSame('CyberMonday', $payload['seo']['sale_utm_campaign']);
+        $this->assertSame('CyberMonday', $payload['seo']['sale_campaign_override']);
+        $this->assertSame('CyberMonday', $payload['seo']['sale_event']['utm_campaign']);
+        $this->assertArrayHasKey('sale_utm_campaign_channels', $payload['seo']);
+        $this->assertArrayHasKey('sale_utm_campaign_channel_slugs', $payload['seo']);
         $this->assertSame('none', $payload['seo']['utm_term_default']);
         $this->assertSame('none', $payload['seo']['utm_content_default']);
         $this->assertSame('demo.ileben.cl', $payload['seo']['utm_site_default']);
@@ -173,5 +179,35 @@ class SiteSettingFrontendConfigTest extends TestCase
         $this->assertArrayHasKey('image_desktop', $payload['hero']['contact']);
         $this->assertArrayHasKey('image_mobile', $payload['hero']['contact']);
         $this->assertSame('Hero contacto', $payload['hero']['contact']['alt']);
+    }
+
+    /**
+     * Ensure conversion_scripts is persisted in extra_settings and exposed in forFrontend().
+     */
+    public function test_for_frontend_includes_conversion_scripts(): void
+    {
+        SiteSetting::current()->update([
+            'extra_settings' => [
+                'conversion_scripts_enabled' => true,
+                'conversion_scripts_debug' => true,
+                'post_contact_script' => "<script>fbq('track', 'Lead', { name: '{name}' });</script>",
+                'post_payment_script' => "<script>fbq('track', 'Purchase', { value: {amount} });</script>",
+            ],
+        ]);
+
+        $payload = SiteSetting::forFrontend();
+
+        $this->assertArrayHasKey('conversion_scripts', $payload);
+        $this->assertTrue($payload['conversion_scripts']['enabled']);
+        $this->assertTrue($payload['conversion_scripts']['debug']);
+        $this->assertSame("<script>fbq('track', 'Lead', { name: '{name}' });</script>", $payload['conversion_scripts']['post_contact_script']);
+        $this->assertSame("<script>fbq('track', 'Purchase', { value: {amount} });</script>", $payload['conversion_scripts']['post_payment_script']);
+
+        $response = $this->getJson('/api/v1/site-config');
+        $response->assertOk();
+        $response->assertJsonPath('conversion_scripts.enabled', true);
+        $response->assertJsonPath('conversion_scripts.debug', true);
+        $response->assertJsonPath('conversion_scripts.post_contact_script', "<script>fbq('track', 'Lead', { name: '{name}' });</script>");
+        $response->assertJsonPath('conversion_scripts.post_payment_script', "<script>fbq('track', 'Purchase', { value: {amount} });</script>");
     }
 }

@@ -36,9 +36,6 @@ class ActivityLogResource extends BaseActivityLogResource
 
 					Log::Info('Intento de borrado de logs activity con fecha:' . $data['prune_until']);
 				});
-			} else {
-				// agregar log si la accion es distinta
-				Log::Error('Accion erronea se esperaba prune y llego ' . $action->getName());
 			}
 		}
 
