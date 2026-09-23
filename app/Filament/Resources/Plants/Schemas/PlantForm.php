@@ -96,11 +96,6 @@ class PlantForm
                     ->numeric()
                     ->prefix('$')
                     ->disabled(),
-                TextInput::make('porcentaje_maximo_unidad')
-                    ->label('Porcentaje Máximo de Unidad')
-                    ->numeric()
-                    ->suffix('%')
-                    ->helperText('Solo para plantas con programa "Departamento". Intentar no modificar, se perdera al sincronizar.'),
                 Toggle::make('unidad_sale')
                     ->label('Unidad Sale')
                     ->helperText('Define si esta unidad debe mostrarse cuando la configuración sale está activa.'),

@@ -134,28 +134,33 @@ class PlantsTable
 						$fallback = $direction === 'ASC' ? '999999999999' : '0';
 
 						$orderByDiscountExpression = $isSaleEventActive
-							? 'porcentaje_maximo_unidad'
+							? 'COALESCE((SELECT p.descuento_maximo_unidad FROM proyectos p WHERE p.salesforce_id = plants.salesforce_proyecto_id LIMIT 1), 0)'
 							: 'COALESCE((SELECT p.descuento_defecto_cotizacion_web FROM proyectos p WHERE p.salesforce_id = plants.salesforce_proyecto_id LIMIT 1), 0)';
 
 						return $query->orderByRaw(
 							"COALESCE(CASE WHEN {$orderByDiscountExpression} > 0 AND precio_lista > 0 THEN CASE WHEN (precio_lista - ((precio_lista * {$orderByDiscountExpression}) / 100)) < 0 THEN 0 ELSE (precio_lista - ((precio_lista * {$orderByDiscountExpression}) / 100)) END ELSE precio_base END, {$fallback}) {$direction}"
 						);
 					}),
-				TextColumn::make('porcentaje_maximo_unidad')
+				TextColumn::make('proyecto.descuento_maximo_unidad')
 					->label('% Máx. Unidad')
 					->badge()
 					->color('amber')
+					->tooltip('Porcentaje configurado desde el proyecto')
+					->state(fn(Plant $record): mixed => $record->proyecto?->descuento_maximo_unidad)
 					->formatStateUsing(fn($state) => $state !== null ? number_format((float) $state, 2, ',', '.') . '%' : '-')
 					->sortable(query: function ($query, string $direction) {
 						$direction = strtolower($direction) === 'desc' ? 'DESC' : 'ASC';
 						$fallback = $direction === 'ASC' ? '999999' : '-1';
 
-						return $query->orderByRaw("COALESCE(porcentaje_maximo_unidad, {$fallback}) {$direction}");
+						return $query->orderByRaw(
+							"COALESCE((SELECT p.descuento_maximo_unidad FROM proyectos p WHERE p.salesforce_id = plants.salesforce_proyecto_id LIMIT 1), {$fallback}) {$direction}"
+						);
 					}),
 				TextColumn::make('proyecto.descuento_defecto_cotizacion_web')
 					->label('% Desc. Web')
 					->badge()
 					->color('teal')
+					->tooltip('Porcentaje configurado desde el proyecto')
 					->state(fn(Plant $record): mixed => $record->proyecto?->descuento_defecto_cotizacion_web)
 					->formatStateUsing(fn($state) => $state !== null ? number_format((float) $state, 2, ',', '.') . '%' : '-')
 					->sortable(query: function ($query, string $direction) {

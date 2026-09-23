@@ -69,6 +69,7 @@ class ProyectoController extends Controller
         'horario_atencion',
         'descuento_defecto_cotizacion_web',
         'descuento_maximo_unidad',
+        'descuento_iva',
         'is_active',
         'entrega_inmediata',
         'salesforce_logo_url',

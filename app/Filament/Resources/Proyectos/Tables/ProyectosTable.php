@@ -25,7 +25,6 @@ class ProyectosTable
 	public static function configure(Table $table): Table
 	{
 		return $table
-			->modifyQueryUsing(fn($query) => $query->withMax('plantas as descuento_maximo_unidad_fallback', 'porcentaje_maximo_unidad'))
 			->columns(self::getColumns())
 			->filters(self::getFilters())
 			->recordActions([
@@ -107,9 +106,16 @@ class ProyectosTable
 				->label('Desc. Máx. Unidad')
 				->badge()
 				->color('amber')
-				->state(fn(Proyecto $record): ?float => $record->descuento_maximo_unidad ?? $record->descuento_maximo_unidad_fallback)
 				->formatStateUsing(fn($state): string => $state !== null ? number_format((float) $state, 2, ',', '.') . '%' : '-')
 				->sortable(),
+
+			TextColumn::make('descuento_iva')
+				->label('Dcto. IVA')
+				->badge()
+				->color('purple')
+				->formatStateUsing(fn($state): string => $state !== null ? number_format((float) $state, 2, ',', '.') . '%' : '-')
+				->sortable()
+				->toggleable(isToggledHiddenByDefault: true),
 
 			TextColumn::make('comuna')
 				->label('Comuna')

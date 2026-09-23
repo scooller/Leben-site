@@ -171,7 +171,10 @@ class ProyectoAsesoresApiTest extends TestCase
 
     public function test_planta_with_own_asesor_uses_plant_asesor_over_project(): void
     {
-        $proyecto = Proyecto::factory()->create(['salesforce_id' => 'SF-OWN-ADV-01']);
+        $proyecto = Proyecto::factory()->create([
+            'salesforce_id' => 'SF-OWN-ADV-01',
+            'descuento_defecto_cotizacion_web' => 8.0,
+        ]);
         $projectAdvisor = Asesor::factory()->create(['is_active' => true, 'first_name' => 'ProjectAdvisor']);
         $plantAdvisor = Asesor::factory()->create(['is_active' => true, 'first_name' => 'PlantAdvisor']);
         $proyecto->asesores()->attach($projectAdvisor);

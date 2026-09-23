@@ -620,9 +620,9 @@ function Home({ onNavigate, currentPath }) {
   const mapPlant = useCallback((plant) => {
     const precioBase = Number(plant.precio_base) || 0;
     const precioLista = Number(plant.precio_lista) || 0;
-    const porcentajeMaximoUnidad = Number(plant.porcentaje_maximo_unidad) || 0;
+    const descuentoMaximoUnidad = Number(plant.proyecto?.descuento_maximo_unidad) || 0;
     const descuentoDefectoCotizacionWeb = Number(plant.proyecto?.descuento_defecto_cotizacion_web) || 0;
-    const porcentajeAplicado = isSaleEventActive ? porcentajeMaximoUnidad : descuentoDefectoCotizacionWeb;
+    const porcentajeAplicado = isSaleEventActive ? descuentoMaximoUnidad : descuentoDefectoCotizacionWeb;
     const precioCalculadoPorPorcentaje = porcentajeAplicado > 0 && precioLista > 0
       ? Math.max(0, precioLista - ((precioLista * porcentajeAplicado) / 100))
       : 0;
@@ -656,7 +656,8 @@ function Home({ onNavigate, currentPath }) {
       precioFinal,
       precioSeleccionado,
       precioSeleccionadoEtiqueta,
-      porcentajeMaximoUnidad,
+      porcentajeAplicado,
+      descuentoMaximoUnidad,
       descuentoDefectoCotizacionWeb,
       discountPercentage,
       reservaExigidaPeso: Number(plant.proyecto?.valor_reserva_exigido_defecto_peso) || 0,

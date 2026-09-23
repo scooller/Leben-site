@@ -4,6 +4,48 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.30] - 2026-09-23
+
+### 🏢 Desacople de Descuentos de Planta y Centralización en Proyecto
+
+- **Lógica de Descuentos (Sale On / Sale Off)**:
+  - Centralizado el cálculo de descuento exclusivamente a nivel de proyecto:
+    - **Sale ON** (`evento_sale = true`): Aplica `proyecto.descuento_maximo_unidad`. Si es 0 o nulo, no se aplica descuento (0%).
+    - **Sale OFF** (`evento_sale = false`): Aplica `proyecto.descuento_defecto_cotizacion_web`. Si es 0 o nulo, no se aplica descuento (0%).
+  - Desacoplado por completo `porcentaje_maximo_unidad` de la planta en el cálculo de precios.
+- **Frontend React (`frontend/src/pages/Home.jsx`)**:
+  - `mapPlant` calcula `porcentajeAplicado` leyendo `plant.proyecto?.descuento_maximo_unidad` durante Sale y `plant.proyecto?.descuento_defecto_cotizacion_web` fuera de Sale.
+- **Backend API (`app/Http/Controllers/Api/Concerns/EnrichesPlantPayload.php`, `app/Http/Controllers/Api/PlantController.php`)**:
+  - `resolveApiDiscountPercentage` y `resolveFinalPrice` en modelo `Plant` leen exclusivamente los descuentos de `proyecto`.
+  - `projectPayload` incluye `descuento_maximo_unidad`, `descuento_defecto_cotizacion_web` y `descuento_iva`.
+  - Ordenamiento SQL por precio con descuento (`orderByDiscountExpression`) consulta `descuento_maximo_unidad` de la tabla `proyectos` durante Sale.
+- **Panel Filament (`PlantForm.php`, `PlantsTable.php`, `ProyectoForm.php`, `ProyectosTable.php`)**:
+  - Agregado tooltip en `PlantsTable` en `% Máx. Unidad` y `% Desc. Web` avisando que los porcentajes vienen configurados desde el proyecto.
+  - Configurado valor por defecto en `0` para `descuento_iva` (`Dcto. IVA`) tanto en el formulario de proyecto como a nivel de base de datos.
+  - Eliminado input `porcentaje_maximo_unidad` del formulario de Plantas.
+  - Reemplazada columna en tabla de plantas para reflejar `proyecto.descuento_maximo_unidad`.
+  - Eliminado el fallback que precargaba `$record->plantas()->max('porcentaje_maximo_unidad')` en `descuento_maximo_unidad` del proyecto, quedando 100% manual e independiente.
+- **Pruebas y Build**:
+  - Suite de pruebas unitarias y de integración actualizada pasando al 100% (63 tests verificados). Compilación de activos finalizada con éxito.
+
+## [1.9.29] - 2026-09-23
+
+### 🏷️ Proyectos: Descuento IVA y Habilitación de Descuentos en Reserva Exigida
+
+- **Panel Filament (`app/Filament/Resources/Proyectos/Schemas/ProyectoForm.php`)**:
+  - Incorporado campo `descuento_iva` (`Dcto. IVA`) en la card *Reserva Exigida*, numérico con 2 decimales (`step(0.01)`) y sufijo `%`.
+  - Habilitados los campos de descuento de la card: `descuento_defecto_cotizacion_web` y `descuento_maximo_unidad` quedan editables (`disabled` removido) y `dehydrated(false)` retirado para permitir persistencia manual.
+- **Tabla de Proyectos (`app/Filament/Resources/Proyectos/Tables/ProyectosTable.php`)**:
+  - Añadida columna `descuento_iva` con badge color morado (`purple`) y formato porcentual con 2 decimales, configurable como toggleable.
+- **Base de Datos y Modelo (`app/Models/Proyecto.php`, `database/migrations/2026_09_23_180000_add_descuento_iva_to_proyectos_table.php`)**:
+  - Creada migración agregando columna `descuento_iva` (`decimal(8,2)`, nullable) a la tabla `proyectos`.
+  - Registrado `descuento_iva` en `$fillable`, `$casts` (`decimal:2`) y `syncableFields()`.
+- **API y Sincronización (`app/Http/Controllers/Api/ProyectoController.php`, `app/Filament/Actions/SyncProjectsAction.php`)**:
+  - Añadido `descuento_iva` a `$allowedFields` en `ProyectoController`.
+  - Registrado en campos actualizables y sincronizables de `SyncProjectsAction`.
+- **Pruebas Automatizadas (`tests/Unit/Models/ProyectoTest.php`, `tests/Feature/ProyectoResourceTest.php`)**:
+  - Incorporadas aserciones de fillable, casteo decimal y configuración de componentes en el formulario de Filament.
+
 ## [1.9.28] - 2026-09-23
 
 ### 📖 Actualización Integral de Documentación (*.md)

@@ -71,14 +71,18 @@ class PlantsTableNaturalSortingTest extends TestCase
 
     public function test_percentage_columns_sort_numerically(): void
     {
-        Plant::factory()->create(['porcentaje_maximo_unidad' => 15.5]);
-        Plant::factory()->create(['porcentaje_maximo_unidad' => 5.0]);
-        Plant::factory()->create(['porcentaje_maximo_unidad' => 20.0]);
+        $projectA = Proyecto::factory()->create(['descuento_maximo_unidad' => 15.5]);
+        $projectB = Proyecto::factory()->create(['descuento_maximo_unidad' => 5.0]);
+        $projectC = Proyecto::factory()->create(['descuento_maximo_unidad' => 20.0]);
+
+        Plant::factory()->create(['salesforce_proyecto_id' => $projectA->salesforce_id]);
+        Plant::factory()->create(['salesforce_proyecto_id' => $projectB->salesforce_id]);
+        Plant::factory()->create(['salesforce_proyecto_id' => $projectC->salesforce_id]);
 
         $table = PlantsTable::configure(new Table(new ListPlants()));
 
         $query = Plant::query();
-        $table->getColumn('porcentaje_maximo_unidad')->applySort($query, 'asc');
-        $this->assertEquals([5.0, 15.5, 20.0], array_map('floatval', $query->pluck('porcentaje_maximo_unidad')->all()));
+        $table->getColumn('proyecto.descuento_maximo_unidad')->applySort($query, 'asc');
+        $this->assertEquals([$projectB->salesforce_id, $projectA->salesforce_id, $projectC->salesforce_id], $query->pluck('salesforce_proyecto_id')->all());
     }
 }

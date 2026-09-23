@@ -292,22 +292,31 @@ class ProyectoForm
                                     ->prefix('$'),
 
                                 TextInput::make('descuento_defecto_cotizacion_web')
-                                    ->label('Descuento por Defecto Cotización Web (%)')
+                                    ->label('Defecto Cotización Web (%)')
                                     ->numeric()
-                                    ->disabled()
+                                    ->step(0.01)
+                                    ->minValue(0)
+                                    ->maxValue(100)
+                                    ->prefix('Dcto.')
                                     ->suffix('%'),
 
                                 TextInput::make('descuento_maximo_unidad')
-                                    ->label('Descuento Máximo Unidad (%)')
+                                    ->label('Máximo Unidad (%)')
                                     ->numeric()
-                                    ->disabled()
-                                    ->dehydrated(false)
-                                    ->afterStateHydrated(function (TextInput $component, ?Proyecto $record): void {
-                                        $component->state(
-                                            $record?->descuento_maximo_unidad
-                                            ?? $record?->plantas()->max('porcentaje_maximo_unidad')
-                                        );
-                                    })
+                                    ->step(0.01)
+                                    ->minValue(0)
+                                    ->maxValue(100)
+                                    ->prefix('Dcto.')
+                                    ->suffix('%'),
+
+                                TextInput::make('descuento_iva')
+                                    ->label('Dcto. IVA')
+                                    ->numeric()
+                                    ->step(0.01)
+                                    ->minValue(0)
+                                    ->maxValue(100)
+                                    ->default(0)
+                                    ->prefix('Dcto.')
                                     ->suffix('%'),
                             ])
                             ->columns(2),

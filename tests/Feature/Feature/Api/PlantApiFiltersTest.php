@@ -903,13 +903,13 @@ class PlantApiFiltersTest extends TestCase
         $project = Proyecto::factory()->create([
             'is_active' => true,
             'descuento_defecto_cotizacion_web' => 40,
+            'descuento_maximo_unidad' => 10,
         ]);
 
         $this->createPlant($project->salesforce_id, true, [
             'name' => 'HIGH',
             'precio_base' => 50,
             'precio_lista' => 250,
-            'porcentaje_maximo_unidad' => 10,
             'unidad_sale' => true,
         ]);
 
@@ -917,7 +917,6 @@ class PlantApiFiltersTest extends TestCase
             'name' => 'LOW',
             'precio_base' => 100,
             'precio_lista' => 100,
-            'porcentaje_maximo_unidad' => 20,
             'unidad_sale' => true,
         ]);
 
@@ -925,7 +924,6 @@ class PlantApiFiltersTest extends TestCase
             'name' => 'MID',
             'precio_base' => 150,
             'precio_lista' => 150,
-            'porcentaje_maximo_unidad' => 10,
             'unidad_sale' => true,
         ]);
 
@@ -940,12 +938,12 @@ class PlantApiFiltersTest extends TestCase
         $project = Proyecto::factory()->create([
             'is_active' => true,
             'descuento_defecto_cotizacion_web' => 25,
+            'descuento_maximo_unidad' => 10,
         ]);
 
         $plant = $this->createPlant($project->salesforce_id, true, [
             'precio_base' => 100,
             'precio_lista' => 200,
-            'porcentaje_maximo_unidad' => 10,
             'unidad_sale' => true,
         ]);
 
@@ -969,16 +967,16 @@ class PlantApiFiltersTest extends TestCase
         $plant = $this->createPlant($project->salesforce_id, true, [
             'precio_base' => 100,
             'precio_lista' => 200,
-            'porcentaje_maximo_unidad' => 10,
             'unidad_sale' => true,
         ]);
 
-        // evento_sale=1 → uses porcentaje_maximo_unidad (10%): 200 - 10% = 180
+        // evento_sale=1 → uses proyecto.descuento_maximo_unidad (30%): 200 - 30% = 140
         $response = $this->getJson('/api/v1/plantas/'.$plant->id.'?evento_sale=1');
 
         $response->assertOk();
-        $response->assertJsonPath('precio_final', 180);
+        $response->assertJsonPath('precio_final', 140);
         $response->assertJsonPath('proyecto.descuento_defecto_cotizacion_web', 5);
+        $response->assertJsonPath('proyecto.descuento_maximo_unidad', 30);
 
         // evento_sale=0 → uses descuento_defecto_cotizacion_web (5%): 200 - 5% = 190
         $responseNormal = $this->getJson('/api/v1/plantas/'.$plant->id);

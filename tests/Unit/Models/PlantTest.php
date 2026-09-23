@@ -105,13 +105,13 @@ class PlantTest extends TestCase
     {
         $proyecto = Proyecto::factory()->create([
             'descuento_defecto_cotizacion_web' => 25,
+            'descuento_maximo_unidad' => 10,
         ]);
 
         $plant = Plant::factory()->create([
             'salesforce_proyecto_id' => $proyecto->salesforce_id,
             'precio_base' => 100,
             'precio_lista' => 200,
-            'porcentaje_maximo_unidad' => 10,
         ]);
 
         $this->assertSame(180.0, $plant->resolveFinalPrice(true));

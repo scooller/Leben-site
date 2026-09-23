@@ -130,6 +130,29 @@ class ProyectoResourceTest extends TestCase
         }
     }
 
+    public function test_proyecto_form_configures_discount_fields_correctly(): void
+    {
+        $schema = ProyectoForm::configure(Schema::make($this->makeSchemaHost()));
+        $components = $schema->getFlatComponents(withActions: false, withHidden: true, withAbsoluteKeys: true);
+
+        $this->assertArrayHasKey('descuento_iva', $components);
+        $this->assertArrayHasKey('descuento_defecto_cotizacion_web', $components);
+        $this->assertArrayHasKey('descuento_maximo_unidad', $components);
+
+        $ivaComponent = $components['descuento_iva'];
+        $this->assertSame('Dcto. IVA', $ivaComponent->getLabel());
+        $this->assertSame('%', $ivaComponent->getSuffixLabel());
+        $this->assertFalse($ivaComponent->isDisabled());
+        $this->assertSame(0, $ivaComponent->getDefaultState());
+
+        $defectoComponent = $components['descuento_defecto_cotizacion_web'];
+        $this->assertFalse($defectoComponent->isDisabled());
+
+        $maximoComponent = $components['descuento_maximo_unidad'];
+        $this->assertFalse($maximoComponent->isDisabled());
+        $this->assertTrue($maximoComponent->isDehydrated());
+    }
+
     private function makeSchemaHost(): HasSchemas
     {
         return new class extends LivewireComponent implements HasSchemas

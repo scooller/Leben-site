@@ -34,9 +34,8 @@ trait EnrichesPlantPayload
         $payload['is_available'] = $plant->activeReservation === null
             && $plant->completedReservation === null
             && $plant->completedPayment === null;
-        $payload['descuento_defecto_cotizacion_web'] = (float) ($plant->descuento_defecto_cotizacion_web
-            ?? $plant->proyecto?->descuento_defecto_cotizacion_web
-            ?? 0);
+        $payload['descuento_defecto_cotizacion_web'] = (float) ($plant->proyecto?->descuento_defecto_cotizacion_web ?? 0);
+        $payload['descuento_maximo_unidad'] = (float) ($plant->proyecto?->descuento_maximo_unidad ?? 0);
         $payload['precio_final'] = $this->resolveApiFinalPrice($plant, $apiDiscountPercentage);
 
         return $payload;
@@ -53,9 +52,8 @@ trait EnrichesPlantPayload
         $payload['interior_image_url'] = $plant->interiorImageMedia?->url ?: $plant->salesforce_interior_image_url;
         $payload['imageUrl'] = $this->resolveImageUrl($plant);
         $payload['detailImageUrl'] = $this->resolveDetailImageUrl($plant);
-        $payload['descuento_defecto_cotizacion_web'] = (float) ($plant->descuento_defecto_cotizacion_web
-            ?? $plant->proyecto?->descuento_defecto_cotizacion_web
-            ?? 0);
+        $payload['descuento_defecto_cotizacion_web'] = (float) ($plant->proyecto?->descuento_defecto_cotizacion_web ?? 0);
+        $payload['descuento_maximo_unidad'] = (float) ($plant->proyecto?->descuento_maximo_unidad ?? 0);
         $payload['asesores'] = $this->resolvePlantAdvisors($plant, $defaultAdvisorAvatarUrl ?? $this->getDefaultAdvisorAvatarUrl());
         $payload['is_paid'] = $plant->completedReservation !== null || $plant->completedPayment !== null;
         $payload['is_available'] = $plant->activeReservation === null
@@ -68,11 +66,9 @@ trait EnrichesPlantPayload
 
     private function resolveApiDiscountPercentage(Plant $plant, ?bool $eventoSale): float
     {
-        $projectDiscount = $plant->proyecto?->descuento_defecto_cotizacion_web;
-
-        return $eventoSale
-            ? (float) ($plant->porcentaje_maximo_unidad ?? 0)
-            : (float) ($projectDiscount ?? 0);
+        return $eventoSale === true
+            ? (float) ($plant->proyecto?->descuento_maximo_unidad ?? 0)
+            : (float) ($plant->proyecto?->descuento_defecto_cotizacion_web ?? 0);
     }
 
     private function resolveApiFinalPrice(Plant $plant, float $discountPercentage): float
