@@ -362,6 +362,8 @@ composer dev
 
 ---
 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/scooller/Leben-site)
+
 ## 📄 Licencia
 
 Todos los derechos reservados — iLeben © 2026
