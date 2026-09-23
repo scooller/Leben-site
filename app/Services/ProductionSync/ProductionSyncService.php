@@ -15,11 +15,16 @@ class ProductionSyncService
     /**
      * @return array{meta: array<string, mixed>, site_settings: array<string, mixed>, projects: list<array<string, mixed>>, plants: list<array<string, mixed>>}
      */
-    public function fetchSnapshot(): array
+    public function fetchSnapshot(?string $baseUrl = null, ?string $token = null, ?string $authorizedUrl = null): array
     {
-        $baseUrl = trim((string) config('services.production_sync.base_url', ''));
-        $token = trim((string) config('services.production_sync.token', ''));
-        $authorizedUrl = trim((string) config('services.production_sync.authorized_url', ''));
+        $baseUrl = trim((string) ($baseUrl ?? config('services.production_sync.base_url', '')));
+        $token = trim((string) ($token ?? config('services.production_sync.token', '')));
+        $authorizedUrl = trim((string) ($authorizedUrl ?? config('services.production_sync.authorized_url', '')));
+
+        if ($authorizedUrl === '') {
+            $authorizedUrl = trim((string) config('app.url', '')) ?: 'http://127.0.0.1:8000';
+        }
+
         $endpoint = rtrim($baseUrl, '/').'/api/v1/production-sync/export';
 
         if ($baseUrl === '' || $token === '') {
@@ -60,9 +65,17 @@ class ProductionSyncService
                 'exception_message' => $exception->getMessage(),
             ]);
 
+            $isTimeout = str_contains(strtolower($exception->getMessage()), 'timed out')
+                || str_contains(strtolower($exception->getMessage()), 'timeout')
+                || str_contains(strtolower($exception->getMessage()), 'curl error 28');
+
+            $errorMessage = $isTimeout
+                ? "Tiempo de espera agotado (timeout) al conectar con producción ({$endpoint})."
+                : 'No se pudo obtener la sincronización de producción.';
+
             return [
                 'meta' => [
-                    'error' => 'No se pudo obtener la sincronización de producción.',
+                    'error' => $errorMessage,
                 ],
                 'site_settings' => [],
                 'projects' => [],

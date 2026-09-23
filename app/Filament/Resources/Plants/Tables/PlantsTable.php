@@ -40,7 +40,15 @@ class PlantsTable
 				TextColumn::make('name')
 					->label('Nombre')
 					->searchable()
-					->sortable(),
+					->sortable(query: function ($query, string $direction) {
+						$direction = strtolower($direction) === 'desc' ? 'DESC' : 'ASC';
+
+						if ($direction === 'ASC') {
+							return $query->orderByRaw('CASE WHEN (name + 0) > 0 THEN (name + 0) ELSE 9999999 END ASC, LENGTH(name) ASC, name ASC');
+						}
+
+						return $query->orderByRaw('CASE WHEN (name + 0) > 0 THEN (name + 0) ELSE 0 END DESC, LENGTH(name) DESC, name DESC');
+					}),
 				TextColumn::make('proyecto.name')
 					->label('Proyecto')
 					->badge()
@@ -80,7 +88,15 @@ class PlantsTable
 				//     ->sortable(),
 				TextColumn::make('piso')
 					->label('Piso')
-					->sortable()
+					->sortable(query: function ($query, string $direction) {
+						$direction = strtolower($direction) === 'desc' ? 'DESC' : 'ASC';
+
+						if ($direction === 'ASC') {
+							return $query->orderByRaw('CASE WHEN (piso + 0) > 0 THEN (piso + 0) ELSE 9999999 END ASC, LENGTH(piso) ASC, piso ASC');
+						}
+
+						return $query->orderByRaw('CASE WHEN (piso + 0) > 0 THEN (piso + 0) ELSE 0 END DESC, LENGTH(piso) DESC, piso DESC');
+					})
 					->toggleable(isToggledHiddenByDefault: true),
 				TextColumn::make('orientacion')
 					->label('Orientación')
@@ -90,13 +106,23 @@ class PlantsTable
 					->badge()
 					->color('indigo')
 					->formatStateUsing(fn($state) => $state ? 'UF ' . number_format($state, 0, ',', '.') : '-')
-					->sortable(),
+					->sortable(query: function ($query, string $direction) {
+						$direction = strtolower($direction) === 'desc' ? 'DESC' : 'ASC';
+						$fallback = $direction === 'ASC' ? '999999999999' : '0';
+
+						return $query->orderByRaw("COALESCE(precio_base, {$fallback}) {$direction}");
+					}),
 				TextColumn::make('precio_lista')
 					->label('Precio Lista')
 					->badge()
 					->color('sky')
 					->formatStateUsing(fn($state) => $state ? 'UF ' . number_format($state, 0, ',', '.') : '-')
-					->sortable(),
+					->sortable(query: function ($query, string $direction) {
+						$direction = strtolower($direction) === 'desc' ? 'DESC' : 'ASC';
+						$fallback = $direction === 'ASC' ? '999999999999' : '0';
+
+						return $query->orderByRaw("COALESCE(precio_lista, {$fallback}) {$direction}");
+					}),
 				TextColumn::make('precio_final')
 					->label('Precio Final')
 					->badge()
@@ -104,12 +130,15 @@ class PlantsTable
 					->state(fn(Plant $record): float => $record->resolveFinalPrice($isSaleEventActive))
 					->formatStateUsing(fn($state) => $state ? 'UF ' . number_format((float) $state, 0, ',', '.') : '-')
 					->sortable(query: function ($query, string $direction) use ($isSaleEventActive) {
+						$direction = strtolower($direction) === 'desc' ? 'DESC' : 'ASC';
+						$fallback = $direction === 'ASC' ? '999999999999' : '0';
+
 						$orderByDiscountExpression = $isSaleEventActive
 							? 'porcentaje_maximo_unidad'
 							: 'COALESCE((SELECT p.descuento_defecto_cotizacion_web FROM proyectos p WHERE p.salesforce_id = plants.salesforce_proyecto_id LIMIT 1), 0)';
 
 						return $query->orderByRaw(
-							"COALESCE(CASE WHEN {$orderByDiscountExpression} > 0 AND precio_lista > 0 THEN CASE WHEN (precio_lista - ((precio_lista * {$orderByDiscountExpression}) / 100)) < 0 THEN 0 ELSE (precio_lista - ((precio_lista * {$orderByDiscountExpression}) / 100)) END ELSE precio_base END, 999999999999) {$direction}"
+							"COALESCE(CASE WHEN {$orderByDiscountExpression} > 0 AND precio_lista > 0 THEN CASE WHEN (precio_lista - ((precio_lista * {$orderByDiscountExpression}) / 100)) < 0 THEN 0 ELSE (precio_lista - ((precio_lista * {$orderByDiscountExpression}) / 100)) END ELSE precio_base END, {$fallback}) {$direction}"
 						);
 					}),
 				TextColumn::make('porcentaje_maximo_unidad')
@@ -117,14 +146,26 @@ class PlantsTable
 					->badge()
 					->color('amber')
 					->formatStateUsing(fn($state) => $state !== null ? number_format((float) $state, 2, ',', '.') . '%' : '-')
-					->sortable(),
+					->sortable(query: function ($query, string $direction) {
+						$direction = strtolower($direction) === 'desc' ? 'DESC' : 'ASC';
+						$fallback = $direction === 'ASC' ? '999999' : '-1';
+
+						return $query->orderByRaw("COALESCE(porcentaje_maximo_unidad, {$fallback}) {$direction}");
+					}),
 				TextColumn::make('proyecto.descuento_defecto_cotizacion_web')
 					->label('% Desc. Web')
 					->badge()
 					->color('teal')
 					->state(fn(Plant $record): mixed => $record->proyecto?->descuento_defecto_cotizacion_web)
 					->formatStateUsing(fn($state) => $state !== null ? number_format((float) $state, 2, ',', '.') . '%' : '-')
-					->sortable(),
+					->sortable(query: function ($query, string $direction) {
+						$direction = strtolower($direction) === 'desc' ? 'DESC' : 'ASC';
+						$fallback = $direction === 'ASC' ? '999999' : '-1';
+
+						return $query->orderByRaw(
+							"COALESCE((SELECT p.descuento_defecto_cotizacion_web FROM proyectos p WHERE p.salesforce_id = plants.salesforce_proyecto_id LIMIT 1), {$fallback}) {$direction}"
+						);
+					}),
 				// TextColumn::make('superficie_util')
 				//     ->label('Sup. Útil')
 				//     ->suffix(' m²')

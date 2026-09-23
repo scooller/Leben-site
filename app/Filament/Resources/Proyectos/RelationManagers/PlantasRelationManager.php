@@ -18,7 +18,15 @@ class PlantasRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('name')
                     ->label('Nombre')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable(query: function ($query, string $direction) {
+                        $direction = strtolower($direction) === 'desc' ? 'DESC' : 'ASC';
+
+                        if ($direction === 'ASC') {
+                            return $query->orderByRaw('CASE WHEN (name + 0) > 0 THEN (name + 0) ELSE 9999999 END ASC, LENGTH(name) ASC, name ASC');
+                        }
+
+                        return $query->orderByRaw('CASE WHEN (name + 0) > 0 THEN (name + 0) ELSE 0 END DESC, LENGTH(name) DESC, name DESC');
+                    }),
                 Tables\Columns\TextColumn::make('product_code')
                     ->label('Código')
                     ->searchable()
@@ -28,14 +36,27 @@ class PlantasRelationManager extends RelationManager
                     ->sortable(),
                 Tables\Columns\TextColumn::make('piso')
                     ->label('Piso')
-                    ->sortable(),
+                    ->sortable(query: function ($query, string $direction) {
+                        $direction = strtolower($direction) === 'desc' ? 'DESC' : 'ASC';
+
+                        if ($direction === 'ASC') {
+                            return $query->orderByRaw('CASE WHEN (piso + 0) > 0 THEN (piso + 0) ELSE 9999999 END ASC, LENGTH(piso) ASC, piso ASC');
+                        }
+
+                        return $query->orderByRaw('CASE WHEN (piso + 0) > 0 THEN (piso + 0) ELSE 0 END DESC, LENGTH(piso) DESC, piso DESC');
+                    }),
                 Tables\Columns\TextColumn::make('orientacion')
                     ->label('Orientación')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('precio_lista')
                     ->label('Precio Lista')
                     ->formatStateUsing(fn ($state) => number_format((float) $state, 2, ',', '.'))
-                    ->sortable(),
+                    ->sortable(query: function ($query, string $direction) {
+                        $direction = strtolower($direction) === 'desc' ? 'DESC' : 'ASC';
+                        $fallback = $direction === 'ASC' ? '999999999999' : '0';
+
+                        return $query->orderByRaw("COALESCE(precio_lista, {$fallback}) {$direction}");
+                    }),
                 Tables\Columns\TextColumn::make('superficie_util')
                     ->label('Superficie Útil')
                     ->formatStateUsing(fn ($state) => number_format((float) $state, 2, ',', '.'))

@@ -49,13 +49,43 @@ class EnsureTokenOriginIsAuthorized
 
         $requestOrigin = $this->resolveRequestOrigin($request);
 
-        if (blank($requestOrigin) || ($requestOrigin !== $authorizedUrl)) {
+        if (blank($requestOrigin) || ! $this->isOriginAuthorized($requestOrigin, $authorizedUrl)) {
             return response()->json([
                 'message' => 'La URL de origen no está autorizada para este token.',
             ], Response::HTTP_FORBIDDEN);
         }
 
         return $next($request);
+    }
+
+    private function isOriginAuthorized(string $requestOrigin, string $authorizedUrl): bool
+    {
+        if ($requestOrigin === $authorizedUrl) {
+            return true;
+        }
+
+        $reqParts = parse_url($requestOrigin);
+        $authParts = parse_url($authorizedUrl);
+
+        if (! is_array($reqParts) || ! is_array($authParts)) {
+            return false;
+        }
+
+        $reqHost = strtolower($reqParts['host'] ?? '');
+        $authHost = strtolower($authParts['host'] ?? '');
+
+        $loopbackHosts = ['127.0.0.1', 'localhost', '::1', '[::1]'];
+        $isReqLoopback = in_array($reqHost, $loopbackHosts, true);
+        $isAuthLoopback = in_array($authHost, $loopbackHosts, true);
+
+        if ($isReqLoopback && $isAuthLoopback) {
+            $reqPort = (int) ($reqParts['port'] ?? (($reqParts['scheme'] ?? 'http') === 'https' ? 443 : 80));
+            $authPort = (int) ($authParts['port'] ?? (($authParts['scheme'] ?? 'http') === 'https' ? 443 : 80));
+
+            return $reqPort === $authPort;
+        }
+
+        return false;
     }
 
     private function resolveRequestOrigin(Request $request): ?string

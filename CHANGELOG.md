@@ -4,6 +4,28 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.26] - 2026-09-23
+
+### 🔢 Orden Natural en Tabla de Plantas (Nombre, Precios, Porcentajes, Piso)
+
+- **Panel Filament (`app/Filament/Resources/Plants/Tables/PlantsTable.php`)**:
+  - Implementado orden natural para la columna `name` (`Nombre`): ordenación numérica real (`21, 202, 1001, 1003`) evitando el orden lexicográfico de texto (`1001, 1003, 202`) tanto en orden ASC como DESC.
+  - Implementado orden natural para la columna `piso` (`Piso`) considerando números de piso como enteros.
+  - Corregido orden numérico en `precio_base`, `precio_lista` y `precio_final`: en ASC los registros sin precio se ubican al final sin estorbar las unidades con precio, y en DESC los registros con precio máximo aparecen primero.
+  - Implementado orden numérico para `porcentaje_maximo_unidad` y `proyecto.descuento_defecto_cotizacion_web`.
+- **Relación de Plantas en Proyecto (`app/Filament/Resources/Proyectos/RelationManagers/PlantasRelationManager.php`)**:
+  - Añadido orden natural numérico para `name`, `piso` y `precio_lista`.
+- **Sincronización desde Producción y Soporte para Entornos Locales**:
+  - `EnsureTokenOriginIsAuthorized`: normalización y compatibilidad flexible para orígenes loopback (`127.0.0.1` y `localhost` con cualquier puerto o ruta como `/admin`), permitiendo que tokens generados en producción con URLs locales como `http://127.0.0.1:8000/admin` o `http://localhost:8000` autentiquen sin error 403.
+  - `ProductionSyncService`: soporte para recibir parámetros opcionales (`$baseUrl`, `$token`, `$authorizedUrl`) en `fetchSnapshot()` y fallback inteligente a `config('app.url')` o `http://127.0.0.1:8000`.
+  - `RunProductionSyncJob`: soporte para pasar credenciales y origen al job en cola.
+  - `SyncFromProductionAction`: nuevo modal interactivo que permite ingresar o pre-llenar URL de producción, Token Bearer Sanctum y URL autorizada de origen (`http://127.0.0.1:8000/admin`), disponible en entornos locales y de prueba.
+  - `ProductionSyncProgress`: detección de timeout (`checkTimeout`) cuando la sincronización excede el tiempo límite configurado (`services.production_sync.timeout`, por defecto 120s), registrando el mensaje de error fatal directamente en el *Log en vivo* y cambiando el estado a fallido.
+  - `ListPlants`: añadido botón de cabecera `"Sincronizar desde producción"` para importar datos directamente desde el listado de plantas.
+  - `SyncFromProductionCommand`: nuevo comando Artisan `php artisan production:sync` con soporte para opciones `--base-url=`, `--token=` y `--authorized-url=`.
+- **Pruebas Automatizadas (`tests/Feature/Filament/PlantsTableNaturalSortingTest.php`, `tests/Feature/Filament/ProductionSyncProgressTimeoutTest.php`)**:
+  - Nuevas pruebas feature verificando el orden natural ASC y DESC de nombres, precios y porcentajes, y el manejo de timeout en la pantalla de progreso.
+
 ## [1.9.25] - 2026-09-22
 
 ### 🔄 Acción de Reseteo de Unidades Sale en Plantas
