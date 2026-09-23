@@ -4,6 +4,11 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+### Fixed
+- Actualizadas reglas de `.gitignore` para ignorar `frontend/.agents/` y `frontend/graphify-out/`.
+- Re-indexada la caché de Git para dejar de rastrear archivos temporales e ignorados (`AGENTS.md`, `.tmp`).
+
+
 ## [1.9.27] - 2026-09-23
 
 ### 👥 Sincronización de Asesores desde Producción y Vinculación con Proyectos y Plantas
