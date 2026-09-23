@@ -4,7 +4,7 @@
 
 **Leben** is a backend-first platform built with **Laravel 12** + **Filament 5**, specializing in sales management for real estate development projects with Salesforce integration, payment processing, and real-time data synchronization.
 
-Current documented version: 1.9.6 (2026-08-11).
+Current documented version: 1.9.28 (2026-09-23).
 
 The application supports:
 
@@ -119,6 +119,11 @@ Reusable skill modules are located in `.agents/skills/`.
 - ✅ **Artisan Command `salesforce:refresh-token`**: Scheduled background worker (`cron('*/45 * * * *')`) performing proactive refresh or database backup synchronization.
 - ✅ **Panel — Inactive Projects Visible**: Project selector in SiteSettings displays inactive projects with an `[Inactivo]` prefix instead of omitting them.
 - ✅ **Reinforced Queue Auto-reconnection**: `CreateSalesforceCaseJob` attempts silent reconnect when cache tokens are absent or disconnected.
+- ✅ **Sincronización de Asesores desde Producción**: Inclusión de asesores en `/api/v1/production-sync/export`, descarga e importación ordenada (`site_settings` -> `projects` -> `advisors` -> `plants`), mapeo pivote `asesor_proyecto` y vinculación `asesor_id` en plantas.
+- ✅ **Orden Natural en Tablas de Plantas**: Ordenación numérica real en `name` (`21, 202, 1001`) y `piso` en `PlantsTable` y `PlantasRelationManager`; orden numérico con nulos al final para precios y descuentos.
+- ✅ **Modal y Flujo de Sincronización desde Producción**: `SyncFromProductionAction` en Filament con ejecución síncrona o en cola, compatibilidad loopback para `EnsureTokenOriginIsAuthorized`, detección de timeout en `ProductionSyncProgress` y comando Artisan `production:sync`.
+- ✅ **Reseteo Masivo de Plantas Sale**: Acción de cabecera `ResetSalePlantsAction` en `ListPlants` para desmarcar masivamente la bandera `unidad_sale`.
+- ✅ **Protocolos de Descubrimiento para Agentes IA**: Endpoints ACP (`/.well-known/acp.json`), UCP (`/.well-known/ucp`), MPP (`/openapi.json`), Auth.md (RFC 8414, RFC 9728), MCP Server Card (`/.well-known/mcp/server-card.json`), Agent Skills (`/.well-known/agent-skills/index.json`) y `llms.txt`.
 
 ### Active Modules
 
@@ -130,6 +135,7 @@ Reusable skill modules are located in `.agents/skills/`.
 6. **Short Links** - Short links with click tracking and UTM parameter propagation
 7. **Payments** - Transbank Webpay Plus and Mercado Pago integrations with webhooks and transaction states
 8. **Activity Logging** - Audit trails for synchronization and critical system events
+9. **Production Sync** - Snapshot export and import across environments with live progress tracking and timeout control
 
 ---
 
@@ -139,6 +145,7 @@ Reusable skill modules are located in `.agents/skills/`.
 app/
 ├── Services/           # Domain and integration services
 │   ├── Salesforce/    # SalesforceService, SalesforceCaseMapper, etc.
+│   ├── ProductionSync/# ProductionSyncService, ProductionSyncProgressTracker
 │   ├── Payment/       # Payment gateways (Transbank, MercadoPago)
 │   ├── FinMail/       # Transactional email management
 │   └── ShortLink/     # Short link generation and redirection

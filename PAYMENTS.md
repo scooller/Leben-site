@@ -407,29 +407,21 @@ tail -f storage/logs/laravel.log | grep -E "Transbank|MercadoPago"
 
 ## ✅ Checklist
 
-- [x] SDKs instalados
-- [x] Services con SDKs reales
-- [x] PaymentWebhookController
-- [x] Rutas configuradas
-- [x] Vistas de resultado
-- [x] Variables .env configuradas
-- [ ] Webhook MP registrado
-- [x] Pruebas con tarjetas test
-- [x] Validación firma webhooks MP
-- [x] Notificaciones email
-- [x] Deploy producción
+- [x] SDKs instalados (Transbank SDK v5.x, Mercado Pago DX PHP v3.x)
+- [x] Services con SDKs reales (`TransbankService`, `MercadoPagoService`, `ManualPaymentService`)
+- [x] PaymentWebhookController con retornos y webhooks seguros
+- [x] Rutas y endpoints configurados en `routes/api.php` y `routes/web.php`
+- [x] Vistas de resultado personalizadas (success, failed, pending)
+- [x] Variables `.env` y configuración en SiteSettings
+- [x] Validación criptográfica de firmas en webhooks de Mercado Pago
+- [x] Notificaciones por email integradas con FinMail (comprobantes y confirmaciones)
+- [x] Filament Actions para revisión, aprobación y rechazo de pagos manuales
+- [x] Testing automatizado unitario y de integración para todas las pasarelas
+- [x] Sanitización de logs y metadata sensible vía `FlowLogMatrix`
 
 ## 📝 Notas Operativas
 
-- En Filament, el recurso de pagos permite seleccionar `project_id` y `plant_id` al crear o editar.
-- Users, Payments y Plants soportan exportación con `ExportAction`.
-- Las exportaciones usan la tabla `exports` y notificaciones persistidas en base de datos.
-
-## 🎯 Opcional (No implementado)
-
-- Jobs asíncronos para procesamiento de pagos
-- Notificaciones por email
-- Filament Actions para aprobar pagos manuales
-- Testing automatizado
-- Rate limiting en webhooks
-- Monitoring y alertas
+- En Filament, el recurso de pagos permite asociar `project_id` y `plant_id` tanto en creación como en edición.
+- Users, Payments y Plants soportan exportación mediante `ExportAction` con colas y notificaciones persistidas.
+- Los webhooks sanitizan tokens y eliminan campos innecesarios antes de persistir en `metadata`.
+- Ante errores o excepciones en pasarelas, los servicios preservan la excepción previa (rethrow) para mantener trazabilidad completa del stack trace.

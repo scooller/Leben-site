@@ -1,585 +1,371 @@
 # iLeben - Plataforma backend-first para administración de proyectos y plantas
 
-Aplicación backend-first construida con Laravel 12, Filament 5, React 19 y Web Awesome. El sistema opera como mantenedor administrativo de proyectos y plantas, con sincronización periódica contra Salesforce como sistema maestro para entidades comerciales y operacionales.
-
-Versión actual documentada: 1.9.6 (2026-08-11).
+Aplicación backend-first construida con Laravel 12, Filament 5, React 19 y Web Awesome. El sistema opera como mantenedor administrativo de proyectos, plantas y asesores comerciales, con sincronización bidireccional contra Salesforce como sistema maestro, sincronización de datos desde entornos de producción, procesamiento de pagos con Transbank y Mercado Pago, y soporte para protocolos de descubrimiento comercial y agentes de inteligencia artificial.
 
 ## 📋 Stack Tecnológico
 
 ### Backend
+
 - **Laravel 12** - Framework PHP moderno
 - **Filament 5** - Panel administrativo SDUI
 - **PHP 8.4** - Lenguaje de programación
-- **MySQL 8** - Base de datos
-- **Salesforce API** (omniphx/forrest) - Integración CRM
+- **MySQL 8** / **SQLite** (testing) - Bases de datos
+- **Salesforce API** (`omniphx/forrest`) - Integración CRM bidireccional
+- **Laravel Sanctum 4** - Autenticación API con validación de origen (`token.origin`)
+- **Spatie Permission 7** - Control de acceso granular por roles (`admin`, `marketing`)
 
 ### Frontend
+
 - **React 19** - UI library
-- **Vite** - Build tool
-- **Web Awesome Pro 3.7.0** - Design system
+- **Vite 6** - Build tool y pipeline de assets
+- **Web Awesome Pro 3.7.0** - Design system y web components
 - **Tailwind CSS 4** - Utility-first CSS
-- **GSAP** - Animaciones
+- **GSAP** - Animaciones interactivas
+- **Cloudflare Turnstile** - Validación CAPTCHA server-side
 
 ### Gestión de Medios
-- **Filament Curator** - Gestor centralizado de archivos/imágenes
-- **CropperJS** - Editor de imágenes
+
+- **Filament Curator 5** - Gestor centralizado de archivos/imágenes
+- **CropperJS** - Editor y recorte de imágenes
 
 ### Pasarelas de Pago
-- **Transbank** - TCPago Chile
-- **Mercado Pago** - Latam
-- **Manual** - Configuración custom
+
+- **Transbank Webpay Plus** - Pagos en Chile (soporte Mall y múltiples códigos de comercio)
+- **Mercado Pago** - Pagos Latam con webhooks firmados
+- **Manual** - Registro y subida de comprobantes con aprobación en panel
+
+### Protocolos de Agentes de IA
+
+- **ACP** (Agentic Commerce Protocol)
+- **UCP** (Universal Commerce Protocol)
+- **MPP** (Machine Payment Protocol)
+- **Auth.md** (RFC 8414 & RFC 9728)
+- **MCP** (Model Context Protocol Server Card)
+- **Agent Skills Discovery** & **ARD**
+
+---
 
 ## 🏗️ Arquitectura
 
 ```
 app/
-├── Models/               # Eloquent Models
+├── Models/                 # Eloquent Models (Proyecto, Plant, Asesor, Payment, etc.)
 ├── Filament/
-│   ├── Resources/        # CRUD Resources
-│   ├── Pages/            # Custom Pages
-│   └── Widgets/          # Dashboard Widgets
+│   ├── Resources/          # CRUD Resources (Plants, Proyectos, Asesores, etc.)
+│   ├── Pages/              # Custom Pages (SiteSettings, ProductionSyncProgress)
+│   ├── Actions/            # Reusable Actions (SyncFromProductionAction, ResetSalePlantsAction)
+│   └── Widgets/            # Dashboard Widgets
 ├── Services/
-│   ├── Salesforce/       # Integración SOQL
-│   └── Payment/          # Servicios de pasarelas
-├── Http/Controllers/     # API endpoints
-├── Enums/                # Enums: PaymentGateway, PaymentStatus
-└── Contracts/            # Interfaces
+│   ├── Salesforce/         # SalesforceService, SalesforceCaseMapper, OAuth Lifecycle
+│   ├── ProductionSync/     # ProductionSyncService, ProductionSyncProgressTracker
+│   ├── Payment/            # TransbankService, MercadoPagoService, PaymentGatewayManager
+│   └── ShortLink/          # Generación y redirección con UTMs
+├── Jobs/                   # Queue Jobs (SyncPlantsJob, RunProductionSyncJob, CreateSalesforceCaseJob)
+├── Http/
+│   ├── Controllers/        # API, Webhooks, Redirects, OAuth
+│   ├── Middleware/         # EnsureTokenOriginIsAuthorized, MaintenancePreview
+│   └── Resources/          # API Resources JSON
+├── Support/                # FlowLogMatrix, SalesforcePlantSyncSchedule
+├── Enums/                  # PaymentGateway, PaymentStatus, ReservationStatus
+└── Contracts/              # Interfaces
 
 resources/
-├── css/                  # Estilos Filament + Tailwind
-└── js/                   # JavaScript antiguo (deprecated)
+├── css/                    # Estilos Filament + Tailwind CSS v4
+└── views/                  # Vistas Blade (pagos, emails, sitemaps)
 
 frontend/
 ├── src/
-│   ├── components/       # React components
-│   ├── pages/            # Page layouts
-│   ├── context/          # React Context
-│   ├── hooks/            # Custom hooks
-│   └── styles/           # SCSS modules
-└── dist/                 # Build output (Vite)
+│   ├── components/         # Componentes React y Web Awesome
+│   ├── pages/              # Catálogo, Detalle, Checkout, Resultado
+│   ├── contexts/           # SiteConfigContext
+│   ├── services/           # Clientes API (plants, checkout, reservations)
+│   └── utils/              # TagManager, SEO, validaciones
+└── dist/                   # Build compilado para producción
 ```
+
+---
 
 ## 📦 Características Principales
 
 ### Operación y Sincronización
-- ✅ **Cobertura funcional** - Administra proyectos, plantas, pagos, configuración global y activos multimedia desde el panel Filament
-- ✅ **Integración con Salesforce** - Proyectos y plantas se sincronizan desde Salesforce; el formulario de contacto crea Leads con reintentos automáticos
-- ✅ **Preservación de datos locales** - La sincronización evita sobrescribir atributos locales sensibles cuando el dato debe mantenerse en la base local
-- ✅ **Procesamiento asíncrono** - Exportaciones y notificaciones soportadas sobre cola `database` con notificaciones persistidas en Filament
-- ✅ **Importación CSV de contactos** - Wizard con selección de canal previa al mapeo, progreso en panel, mapeo dinámico y normalización canónica de datos
 
-### Panel Administrativo (Filament)
-- ✅ **Autenticación** - Laravel Sanctum + sessions + Spatie permissions
-- ✅ **Permisos y roles** - Control de acceso granular con roles `admin`, `marketing`
-- ✅ **Proyectos** - CRUD administrativo, filtros operativos, `tipo` multiselección y commerce code por proyecto
-- ✅ **Usuarios** - Gestión de cuentas, RUT, exportación y actividad detallada (`UserActivitiesPage`)
-- ✅ **Plantas** - Catálogo sincronizado con imágenes de portada e interior vía Curator, `tipo_producto`
-- ✅ **Plantas** - Exportación y control de disponibilidad para catálogo público
-- ✅ **Pagos** - Registro de transacciones con relación directa a proyecto y planta, campos de facturación
-- ✅ **Exportaciones** - Users, Payments y Plants usan `ExportAction` de Filament con cola y notificaciones persistidas
-- ✅ **Contacto** - Submissions con exporter, log de actividad y re-sincronización a Salesforce
-- ✅ **Short Links** - Gestión de URLs cortas con etiquetas UTM y exportación
-- ✅ **Canales de contacto** - `ContactChannel` sincronizado desde Salesforce con badges de color
-- ✅ **Configuración Global** - SiteSettings (11+ tabs)
-  - General, Banner, Branding (logo claro/oscuro), Colores, Tipografía
-  - SEO, Contacto, Redes Sociales, Personalización
-  - Pasarelas de Pago, Mantenimiento, Scripts Header/Footer
-  - GTM, Facebook Pixel, Sincronización Salesforce
-- ✅ **Gestor de Archivos** - Curator (File Manager centralizado)
-- ✅ **Modo Mantenimiento** - RichEditor + HTML mode + Web Awesome dialog
+- ✅ **Sincronización desde Producción (Production Sync)**:
+  - Exportación segura en `/api/v1/production-sync/export` mediante token Sanctum y validación `token.origin`.
+  - Importación integral de `site_settings`, `projects`, `advisors` (con tabla pivote `asesor_proyecto`) y `plants` (con vinculación `asesor_id`).
+  - Modal interactivo en Filament (`SyncFromProductionAction`) con ejecución síncrona o asíncrona en colas.
+  - Pantalla de progreso en vivo (`ProductionSyncProgress`) con detección automática de timeout configurable.
+  - Soporte de conexión loopback/localhost (`127.0.0.1`, `localhost`) para desarrollo local.
+  - Comando Artisan `php artisan production:sync`.
+- ✅ **Integración Bidireccional con Salesforce**:
+  - Sincronización de proyectos, plantas y asesores comerciales.
+  - Creación de Leads / Casos desde formularios de contacto con reintentos automáticos y mapeo UTM completo.
+  - Filtrado dinámico de campos creables en Salesforce para prevenir fallos por campos de solo lectura.
+  - Caching inteligente de consultas SOQL con TTL configurable.
+  - **OAuth Proactivo y Auto-reconexión**: Renovación periódica antes del vencimiento (`salesforce:refresh-token` cada 45 min), respaldo cifrado de tokens en base de datos (`SiteSetting.extra_settings`) y restauración automática si se reinicia Redis o se ejecuta `cache:clear`.
+  - Protección de colas: `CreateSalesforceCaseJob` evita quemar reintentos infinitos si OAuth está desconectado.
+- ✅ **Normalización de Datos**:
+  - Conversión canónica de etapas de proyecto (`proyecto_etapa`).
+  - Teléfonos estandarizados a solo dígitos y rangos de renta normalizados (`contact:normalize-rango-renta-key`).
 
-### Integración Salesforce
-- ✅ **SOQL Queries** - Consultas a objetos y campos de Salesforce mediante `omniphx/forrest`
-- ✅ **Caching** - Cache de resultados SOQL con TTL configurable para reducir carga sobre la API externa
-- ✅ **Leads** - Creación de Leads desde el formulario de contacto con reintentos automáticos ante campos inválidos
-- ✅ **Sincronización** - Proyectos, plantas, asesores, branding e imágenes sincronizados desde Salesforce
-- ✅ **Normalización** - Mapeo local de `is_active`, `tipo`, `tipo_producto` y campos comerciales
-- ✅ **OAuth endurecido** - Scope/prompt configurables para mejorar persistencia de refresh token y reconexión controlada ante `invalid_grant`
-- ✅ **Logging** - Registro y trazabilidad de operaciones de sincronización
+### Panel Administrativo (Filament 5)
 
-### Pasarelas de Pago
-- ✅ **Transbank Mall** - Soporte para múltiples códigos de comercio por proyecto (`TRANSBANK_STORE_CODES`)
-- ✅ **Mercado Pago** - Webhooks verificados con firma
-- ✅ **Manual** - Pagos manuales con referencia libre
-- ✅ **Facturación** - Campos de facturación en el flujo de pago con pre-llenado desde el usuario
-- ✅ **Resultado público** - Página de resultado de pago sin autenticación
+- ✅ **Tablas y Orden Natural**:
+  - Orden natural numérico en columnas de plantas (`name`: `21, 202, 1001`, `piso`).
+  - Ordenación numérica con valores nulos posicionados al final en modo ascendente para precios (`precio_base`, `precio_lista`, `precio_final`) y porcentajes de descuento.
+- ✅ **Gestión de Plantas y Unidades Sale**:
+  - Botón de cabecera para sincronizar desde producción en el catálogo de plantas.
+  - Acción masiva `ResetSalePlantsAction` para desmarcar unidades Sale con modal de confirmación.
+  - Sincronización de imágenes de portada e interiores vía Curator.
+- ✅ **Asesores Comerciales**:
+  - Perfiles con teléfono, email, avatar y asignación a proyectos y plantas.
+  - Generación dinámica de códigos QR y enlaces de redirección a WhatsApp con etiquetas UTM.
+- ✅ **Configuración Global (SiteSettings - 11+ Tabs)**:
+  - Branding (logos claro/oscuro, favicon, banner promocional).
+  - Colores y temas Web Awesome (11 paletas preconfiguradas).
+  - SEO, scripts header/footer, Google Tag Manager y Facebook Pixel con deduplicación de eventos.
+  - Configuración de pasarelas de pago y credenciales.
+  - Sincronización y estado en vivo de la conexión con Salesforce.
+- ✅ **Herramientas de Auditoría y Seguridad**:
+  - Historial detallado de actividad con Spatie Activity Log.
+  - Log Viewer integrado y Command Runner para operaciones administrativas.
+  - Integración de `filament-dual-scroll` para tablas anchas.
 
-### Frontend React
-- ✅ **Home Page** - Hero section con video, poster, banner promocional y disclaimers
-- ✅ **Catálogo** - Filtros por proyecto, slug, comuna, tipo_producto; disponibilidad en tiempo real
-- ✅ **Mantenimiento** - Modal Web Awesome `<wa-dialog>` con prevención de cierre
-- ✅ **SEO** - Meta tags, Open Graph y description dinámicos desde `siteConfig`
-- ✅ **Cloudflare Turnstile** - Captcha en formulario de contacto
-- ✅ **GTM / FB Pixel** - Integración configurable con deduplicación de eventos
-- ✅ **Scripts** - Header/footer scripts inyectados desde SiteSettings
-- ✅ **Preview** - Acceso a catálogo con token temporal para previews pre-publicación
-- ✅ **SiteConfig Context** - Datos globales (logo, theme, config, etc)
-- ✅ **Responsive Design** - Mobile-first con Web Awesome
-- ✅ **Themes** - 11 temas Web Awesome preinstalados
+### Pasarelas de Pago y Reservas
 
-### Gestión de Medios (Curator)
-- ✅ **Centralizado** - Single File Manager en `/admin/media`
-- ✅ **Integrado** - Logo claro/oscuro, favicon, banner, maintenance images
-- ✅ **Plantas con imágenes** - Campos de portada e interior integrados al mantenedor de plantas
-- ✅ **RichEditor** - Attachments vía AttachCuratorMediaPlugin
-- ✅ **Database** - Tabla `curator` para metadata de archivos
-- ✅ **Editor** - CropperJS para redimensionar
+- ✅ **Transbank Webpay Plus**: Soporte para Transbank Mall con códigos de comercio configurables por proyecto (`TRANSBANK_STORE_CODES`).
+- ✅ **Mercado Pago**: Procesamiento seguro con verificación de firma criptográfica en webhooks.
+- ✅ **Seguridad y Logs Limpios**: Sanitización automática de credenciales, tokens y payloads crudos en logs mediante `FlowLogMatrix`.
+- ✅ **Flujo de Reservas**: Expiración automática de reservas huérfanas mediante scheduler (`reservations:expire` cada minuto).
+- ✅ **Facturación y Comprobantes**: Pre-llenado de datos de facturación y subida de comprobantes en transferencias manuales.
 
-## 🔄 Últimos Cambios Relevantes
+### Protocolos de Agentes de IA y Descubrimiento Web
 
-- **Canales de contacto** — Modelo `ContactChannel` con recurso Filament, sincronización desde Salesforce y badges de color
-- **Permisos Spatie** — Control de acceso granular con rol `marketing` y acceso restringido por perfil
-- **Actividad de usuarios** — Página personalizada `UserActivitiesPage` en Filament con vista de historial detallado
-- **Logo modo oscuro** — Campo `logo_dark_id` con selección dinámica según el modo activo del panel
-- **Short Links** — Gestión de URLs cortas con Filament Resource, etiquetas UTM y exportación
-- **QR + WhatsApp asesores** — Generación de shortlinks QR desde asesores y redirección WhatsApp con UTM helpers
-- **Etapas homologadas** — Normalización de `etapa` en sync/API/panel con aliases legacy y backfill de datos históricos
-- **Salesforce Leads** — El formulario de contacto crea Leads con reintentos automáticos y mapeo UTM completo
-- **SEO configurable** — Tab SEO en SiteSettings con meta tags y Open Graph aplicados en frontend
-- **Cloudflare Turnstile** — Captcha integrado en el formulario de contacto con validación server-side
-- **MercadoPago webhooks** — Verificación de firma y procesamiento idempotente
-- **Transbank Mall** — Soporte completo para múltiples códigos de comercio por proyecto via `TRANSBANK_STORE_CODES`
-- **Catálogo público** — API de catálogo sin autenticación con middleware de preview y token temporal
-- **Facturación** — Campos de facturación y página pública de resultado de pago
-- **GTM y Facebook Pixel** — Integración configurable desde SiteSettings con deduplicación de eventos
-- **FinMail** — Notificaciones de email transaccional integradas al flujo de negocio
-- **Importación de contactos** — Normalización de `rango_renta`, `apellido` canónico, teléfono en solo dígitos y aliases UTM alineados con Salesforce
-- **Normalización histórica** — Comando `contact:normalize-rango-renta-key` con modo `--dry-run`
-- **Pricing dinámico** — Soporte para `descuento_maximo_unidad` y `descuento_maximo_cotizacion_web` en proyectos, panel y API
-- **API: precio desde y tipologías** — `precio_desde` (mínimo `precio_lista`) y `tipologias` (agrupación por dormitorios, baños y tipo) en endpoints de proyectos
-- **SiteSettings de descuentos** — Configuración de fuentes de descuento para cálculo de precios comerciales
-- **UX de tablas en panel** — Integración de dual-scroll para tablas extensas y mejoras de lectura operativa
-- **SalesforceCaseMapper** — Refinamientos de mapeo por canal y manejo robusto de campos legacy/canónicos (`Proyect_ID__c`)
-- **Métricas de brokers** — Scheduler y comando `salesforce:sync-broker-metrics` activos cada 15 minutos
-- **OAuth token hardening** — Nuevos parámetros `SF_OAUTH_SCOPE` y `SF_OAUTH_PROMPT`; además, cuando OAuth queda desconectado el job de sync evita reintentos hasta reconexión manual
-- **OAuth auto-reconnect refinado** — `salesforce:refresh-token` ahora sincroniza backup cuando ya hay token en caché y reserva `tryAutoReconnect()` para ausencia de token, mitigando `invalid_grant` por rotación
-- **Sync desde producción** — Flujo con job en background (`RunProductionSyncJob`), endpoint API y pantalla de progreso en panel para export/sync controlado
-- **Hardening de logs en pagos** — Sanitización de tokens y reducción de payloads crudos en Transbank/MercadoPago para evitar exposición de datos sensibles
-- **Metadata de webhooks más segura** — Persistencia de `transbank_abort_payload` y `mercadopago_payment` con información mínima necesaria (sin campos sensibles innecesarios)
-- **Matriz central de niveles de log** — Nuevo `FlowLogMatrix` para estandarizar severidad por flujo/evento en Payments, Salesforce Job y Production Sync
-- **Excepciones con trazabilidad completa** — Refactor de rethrow en servicios de pago para preservar excepción previa y no perder stack trace original
-- **Cobertura de pruebas ampliada** — Nuevos tests para sanitización de metadata de webhooks, matriz de niveles de log y fallas de red/HTTP en Production Sync
+- ✅ **Agentic Commerce Protocol (ACP)**: Endpoint `/.well-known/acp.json` para descubrimiento de catálogo y reservas.
+- ✅ **Universal Commerce Protocol (UCP)**: Endpoint `/.well-known/ucp` con capacidades de checkout y catálogo.
+- ✅ **Machine Payment Protocol (MPP)**: Documento `/openapi.json` con extensiones `x-payment-info`.
+- ✅ **Auth.md & RFCs**: Directrices de autenticación de agentes en `/auth.md`, `/ .well-known/oauth-authorization-server` (RFC 8414) y `/.well-known/oauth-protected-resource` (RFC 9728).
+- ✅ **MCP Server**: Ficha de servidor en `/.well-known/mcp/server-card.json`.
+- ✅ **Agent Skills**: Directorio `/.well-known/agent-skills/index.json` con skills para agentes autónomos.
+- ✅ **LLMs & Sitemap**: Endpoints `/llms.txt`, `/.well-known/llms.txt`, `/sitemap.xml` dinámico y `/robots.txt` con señales para IA.
+
+---
 
 ## 🛠️ Comandos Útiles
 
-### Desarrollo y diagnóstico
+### Desarrollo y Diagnóstico
 
 ```bash
-# Estado general de la app
+# Estado general del framework y configuración
 php artisan about
 
 # Listar todos los comandos disponibles
 php artisan list
 
-# Limpiar caches (config, rutas, vistas, eventos, etc.)
+# Limpiar todas las cachés (config, rutas, vistas, eventos)
 php artisan optimize:clear
 ```
 
-### Base de datos
+### Sincronización desde Producción
 
 ```bash
-# Ejecutar migraciones
-php artisan migrate
+# Sincronizar snapshot desde producción (usando configuración en .env)
+php artisan production:sync
 
-# Poblar datos semilla
-php artisan db:seed
-
-# Ver estado de migraciones
-php artisan migrate:status
-```
-
-### Normalización de contactos
-
-```bash
-# Simular normalización histórica (sin persistir cambios)
-php artisan contact:normalize-rango-renta-key --dry-run
-
-# Ejecutar normalización histórica
-php artisan contact:normalize-rango-renta-key
+# Sincronizar indicando URL y credenciales de forma explícita
+php artisan production:sync --base-url="https://admin.ileben.cl" --token="TU_TOKEN_SANCTUM" --authorized-url="http://127.0.0.1:8000/admin"
 ```
 
 ### Sincronización Salesforce
 
 ```bash
-# Sincronizar proyectos desde Salesforce
-php artisan test:sync-projects
-
-# Sincronizar plantas
+# Sincronizar catálogo de plantas con Salesforce
 php artisan sync:plants
 
-# Recalcular metricas comerciales de brokers desde snapshots locales
-php artisan salesforce:sync-broker-metrics
+# Sincronizar proyectos desde Salesforce (test/manual)
+php artisan test:sync-projects
 
-# Probar autenticación Salesforce
+# Refrescar token OAuth de Salesforce o sincronizar backup en DB
+php artisan salesforce:refresh-token
+
+# Probar autenticación y conectividad con Salesforce
 php artisan salesforce:test-auth
-
-# Ajustes recomendados OAuth WebServer (refresh token)
-# SF_OAUTH_SCOPE="api refresh_token offline_access"
-# SF_OAUTH_PROMPT="consent"
 ```
 
-#### Procedimiento de reconexión OAuth (invalid_grant)
+### Scheduler Operativo (Laravel Schedule)
 
-Usar este flujo cuando aparezca `invalid_grant` o `expired access/refresh token` en logs.
+Comandos programados en `routes/console.php`:
 
-1. Confirmar en Salesforce Connected App que OAuth Scopes incluyen `api`, `refresh_token` y `offline_access`.
-2. Revisar OAuth Policies de la Connected App y dejar una política de refresh token compatible con operación continua (preferir vigencia hasta revocación cuando la política de seguridad de la organización lo permita).
-3. Verificar que las variables `SF_OAUTH_SCOPE` y `SF_OAUTH_PROMPT` estén definidas en el entorno de la app.
-4. Reconectar desde el panel en `/admin/site-settings` usando **Conectar con Salesforce**.
-5. Ejecutar una prueba de autenticación con `php artisan salesforce:test-auth`.
-6. Validar envío real de contacto y confirmar creación de Lead en Salesforce.
-7. Monitorear logs para asegurar que no reaparezca `invalid_grant`.
+| Tarea / Comando | Frecuencia | Descripción |
+| --------------- | ---------- | ----------- |
+| `reservations:expire` | Cada minuto | Libera reservas de plantas que superaron el tiempo de espera |
+| `SyncPlantsJob` | Cada minuto (sin overlap) | Sincronización de plantas condicional según `SalesforcePlantSyncSchedule` |
+| `salesforce:refresh-token` | Cada 45 min (sin overlap) | Renueva proactivamente el token OAuth antes de expirar |
+| `model:prune --model=FrontendPreviewLink` | Diario | Limpia enlaces temporales de previsualización caducados |
 
-#### Scheduler operativo (Laravel)
+#### Operación en Servidor / cPanel (Cron + Queue Worker)
 
-- `reservations:expire`: cada minuto
-- `sync:plants` (job): cada 5 minutos
-- `SyncSalesforceOpportunitiesJob` (job): cada 60 minutos
-- `salesforce:sync-broker-metrics`: cada 15 minutos
-
-#### Operacion en cPanel (cron + cola)
-
-En cPanel, `schedule:run` no consume la cola por si solo. Si `QUEUE_CONNECTION=database`, debes tener dos cron separados:
+Si `QUEUE_CONNECTION=database`, configurar dos tareas en el cron del sistema:
 
 ```bash
 # 1) Scheduler Laravel (cada minuto)
-* * * * * /usr/local/bin/php /home/adminmktleben/laravel/artisan schedule:run >> /dev/null 2>&1
+* * * * * /usr/local/bin/php /home/usuario/laravel/artisan schedule:run >> /dev/null 2>&1
 
-# 2) Worker de cola con lock (cada minuto)
-* * * * * /usr/bin/flock -n /tmp/leben-queue.lock /usr/local/bin/php /home/adminmktleben/laravel/artisan queue:work database --queue=default --sleep=3 --tries=3 --backoff=5 --max-time=50 --stop-when-empty >> /home/adminmktleben/laravel/storage/logs/queue-worker.log 2>&1
+# 2) Worker de cola con lock anti-acumulación (cada minuto)
+* * * * * /usr/bin/flock -n /tmp/leben-queue.lock /usr/local/bin/php /home/usuario/laravel/artisan queue:work database --queue=default --sleep=3 --tries=3 --backoff=5 --max-time=50 --stop-when-empty >> /home/usuario/laravel/storage/logs/queue-worker.log 2>&1
 ```
 
-Notas operativas:
-- No usar prefijos como `- ` al inicio del comando del cron.
-- Verifica la ruta real de `flock` en tu servidor (`which flock`), normalmente `/usr/bin/flock`.
-- Si los jobs se acumulan en la tabla `jobs` con `attempts=0` y `reserved_at=NULL`, normalmente falta el worker de cola.
-- Para validar: monitorea que disminuya `jobs` y revisa `storage/logs/queue-worker.log`.
-
-Rotacion basica de logs en cPanel:
+### Base de Datos y Normalización
 
 ```bash
-# Rotar diariamente el log del worker (00:00)
-0 0 * * * /bin/mv /home/adminmktleben/laravel/storage/logs/queue-worker.log /home/adminmktleben/laravel/storage/logs/queue-worker-$(date +\%F).log 2>/dev/null; /usr/bin/touch /home/adminmktleben/laravel/storage/logs/queue-worker.log
+# Ejecutar migraciones pendientes
+php artisan migrate
 
-# Eliminar logs rotados de mas de 14 dias (00:10)
-10 0 * * * /usr/bin/find /home/adminmktleben/laravel/storage/logs -name 'queue-worker-*.log' -type f -mtime +14 -delete
+# Estado de migraciones
+php artisan migrate:status
+
+# Simular normalización histórica de rangos de renta (dry-run)
+php artisan contact:normalize-rango-renta-key --dry-run
+
+# Ejecutar normalización histórica de rangos de renta
+php artisan contact:normalize-rango-renta-key
 ```
 
-Nota:
-- En cron, `%` debe escaparse como `\%` para que `date +\%F` funcione correctamente.
-
-### Reservas y pagos
+### Pruebas Automatizadas
 
 ```bash
-# Expirar reservas vencidas
-php artisan reservations:expire
-```
-
-### Fin Mail
-
-```bash
-# Instalar Fin Mail
-php artisan fin-mail:install
-
-# Actualizar estructura/datos del plugin
-php artisan fin-mail:upgrade
-
-# Limpiar historial de correos enviados
-php artisan fin-mail:cleanup
-```
-
-### Activity Log y Command Runner
-
-```bash
-# Limpiar registros antiguos de activity log
-php artisan activitylog:clean
-
-# Purgar historial de Command Runner (por defecto, 30 dias)
-php artisan command-runner:purge-history
-
-# Capturar estado de un proceso (uso interno del plugin)
-php artisan command-runner:capture-status <id> <code>
-```
-
-### Testing
-
-```bash
-# Ejecutar toda la suite de tests
+# Ejecutar suite completa de tests (PHPUnit)
 php artisan test --compact
 
-# Ejecutar un archivo de tests especifico
-php artisan test --compact tests/Feature/ActivityLogAdminToolsTest.php
+# Ejecutar un test unitario o feature específico
+php artisan test --compact tests/Unit/Services/ProductionSyncServiceTest.php
+php artisan test --compact tests/Feature/Filament/PlantsTableNaturalSortingTest.php
 ```
 
-### Frontend Web Awesome Pro
+---
 
-```bash
-# Verificar version instalada
-cd frontend
-npm ls "@web.awesome.me/webawesome-pro" --depth=0
-```
-
-Autenticacion npm para Web Awesome Pro:
-- El scope `@web.awesome.me` se resuelve mediante `frontend/.npmrc`.
-- El token se inyecta via variable de entorno `WEBAWESOME_NPM_TOKEN`.
-- Si aparece `E401` en comandos npm (`view`, `outdated`, `install`), valida que la variable exista en la sesion activa de terminal.
-
-Compatibilidad de atributos `size`:
-- En Web Awesome 3.x los valores largos (`small`, `medium`, `large`) siguen funcionando, pero estan deprecados.
-- Usar siempre valores cortos: `s`, `m`, `l` (y `xs`, `xl` cuando aplique) para evitar warnings y preparar la migracion a la proxima major.
-
-### Comandos peligrosos (usar con cuidado)
-
-Estos comandos pueden borrar datos o dejar el entorno en un estado no recuperable si se ejecutan en una base de datos equivocada.
-
-```bash
-# Borra TODAS las tablas, vistas y tipos de la BD actual
-php artisan db:wipe
-
-# Borra todas las tablas y vuelve a ejecutar migraciones
-php artisan migrate:fresh
-
-# Igual que migrate:fresh, pero ademas ejecuta seeders
-php artisan migrate:fresh --seed
-
-# Revierte la ultima tanda de migraciones
-php artisan migrate:rollback
-
-# Revierte TODAS las migraciones
-php artisan migrate:reset
-```
-
-Recomendaciones de seguridad:
-
-- Verifica siempre APP_ENV y DB_CONNECTION antes de ejecutar comandos destructivos.
-- En local, prefiere usar base de datos de testing para pruebas de destruccion de datos.
-- En produccion, evita ejecutar comandos destructivos sin respaldo previo.
-- Si necesitas limpiar caches en produccion, usa optimize:clear en lugar de comandos de migracion destructivos.
-
-## � API REST
+## 🌐 API REST y Protocolos
 
 Base URL: `/api/v1`
 
-Guía actualizada de uso de API:
-- [Guía de API](API_USAGE.md)
+### Endpoints Principales
 
-Resumen rápido:
-- Descubrimiento: `GET /api/v1`
-- Configuración pública: `GET /api/v1/site-config`
-- Contacto público: `POST /api/v1/contact-submissions`
-- Catálogo: `GET /api/v1/proyectos` (con `precio_desde` y `tipologias`), `GET /api/v1/plantas`, `GET /api/v1/plantas/{id}`
-- Checkout y pagos: `POST /api/v1/checkout`, `GET /api/v1/payments`, `POST /api/v1/payments/{id}/manual-proof`
+- **Descubrimiento OpenAPI**: `GET /api/v1`
+- **Configuración Pública**: `GET /api/v1/site-config` (oculta pasarelas sensibles si no proviene de un origen autorizado)
+- **Formulario de Contacto**: `POST /api/v1/contact-submissions` (con rate limiting)
+- **Proyectos**:
+  - `GET /api/v1/proyectos` (incluye computados `precio_desde` y `tipologias`)
+  - `GET /api/v1/proyectos/{id}` (parámetros `include_plantas`, `include_asesores`, `campos`)
+- **Plantas (Unidades)**:
+  - `GET /api/v1/plantas` (filtros: `proyecto_id`, `programa`, `piso`, `orientacion`, `disponible`, `evento_sale`, etc.)
+  - `GET /api/v1/plantas/filtros-ubicacion` (regiones y comunas con proyectos activos)
+  - `GET /api/v1/plantas/proyecto/{projectSlug}/unidad/{unitName}` (detalle por slug y nombre)
+  - `GET /api/v1/plantas/{id}`
+- **Reservas y Checkout**:
+  - `POST /api/v1/checkout` (iniciar sesión de pago Transbank / Mercado Pago)
+  - `POST /api/v1/reservations` (crear reserva)
+  - `DELETE /api/v1/reservations/{sessionToken}` (liberar reserva)
+  - `GET /api/v1/reservations/planta/{plantId}` (consultar estado de reserva)
+- **Sincronización de Producción** (Protegido `auth:sanctum` + `token.origin`):
+  - `GET /api/v1/production-sync/export` (exporta snapshot de configuración, proyectos, asesores y plantas)
+- **Pagos y Comprobantes** (Protegido):
+  - `POST /api/v1/payments`
+  - `GET /api/v1/payments`
+  - `POST /api/v1/payments/{id}/manual-proof`
 
-Notas:
-- La referencia completa de autenticación, `token.origin`, payloads y ejemplos cURL está en [Guía de API](API_USAGE.md).
-- Para pagos y webhooks fuera de `/api/v1`, revisar [Pagos & Pasarelas](PAYMENTS.md).
+Para detalles completos de cada área, consulta la documentación dedicada:
 
-## �🚀 Instalación
+## 📚 Documentación Específica
+
+- [Guía de API](API_USAGE.md) — Uso operativo de endpoints, autenticación, `token.origin` y ejemplos cURL.
+- [Pagos & Pasarelas](PAYMENTS.md) — Sistema de pagos completo (Transbank Webpay Plus, Mercado Pago y transferencias manuales).
+- [Frontend React](frontend/README.md) — Estructura, variables de entorno, scripts de build y prerenderizado de rutas.
+- [Historial de Cambios](CHANGELOG.md) — Registro cronológico de versiones y novedades de la plataforma.
+
+---
+
+## 🚀 Instalación y Puesta en Marcha
 
 ### Requisitos
-- PHP 8.4+
-- Composer 2.x
-- Node.js 18+
-- MySQL 8+
 
-### Setup Inicial
+- PHP 8.2+ (Recomendado **PHP 8.4**) con extensiones: `pdo_mysql`, `curl`, `mbstring`, `openssl`, `bcmath`, `fileinfo`
+- Composer 2.x
+- Node.js 18+ (con npm)
+- MySQL 8.0+
+
+### Pasos Iniciales
 
 ```bash
-# 1. Clonar repo
-git clone <repo-url> sale-ileben
-cd sale-ileben
+# 1. Clonar repositorio
+git clone <repo-url> back-ileben
+cd back-ileben
 
-# 2. Instalar dependencias backend
+# 2. Instalar dependencias PHP
 composer install
 
-# 3. Configurar .env
+# 3. Configurar entorno
 cp .env.example .env
 php artisan key:generate
 
-# 4. Configurar Salesforce en .env
-# SF_AUTH_METHOD=username-password
-# SF_CONSUMER_KEY=xxx
-# SF_INSTANCE_URL=https://xxx.salesforce.com
+# 4. Configurar base de datos y Salesforce en .env
+# DB_DATABASE=...
+# SF_CONSUMER_KEY=...
+# SF_CONSUMER_SECRET=...
 
 # 5. Ejecutar migraciones
 php artisan migrate
 
-# 6. Instalar dependencias frontend
-cd frontend
-npm install
-
-# 7. Build frontend
-npm run build
-cd ..
-
-# 8. Crear link de storage
+# 6. Crear enlace simbólico de almacenamiento
 php artisan storage:link
 
-# 9. Crear admin user en tinker
-php artisan tinker
-# User::create(['name' => 'Admin', 'email' => 'admin@ileben.com', 'password' => Hash::make('password')])
+# 7. Compilar frontend / panel
+npm run build:all
 
-# 10. Symlink en Cpanel
-# Asegúrate de que public_html NO exista antes de crear el symlink
-rm -rf /home/devleben/public_html
-ln -s /home/devleben/laravel/public /home/devleben/public_html
-
-# 11. Permisos de carpetas (IMPORTANTE: sin esto Apache devuelve 403)
-# El directorio raíz del usuario y la carpeta laravel deben tener permiso 755
-chmod 711 /home/devleben
-chmod 755 /home/devleben/laravel
-chmod 755 /home/devleben/laravel/public
-
-# storage y bootstrap/cache deben ser escribibles por el servidor web
-chmod -R 775 /home/devleben/laravel/storage
-chmod -R 775 /home/devleben/laravel/bootstrap/cache
+# 8. Iniciar entorno de desarrollo
+composer dev
+# O de manera individual:
+# php artisan serve
+# npm run dev
 ```
 
-> **Nota:** El error 403 en cPanel después de crear el symlink suele ser causado por permisos incorrectos en los directorios padre, no por problemas de `.htaccess`. El directorio home del usuario necesita al menos `711` y `laravel/` necesita `755` para que Apache pueda atravesarlos.
-
-## 📚 Documentación Específica
-
-- [Guía de API](API_USAGE.md) - Uso operativo de endpoints, autenticación y ejemplos cURL
-- [Pagos & Pasarelas](PAYMENTS.md) - Sistema de pagos completo
-- [Frontend React](frontend/README.md) - Estructura y desarrollo del frontend
-
-## 🔧 Tareas Comunes
-
-### Sincronizar plantas desde Salesforce
-```bash
-php artisan app:sync-plants
-```
-
-### Limpiar caché y compilar
-```bash
-php artisan optimize:clear
-cd frontend && npm run build && cd ..
-```
-
-### Activar modo mantenimiento
-```bash
-php artisan tinker
-# SiteSetting::set('maintenance_mode', true);
-# SiteSetting::set('maintenance_message', '<h1>Estamos en mantenimiento</h1>');
-```
-
-### Compilar frontend en desarrollo
-```bash
-cd frontend
-npm run dev    # Watch mode
-npm run build  # Producción
-```
-
-### Servir aplicación en desarrollo
-```bash
-php artisan serve
-# Frontend: http://localhost:5173
-# Panel Filament: http://localhost:8000/admin
-```
+---
 
 ## 🗄️ Base de Datos
 
 ### Tablas Principales
-- `users` - Usuarios del sistema
-- `site_settings` - Configuración global (ID = 1)
-- `curator` - Archivos/media centralizados
-- `payments` - Transacciones de pago
-- `proyectos` - Proyectos disponibles
-- `plants` - Catálogo de plantas
-- `exports` - Exportaciones en cola de Filament
 
-### Relaciones
-```
-User → has many Payments
-Payment → belongs to User
-Payment → belongs to Proyecto
-Payment → belongs to Plant
-Plant → has many PlantReservations
-Plant → has many Payments
-SiteSetting → belongs to Media (1:1 vía logo_id, favicon_id, etc)
-Project → has Transbank commerce code
-```
-
-## 🔐 Seguridad
-
-- ✅ CSRF protection (VerifyCsrfToken)
-- ✅ Rate limiting en API
-- ✅ Sanctum tokens para API
-- ✅ Validation en todos los forms
-- ✅ Signature verification en webhooks
-- ✅ HTML sanitization en RichEditor
-- ✅ Idempotent payment webhooks
-
-## 📊 Monitoreo
-
-### Logs
-```bash
-tail -f storage/logs/laravel.log
-```
-
-### Database Queries
-```bash
-php artisan tinker
-# DB::listen(fn($query) => dump($query->sql, $query->bindings));
-```
-
-### Testing DB segura (sin tocar desarrollo)
-
-- Los tests usan una conexión dedicada: `sqlite_testing`.
-- Archivo de base de datos de tests: `database/testing.sqlite`.
-- `RefreshDatabase` borra y reconstruye solo esa base de tests.
-- No uses tu base de desarrollo para pruebas.
-
-Comandos recomendados:
-
-```bash
-# Crear archivo SQLite de tests (una vez)
-New-Item -Path database/testing.sqlite -ItemType File -Force
-
-# Ejecutar tests usando .env.testing/phpunit.xml
-php artisan test --compact
-```
-
-## 🎨 Customización
-
-### Agregar nuevo tema Web Awesome
-1. Editar `resources/css/filament/admin/theme.css`
-2. Tema disponible en Configuración → Colores
-
-### Agregar nueva payment gateway
-1. Crear `app/Services/Payment/NuevaGatewayService.php`
-2. Implementar `PaymentGatewayInterface`
-3. Registrar en `PaymentGatewayManager::class`
-
-### Agregar nueva Filament Resource
-```bash
-php artisan make:filament-resource NombreRecurso --generate
-```
-
-## 📝 Convenciones
-
-- Models: Singular, PascalCase (User, Payment)
-- Tables: Plural, snake_case (users, payments)
-- Fields: snake_case (first_name, user_id)
-- Enums: PascalCase (PaymentGateway, PaymentStatus)
-- Services: `Service` suffix (PaymentService)
-
-## 🤝 Contribuciones
-
-Este proyecto sigue:
-- [Laravel Boost Guidelines](AGENTS.md)
-- [Copilot Instructions](.github/copilot-instructions.md)
-- [Skills](.github/skills/)
-
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/scooller/Leben-site)
-
-## 📄 Licencia
-
-Todos los derechos reservados - iLeben © 2026
+- `users` — Usuarios del panel y clientes autenticados.
+- `site_settings` — Configuración global (singleton `ID=1`), opciones visuales y backups OAuth.
+- `curator` — Biblioteca de medios y archivos centralizada.
+- `proyectos` — Proyectos inmobiliarios con etapas homologadas y códigos de comercio.
+- `plants` — Departamentos/plantas con tipologías, imágenes, precios y estado Sale.
+- `asesors` — Asesores de venta con avatar, teléfono WhatsApp y QR dinámico.
+- `asesor_proyecto` — Tabla pivote que vincula asesores con múltiples proyectos.
+- `payments` — Historial de transacciones de pago y estados.
+- `plant_reservations` — Bloqueos temporales de unidades durante el checkout.
+- `contact_submissions` — Formularios de contacto y sincronización a Salesforce Leads/Casos.
+- `contact_channels` — Canales comerciales con badges y reglas de enrutamiento.
+- `short_links` / `short_link_visits` — Enlaces cortos con tracking de visitas y UTMs.
+- `exports` — Cola de exportaciones de Filament.
+- `frontend_preview_links` — Enlaces seguros de previsualización temporal.
+- `activity_log` — Registro de auditoría de acciones administrativas.
 
 ---
 
-**Última actualización:** 20 May 2026  
-**Versión:** 1.9.0
+## 🔐 Seguridad
 
+- ✅ **Protección CSRF y Rate Limiting** en endpoints públicos y autenticación.
+- ✅ **Sanctum + `token.origin`**: Validación estricta de dominios autorizados para tokens Bearer.
+- ✅ **Sanitización de Payloads**: Prevención de fugas de datos sensibles en logs de pasarelas.
+- ✅ **Verificación de Firmas en Webhooks** (Transbank y Mercado Pago).
+- ✅ **Sanitización HTML** en componentes RichEditor de Filament.
+- ✅ **Prevención de Expiración OAuth**: Renovación proactiva y respaldos cifrados en base de datos.
+
+---
+
+## 📄 Licencia
+
+Todos los derechos reservados — iLeben © 2026
+
+**Última actualización:** 2026-09-23  
+**Versión:** 1.9.28  
 **[Historial de cambios](CHANGELOG.md)**

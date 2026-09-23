@@ -362,7 +362,11 @@ Estos endpoints requieren sesion de usuario iniciada mediante Bearer token Sanct
 ### 6.2 Exportacion para sincronizacion de produccion (Solo Admin)
 - **GET** `/api/v1/production-sync/export`
 - Requiere que el usuario autenticado sea administrador (`$request->user()->isAdmin()`).
-- Devuelve snapshot completo para importacion en entornos de staging (`site_settings`, `projects`, `plants`).
+- Devuelve snapshot completo en formato JSON para importacion en entornos locales o de staging:
+  - `site_settings`: Configuracion global y branding del sitio.
+  - `projects`: Catalogo de proyectos con especificaciones comerciales y financieras.
+  - `advisors`: Asesores comerciales con `salesforce_id`, contacto, WhatsApp, avatar y sus proyectos asociados en tabla pivote (`proyectos_salesforce_ids`).
+  - `plants`: Unidades habitacionales con `asesor_salesforce_id` para re-vinculacion automatica con sus asesores correspondientes.
 
 ### 6.3 Gestion directa de pagos del usuario
 - **POST** `/api/v1/payments`: Crear registro de pago.
@@ -462,6 +466,13 @@ curl -X POST "https://tu-dominio.com/api/v1/checkout" \
     "phone": "+56998877665",
     "rut": "15234567-8"
   }'
+```
+
+### Exportar snapshot de produccion (Requiere rol Admin y origen autorizado)
+```bash
+curl -X GET "https://admin.ileben.cl/api/v1/production-sync/export" \
+  -H "Authorization: Bearer TU_SANCTUM_ADMIN_TOKEN" \
+  -H "Origin: http://127.0.0.1:8000/admin"
 ```
 
 ---

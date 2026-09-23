@@ -4,7 +4,28 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
-## [1.9.27] - 2026-09-23
+## [1.9.28] - 2026-09-23
+
+### 📖 Actualización Integral de Documentación (*.md)
+
+- **Documentación General (`README.md`)**:
+  - Actualizada versión del proyecto a `1.9.28` con fecha `2026-09-23`.
+  - Incorporada documentación de **Sincronización desde Producción (Production Sync)**: exportación API, servicio `ProductionSyncService`, modal interactivo en Filament (`SyncFromProductionAction`), pantalla de seguimiento en vivo con detección de timeout, comando `php artisan production:sync` y soporte para sincronización de asesores con vinculación a proyectos y plantas.
+  - Documentado **Orden Natural en Tablas de Plantas**: ordenación numérica en columnas `name`, `piso`, precios (`precio_base`, `precio_lista`, `precio_final`) y porcentajes de descuento.
+  - Documentada acción de **Reseteo Masivo de Unidades Sale**: botón de cabecera `ResetSalePlantsAction` en el listado de plantas de Filament.
+  - Actualizados comandos del **Scheduler Operativo** según `routes/console.php` (`reservations:expire` cada min, `SyncPlantsJob` condicionado cada min, `salesforce:refresh-token` cada 45 min, `model:prune` de preview links diario).
+  - Corregidos comandos Artisan en la guía operativa (`sync:plants`, `production:sync`, `salesforce:refresh-token`).
+  - Documentada la integración de **Protocolos de Descubrimiento para Agentes IA**: endpoints `/.well-known/acp.json`, `/.well-known/ucp`, `/openapi.json`, `/auth.md`, `/.well-known/oauth-authorization-server`, `/.well-known/mcp/server-card.json`, `/.well-known/agent-skills/` y `llms.txt`.
+- **Directivas y Guía de Agentes (`AGENTS.md`)**:
+  - Sincronizada versión documentada a `1.9.28` (`2026-09-23`).
+  - Incorporado módulo activo `Production Sync` y servicio `ProductionSync/` en la arquitectura de directorios.
+  - Documentadas adiciones recientes de orden natural, reseteo de unidades sale y protocolos de agentes.
+- **Guía de Uso de la API (`API_USAGE.md`)**:
+  - Detallado el payload completo de exportación en `GET /api/v1/production-sync/export` incluyendo asesores y relaciones pivote.
+  - Añadido ejemplo cURL para exportación de snapshot de producción.
+- **Sistema de Pagos (`PAYMENTS.md`)**:
+  - Actualizada lista de verificación y notas operativas reflejando tests automatizados completos, emails con FinMail, acciones de aprobación en Filament y sanitización de metadata con `FlowLogMatrix`.
+
 
 ### 👥 Sincronización de Asesores desde Producción y Vinculación con Proyectos y Plantas
 
