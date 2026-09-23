@@ -39,11 +39,12 @@ class SyncFromProductionCommand extends Command
         }
 
         $projectsCount = count((array) ($snapshot['projects'] ?? []));
+        $advisorsCount = count((array) ($snapshot['advisors'] ?? []));
         $plantsCount = count((array) ($snapshot['plants'] ?? []));
-        $this->info("Datos recibidos: {$projectsCount} proyectos, {$plantsCount} plantas.");
+        $this->info("Datos recibidos: {$projectsCount} proyectos, {$advisorsCount} asesores, {$plantsCount} plantas.");
 
         $syncId = (string) Str::uuid();
-        $totalSteps = 1 + $projectsCount + $plantsCount;
+        $totalSteps = 1 + $projectsCount + $advisorsCount + $plantsCount;
         $tracker->initialize($syncId, $totalSteps, $baseUrl);
 
         $this->info('Iniciando sincronización local...');
@@ -53,6 +54,7 @@ class SyncFromProductionCommand extends Command
         $this->newLine();
         $this->info('Sincronización completada con éxito:');
         $this->line("- Configuración del sitio: {$result['site_settings']}");
+        $this->line("- Asesores: {$result['advisors']['created']} creados, {$result['advisors']['updated']} actualizados, {$result['advisors']['skipped']} omitidos");
         $this->line("- Proyectos: {$result['projects']['created']} creados, {$result['projects']['updated']} actualizados, {$result['projects']['skipped']} omitidos");
         $this->line("- Plantas: {$result['plants']['created']} creadas, {$result['plants']['updated']} actualizadas, {$result['plants']['skipped']} omitidas");
 

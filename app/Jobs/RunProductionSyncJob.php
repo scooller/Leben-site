@@ -50,7 +50,10 @@ class RunProductionSyncJob implements ShouldQueue
             return;
         }
 
-        $totalSteps = 1 + count((array) ($snapshot['projects'] ?? [])) + count((array) ($snapshot['plants'] ?? []));
+        $totalSteps = 1
+            + count((array) ($snapshot['projects'] ?? []))
+            + count((array) ($snapshot['advisors'] ?? []))
+            + count((array) ($snapshot['plants'] ?? []));
         $tracker->setTotalSteps($this->syncId, $totalSteps);
         $tracker->addLog($this->syncId, 'Sincronización iniciada.');
 
@@ -60,8 +63,10 @@ class RunProductionSyncJob implements ShouldQueue
         $tracker->addLog(
             $this->syncId,
             sprintf(
-                'Sincronización finalizada. Configuración: %s. Proyectos: %d creados, %d actualizados. Plantas: %d creadas, %d actualizadas.',
+                'Sincronización finalizada. Configuración: %s. Asesores: %d creados, %d actualizados. Proyectos: %d creados, %d actualizados. Plantas: %d creadas, %d actualizadas.',
                 $result['site_settings'],
+                $result['advisors']['created'],
+                $result['advisors']['updated'],
                 $result['projects']['created'],
                 $result['projects']['updated'],
                 $result['plants']['created'],

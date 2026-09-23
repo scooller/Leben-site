@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Asesor;
 use App\Models\Plant;
 use App\Models\Proyecto;
 use App\Models\SiteSetting;
@@ -20,6 +21,12 @@ class ProductionSyncController extends Controller
                 'app_env' => config('app.env'),
             ],
             'site_settings' => SiteSetting::current()->syncPayload(),
+            'advisors' => Asesor::query()
+                ->orderBy('id', 'asc')
+                ->get()
+                ->map(static fn(Asesor $advisor): array => $advisor->syncPayload())
+                ->values()
+                ->all(),
             'projects' => Proyecto::query()
                 ->orderBy('id', 'asc')
                 ->get()

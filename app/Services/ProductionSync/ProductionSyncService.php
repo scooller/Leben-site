@@ -2,6 +2,7 @@
 
 namespace App\Services\ProductionSync;
 
+use App\Models\Asesor;
 use App\Models\Plant;
 use App\Models\Proyecto;
 use App\Models\SiteSetting;
@@ -13,7 +14,7 @@ use Throwable;
 class ProductionSyncService
 {
     /**
-     * @return array{meta: array<string, mixed>, site_settings: array<string, mixed>, projects: list<array<string, mixed>>, plants: list<array<string, mixed>>}
+     * @return array{meta: array<string, mixed>, site_settings: array<string, mixed>, advisors: list<array<string, mixed>>, projects: list<array<string, mixed>>, plants: list<array<string, mixed>>}
      */
     public function fetchSnapshot(?string $baseUrl = null, ?string $token = null, ?string $authorizedUrl = null): array
     {
@@ -38,6 +39,7 @@ class ProductionSyncService
                     'error' => 'Falta configurar PRODUCTION_SYNC_BASE_URL o PRODUCTION_SYNC_TOKEN.',
                 ],
                 'site_settings' => [],
+                'advisors' => [],
                 'projects' => [],
                 'plants' => [],
             ];
@@ -78,6 +80,7 @@ class ProductionSyncService
                     'error' => $errorMessage,
                 ],
                 'site_settings' => [],
+                'advisors' => [],
                 'projects' => [],
                 'plants' => [],
             ];
@@ -95,29 +98,32 @@ class ProductionSyncService
                     'error' => (string) ($response->json('message') ?? 'No se pudo obtener la sincronización de producción.'),
                 ],
                 'site_settings' => [],
+                'advisors' => [],
                 'projects' => [],
                 'plants' => [],
             ];
         }
 
-        /** @var array{meta?: array<string, mixed>, site_settings?: array<string, mixed>, projects?: list<array<string, mixed>>, plants?: list<array<string, mixed>>} $payload */
+        /** @var array{meta?: array<string, mixed>, site_settings?: array<string, mixed>, advisors?: list<array<string, mixed>>, projects?: list<array<string, mixed>>, plants?: list<array<string, mixed>>} $payload */
         $payload = $response->json();
 
         return [
             'meta' => (array) ($payload['meta'] ?? []),
             'site_settings' => (array) ($payload['site_settings'] ?? []),
+            'advisors' => array_values((array) ($payload['advisors'] ?? [])),
             'projects' => array_values((array) ($payload['projects'] ?? [])),
             'plants' => array_values((array) ($payload['plants'] ?? [])),
         ];
     }
 
     /**
-     * @param  array{site_settings?: array<string, mixed>, projects?: list<array<string, mixed>>, plants?: list<array<string, mixed>>}  $snapshot
-     * @return array{site_settings: string, projects: array{created:int, updated:int, skipped:int}, plants: array{created:int, updated:int, skipped:int}}
+     * @param  array{site_settings?: array<string, mixed>, advisors?: list<array<string, mixed>>, projects?: list<array<string, mixed>>, plants?: list<array<string, mixed>>}  $snapshot
+     * @return array{site_settings: string, advisors: array{created:int, updated:int, skipped:int}, projects: array{created:int, updated:int, skipped:int}, plants: array{created:int, updated:int, skipped:int}}
      */
     public function syncSnapshot(string $syncId, array $snapshot, ProductionSyncProgressTracker $tracker): array
     {
         $siteSettingsStatus = 'skipped';
+        $advisorsResult = ['created' => 0, 'updated' => 0, 'skipped' => 0];
         $projectsResult = ['created' => 0, 'updated' => 0, 'skipped' => 0];
         $plantsResult = ['created' => 0, 'updated' => 0, 'skipped' => 0];
 
@@ -136,6 +142,11 @@ class ProductionSyncService
             $projectsResult[$status]++;
         }
 
+        foreach ((array) ($snapshot['advisors'] ?? []) as $advisorPayload) {
+            $status = $this->syncAdvisor($syncId, (array) $advisorPayload, $tracker);
+            $advisorsResult[$status]++;
+        }
+
         foreach ((array) ($snapshot['plants'] ?? []) as $plantPayload) {
             $status = $this->syncPlant($syncId, (array) $plantPayload, $tracker);
             $plantsResult[$status]++;
@@ -143,6 +154,7 @@ class ProductionSyncService
 
         return [
             'site_settings' => $siteSettingsStatus,
+            'advisors' => $advisorsResult,
             'projects' => $projectsResult,
             'plants' => $plantsResult,
         ];
@@ -210,6 +222,65 @@ class ProductionSyncService
     /**
      * @param  array<string, mixed>  $payload
      */
+    private function syncAdvisor(string $syncId, array $payload, ProductionSyncProgressTracker $tracker): string
+    {
+        $salesforceId = trim((string) ($payload['salesforce_id'] ?? ''));
+        $email = trim((string) ($payload['email'] ?? ''));
+
+        if ($salesforceId === '' && $email === '') {
+            $tracker->increment($syncId, 'skipped');
+            $tracker->increment($syncId, 'processed');
+            $tracker->addLog($syncId, 'Asesor omitido: falta salesforce_id y email.');
+
+            return 'skipped';
+        }
+
+        $attributes = Arr::only($payload, Asesor::syncableFields());
+
+        $existing = null;
+        if ($salesforceId !== '') {
+            $existing = Asesor::query()->where('salesforce_id', $salesforceId)->first();
+        }
+        if (! $existing && $email !== '') {
+            $existing = Asesor::query()->where('email', $email)->first();
+        }
+
+        $status = $existing === null ? 'created' : 'updated';
+
+        if ($existing) {
+            $existing->update($attributes);
+            $advisor = $existing;
+        } else {
+            $advisor = Asesor::query()->create($attributes);
+        }
+
+        if (array_key_exists('proyectos_salesforce_ids', $payload) && is_array($payload['proyectos_salesforce_ids'])) {
+            $sfIds = array_values(array_filter(array_map('strval', $payload['proyectos_salesforce_ids'])));
+            if ($sfIds !== []) {
+                $proyectoIds = Proyecto::query()
+                    ->whereIn('salesforce_id', $sfIds)
+                    ->pluck('id')
+                    ->all();
+                $advisor->proyectos()->sync($proyectoIds);
+            } else {
+                $advisor->proyectos()->sync([]);
+            }
+        }
+
+        $tracker->increment($syncId, $status);
+        $tracker->increment($syncId, 'processed');
+        $tracker->addLog($syncId, sprintf(
+            'Asesor %s: %s.',
+            $salesforceId !== '' ? $salesforceId : $email,
+            $status === 'created' ? 'creado' : 'actualizado'
+        ));
+
+        return $status;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
     private function syncPlant(string $syncId, array $payload, ProductionSyncProgressTracker $tracker): string
     {
         $salesforceProductId = trim((string) ($payload['salesforce_product_id'] ?? ''));
@@ -227,6 +298,16 @@ class ProductionSyncService
 
         if ($attributes['product_code'] === '') {
             $attributes['product_code'] = $salesforceProductId;
+        }
+
+        if (array_key_exists('asesor_salesforce_id', $payload)) {
+            $sfAsesorId = trim((string) ($payload['asesor_salesforce_id'] ?? ''));
+            if ($sfAsesorId !== '') {
+                $asesorId = Asesor::query()->where('salesforce_id', $sfAsesorId)->value('id');
+                $attributes['asesor_id'] = $asesorId ?: null;
+            } else {
+                $attributes['asesor_id'] = null;
+            }
         }
 
         $existing = Plant::query()->where('salesforce_product_id', $salesforceProductId)->first();

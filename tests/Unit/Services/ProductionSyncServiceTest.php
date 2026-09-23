@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Services;
 
+use App\Models\Asesor;
 use App\Models\Plant;
 use App\Models\Proyecto;
 use App\Models\SiteSetting;
@@ -85,6 +86,14 @@ class ProductionSyncServiceTest extends TestCase
             'name' => 'Planta Local',
         ]);
 
+        Asesor::factory()->create([
+            'salesforce_id' => 'SF-ASESOR-1',
+            'first_name' => 'Carlos',
+            'last_name' => 'Local',
+            'email' => 'carlos@example.com',
+            'is_active' => true,
+        ]);
+
         $snapshot = [
             'site_settings' => [
                 'site_name' => 'Prod Site',
@@ -106,16 +115,36 @@ class ProductionSyncServiceTest extends TestCase
                     'is_active' => true,
                 ],
             ],
+            'advisors' => [
+                [
+                    'salesforce_id' => 'SF-ASESOR-1',
+                    'first_name' => 'Carlos',
+                    'last_name' => 'Actualizado',
+                    'email' => 'carlos@example.com',
+                    'is_active' => true,
+                    'proyectos_salesforce_ids' => ['SF-PROJ-1'],
+                ],
+                [
+                    'salesforce_id' => 'SF-ASESOR-2',
+                    'first_name' => 'Maria',
+                    'last_name' => 'Nueva',
+                    'email' => 'maria@example.com',
+                    'is_active' => true,
+                    'proyectos_salesforce_ids' => ['SF-PROJ-2'],
+                ],
+            ],
             'plants' => [
                 [
                     'salesforce_product_id' => 'SF-PLANT-1',
                     'salesforce_proyecto_id' => 'SF-PROJ-1',
+                    'asesor_salesforce_id' => 'SF-ASESOR-1',
                     'name' => 'Planta Actualizada',
                     'is_active' => true,
                 ],
                 [
                     'salesforce_product_id' => 'SF-PLANT-2',
                     'salesforce_proyecto_id' => 'SF-PROJ-2',
+                    'asesor_salesforce_id' => 'SF-ASESOR-2',
                     'name' => 'Planta Nueva',
                     'is_active' => true,
                 ],
@@ -125,15 +154,27 @@ class ProductionSyncServiceTest extends TestCase
         $service = app(ProductionSyncService::class);
         $tracker = app(ProductionSyncProgressTracker::class);
         $syncId = 'sync-test-1';
-        $tracker->initialize($syncId, 5, 'https://admin.ileben.cl');
+        $tracker->initialize($syncId, 7, 'https://admin.ileben.cl');
 
         $result = $service->syncSnapshot($syncId, $snapshot, $tracker);
 
         $this->assertSame('updated', $result['site_settings']);
+        $this->assertSame(1, $result['advisors']['created']);
+        $this->assertSame(1, $result['advisors']['updated']);
         $this->assertSame(1, $result['projects']['created']);
         $this->assertSame(1, $result['projects']['updated']);
         $this->assertSame(1, $result['plants']['created']);
         $this->assertSame(1, $result['plants']['updated']);
+
+        $this->assertDatabaseHas('asesores', [
+            'salesforce_id' => 'SF-ASESOR-1',
+            'last_name' => 'Actualizado',
+        ]);
+
+        $this->assertDatabaseHas('asesores', [
+            'salesforce_id' => 'SF-ASESOR-2',
+            'last_name' => 'Nueva',
+        ]);
 
         $this->assertDatabaseHas('proyectos', [
             'salesforce_id' => 'SF-PROJ-1',
@@ -145,13 +186,22 @@ class ProductionSyncServiceTest extends TestCase
             'name' => 'Proyecto Nuevo',
         ]);
 
+        $advisor1 = Asesor::query()->where('salesforce_id', 'SF-ASESOR-1')->first();
+        $advisor2 = Asesor::query()->where('salesforce_id', 'SF-ASESOR-2')->first();
+        $this->assertNotNull($advisor1);
+        $this->assertNotNull($advisor2);
+        $this->assertTrue($advisor1->proyectos()->where('salesforce_id', 'SF-PROJ-1')->exists());
+        $this->assertTrue($advisor2->proyectos()->where('salesforce_id', 'SF-PROJ-2')->exists());
+
         $this->assertDatabaseHas('plants', [
             'salesforce_product_id' => 'SF-PLANT-1',
+            'asesor_id' => $advisor1->id,
             'name' => 'Planta Actualizada',
         ]);
 
         $this->assertDatabaseHas('plants', [
             'salesforce_product_id' => 'SF-PLANT-2',
+            'asesor_id' => $advisor2->id,
             'name' => 'Planta Nueva',
         ]);
 

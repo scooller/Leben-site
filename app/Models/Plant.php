@@ -111,7 +111,13 @@ class Plant extends Model
      */
     public function syncPayload(): array
     {
-        return Arr::only($this->attributesToArray(), self::syncableFields());
+        $payload = Arr::only($this->attributesToArray(), self::syncableFields());
+
+        if (filled($this->asesor_id)) {
+            $payload['asesor_salesforce_id'] = $this->asesor?->salesforce_id;
+        }
+
+        return $payload;
     }
 
     /**

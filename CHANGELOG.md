@@ -4,6 +4,24 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.27] - 2026-09-23
+
+### 👥 Sincronización de Asesores desde Producción y Vinculación con Proyectos y Plantas
+
+- **Exportación de Producción (`app/Http/Controllers/Api/ProductionSyncController.php`, `app/Models/Asesor.php`)**:
+  - Incorporada colección `advisors` en el payload de exportación (`/api/v1/production-sync/export`), incluyendo `salesforce_id`, nombres, email, WhatsApp, avatar, estado activo y sus `proyectos_salesforce_ids` asociados.
+  - Añadido `asesor_salesforce_id` en el `syncPayload()` de `Plant` para permitir la posterior vinculación de asesores a plantas.
+- **Servicio de Sincronización (`app/Services/ProductionSync/ProductionSyncService.php`)**:
+  - Incorporada descarga e importación de asesores mediante `syncAdvisor()` con resolución inteligente por `salesforce_id` (o fallback por `email`).
+  - Sincronización automática de relaciones en tabla pivote `asesor_proyecto` mapeando los `proyectos_salesforce_ids`.
+  - Vinculación automática en `syncPlant()` del `asesor_id` correspondiente a partir del `asesor_salesforce_id`.
+  - Orden de sincronización estructurado: `site_settings` -> `projects` -> `advisors` -> `plants`.
+- **Trabajo y Comandos (`app/Jobs/RunProductionSyncJob.php`, `app/Console/Commands/SyncFromProductionCommand.php`)**:
+  - Actualizado conteo de pasos totales y mensajes de log final para informar asesores creados y actualizados.
+  - Salida de consola Artisan en `production:sync` incluye desglose de asesores recibidos y procesados.
+- **Pruebas Automatizadas (`tests/Feature/Api/ProductionSyncExportApiTest.php`, `tests/Unit/Services/ProductionSyncServiceTest.php`)**:
+  - Pruebas unitarias y de integración actualizadas verificando la exportación, creación, actualización y asociación bidireccional de asesores y plantas. Suite completa pasando (458 tests, 1907 aserciones).
+
 ## [1.9.26] - 2026-09-23
 
 ### 🔢 Orden Natural en Tabla de Plantas (Nombre, Precios, Porcentajes, Piso)
