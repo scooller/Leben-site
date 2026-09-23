@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::table('proyectos', function (Blueprint $table) {
             if (! Schema::hasColumn('proyectos', 'descuento_iva')) {
                 $table->decimal('descuento_iva', 8, 2)
+                    ->nullable()
                     ->default(0)
                     ->after('descuento_maximo_unidad');
             }

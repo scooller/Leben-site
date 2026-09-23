@@ -4,6 +4,15 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.31] - 2026-09-23
+
+### ⚙️ SiteSettings: Eliminación de Configuración 'Descuento expuesto en API'
+
+- **Panel Filament (`app/Filament/Pages/SiteSettings.php`)**:
+  - Eliminada la sección `'Descuento expuesto en API'` (`extra_settings.salesforce_discount_source`), dado que los descuentos quedaron centralizados de forma unificada a nivel de proyecto (Sale ON: `descuento_maximo_unidad`, Sale OFF: `descuento_defecto_cotizacion_web`).
+- **Pruebas (`tests/Feature/SiteSettingsSalesforceSyncConfigTest.php`)**:
+  - Removido test `test_it_persists_salesforce_discount_source_in_extra_settings` correspondiente al ajuste deprecado.
+
 ## [1.9.30] - 2026-09-23
 
 ### 🏢 Desacople de Descuentos de Planta y Centralización en Proyecto

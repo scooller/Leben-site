@@ -681,7 +681,7 @@ class SiteSettings extends Page implements HasForms
                                             ->label('Imagen Open Graph')
                                             ->helperText('Selecciona una imagen desde Curator para compartir en redes sociales (ideal: 1200x630px).'),
                                     ])
-                                    ->columns(1),
+                                    ->columns(2),
 
                                 Section::make('Evento Sale — SEO')
                                     ->description('Campos de SEO estructurado para Google durante eventos Cyber/Sale. Se activan automáticamente cuando "Evento Sale" está habilitado.')
@@ -713,7 +713,7 @@ class SiteSettings extends Page implements HasForms
                                             ->label('Imagen OG del evento (opcional)')
                                             ->helperText('Si se selecciona, reemplaza la imagen Open Graph estándar durante el evento (ideal: 1200x630px). Deja vacío para usar la imagen OG general.'),
                                     ])
-                                    ->columns(1),
+                                    ->columns(2),
                             ]),
 
                         Tabs\Tab::make('QR')
@@ -839,9 +839,10 @@ class SiteSettings extends Page implements HasForms
 
                                         Textarea::make('contact_address')
                                             ->label('Dirección')
-                                            ->rows(3),
+                                            ->rows(3)
+                                            ->columnSpanFull(),
                                     ])
-                                    ->columns(1),
+                                    ->columns(2),
 
                                 Section::make('Página de Contacto')
                                     ->description('Contenido administrable para la vista de contacto en el frontend')
@@ -1105,7 +1106,7 @@ class SiteSettings extends Page implements HasForms
                                             ->default(15)
                                             ->required(),
                                     ])
-                                    ->columns(1),
+                                    ->columns(2),
 
                                 Section::make('Fuente de precio del frontend')
                                     ->description('Define qué precio se mostrará como valor principal en el catálogo. El precio lista siempre se mantiene como referencia fija.')
@@ -1143,51 +1144,7 @@ class SiteSettings extends Page implements HasForms
                                             ->label('Incluir todos los campos en Description')
                                             ->helperText('Si está activo, el campo Description del Lead incluirá el detalle completo de los campos enviados. Si está desactivado, no se enviará Description.')
                                             ->default(true),
-                                    ])
-                                    ->columns(1),
-
-                                Section::make('Proyectos')
-                                    ->description('Selecciona los campos de proyectos que no se deben actualizar al sincronizar desde Salesforce.')
-                                    ->schema([
-                                        Select::make('extra_settings.salesforce_sync_projects_excluded_fields')
-                                            ->label('Campos excluidos de sincronizacion (Proyectos)')
-                                            ->helperText('Estos campos se mantienen con su valor local al actualizar proyectos existentes.')
-                                            ->options(SyncProjectsAction::getUpdatableFieldOptions())
-                                            ->multiple()
-                                            ->searchable()
-                                            ->preload()
-                                            ->default([]),
-                                    ])
-                                    ->columns(1),
-
-                                Section::make('Plantas')
-                                    ->description('Selecciona los campos de plantas que no se deben actualizar al sincronizar desde Salesforce.')
-                                    ->schema([
-                                        Select::make('extra_settings.salesforce_sync_plants_excluded_fields')
-                                            ->label('Campos excluidos de sincronizacion (Plantas)')
-                                            ->helperText('Estos campos se mantienen con su valor local al actualizar plantas existentes.')
-                                            ->options(SyncPlantsAction::getUpdatableFieldOptions())
-                                            ->multiple()
-                                            ->searchable()
-                                            ->preload()
-                                            ->default([]),
-                                    ])
-                                    ->columns(1),
-
-                                Section::make('Descuento expuesto en API')
-                                    ->description('Define desde qué entidad se toma el porcentaje de descuento para la API pública.')
-                                    ->schema([
-                                        Select::make('extra_settings.salesforce_discount_source')
-                                            ->label('Fuente de descuento para API')
-                                            ->helperText('Project: usa descuento del proyecto. Plant: usa porcentaje de la planta. Si el origen elegido no tiene valor, se usa el otro como fallback.')
-                                            ->options([
-                                                'project' => 'Proyecto',
-                                                'plant' => 'Planta',
-                                            ])
-                                            ->default('project')
-                                            ->searchable(),
-                                    ])
-                                    ->columns(1),
+                                    ]),
 
                                 Section::make('Sincronización Automática de Plantas')
                                     ->description('Configura cada cuánto se sincronizan automáticamente las plantas y qué tipos se incluirán.')
@@ -1214,8 +1171,33 @@ class SiteSettings extends Page implements HasForms
                                             ->searchable()
                                             ->default(['ESTACIONAMIENTO', 'DEPARTAMENTO', 'BODEGA', 'LOCAL'])
                                             ->required(),
-                                    ])
-                                    ->columns(1),
+                                    ]),
+
+                                Section::make('Proyectos')
+                                    ->description('Selecciona los campos de proyectos que no se deben actualizar al sincronizar desde Salesforce.')
+                                    ->schema([
+                                        Select::make('extra_settings.salesforce_sync_projects_excluded_fields')
+                                            ->label('Campos excluidos de sincronizacion (Proyectos)')
+                                            ->helperText('Estos campos se mantienen con su valor local al actualizar proyectos existentes.')
+                                            ->options(SyncProjectsAction::getUpdatableFieldOptions())
+                                            ->multiple()
+                                            ->searchable()
+                                            ->preload()
+                                            ->default([]),
+                                    ]),
+
+                                Section::make('Plantas')
+                                    ->description('Selecciona los campos de plantas que no se deben actualizar al sincronizar desde Salesforce.')
+                                    ->schema([
+                                        Select::make('extra_settings.salesforce_sync_plants_excluded_fields')
+                                            ->label('Campos excluidos de sincronizacion (Plantas)')
+                                            ->helperText('Estos campos se mantienen con su valor local al actualizar plantas existentes.')
+                                            ->options(SyncPlantsAction::getUpdatableFieldOptions())
+                                            ->multiple()
+                                            ->searchable()
+                                            ->preload()
+                                            ->default([]),
+                                    ]),                                
 
                                 Section::make('Conexión OAuth')
                                     ->description('Conecta con Salesforce para autorizar la integración.')
@@ -1250,8 +1232,9 @@ class SiteSettings extends Page implements HasForms
                                                 return new HtmlString($html);
                                             }),
                                     ])
-                                    ->columns(1),
-                            ]),
+                                    ->columnSpanFull(),
+                            ])
+                            ->columns(2),
 
                         Tabs\Tab::make('Mantenimiento')
                             ->icon('heroicon-o-wrench-screwdriver')
