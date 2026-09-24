@@ -4,6 +4,15 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.34] - 2026-09-24
+
+### ⏱️ Prevención de Falso Timeout en Sincronización desde Producción
+
+- **Panel Filament (`app/Filament/Pages/ProductionSyncProgress.php`)**:
+  - En `checkTimeout()`, se detiene la validación de timeout por tiempo total si la importación ya inició (`processed > 0` o `total_steps > 0`), permitiendo importar grandes volúmenes de datos sin interrupción indebida.
+- **Pruebas Automatizadas (`tests/Feature/Filament/ProductionSyncProgressTimeoutTest.php`)**:
+  - Actualizados tests para validar que no ocurre timeout una vez comenzada la importación, manteniendo detección de timeout solo cuando el proceso encolado nunca arranca y excede el límite.
+
 ## [1.9.33] - 2026-09-23
 
 ### 🏷️ Desacople de Descuentos respecto a Evento Sale y Alineación con Pasarelas de Pago

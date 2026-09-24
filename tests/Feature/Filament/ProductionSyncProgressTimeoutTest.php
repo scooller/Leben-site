@@ -12,27 +12,17 @@ use Tests\TestCase;
 
 class ProductionSyncProgressTimeoutTest extends TestCase
 {
-    use RefreshDatabase;
 
-    protected User $user;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->user = User::factory()->create();
-        $this->actingAs($this->user);
-    }
-
-    public function test_progress_page_marks_sync_failed_and_logs_timeout_when_exceeded(): void
+    public function test_progress_page_marks_sync_failed_and_logs_timeout_when_not_started_and_exceeded(): void
     {
         $syncId = 'test-timeout-sync';
         $tracker = app(ProductionSyncProgressTracker::class);
 
-        // Initialize sync that started 5 minutes ago (exceeding default 120s timeout)
-        $tracker->initialize($syncId, 10, 'https://admin.ileben.cl');
+        // Initialize sync with 0 steps (queued but not yet started)
+        $tracker->initialize($syncId, 0, 'https://admin.ileben.cl');
 
-        // Backdate started_at in cache
+        // Backdate started_at in cache (5 minutes ago, exceeding default 120s timeout)
         $metaKey = "production_sync:{$syncId}:meta";
         $meta = (array) Cache::get($metaKey, []);
         $meta['started_at'] = Carbon::now()->subMinutes(5)->toDateTimeString();
@@ -64,12 +54,36 @@ class ProductionSyncProgressTimeoutTest extends TestCase
         $tracker = app(ProductionSyncProgressTracker::class);
 
         // Initialize sync that started 5 seconds ago
-        $tracker->initialize($syncId, 10, 'https://admin.ileben.cl');
+        $tracker->initialize($syncId, 0, 'https://admin.ileben.cl');
 
         $page = new ProductionSyncProgress();
         $page->syncId = $syncId;
         $page->refreshProgress();
 
+        $this->assertSame('running', $page->snapshot['status']);
+        $this->assertNull($page->snapshot['error']);
+    }
+
+    public function test_progress_page_does_not_timeout_if_import_has_already_started(): void
+    {
+        $syncId = 'test-started-sync';
+        $tracker = app(ProductionSyncProgressTracker::class);
+
+        // Initialize sync and simulate that import has started with total steps and processed records
+        $tracker->initialize($syncId, 500, 'https://admin.ileben.cl');
+        $tracker->increment($syncId, 'processed', 150);
+
+        // Backdate started_at by 10 minutes
+        $metaKey = "production_sync:{$syncId}:meta";
+        $meta = (array) Cache::get($metaKey, []);
+        $meta['started_at'] = Carbon::now()->subMinutes(10)->toDateTimeString();
+        Cache::put($metaKey, $meta, 3600);
+
+        $page = new ProductionSyncProgress();
+        $page->syncId = $syncId;
+        $page->refreshProgress();
+
+        // Must still be running, NOT failed by timeout
         $this->assertSame('running', $page->snapshot['status']);
         $this->assertNull($page->snapshot['error']);
     }
