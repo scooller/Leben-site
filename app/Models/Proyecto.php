@@ -213,6 +213,10 @@ class Proyecto extends Model
             'descuento_maximo_unidad',
             'descuento_iva',
             'entrega_inmediata',
+            'transbank_commerce_code',
+            'manual_payment_instructions',
+            'manual_payment_bank_accounts',
+            'manual_payment_link',
         ];
     }
 

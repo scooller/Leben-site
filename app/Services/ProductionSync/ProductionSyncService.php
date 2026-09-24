@@ -118,38 +118,60 @@ class ProductionSyncService
 
     /**
      * @param  array{site_settings?: array<string, mixed>, advisors?: list<array<string, mixed>>, projects?: list<array<string, mixed>>, plants?: list<array<string, mixed>>}  $snapshot
+     * @param  list<string>  $entities
      * @return array{site_settings: string, advisors: array{created:int, updated:int, skipped:int}, projects: array{created:int, updated:int, skipped:int}, plants: array{created:int, updated:int, skipped:int}}
      */
-    public function syncSnapshot(string $syncId, array $snapshot, ProductionSyncProgressTracker $tracker): array
+    public function syncSnapshot(string $syncId, array $snapshot, ProductionSyncProgressTracker $tracker, array $entities = ['site_settings', 'projects', 'advisors', 'plants'], string $mode = 'update'): array
     {
         $siteSettingsStatus = 'skipped';
         $advisorsResult = ['created' => 0, 'updated' => 0, 'skipped' => 0];
         $projectsResult = ['created' => 0, 'updated' => 0, 'skipped' => 0];
         $plantsResult = ['created' => 0, 'updated' => 0, 'skipped' => 0];
 
-        $siteSettingsPayload = (array) ($snapshot['site_settings'] ?? []);
+        $shouldSyncSettings = in_array('site_settings', $entities, true);
+        $shouldSyncProjects = in_array('projects', $entities, true);
+        $shouldSyncAdvisors = in_array('advisors', $entities, true);
+        $shouldSyncPlants = in_array('plants', $entities, true);
 
-        if ($siteSettingsPayload !== []) {
-            $siteSettingsStatus = $this->syncSiteSettings($syncId, $siteSettingsPayload, $tracker);
+        if ($shouldSyncSettings) {
+            $siteSettingsPayload = (array) ($snapshot['site_settings'] ?? []);
+
+            if ($siteSettingsPayload !== []) {
+                $siteSettingsStatus = $this->syncSiteSettings($syncId, $siteSettingsPayload, $tracker, $mode);
+            } else {
+                $tracker->increment($syncId, 'skipped');
+                $tracker->increment($syncId, 'processed');
+                $tracker->addLog($syncId, 'No se recibió configuración de sitio para sincronizar.');
+            }
         } else {
-            $tracker->increment($syncId, 'skipped');
-            $tracker->increment($syncId, 'processed');
-            $tracker->addLog($syncId, 'No se recibió configuración de sitio para sincronizar.');
+            $tracker->addLog($syncId, 'Sincronización de configuración del sitio omitida por selección.');
         }
 
-        foreach ((array) ($snapshot['projects'] ?? []) as $projectPayload) {
-            $status = $this->syncProject($syncId, (array) $projectPayload, $tracker);
-            $projectsResult[$status]++;
+        if ($shouldSyncProjects) {
+            foreach ((array) ($snapshot['projects'] ?? []) as $projectPayload) {
+                $status = $this->syncProject($syncId, (array) $projectPayload, $tracker, $mode);
+                $projectsResult[$status]++;
+            }
+        } else {
+            $tracker->addLog($syncId, 'Sincronización de proyectos omitida por selección.');
         }
 
-        foreach ((array) ($snapshot['advisors'] ?? []) as $advisorPayload) {
-            $status = $this->syncAdvisor($syncId, (array) $advisorPayload, $tracker);
-            $advisorsResult[$status]++;
+        if ($shouldSyncAdvisors) {
+            foreach ((array) ($snapshot['advisors'] ?? []) as $advisorPayload) {
+                $status = $this->syncAdvisor($syncId, (array) $advisorPayload, $tracker, $mode);
+                $advisorsResult[$status]++;
+            }
+        } else {
+            $tracker->addLog($syncId, 'Sincronización de asesores omitida por selección.');
         }
 
-        foreach ((array) ($snapshot['plants'] ?? []) as $plantPayload) {
-            $status = $this->syncPlant($syncId, (array) $plantPayload, $tracker);
-            $plantsResult[$status]++;
+        if ($shouldSyncPlants) {
+            foreach ((array) ($snapshot['plants'] ?? []) as $plantPayload) {
+                $status = $this->syncPlant($syncId, (array) $plantPayload, $tracker, $mode);
+                $plantsResult[$status]++;
+            }
+        } else {
+            $tracker->addLog($syncId, 'Sincronización de plantas omitida por selección.');
         }
 
         return [
@@ -163,15 +185,31 @@ class ProductionSyncService
     /**
      * @param  array<string, mixed>  $payload
      */
-    private function syncSiteSettings(string $syncId, array $payload, ProductionSyncProgressTracker $tracker): string
+    private function syncSiteSettings(string $syncId, array $payload, ProductionSyncProgressTracker $tracker, string $mode = 'update'): string
     {
+        if ($mode === 'skip') {
+            $tracker->increment($syncId, 'skipped');
+            $tracker->increment($syncId, 'processed');
+            $tracker->addLog($syncId, 'Configuración del sitio omitida (modo saltar existentes).');
+
+            return 'skipped';
+        }
+
         $settings = SiteSetting::current();
         $attributes = Arr::only($payload, SiteSetting::syncableFields());
 
         if (array_key_exists('extra_settings', $payload) && is_array($payload['extra_settings'])) {
             $currentExtraSettings = is_array($settings->extra_settings) ? $settings->extra_settings : [];
-            $incomingExtraSettings = $this->filterExtraSettings((array) $payload['extra_settings']);
-            $attributes['extra_settings'] = array_replace_recursive($currentExtraSettings, $incomingExtraSettings);
+            $incomingExtraSettings = SiteSetting::filterSyncableExtraSettings((array) $payload['extra_settings']);
+
+            if ($mode === 'overwrite') {
+                if (isset($currentExtraSettings['salesforce_oauth'])) {
+                    $incomingExtraSettings['salesforce_oauth'] = $currentExtraSettings['salesforce_oauth'];
+                }
+                $attributes['extra_settings'] = $incomingExtraSettings;
+            } else {
+                $attributes['extra_settings'] = array_replace_recursive($currentExtraSettings, $incomingExtraSettings);
+            }
         }
 
         $settings->fill($attributes);
@@ -187,7 +225,7 @@ class ProductionSyncService
     /**
      * @param  array<string, mixed>  $payload
      */
-    private function syncProject(string $syncId, array $payload, ProductionSyncProgressTracker $tracker): string
+    private function syncProject(string $syncId, array $payload, ProductionSyncProgressTracker $tracker, string $mode = 'update'): string
     {
         $salesforceId = trim((string) ($payload['salesforce_id'] ?? ''));
 
@@ -199,8 +237,17 @@ class ProductionSyncService
             return 'skipped';
         }
 
-        $attributes = Arr::only($payload, Proyecto::syncableFields());
         $existing = Proyecto::query()->where('salesforce_id', $salesforceId)->first();
+
+        if ($existing !== null && $mode === 'skip') {
+            $tracker->increment($syncId, 'skipped');
+            $tracker->increment($syncId, 'processed');
+            $tracker->addLog($syncId, sprintf('Proyecto %s: omitido (ya existe).', $salesforceId));
+
+            return 'skipped';
+        }
+
+        $attributes = Arr::only($payload, Proyecto::syncableFields());
         $status = $existing === null ? 'created' : 'updated';
 
         Proyecto::query()->updateOrCreate(
@@ -222,7 +269,7 @@ class ProductionSyncService
     /**
      * @param  array<string, mixed>  $payload
      */
-    private function syncAdvisor(string $syncId, array $payload, ProductionSyncProgressTracker $tracker): string
+    private function syncAdvisor(string $syncId, array $payload, ProductionSyncProgressTracker $tracker, string $mode = 'update'): string
     {
         $salesforceId = trim((string) ($payload['salesforce_id'] ?? ''));
         $email = trim((string) ($payload['email'] ?? ''));
@@ -235,8 +282,6 @@ class ProductionSyncService
             return 'skipped';
         }
 
-        $attributes = Arr::only($payload, Asesor::syncableFields());
-
         $existing = null;
         if ($salesforceId !== '') {
             $existing = Asesor::query()->where('salesforce_id', $salesforceId)->first();
@@ -245,6 +290,15 @@ class ProductionSyncService
             $existing = Asesor::query()->where('email', $email)->first();
         }
 
+        if ($existing !== null && $mode === 'skip') {
+            $tracker->increment($syncId, 'skipped');
+            $tracker->increment($syncId, 'processed');
+            $tracker->addLog($syncId, sprintf('Asesor %s: omitido (ya existe).', $salesforceId !== '' ? $salesforceId : $email));
+
+            return 'skipped';
+        }
+
+        $attributes = Arr::only($payload, Asesor::syncableFields());
         $status = $existing === null ? 'created' : 'updated';
 
         if ($existing) {
@@ -281,7 +335,7 @@ class ProductionSyncService
     /**
      * @param  array<string, mixed>  $payload
      */
-    private function syncPlant(string $syncId, array $payload, ProductionSyncProgressTracker $tracker): string
+    private function syncPlant(string $syncId, array $payload, ProductionSyncProgressTracker $tracker, string $mode = 'update'): string
     {
         $salesforceProductId = trim((string) ($payload['salesforce_product_id'] ?? ''));
 
@@ -289,6 +343,16 @@ class ProductionSyncService
             $tracker->increment($syncId, 'skipped');
             $tracker->increment($syncId, 'processed');
             $tracker->addLog($syncId, 'Planta omitida: falta salesforce_product_id.');
+
+            return 'skipped';
+        }
+
+        $existing = Plant::query()->where('salesforce_product_id', $salesforceProductId)->first();
+
+        if ($existing !== null && $mode === 'skip') {
+            $tracker->increment($syncId, 'skipped');
+            $tracker->increment($syncId, 'processed');
+            $tracker->addLog($syncId, sprintf('Planta %s: omitida (ya existe).', $salesforceProductId));
 
             return 'skipped';
         }
@@ -310,7 +374,10 @@ class ProductionSyncService
             }
         }
 
-        $existing = Plant::query()->where('salesforce_product_id', $salesforceProductId)->first();
+        if (array_key_exists('unidad_sale', $payload)) {
+            $attributes['unidad_sale'] = (bool) $payload['unidad_sale'];
+        }
+
         $status = $existing === null ? 'created' : 'updated';
 
         Plant::query()->updateOrCreate(
@@ -327,40 +394,5 @@ class ProductionSyncService
         ));
 
         return $status;
-    }
-
-    /**
-     * @param  array<string, mixed>  $extraSettings
-     * @return array<string, mixed>
-     */
-    private function filterExtraSettings(array $extraSettings): array
-    {
-        $filtered = [];
-
-        foreach ($extraSettings as $key => $value) {
-            $normalizedKey = strtolower((string) $key);
-
-            if ($normalizedKey === 'salesforce_oauth') {
-                continue;
-            }
-
-            if (str_contains($normalizedKey, 'url') || str_ends_with($normalizedKey, '_id')) {
-                continue;
-            }
-
-            if (is_array($value)) {
-                $nested = $this->filterExtraSettings($value);
-
-                if ($nested !== []) {
-                    $filtered[$key] = $nested;
-                }
-
-                continue;
-            }
-
-            $filtered[$key] = $value;
-        }
-
-        return $filtered;
     }
 }

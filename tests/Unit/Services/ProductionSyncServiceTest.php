@@ -72,6 +72,7 @@ class ProductionSyncServiceTest extends TestCase
             'site_name' => 'Local',
             'extra_settings' => [
                 'keep_local' => 'yes',
+                'salesforce_oauth' => ['access_token' => 'secret-local-token'],
             ],
         ]);
 
@@ -84,6 +85,7 @@ class ProductionSyncServiceTest extends TestCase
             'salesforce_product_id' => 'SF-PLANT-1',
             'salesforce_proyecto_id' => 'SF-PROJ-1',
             'name' => 'Planta Local',
+            'unidad_sale' => false,
         ]);
 
         Asesor::factory()->create([
@@ -99,7 +101,9 @@ class ProductionSyncServiceTest extends TestCase
                 'site_name' => 'Prod Site',
                 'mostrar_plantas' => true,
                 'extra_settings' => [
-                    'public_value' => 'ok',
+                    'default_meta_title' => 'Prod Title',
+                    'price_source' => 'final',
+                    'salesforce_oauth' => ['access_token' => 'compromised-remote-token'],
                     'hero_url' => 'https://blocked.example.com',
                 ],
             ],
@@ -107,11 +111,18 @@ class ProductionSyncServiceTest extends TestCase
                 [
                     'salesforce_id' => 'SF-PROJ-1',
                     'name' => 'Proyecto Actualizado',
+                    'descuento_defecto_cotizacion_web' => 5.5,
+                    'descuento_maximo_unidad' => 10.0,
+                    'descuento_iva' => 19.0,
+                    'transbank_commerce_code' => '597055555532',
+                    'manual_payment_instructions' => 'Instrucciones manuales',
                     'is_active' => true,
                 ],
                 [
                     'salesforce_id' => 'SF-PROJ-2',
                     'name' => 'Proyecto Nuevo',
+                    'descuento_defecto_cotizacion_web' => 3.0,
+                    'descuento_maximo_unidad' => 7.5,
                     'is_active' => true,
                 ],
             ],
@@ -139,6 +150,7 @@ class ProductionSyncServiceTest extends TestCase
                     'salesforce_proyecto_id' => 'SF-PROJ-1',
                     'asesor_salesforce_id' => 'SF-ASESOR-1',
                     'name' => 'Planta Actualizada',
+                    'unidad_sale' => true,
                     'is_active' => true,
                 ],
                 [
@@ -146,6 +158,7 @@ class ProductionSyncServiceTest extends TestCase
                     'salesforce_proyecto_id' => 'SF-PROJ-2',
                     'asesor_salesforce_id' => 'SF-ASESOR-2',
                     'name' => 'Planta Nueva',
+                    'unidad_sale' => 1,
                     'is_active' => true,
                 ],
             ],
@@ -179,11 +192,17 @@ class ProductionSyncServiceTest extends TestCase
         $this->assertDatabaseHas('proyectos', [
             'salesforce_id' => 'SF-PROJ-1',
             'name' => 'Proyecto Actualizado',
+            'descuento_defecto_cotizacion_web' => 5.5,
+            'descuento_maximo_unidad' => 10.0,
+            'transbank_commerce_code' => '597055555532',
+            'manual_payment_instructions' => 'Instrucciones manuales',
         ]);
 
         $this->assertDatabaseHas('proyectos', [
             'salesforce_id' => 'SF-PROJ-2',
             'name' => 'Proyecto Nuevo',
+            'descuento_defecto_cotizacion_web' => 3.0,
+            'descuento_maximo_unidad' => 7.5,
         ]);
 
         $advisor1 = Asesor::query()->where('salesforce_id', 'SF-ASESOR-1')->first();
@@ -197,12 +216,14 @@ class ProductionSyncServiceTest extends TestCase
             'salesforce_product_id' => 'SF-PLANT-1',
             'asesor_id' => $advisor1->id,
             'name' => 'Planta Actualizada',
+            'unidad_sale' => 1,
         ]);
 
         $this->assertDatabaseHas('plants', [
             'salesforce_product_id' => 'SF-PLANT-2',
             'asesor_id' => $advisor2->id,
             'name' => 'Planta Nueva',
+            'unidad_sale' => 1,
         ]);
 
         $settings = SiteSetting::current()->fresh();
@@ -210,8 +231,63 @@ class ProductionSyncServiceTest extends TestCase
 
         $this->assertSame('Prod Site', $settings->site_name);
         $this->assertSame('yes', $extra['keep_local'] ?? null);
-        $this->assertSame('ok', $extra['public_value'] ?? null);
+        $this->assertSame('Prod Title', $extra['default_meta_title'] ?? null);
+        $this->assertSame('final', $extra['price_source'] ?? null);
+        $this->assertSame(['access_token' => 'secret-local-token'], $extra['salesforce_oauth'] ?? null);
         $this->assertArrayNotHasKey('hero_url', $extra);
+    }
+
+    public function test_sync_snapshot_selective_entities_skips_unselected_modules(): void
+    {
+        Proyecto::factory()->create([
+            'salesforce_id' => 'SF-PROJ-KEEP',
+            'name' => 'Proyecto Original',
+        ]);
+
+        $snapshot = [
+            'site_settings' => [
+                'site_name' => 'Prod Ignored',
+            ],
+            'projects' => [
+                [
+                    'salesforce_id' => 'SF-PROJ-KEEP',
+                    'name' => 'Proyecto Overwrite',
+                    'is_active' => true,
+                ],
+            ],
+            'plants' => [
+                [
+                    'salesforce_product_id' => 'SF-PLANT-NEW',
+                    'salesforce_proyecto_id' => 'SF-PROJ-KEEP',
+                    'name' => 'Planta Sincronizada',
+                    'unidad_sale' => true,
+                    'is_active' => true,
+                ],
+            ],
+        ];
+
+        $service = app(ProductionSyncService::class);
+        $tracker = app(ProductionSyncProgressTracker::class);
+        $syncId = 'sync-test-selective';
+        $tracker->initialize($syncId, 3, 'https://admin.ileben.cl');
+
+        // Only sync plants
+        $result = $service->syncSnapshot($syncId, $snapshot, $tracker, ['plants']);
+
+        $this->assertSame('skipped', $result['site_settings']);
+        $this->assertSame(0, $result['projects']['updated']);
+        $this->assertSame(1, $result['plants']['created']);
+
+        $this->assertDatabaseHas('proyectos', [
+            'salesforce_id' => 'SF-PROJ-KEEP',
+            'name' => 'Proyecto Original',
+        ]);
+
+        $this->assertDatabaseHas('plants', [
+            'salesforce_product_id' => 'SF-PLANT-NEW',
+            'name' => 'Planta Sincronizada',
+            'unidad_sale' => 1,
+        ]);
     }
 
     public function test_fetch_snapshot_logs_warning_for_non_success_http_response(): void
@@ -315,4 +391,131 @@ class ProductionSyncServiceTest extends TestCase
                 && $request->hasHeader('Authorization', 'Bearer test-token');
         });
     }
+
+    public function test_sync_snapshot_mode_skip_preserves_existing_records_and_only_creates_new(): void
+    {
+        SiteSetting::current()->update([
+            'site_name' => 'Original Local Site',
+        ]);
+
+        Proyecto::factory()->create([
+            'salesforce_id' => 'SF-P-EXIST',
+            'name' => 'Original Local Project',
+        ]);
+
+        Plant::factory()->create([
+            'salesforce_product_id' => 'SF-PL-EXIST',
+            'salesforce_proyecto_id' => 'SF-P-EXIST',
+            'name' => 'Original Local Plant',
+            'unidad_sale' => false,
+        ]);
+
+        Asesor::factory()->create([
+            'salesforce_id' => 'SF-A-EXIST',
+            'first_name' => 'Original',
+            'last_name' => 'Asesor',
+            'email' => 'original@example.com',
+        ]);
+
+        $snapshot = [
+            'site_settings' => [
+                'site_name' => 'Remote Site Name',
+            ],
+            'projects' => [
+                [
+                    'salesforce_id' => 'SF-P-EXIST',
+                    'name' => 'Remote Changed Name',
+                    'is_active' => true,
+                ],
+                [
+                    'salesforce_id' => 'SF-P-NEW',
+                    'name' => 'New Project',
+                    'is_active' => true,
+                ],
+            ],
+            'advisors' => [
+                [
+                    'salesforce_id' => 'SF-A-EXIST',
+                    'first_name' => 'Remote',
+                    'last_name' => 'Changed',
+                    'email' => 'remote@example.com',
+                    'is_active' => true,
+                ],
+                [
+                    'salesforce_id' => 'SF-A-NEW',
+                    'first_name' => 'Nuevo',
+                    'last_name' => 'Asesor',
+                    'email' => 'nuevo@example.com',
+                    'is_active' => true,
+                ],
+            ],
+            'plants' => [
+                [
+                    'salesforce_product_id' => 'SF-PL-EXIST',
+                    'salesforce_proyecto_id' => 'SF-P-EXIST',
+                    'name' => 'Remote Plant Changed',
+                    'unidad_sale' => true,
+                    'is_active' => true,
+                ],
+                [
+                    'salesforce_product_id' => 'SF-PL-NEW',
+                    'salesforce_proyecto_id' => 'SF-P-NEW',
+                    'name' => 'New Plant',
+                    'unidad_sale' => true,
+                    'is_active' => true,
+                ],
+            ],
+        ];
+
+        $service = app(ProductionSyncService::class);
+        $tracker = app(ProductionSyncProgressTracker::class);
+        $syncId = 'sync-test-skip';
+        $tracker->initialize($syncId, 7, 'https://admin.ileben.cl');
+
+        $result = $service->syncSnapshot($syncId, $snapshot, $tracker, ['site_settings', 'projects', 'advisors', 'plants'], 'skip');
+
+        $this->assertSame('skipped', $result['site_settings']);
+        $this->assertSame(1, $result['projects']['skipped']);
+        $this->assertSame(1, $result['projects']['created']);
+        $this->assertSame(1, $result['advisors']['skipped']);
+        $this->assertSame(1, $result['advisors']['created']);
+        $this->assertSame(1, $result['plants']['skipped']);
+        $this->assertSame(1, $result['plants']['created']);
+
+        // Site setting unchanged
+        $this->assertSame('Original Local Site', SiteSetting::current()->fresh()->site_name);
+
+        // Existing project unchanged
+        $this->assertDatabaseHas('proyectos', [
+            'salesforce_id' => 'SF-P-EXIST',
+            'name' => 'Original Local Project',
+        ]);
+        $this->assertDatabaseHas('proyectos', [
+            'salesforce_id' => 'SF-P-NEW',
+            'name' => 'New Project',
+        ]);
+
+        // Existing advisor unchanged
+        $this->assertDatabaseHas('asesores', [
+            'salesforce_id' => 'SF-A-EXIST',
+            'first_name' => 'Original',
+        ]);
+        $this->assertDatabaseHas('asesores', [
+            'salesforce_id' => 'SF-A-NEW',
+            'first_name' => 'Nuevo',
+        ]);
+
+        // Existing plant unchanged
+        $this->assertDatabaseHas('plants', [
+            'salesforce_product_id' => 'SF-PL-EXIST',
+            'name' => 'Original Local Plant',
+            'unidad_sale' => 0,
+        ]);
+        $this->assertDatabaseHas('plants', [
+            'salesforce_product_id' => 'SF-PL-NEW',
+            'name' => 'New Plant',
+            'unidad_sale' => 1,
+        ]);
+    }
 }
+

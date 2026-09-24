@@ -6,6 +6,8 @@ use App\Filament\Pages\ProductionSyncProgress;
 use App\Jobs\RunProductionSyncJob;
 use App\Services\ProductionSync\ProductionSyncProgressTracker;
 use Filament\Actions\Action;
+use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
@@ -25,7 +27,7 @@ class SyncFromProductionAction
             ->color('warning')
             ->visible(fn (): bool => self::isAvailable())
             ->modalHeading('Sincronizar desde producción')
-            ->modalDescription('Se consumirá la API de producción con token Bearer. Puedes ejecutarlo directamente de forma inmediata o en segundo plano.')
+            ->modalDescription('Se consumirá la API de producción con token Bearer. Puedes seleccionar qué módulos importar y ejecutarlo inmediatamente o en segundo plano.')
             ->modalSubmitActionLabel('Iniciar sincronización')
             ->form([
                 TextInput::make('base_url')
@@ -44,6 +46,28 @@ class SyncFromProductionAction
                     ->default($defaultAuthUrl ?: 'http://127.0.0.1:8000/admin')
                     ->required()
                     ->helperText('URL autorizada configurada al crear el token en producción (ej: http://127.0.0.1:8000/admin).'),
+                CheckboxList::make('entities')
+                    ->label('Elementos a sincronizar')
+                    ->options([
+                        'site_settings' => 'Configuración del sitio (General, Branding, SEO, Contacto, Pasarelas, etc.)',
+                        'projects' => 'Proyectos (incluye descuentos, etapas y datos comerciales)',
+                        'advisors' => 'Asesores (incluye fotos, enlaces y proyectos vinculados)',
+                        'plants' => 'Plantas (incluye Unidad Sale, precios y tipologías)',
+                    ])
+                    ->default(['site_settings', 'projects', 'advisors', 'plants'])
+                    ->required()
+                    ->minItems(1)
+                    ->helperText('Selecciona qué módulos deseas descargar y actualizar desde producción.'),
+                Radio::make('mode')
+                    ->label('Estrategia de conflicto / datos existentes')
+                    ->options([
+                        'update' => 'Actualizar existentes (combina cambios y crea nuevos)',
+                        'overwrite' => 'Sobrescribir existentes (reemplaza datos y crea nuevos)',
+                        'skip' => 'Saltar existentes (solo crea registros faltantes, conserva locales)',
+                    ])
+                    ->default('update')
+                    ->required()
+                    ->helperText('Define qué hacer cuando un registro ya existe en tu base de datos local.'),
                 Toggle::make('run_in_background')
                     ->label('Ejecutar en segundo plano')
                     ->helperText('Actívalo solo si tienes "php artisan queue:work" ejecutándose en tu terminal. Si está desactivado, sincroniza inmediatamente.')
@@ -54,15 +78,17 @@ class SyncFromProductionAction
                 $baseUrl = trim((string) ($data['base_url'] ?? config('services.production_sync.base_url', '')));
                 $token = trim((string) ($data['token'] ?? config('services.production_sync.token', '')));
                 $authorizedUrl = trim((string) ($data['authorized_url'] ?? config('services.production_sync.authorized_url', '')));
+                $entities = (array) ($data['entities'] ?? ['site_settings', 'projects', 'advisors', 'plants']);
+                $mode = (string) ($data['mode'] ?? 'update');
                 $runInBackground = (bool) ($data['run_in_background'] ?? false);
 
                 app(ProductionSyncProgressTracker::class)->initialize($syncId, 0, $baseUrl);
                 app(ProductionSyncProgressTracker::class)->addLog($syncId, 'Sincronización solicitada desde el panel.');
 
                 if ($runInBackground) {
-                    RunProductionSyncJob::dispatch($syncId, $baseUrl, $token, $authorizedUrl);
+                    RunProductionSyncJob::dispatch($syncId, $baseUrl, $token, $authorizedUrl, $entities, $mode);
                 } else {
-                    RunProductionSyncJob::dispatchSync($syncId, $baseUrl, $token, $authorizedUrl);
+                    RunProductionSyncJob::dispatchSync($syncId, $baseUrl, $token, $authorizedUrl, $entities, $mode);
                 }
 
                 $progressUrl = ProductionSyncProgress::getUrl(['sync' => $syncId]);

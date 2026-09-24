@@ -48,7 +48,7 @@ class ProductionSyncExportApiTest extends TestCase
             'site_name' => 'Leben QA',
             'extra_settings' => [
                 'salesforce_oauth' => ['access_token' => 'secret'],
-                'public_value' => 'ok',
+                'default_meta_title' => 'Leben SEO Title',
                 'hero_url' => 'https://example.com',
             ],
         ]);
@@ -95,7 +95,7 @@ class ProductionSyncExportApiTest extends TestCase
             ->assertJsonPath('plants.0.asesor_salesforce_id', 'SF-ASESOR-001')
             ->assertJsonMissingPath('site_settings.extra_settings.salesforce_oauth')
             ->assertJsonMissingPath('site_settings.extra_settings.hero_url')
-            ->assertJsonPath('site_settings.extra_settings.public_value', 'ok');
+            ->assertJsonPath('site_settings.extra_settings.default_meta_title', 'Leben SEO Title');
     }
 
     public function test_production_sync_export_forbidden_for_non_admin_user(): void

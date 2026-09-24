@@ -298,27 +298,33 @@ class SiteSetting extends Model
     public static function syncableFields(): array
     {
         return [
+            // Información Básica
             'site_name',
             'site_description',
+            'site_url',
             'evento_sale',
             'mostrar_plantas',
             'plants_per_page',
             'footer_menu',
             'footer_legal_text',
+            // Branding & Colores & Tipografía
             'webawesome_theme',
             'webawesome_palette',
+            'icon_family',
             'brand_color',
             'semantic_brand_color',
             'semantic_neutral_color',
             'semantic_success_color',
             'semantic_warning_color',
             'semantic_danger_color',
-            'icon_family',
             'font_family_body',
             'font_family_heading',
             'google_fonts_stylesheet',
+            // SEO
             'meta_keywords',
             'meta_author',
+            'tag_manager_id',
+            // Contacto
             'contact_email',
             'contact_phone',
             'contact_address',
@@ -326,12 +332,19 @@ class SiteSetting extends Model
             'contact_page_subtitle',
             'contact_page_content',
             'contact_form_fields',
+            'contact_notification_email',
+            // Redes Sociales
+            'facebook_url',
+            'instagram_url',
+            'twitter_url',
+            'linkedin_url',
+            'youtube_url',
+            // Personalización
             'custom_css',
+            'custom_js',
             'header_scripts',
             'footer_scripts',
-            'maintenance_mode',
-            'maintenance_use_html',
-            'maintenance_message',
+            // Pasarelas de Pago
             'gateway_transbank_enabled',
             'gateway_mercadopago_enabled',
             'gateway_manual_enabled',
@@ -340,9 +353,6 @@ class SiteSetting extends Model
             'gateway_transbank_config',
             'gateway_mercadopago_config',
             'gateway_manual_config',
-            'dashboard_widget_order',
-            'salesforce_sync_interval_minutes',
-            'salesforce_sync_plant_types',
         ];
     }
 
@@ -360,32 +370,59 @@ class SiteSetting extends Model
      * @param  array<string, mixed>  $extraSettings
      * @return array<string, mixed>
      */
-    private function filterSyncableExtraSettings(array $extraSettings): array
+    public static function filterSyncableExtraSettings(array $extraSettings): array
     {
+        $allowedDirectKeys = [
+            'catalogo_no_disponible_titulo',
+            'catalogo_no_disponible_mensaje',
+            'default_meta_title',
+            'default_og_title',
+            'default_og_description',
+            'twitter_site',
+            'robots_default',
+            'site_locale',
+            'utm_source_default',
+            'utm_medium_default',
+            'utm_campaign_default',
+            'utm_term_default',
+            'utm_content_default',
+            'utm_site_default',
+            'sale_utm_campaign',
+            'sale_utm_campaign_channels',
+            'sale_event_name',
+            'sale_event_description',
+            'sale_event_start_date',
+            'sale_event_end_date',
+            'conversion_scripts_enabled',
+            'conversion_scripts_debug',
+            'post_contact_script',
+            'post_payment_script',
+            'price_source',
+            'price_percentage_source',
+            'home_hero_type',
+            'home_hero_video_desktop_url',
+            'home_hero_video_mobile_url',
+            'contact_hero_alt',
+        ];
+
         $filtered = [];
 
         foreach ($extraSettings as $key => $value) {
-            $normalizedKey = strtolower((string) $key);
+            $keyStr = (string) $key;
+            $normalizedKey = strtolower($keyStr);
 
-            if ($normalizedKey === 'salesforce_oauth') {
+            if ($normalizedKey === 'salesforce_oauth' || str_starts_with($normalizedKey, 'salesforce_sync') || str_ends_with($normalizedKey, '_id')) {
                 continue;
             }
 
-            if (str_contains($normalizedKey, 'url') || str_ends_with($normalizedKey, '_id')) {
+            if ($normalizedKey === 'qr' && is_array($value)) {
+                $filtered['qr'] = $value;
                 continue;
             }
 
-            if (is_array($value)) {
-                $nested = $this->filterSyncableExtraSettings($value);
-
-                if ($nested !== []) {
-                    $filtered[$key] = $nested;
-                }
-
-                continue;
+            if (in_array($keyStr, $allowedDirectKeys, true)) {
+                $filtered[$keyStr] = $value;
             }
-
-            $filtered[$key] = $value;
         }
 
         return $filtered;

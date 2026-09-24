@@ -4,6 +4,38 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.37] - 2026-09-24
+
+### 🔀 Estrategias de Sincronización desde Producción: Actualizar, Sobrescribir o Saltar
+
+- **Estrategias de Resolución de Conflictos (`app/Services/ProductionSync/ProductionSyncService.php`)**:
+  - Implementado parámetro `$mode` con tres estrategias seleccionables para la sincronización de `SiteSetting`, `Proyecto`, `Asesor` y `Plant`:
+    - `update` (por defecto): Actualiza campos locales combinando cambios y crea registros nuevos. En `SiteSetting` fusiona recursivamente `extra_settings`.
+    - `overwrite`: Reemplaza la totalidad de atributos locales por los datos de producción y crea nuevos registros (respetando credenciales OAuth locales).
+    - `skip`: Conserva intactos todos los registros locales existentes que coincidan por ID de Salesforce / Singleton y solo inserta registros que no existan localmente.
+- **Interfaz Filament y Selector de Modo (`app/Filament/Actions/SyncFromProductionAction.php`, `app/Jobs/RunProductionSyncJob.php`)**:
+  - Agregado campo `Radio::make('mode')` en el modal de sincronización con descripciones claras de cada comportamiento.
+  - El job de fondo y síncrono `RunProductionSyncJob` propaga la opción elegida al servicio y al registro de logs/progreso en tiempo real.
+- **Comando Artisan CLI (`app/Console/Commands/SyncFromProductionCommand.php`)**:
+  - Incorporada opción `--mode=update|overwrite|skip` en `php artisan production:sync`.
+- **Pruebas Automatizadas (`tests/Unit/Services/ProductionSyncServiceTest.php`)**:
+  - Añadidas pruebas unitarias que verifican la integridad de datos bajo el modo `skip`, confirmando el aislamiento de registros locales preexistentes y la creación exclusiva de nuevos registros.
+
+## [1.9.36] - 2026-09-24
+
+### 🔄 Sincronización Selectiva desde Producción, Soporte Total de Descuentos/Pagos y Unidad Sale
+
+- **Selección de Entidades en Filament y CLI (`app/Filament/Actions/SyncFromProductionAction.php`, `app/Jobs/RunProductionSyncJob.php`, `app/Console/Commands/SyncFromProductionCommand.php`)**:
+  - Incorporado selector `CheckboxList` en el modal de sincronización permitiendo elegir qué módulos sincronizar: Configuración del sitio, Proyectos, Asesores y Plantas (todos seleccionados por defecto).
+  - El job `RunProductionSyncJob` y el comando `production:sync --entities=*` procesan exclusivamente los módulos seleccionados y adaptan el cálculo del progreso.
+- **Configuración Restringida de Sitio (`app/Models/SiteSetting.php`, `app/Services/ProductionSync/ProductionSyncService.php`)**:
+  - `syncableFields()` y `filterSyncableExtraSettings()` limitan la sincronización de configuración estrictamente a las secciones autorizadas (Información Básica, Branding, Colores, Tipografía, SEO, QR, Contacto, Redes Sociales, Personalización y Pasarelas de Pago), protegiendo credenciales OAuth locales (`salesforce_oauth`) y configuraciones de daemons/mantenimiento.
+- **Plantas y Proyectos Completos (`app/Models/Proyecto.php`, `app/Models/Plant.php`)**:
+  - Proyectos sincroniza descuentos comerciales (`descuento_defecto_cotizacion_web`, `descuento_maximo_unidad`, `descuento_iva`), código de comercio Transbank (`transbank_commerce_code`) y datos de pago manual (`manual_payment_*`).
+  - Plantas garantiza la persistencia e importación explícita de `unidad_sale` y `contact_link`.
+- **Pruebas Automatizadas (`tests/Unit/Services/ProductionSyncServiceTest.php`, `tests/Feature/Api/ProductionSyncExportApiTest.php`)**:
+  - Cobertura de sincronización selectiva, integridad de `unidad_sale`, importación de descuentos y protección de configuración local.
+
 ## [1.9.35] - 2026-09-24
 
 ### 🔑 Revelación Segura de Clave de Tokens API con Reautenticación de Contraseña

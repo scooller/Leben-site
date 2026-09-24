@@ -25,16 +25,30 @@ class RunProductionSyncJob implements ShouldQueue
 
     public ?string $authorizedUrl = null;
 
+    /**
+     * @var list<string>
+     */
+    public array $entities = ['site_settings', 'projects', 'advisors', 'plants'];
+
+    public string $mode = 'update';
+
+    /**
+     * @param  list<string>  $entities
+     */
     public function __construct(
         string $syncId,
         ?string $baseUrl = null,
         ?string $token = null,
         ?string $authorizedUrl = null,
+        array $entities = ['site_settings', 'projects', 'advisors', 'plants'],
+        string $mode = 'update',
     ) {
         $this->syncId = $syncId;
         $this->baseUrl = $baseUrl;
         $this->token = $token;
         $this->authorizedUrl = $authorizedUrl;
+        $this->entities = $entities ?: ['site_settings', 'projects', 'advisors', 'plants'];
+        $this->mode = in_array($mode, ['update', 'overwrite', 'skip'], true) ? $mode : 'update';
     }
 
     public function handle(ProductionSyncService $service, ProductionSyncProgressTracker $tracker): void
@@ -50,14 +64,14 @@ class RunProductionSyncJob implements ShouldQueue
             return;
         }
 
-        $totalSteps = 1
-            + count((array) ($snapshot['projects'] ?? []))
-            + count((array) ($snapshot['advisors'] ?? []))
-            + count((array) ($snapshot['plants'] ?? []));
-        $tracker->setTotalSteps($this->syncId, $totalSteps);
-        $tracker->addLog($this->syncId, 'Sincronización iniciada.');
+        $totalSteps = (in_array('site_settings', $this->entities, true) ? 1 : 0)
+            + (in_array('projects', $this->entities, true) ? count((array) ($snapshot['projects'] ?? [])) : 0)
+            + (in_array('advisors', $this->entities, true) ? count((array) ($snapshot['advisors'] ?? [])) : 0)
+            + (in_array('plants', $this->entities, true) ? count((array) ($snapshot['plants'] ?? [])) : 0);
+        $tracker->setTotalSteps($this->syncId, max(1, $totalSteps));
+        $tracker->addLog($this->syncId, "Sincronización iniciada (Modo: {$this->mode}).");
 
-        $result = $service->syncSnapshot($this->syncId, $snapshot, $tracker);
+        $result = $service->syncSnapshot($this->syncId, $snapshot, $tracker, $this->entities, $this->mode);
 
         $tracker->markCompleted($this->syncId);
         $tracker->addLog(

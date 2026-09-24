@@ -145,6 +145,7 @@ class Plant extends Model
             'superficie_util',
             'superficie_terraza',
             'salesforce_interior_image_url',
+            'contact_link',
             'is_active',
             'last_synced_at',
         ];
