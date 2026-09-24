@@ -661,8 +661,10 @@ function Home({ onNavigate, currentPath }) {
       precioSeleccionadoEtiqueta,
       porcentajeAplicado,
       descuentoMaximoUnidad,
+      porcentajeMaximoUnidad: descuentoMaximoUnidad,
       descuentoDefectoCotizacionWeb,
       discountPercentage,
+      unidadSale: Boolean(plant.unidad_sale),
       reservaExigidaPeso: Number(plant.proyecto?.valor_reserva_exigido_defecto_peso) || 0,
       proyectoNombre: plant.proyecto?.name,
       proyectoSlug: plant.proyecto?.slug || slugifySegment(plant.proyecto?.name),
@@ -862,7 +864,7 @@ function Home({ onNavigate, currentPath }) {
 
       const mappedPlants = (data.data || []).map((plant) => mapPlant(plant));
       const visiblePlants = isSaleEventActive
-        ? mappedPlants.filter((plant) => Number(plant.porcentajeMaximoUnidad) > 0)
+        ? mappedPlants.filter((plant) => Boolean(plant.unidadSale) || Number(plant.porcentajeMaximoUnidad || plant.discountPercentage || plant.porcentajeAplicado) > 0)
         : mappedPlants;
 
       setPlants(visiblePlants);

@@ -12,8 +12,11 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\HtmlString;
 
 /*
 colores disponibles para badge:
@@ -25,6 +28,27 @@ class ProyectosTable
 	public static function configure(Table $table): Table
 	{
 		return $table
+			->description(function (): ?Htmlable {
+				$inactiveProjects = Proyecto::query()
+					->where('is_active', false)
+					->orderBy('name')
+					->pluck('name')
+					->filter()
+					->values();
+
+				if ($inactiveProjects->isEmpty()) {
+					return null;
+				}
+
+				$count = $inactiveProjects->count();
+				$names = $inactiveProjects->implode('</span>,<span class="fi-color fi-color-rose fi-text-color-700 dark:fi-text-color-200 fi-badge fi-size-sm">');
+
+				return new HtmlString(
+					"<div class=\"text-sm text-amber-600 dark:text-amber-400 font-medium py-1\">"
+					. "⚠️ <strong>{$count} proyecto(s) inactivo(s):</strong> <span class='fi-color fi-color-rose fi-text-color-700 dark:fi-text-color-200 fi-badge fi-size-sm'>{$names}</span>. Sus plantas no se muestran en el catálogo público ni en la API."
+					. "</div>"
+				);
+			})
 			->columns(self::getColumns())
 			->filters(self::getFilters())
 			->recordActions([
@@ -34,7 +58,7 @@ class ProyectosTable
 					->icon(fn(Proyecto $record): string => $record->is_active ? 'heroicon-o-x-circle' : 'heroicon-o-check-circle')
 					->color(fn(Proyecto $record): string => $record->is_active ? 'warning' : 'success')
 					->action(fn(Proyecto $record): bool => $record->update([
-						'is_active' => ! $record->is_active,
+						'is_active' => !$record->is_active,
 					]))
 					->successNotificationTitle('Estado actualizado'),
 				Action::make('viewInSalesforce')
@@ -245,6 +269,12 @@ class ProyectosTable
 					true => 'Sí',
 					false => 'No',
 				]),
+
+			TernaryFilter::make('is_active')
+				->label('Estado')
+				->placeholder('Todos')
+				->trueLabel('Solo activos')
+				->falseLabel('Solo inactivos'),
 		];
 	}
 }

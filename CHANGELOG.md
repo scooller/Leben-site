@@ -4,6 +4,31 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.40] - 2026-09-24
+
+### 📦 Instalación de Skills Web Awesome Pro (`webawesome` y `webawesome-design`)
+
+- **Skills de Agentes (`.agents/skills/webawesome/`, `.agents/skills/webawesome-design/`)**:
+  - Instalados los skills oficiales de Web Awesome Pro v3.13.0 desde el paquete `@web.awesome.me/webawesome-pro`.
+  - `webawesome`: Referencia completa de componentes, props, slots, eventos y utilidades.
+  - `webawesome-design`: Guía de diseño de interfaces, layout (`<wa-page>`), tokens de diseño (`--wa-*`), temas y paletas.
+
+## [1.9.39] - 2026-09-24
+
+### ℹ️ Mensaje de Información de Proyectos Inactivos y Filtro de Estado en Panel Filament
+
+- **Tabla de Proyectos (`app/Filament/Resources/Proyectos/Tables/ProyectosTable.php`)**:
+  - Incorporada descripción dinámica (`Table::description()`) que advierte visualmente si existen proyectos inactivos, listando sus nombres específicos e indicando que sus plantas asociadas no se muestran en el catálogo público ni en la API.
+  - Añadido `TernaryFilter` para filtrar proyectos por estado (`Todos`, `Solo activos`, `Solo inactivos`).
+
+## [1.9.38] - 2026-09-24
+
+### 🏷️ Corrección de Visibilidad de Plantas durante Eventos Sale en Frontend
+
+- **Mapeo de Propiedades y Filtro de Visibilidad (`frontend/src/pages/Home.jsx`)**:
+  - Incorporadas propiedades `porcentajeMaximoUnidad` y `unidadSale` en el transformador `mapPlant`.
+  - Corregido el predicado de `visiblePlants` en eventos sale para preservar unidades marcadas con `unidad_sale` o con porcentajes de descuento válidos (`descuentoMaximoUnidad`, `discountPercentage`, `porcentajeAplicado`), evitando el vaciado erróneo del catálogo cuando `evento_sale` está activo.
+
 ## [1.9.37] - 2026-09-24
 
 ### 🔀 Estrategias de Sincronización desde Producción: Actualizar, Sobrescribir o Saltar
