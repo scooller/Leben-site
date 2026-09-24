@@ -621,27 +621,33 @@ function Home({ onNavigate, currentPath }) {
   const mapPlant = useCallback((plant) => {
     const precioBase = Number(plant.precio_base) || 0;
     const precioLista = Number(plant.precio_lista) || 0;
-    const descuentoMaximoUnidad = Number(plant.proyecto?.descuento_maximo_unidad) || 0;
-    const descuentoDefectoCotizacionWeb = Number(plant.proyecto?.descuento_defecto_cotizacion_web) || 0;
+    const descuentoMaximoUnidad = Number(plant.descuento_maximo_unidad ?? plant.proyecto?.descuento_maximo_unidad) || 0;
+    const descuentoDefectoCotizacionWeb = Number(plant.descuento_defecto_cotizacion_web ?? plant.proyecto?.descuento_defecto_cotizacion_web) || 0;
+    const descuentoIva = Number(plant.descuento_iva ?? plant.proyecto?.descuento_iva) || 0;
     const porcentajeAplicado = pricePercentageSource === 'max_unit'
       ? descuentoMaximoUnidad
       : descuentoDefectoCotizacionWeb;
-    const precioCalculadoPorPorcentaje = porcentajeAplicado > 0 && precioLista > 0
-      ? Math.max(0, precioLista - ((precioLista * porcentajeAplicado) / 100))
+    const unitDiscountPercentage = porcentajeAplicado > 0 ? porcentajeAplicado : 0;
+    const discountPercentage = unitDiscountPercentage;
+    const hasIvaDiscount = descuentoIva > 0;
+    const totalDiscountPercentage = hasIvaDiscount
+      ? Number((discountPercentage + descuentoIva).toFixed(2))
+      : discountPercentage;
+
+    const activeDiscount = totalDiscountPercentage > 0 ? totalDiscountPercentage : 0;
+    const precioCalculadoPorPorcentaje = activeDiscount > 0 && precioLista > 0
+      ? Math.max(0, precioLista - ((precioLista * activeDiscount) / 100))
       : 0;
     const precioFinalApi = Number(plant.precio_final) || 0;
-    const precioFinal = precioFinalApi > 0
-      ? precioFinalApi
-      : (precioCalculadoPorPorcentaje > 0 ? precioCalculadoPorPorcentaje : precioBase);
-    const precioSeleccionado = priceSource === 'base'
-      ? precioBase
-      : (precioFinal > 0 ? precioFinal : precioBase);
-    const precioSeleccionadoEtiqueta = priceSource === 'base' || (priceSource !== 'base' && precioFinal <= 0)
-      ? 'Precio Base: '
-      : (isSaleEventActive ? 'Precio Sale: ' : 'Precio Final: ');
-    const discountPercentage = precioLista > 0 && precioSeleccionado > 0 && precioSeleccionado < precioLista
-      ? Math.max(0, Math.round(Math.abs(((precioLista - precioSeleccionado) / precioLista) * 100)))
-      : 0;
+    const precioFinal = precioCalculadoPorPorcentaje > 0
+      ? precioCalculadoPorPorcentaje
+      : (precioFinalApi > 0 ? precioFinalApi : precioBase);
+    const precioSeleccionado = activeDiscount > 0
+      ? precioFinal
+      : (priceSource === 'base' ? precioBase : (precioFinal > 0 ? precioFinal : precioBase));
+    const precioSeleccionadoEtiqueta = activeDiscount > 0 || (priceSource !== 'base' && precioFinal < precioLista)
+      ? (isSaleEventActive ? 'Precio Sale: ' : 'Precio Final: ')
+      : 'Precio Base: ';
 
     const advisorsSource = Array.isArray(plant.asesores) && plant.asesores.length > 0
       ? plant.asesores
@@ -663,7 +669,11 @@ function Home({ onNavigate, currentPath }) {
       descuentoMaximoUnidad,
       porcentajeMaximoUnidad: descuentoMaximoUnidad,
       descuentoDefectoCotizacionWeb,
+      descuentoIva,
+      descuento_iva: descuentoIva,
+      hasIvaDiscount,
       discountPercentage,
+      totalDiscountPercentage,
       unidadSale: Boolean(plant.unidad_sale),
       reservaExigidaPeso: Number(plant.proyecto?.valor_reserva_exigido_defecto_peso) || 0,
       proyectoNombre: plant.proyecto?.name,

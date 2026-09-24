@@ -152,7 +152,7 @@ class ProyectoController extends Controller
         $proyectos = $query->paginate(max(1, min($perPage, 100)));
 
         $discountFields = array_intersect(
-            ['descuento_defecto_cotizacion_web', 'descuento_maximo_unidad'],
+            ['descuento_defecto_cotizacion_web', 'descuento_maximo_unidad', 'descuento_iva'],
             $requestedFields,
         );
 
@@ -249,7 +249,7 @@ class ProyectoController extends Controller
 
         $payload = $proyecto->toArray();
 
-        foreach (['descuento_defecto_cotizacion_web', 'descuento_maximo_unidad'] as $discountField) {
+        foreach (['descuento_defecto_cotizacion_web', 'descuento_maximo_unidad', 'descuento_iva'] as $discountField) {
             if (array_key_exists($discountField, $payload) && $payload[$discountField] === null) {
                 $payload[$discountField] = 0;
             }

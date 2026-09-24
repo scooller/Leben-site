@@ -244,6 +244,7 @@ class PlantController extends Controller
 
         $projectMaxDiscountExpression = '(SELECT p.descuento_maximo_unidad FROM proyectos p WHERE p.salesforce_id = plants.salesforce_proyecto_id LIMIT 1)';
         $projectDefaultDiscountExpression = '(SELECT p.descuento_defecto_cotizacion_web FROM proyectos p WHERE p.salesforce_id = plants.salesforce_proyecto_id LIMIT 1)';
+        $projectIvaDiscountExpression = '(SELECT p.descuento_iva FROM proyectos p WHERE p.salesforce_id = plants.salesforce_proyecto_id LIMIT 1)';
 
         $extraSettings = SiteSetting::current()->extra_settings;
         $pricePercentageSource = is_array($extraSettings) ? ($extraSettings['price_percentage_source'] ?? 'web_discount') : 'web_discount';
@@ -252,8 +253,10 @@ class PlantController extends Controller
             ? "COALESCE({$projectMaxDiscountExpression}, 0)"
             : "COALESCE({$projectDefaultDiscountExpression}, 0)";
 
+        $orderByTotalDiscount = "({$orderByDiscountExpression} + COALESCE({$projectIvaDiscountExpression}, 0))";
+
         $query->orderByRaw(
-            "COALESCE(CASE WHEN {$orderByDiscountExpression} > 0 AND precio_lista > 0 THEN CASE WHEN (precio_lista - ((precio_lista * {$orderByDiscountExpression}) / 100)) < 0 THEN 0 ELSE (precio_lista - ((precio_lista * {$orderByDiscountExpression}) / 100)) END ELSE precio_base END, 999999999999) ASC"
+            "COALESCE(CASE WHEN {$orderByTotalDiscount} > 0 AND precio_lista > 0 THEN CASE WHEN (precio_lista - ((precio_lista * {$orderByTotalDiscount}) / 100)) < 0 THEN 0 ELSE (precio_lista - ((precio_lista * {$orderByTotalDiscount}) / 100)) END ELSE precio_base END, 999999999999) ASC"
         )->orderBy('id');
 
         $plants = $query->paginate($perPage)->through(function (Plant $plant) use ($eventoSale): array {

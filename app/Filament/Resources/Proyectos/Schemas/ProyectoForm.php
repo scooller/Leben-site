@@ -240,7 +240,10 @@ class ProyectoForm
                                 return $options;
                             })
                             ->searchable()
-                            ->nullable(),
+                            ->nullable()
+                            ->validationMessages([
+                                'in' => 'El código de comercio seleccionado no es válido o no está configurado en Transbank.',
+                            ]),
 
                         Section::make('Pago Manual por Proyecto')
                             ->description('Configura los datos de depósito y/o link de pago para este proyecto')

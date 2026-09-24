@@ -38,7 +38,7 @@ class ProyectoFactory extends Factory
             'valor_reserva_exigido_min_peso' => fake()->randomFloat(2, 50000, 200000),
             'descuento_defecto_cotizacion_web' => fake()->optional(0.5)->randomFloat(2, 0, 20),
             'descuento_maximo_unidad' => fake()->optional(0.5)->randomFloat(2, 0, 25),
-            'descuento_iva' => fake()->optional(0.5)->randomFloat(2, 0, 19),
+            'descuento_iva' => null,
             'entrega_inmediata' => fake()->boolean(30),
         ];
     }

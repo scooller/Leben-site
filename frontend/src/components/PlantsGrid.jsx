@@ -374,17 +374,42 @@ function PlantsGrid({
                         />
                     </wa-badge>
                     )}
-                    {plant.discountPercentage > 0 && (
-                    <wa-animation name="flash" duration={5000} iterations={Infinity}>
-                        <div className="discount-seal" aria-label={`Descuento ${plant.discountPercentage}%`}>
-                            <span className="discount-seal-value">{plant.discountPercentage}</span>
-                            <span className="discount-seal-label">
-                                <span className='simbol'>%</span>
-                                descto.
-                            </span>
-                        </div>
-                    </wa-animation>
-                    )}
+                    {(() => {
+                        const unitDiscount = Number(plant.porcentajeAplicado ?? plant.discountPercentage) || 0;
+                        const ivaDiscount = Number(plant.descuentoIva ?? plant.descuento_iva) || 0;
+                        const hasIva = ivaDiscount > 0;
+                        const totalDiscount = hasIva ? Math.round(unitDiscount + ivaDiscount) : Math.round(unitDiscount);
+
+                        if (totalDiscount <= 0) {
+                            return null;
+                        }
+
+                        return (
+                            <wa-animation name="flash" duration={5000} iterations={Infinity}>
+                                <div className={`discount-seal-container${hasIva ? ' has-iva' : ''}`}>
+                                    {hasIva && (
+                                        <div className="discount-sub-seals">
+                                            <div className="discount-sub-seal discount-sub-seal--iva" title={`Descuento IVA: ${ivaDiscount}%`}>
+                                                <span className="discount-sub-seal-val">{ivaDiscount}%</span>
+                                                <span className="discount-sub-seal-lbl">IVA</span>
+                                            </div>
+                                            <div className="discount-sub-seal discount-sub-seal--unit" title={`Descuento Unidad: ${unitDiscount}%`}>
+                                                <span className="discount-sub-seal-val">{unitDiscount}%</span>
+                                                <span className="discount-sub-seal-lbl">Unidad</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div className="discount-seal" aria-label={`Descuento ${totalDiscount}%`}>
+                                        <span className="discount-seal-value">{totalDiscount}</span>
+                                        <span className="discount-seal-label">
+                                            <span className='simbol'>%</span>
+                                            descto.
+                                        </span>
+                                    </div>
+                                </div>
+                            </wa-animation>
+                        );
+                    })()}
                 </div>
                 <div slot="header" className="plant-header-wrapper">
                     <div className="wa-cluster wa-gap-m wa-align-items-center plant-header wa-heading-l">

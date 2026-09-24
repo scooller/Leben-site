@@ -230,6 +230,15 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
         }
     };
 
+    const unitDiscount = Number(plant?.porcentajeAplicado ?? plant?.discountPercentage) || 0;
+    const ivaDiscount = Number(plant?.descuentoIva ?? plant?.descuento_iva) || 0;
+    const hasIva = ivaDiscount > 0;
+    const totalDiscount = hasIva
+        ? Number((unitDiscount + ivaDiscount).toFixed(2))
+        : unitDiscount;
+    const displayTotalDiscount = hasIva ? Math.round(unitDiscount + ivaDiscount) : Math.round(unitDiscount);
+    const shouldShowDiscountSeal = displayTotalDiscount > 0;
+
     return (
         <wa-dialog
             ref={dialogRef}
@@ -274,14 +283,28 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
                                     />
                                 </wa-badge>
                             )}
-                            {plant.discountPercentage > 0 && (
+                            {shouldShowDiscountSeal && (
                                 <wa-animation name="flash" duration={5000} iterations={Infinity}>
-                                    <div className="discount-seal" aria-label={`Descuento ${plant.discountPercentage}%`}>
-                                        <span className="discount-seal-value">{plant.discountPercentage}</span>
-                                        <span className="discount-seal-label">
-                                            <span className='simbol'>%</span>
-                                            descto.
-                                        </span>
+                                    <div className={`discount-seal-container${hasIva ? ' has-iva' : ''}`}>
+                                        {hasIva && (
+                                            <div className="discount-sub-seals">
+                                                <div className="discount-sub-seal discount-sub-seal--iva" title={`Descuento IVA: ${ivaDiscount}%`}>
+                                                    <span className="discount-sub-seal-val">{ivaDiscount}%</span>
+                                                    <span className="discount-sub-seal-lbl">IVA</span>
+                                                </div>
+                                                <div className="discount-sub-seal discount-sub-seal--unit" title={`Descuento Unidad: ${unitDiscount}%`}>
+                                                    <span className="discount-sub-seal-val">{unitDiscount}%</span>
+                                                    <span className="discount-sub-seal-lbl">Unidad</span>
+                                                </div>
+                                            </div>
+                                        )}
+                                        <div className="discount-seal" aria-label={`Descuento ${displayTotalDiscount}%`}>
+                                            <span className="discount-seal-value">{displayTotalDiscount}</span>
+                                            <span className="discount-seal-label">
+                                                <span className='simbol'>%</span>
+                                                descto.
+                                            </span>
+                                        </div>
                                     </div>
                                 </wa-animation>
                             )}
@@ -342,8 +365,28 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
                                                 <wa-tag variant="neutral">{plant.piso}</wa-tag>
                                             </div>
                                         )}
-                                        {/* Precio de reserva */}
+                                        {hasIva && (
+                                            <div className="wa-split wa-align-items-center">
+                                                <strong>Dcto. IVA</strong>
+                                                <wa-badge variant="brand">{ivaDiscount}%</wa-badge>
+                                            </div>
+                                        )}
+                                        {unitDiscount > 0 && (
+                                            <div className="wa-split wa-align-items-center">
+                                                <strong>Dcto. Unidad</strong>
+                                                <wa-badge variant="danger">{unitDiscount}%</wa-badge>
+                                            </div>
+                                        )}
+                                        {/* Separador encima de Dcto Total y Precio Reserva */}
+                                        <wa-divider style={{ gridColumn: '1 / -1' }}></wa-divider>
 
+                                        {(hasIva || unitDiscount > 0) && totalDiscount > 0 && (
+                                            <div className="wa-split wa-align-items-center">
+                                                <strong>Dcto. Total</strong>
+                                                <wa-badge variant="warning">{totalDiscount}%</wa-badge>
+                                            </div>
+                                        )}
+                                        {/* Precio de reserva */}
                                         <div className="wa-split wa-align-items-center">
                                             <strong>Precio de Reserva</strong>
                                             <wa-tag variant="success">{formattedReserva}</wa-tag>

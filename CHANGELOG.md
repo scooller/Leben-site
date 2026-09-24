@@ -4,6 +4,73 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.47] - 2026-09-24
+
+### 💄 Unificación de Fila para Dcto Total y Precio de Reserva
+
+- **Modal de Detalle (`frontend/src/components/PlantDetailDialog.jsx`)**:
+  - Incorporado un único separador `<wa-divider>` que abarca todo el ancho encima de `Dcto. Total` y `Precio de Reserva`, permitiendo que ambos elementos se ubiquen en la misma fila del grid.
+
+### 🏷️ Soporte y Ordenamiento con Descuento IVA en Filament y API
+
+- **Tabla de Plantas en Filament (`app/Filament/Resources/Plants/Tables/PlantsTable.php`)**:
+  - Incorporada columna `% Dcto. IVA` (badge morado, ordenable).
+  - Actualizado el ordenamiento de `precio_final` para incluir la suma de `descuento_iva` en `$orderByTotalDiscount`.
+- **API de Plantas y Proyectos (`app/Http/Controllers/Api/PlantController.php`, `app/Http/Controllers/Api/ProyectoController.php`)**:
+  - Actualizada la ordenación por precio calculado en `PlantController` para considerar `descuento_iva`.
+  - Añadido `descuento_iva` a campos por defecto y saneamiento numérico en `ProyectoController`.
+
+### 🏷️ Desglose de Descuentos en Modal de Planta y Aplicación de Descuento Total al Precio
+
+- **Modal de Detalle (`frontend/src/components/PlantDetailDialog.jsx`)**:
+  - Incorporados badges de desglose en el `wa-grid` de detalles: `Dcto. IVA` (brand), `Dcto. Unidad` (danger) y `Dcto. Total` (warning).
+- **Cálculo de Precios y Descuento Total (`frontend/src/pages/Home.jsx`, `app/Http/Controllers/Api/Concerns/EnrichesPlantPayload.php`, `app/Models/Plant.php`)**:
+  - El precio final y precio seleccionado aplican el porcentaje de descuento total (`descuentoUnidad + descuentoIva`) sobre `precio_lista`.
+  - En la API backend, `resolveApiDiscountPercentage` y `resolveFinalPrice` suman `descuento_iva` al porcentaje comercial de la unidad.
+
+## [1.9.44] - 2026-09-24
+
+### 🏷️ Eliminación de Fallback de Porcentaje por Comparación de Precios
+
+- **Frontend (`frontend/src/pages/Home.jsx`)**:
+  - Eliminado el cálculo residual de porcentaje a partir de diferencias entre `precio_lista` y `precio_base`/`precio_final`.
+  - El porcentaje de descuento de la unidad utiliza estrictamente `porcentajeAplicado` (`descuento_maximo_unidad` o `descuento_defecto_cotizacion_web`), con fallback estricto en `0`.
+- **API Backend (`app/Http/Controllers/Api/Concerns/EnrichesPlantPayload.php`, `app/Models/Plant.php`)**:
+  - Confirmado que los métodos de resolución de porcentaje leen exclusivamente la configuración del proyecto y tienen fallback en `0.0`.
+
+## [1.9.43] - 2026-09-24
+
+### 🏷️ Corrección de Cálculo del Descuento de Unidad en Frontend
+
+- **Mapeo de Plantas (`frontend/src/pages/Home.jsx`, `frontend/src/components/PlantsGrid.jsx`, `frontend/src/components/PlantDetailDialog.jsx`)**:
+  - Corregido el origen del descuento de unidad para leer directamente `porcentajeAplicado` (`descuento_maximo_unidad` o `descuento_defecto_cotizacion_web` configurado en el proyecto) en lugar de deducir un porcentaje residual a partir de `precio_base` fijo.
+  - Ahora el sello de descuento de unidad y el sello consolidado reflejan fielmente el porcentaje comercial activo del proyecto (6% u 8%).
+
+## [1.9.42] - 2026-09-24
+
+### 🌐 Mensajes de Validación en Español y Regla `in` de Código de Comercio Transbank
+
+- **Formulario de Proyecto (`app/Filament/Resources/Proyectos/Schemas/ProyectoForm.php`)**:
+  - Incorporado mensaje personalizado explícito `validationMessages(['in' => 'El código de comercio seleccionado no es válido o no está configurado en Transbank.'])` en el selector `transbank_commerce_code`.
+- **Localización (`lang/es/validation.php`)**:
+  - Creado archivo de traducción de validación en español con todas las reglas nativas de Laravel, eliminando el error genérico `validation.in` por mensajes descriptivos en español.
+
+## [1.9.41] - 2026-09-24
+
+### 🏷️ Desglose Visual de Descuento IVA y Descuento de Unidad en Frontend
+
+- **Componentes y Vistas (`frontend/src/components/PlantsGrid.jsx`, `frontend/src/components/PlantDetailDialog.jsx`, `frontend/src/pages/Home.jsx`)**:
+  - Enriquecido `mapPlant` con `descuentoIva`, `hasIvaDiscount` y cálculo consolidado `totalDiscountPercentage`.
+  - Cuando el descuento IVA está activo (`descuentoIva > 0`):
+    - Se añaden 2 sellos superiores: a la izquierda el descuento de IVA (`IVA X%`) y a la derecha el descuento de la unidad (`Unidad Y%`).
+    - El sello principal `discount-seal` muestra la suma consolidada de ambos descuentos (`X + Y% descto.`).
+  - Cuando el descuento IVA está inactivo (`descuentoIva <= 0`):
+    - Muestra únicamente el sello estándar con el porcentaje de descuento de la unidad.
+- **Estilos SCSS (`frontend/src/styles/home.scss`)**:
+  - Agregadas clases `.discount-seal-container`, `.discount-sub-seals` y `.discount-sub-seal` con variantes temáticas (`--iva` y `--unit`) y soporte responsive completo.
+- **Backend API (`app/Http/Controllers/Api/Concerns/EnrichesPlantPayload.php`)**:
+  - Incorporado campo `descuento_iva` en `buildPlantPayload` y `buildCompactPlantPayload`.
+
 ## [1.9.40] - 2026-09-24
 
 ### 📦 Instalación de Skills Web Awesome Pro (`webawesome` y `webawesome-design`)

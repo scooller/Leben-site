@@ -217,8 +217,11 @@ class Plant extends Model
             ? (float) ($this->proyecto?->descuento_maximo_unidad ?? 0)
             : (float) ($this->proyecto?->descuento_defecto_cotizacion_web ?? 0);
 
-        if ($precioLista > 0 && $porcentajeDescuento > 0) {
-            $precioConDescuento = $precioLista - (($precioLista * $porcentajeDescuento) / 100);
+        $descuentoIva = (float) ($this->proyecto?->descuento_iva ?? 0);
+        $totalDescuento = $porcentajeDescuento + $descuentoIva;
+
+        if ($precioLista > 0 && $totalDescuento > 0) {
+            $precioConDescuento = $precioLista - (($precioLista * $totalDescuento) / 100);
 
             return max(0, $precioConDescuento);
         }

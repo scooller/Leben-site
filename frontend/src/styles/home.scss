@@ -264,6 +264,75 @@ html.wa-light {
   }
 }
 
+.discount-seal-container {
+  align-items: center;
+  display: inline-flex;
+  flex-direction: column;
+  position: absolute;
+  right: 0.75rem;
+  top: 0.75rem;
+  z-index: 2;
+
+  &.has-iva {
+    top: 0.45rem;
+  }
+
+  .discount-seal {
+    position: relative;
+    right: auto;
+    top: auto;
+  }
+}
+
+.discount-sub-seals {
+  align-items: center;
+  display: flex;
+  flex-direction: row;
+  gap: 0.25rem;
+  justify-content: space-between;
+  margin-bottom: -0.45rem;
+  width: 100%;
+  z-index: 3;
+}
+
+.discount-sub-seal {
+  align-items: center;
+  border-radius: 999px;
+  border: 1.5px solid #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.28);
+  color: #ffffff;
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  line-height: 1;
+  min-width: 2.15rem;
+  padding: 0.15rem 0.35rem;
+  text-align: center;
+
+  &--iva {
+    background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+  }
+
+  &--unit {
+    background: linear-gradient(135deg, #ef4444 0%, #991b1b 100%);
+  }
+
+  .discount-sub-seal-val {
+    font-size: 0.62rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+
+  .discount-sub-seal-lbl {
+    font-size: 0.38rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    margin-top: 1px;
+    opacity: 0.95;
+    text-transform: uppercase;
+  }
+}
+
 .discount-seal {
   align-items: center;
   background: radial-gradient(circle at 30% 30%, #ff5a5a 0%, #e3002a 55%, #b30021 100%);
@@ -724,6 +793,38 @@ html.wa-light {
   .plant-detail-dialog::part(panel) {
     height: 100dvh;
     max-height: 100dvh;
+  }
+
+  .discount-seal-container {
+    right: 0.6rem;
+    top: 0.6rem;
+
+    &.has-iva {
+      top: 0.35rem;
+    }
+
+    .discount-seal {
+      right: auto;
+      top: auto;
+    }
+  }
+
+  .discount-sub-seals {
+    gap: 0.2rem;
+    margin-bottom: -0.35rem;
+  }
+
+  .discount-sub-seal {
+    min-width: 1.75rem;
+    padding: 0.1rem 0.22rem;
+
+    .discount-sub-seal-val {
+      font-size: 0.5rem;
+    }
+
+    .discount-sub-seal-lbl {
+      font-size: 0.32rem;
+    }
   }
 
   .discount-seal {

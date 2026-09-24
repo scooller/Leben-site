@@ -36,6 +36,7 @@ trait EnrichesPlantPayload
             && $plant->completedPayment === null;
         $payload['descuento_defecto_cotizacion_web'] = (float) ($plant->proyecto?->descuento_defecto_cotizacion_web ?? 0);
         $payload['descuento_maximo_unidad'] = (float) ($plant->proyecto?->descuento_maximo_unidad ?? 0);
+        $payload['descuento_iva'] = (float) ($plant->proyecto?->descuento_iva ?? 0);
         $payload['precio_final'] = $this->resolveApiFinalPrice($plant, $apiDiscountPercentage);
 
         return $payload;
@@ -54,6 +55,7 @@ trait EnrichesPlantPayload
         $payload['detailImageUrl'] = $this->resolveDetailImageUrl($plant);
         $payload['descuento_defecto_cotizacion_web'] = (float) ($plant->proyecto?->descuento_defecto_cotizacion_web ?? 0);
         $payload['descuento_maximo_unidad'] = (float) ($plant->proyecto?->descuento_maximo_unidad ?? 0);
+        $payload['descuento_iva'] = (float) ($plant->proyecto?->descuento_iva ?? 0);
         $payload['asesores'] = $this->resolvePlantAdvisors($plant, $defaultAdvisorAvatarUrl ?? $this->getDefaultAdvisorAvatarUrl());
         $payload['is_paid'] = $plant->completedReservation !== null || $plant->completedPayment !== null;
         $payload['is_available'] = $plant->activeReservation === null
@@ -71,9 +73,13 @@ trait EnrichesPlantPayload
             $percentageSource = is_array($extraSettings) ? ($extraSettings['price_percentage_source'] ?? 'web_discount') : 'web_discount';
         }
 
-        return $percentageSource === 'max_unit'
+        $baseDiscount = $percentageSource === 'max_unit'
             ? (float) ($plant->proyecto?->descuento_maximo_unidad ?? 0)
             : (float) ($plant->proyecto?->descuento_defecto_cotizacion_web ?? 0);
+
+        $descuentoIva = (float) ($plant->proyecto?->descuento_iva ?? 0);
+
+        return (float) ($baseDiscount + $descuentoIva);
     }
 
     private function resolveApiFinalPrice(Plant $plant, float $discountPercentage): float
