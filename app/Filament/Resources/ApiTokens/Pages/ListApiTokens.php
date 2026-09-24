@@ -69,11 +69,12 @@ class ListApiTokens extends ListRecords
 
                     $newToken->accessToken->forceFill([
                         'authorized_url' => rtrim((string) $data['authorized_url'], '/'),
+                        'encrypted_token' => $newToken->plainTextToken,
                     ])->save();
 
                     Notification::make()
                         ->title('Token API creado')
-                        ->body("Copia este token ahora, no volverá a mostrarse:\n{$newToken->plainTextToken}\n\nAPI Base: ".url('/api/v1')."\nURL autorizada: ".rtrim((string) $data['authorized_url'], '/'))
+                        ->body("Token generado:\n{$newToken->plainTextToken}\n\nAPI Base: ".url('/api/v1')."\nURL autorizada: ".rtrim((string) $data['authorized_url'], '/'))
                         ->persistent()
                         ->success()
                         ->send();

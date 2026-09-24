@@ -4,6 +4,20 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.35] - 2026-09-24
+
+### 🔑 Revelación Segura de Clave de Tokens API con Reautenticación de Contraseña
+
+- **Base de Datos y Modelo (`database/migrations/...`, `app/Models/PersonalAccessToken.php`)**:
+  - Agregada columna `encrypted_token` en `personal_access_tokens` con cifrado simétrico AES-256 nativo mediante el cast `'encrypted'`.
+  - Configurado `Sanctum::usePersonalAccessTokenModel(PersonalAccessToken::class)` en `AppServiceProvider`.
+- **Panel Filament (`app/Filament/Resources/ApiTokens/`)**:
+  - `ListApiTokens`: Persiste el `plainTextToken` cifrado en `encrypted_token` al momento de su creación.
+  - `ApiTokensTable`: Incorporada acción de registro `Ver Key` (`viewKey`) con modal de confirmación que valida la contraseña del administrador actual (`currentPassword()`) antes de revelar la clave en texto plano.
+  - Manejo amigable para tokens heredados/legacy generados previamente sin respaldo cifrado.
+- **Pruebas Automatizadas (`tests/Feature/ApiTokenManagementTest.php`)**:
+  - Creada suite de pruebas unitarias/feature cubriendo creación con respaldo cifrado, bloqueo ante contraseña incorrecta, revelación exitosa con contraseña válida y notificación de advertencia para tokens antiguos.
+
 ## [1.9.34] - 2026-09-24
 
 ### ⏱️ Prevención de Falso Timeout en Sincronización desde Producción

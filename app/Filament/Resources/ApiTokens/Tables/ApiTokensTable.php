@@ -2,10 +2,16 @@
 
 namespace App\Filament\Resources\ApiTokens\Tables;
 
+use App\Models\PersonalAccessToken;
+use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
+use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 
 class ApiTokensTable
 {
@@ -57,6 +63,42 @@ class ApiTokensTable
                     ->sortable(),
             ])
             ->recordActions([
+                Action::make('viewKey')
+                    ->label('Ver Key')
+                    ->icon('heroicon-o-eye')
+                    ->color('info')
+                    ->modalHeading('Confirmar identidad')
+                    ->modalDescription('Ingresa tu contraseña de administrador para ver el token API.')
+                    ->modalSubmitActionLabel('Revelar token')
+                    ->form([
+                        TextInput::make('password')
+                            ->label('Contraseña')
+                            ->password()
+                            ->revealable()
+                            ->required()
+                            ->currentPassword()
+                            ->autofocus(),
+                    ])
+                    ->action(function (PersonalAccessToken $record): void {
+                        if (blank($record->encrypted_token)) {
+                            Notification::make()
+                                ->title('Token no recuperable')
+                                ->body('Este token fue generado antes de la activación del respaldo seguro. Si necesitas la clave, revócalo y crea uno nuevo.')
+                                ->warning()
+                                ->persistent()
+                                ->send();
+
+                            return;
+                        }
+
+                        Notification::make()
+                            ->title("Token API: {$record->name}")
+                            ->body("Clave del token:\n{$record->encrypted_token}\n\nURL autorizada: {$record->authorized_url}")
+                            ->success()
+                            ->persistent()
+                            ->send();
+                    }),
+
                 DeleteAction::make()
                     ->label('Revocar')
                     ->modalHeading('Revocar token API')

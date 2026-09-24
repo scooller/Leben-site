@@ -68,6 +68,8 @@ class AppServiceProvider extends ServiceProvider
         Payment::observe(PaymentObserver::class);
         PlantReservation::observe(PlantReservationObserver::class);
 
+        Sanctum::usePersonalAccessTokenModel(\App\Models\PersonalAccessToken::class);
+
         $sanctumTokenModel = Sanctum::personalAccessTokenModel();
 
         $sanctumTokenModel::observe(PersonalAccessTokenObserver::class);

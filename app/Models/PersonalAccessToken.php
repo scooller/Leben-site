@@ -10,6 +10,9 @@ class PersonalAccessToken extends SanctumPersonalAccessToken
     protected $fillable = [
         'name',
         'token',
+        'tokenable_type',
+        'tokenable_id',
+        'encrypted_token',
         'abilities',
         'authorized_url',
         'last_used_at',
@@ -19,6 +22,7 @@ class PersonalAccessToken extends SanctumPersonalAccessToken
     protected function casts(): array
     {
         return array_merge(parent::casts(), [
+            'encrypted_token' => 'encrypted',
             'abilities' => 'json',
             'last_used_at' => 'datetime',
             'expires_at' => 'datetime',
