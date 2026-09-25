@@ -4,7 +4,20 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
-## [1.9.47] - 2026-09-24
+## [1.9.49] - 2026-09-24
+
+### 📦 Registro del Componente Checkbox de Web Awesome
+
+- **Inicialización de Web Awesome (`frontend/src/services/webAwesome.js`)**:
+  - Importados explícitamente los componentes `checkbox.js` y `checkbox-group.js` de `@web.awesome.me/webawesome-pro`.
+- **Formulario de Contacto (`frontend/src/pages/Contact.jsx`)**:
+  - Habilitado listener `onwa-change` para el componente web `<wa-checkbox>`.
+
+### 📋 Checkbox de Bases Legales Obligatorio en Formulario de Contacto
+
+- **Formulario de Contacto (`frontend/src/pages/Contact.jsx`)**:
+  - Incorporada casilla `<wa-checkbox>` para confirmar "He leído las bases legales" antes de enviar el formulario.
+  - Validación en cliente para deshabilitar botón y exigir marcado antes de despachar mensaje.
 
 ### 💄 Unificación de Fila para Dcto Total y Precio de Reserva
 

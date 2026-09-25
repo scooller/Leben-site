@@ -139,6 +139,7 @@ function Contact({ onNavigate, currentPath }) {
   const { config, loading: configLoading } = useSiteConfig();
   const [values, setValues] = useState({});
   const [fieldErrors, setFieldErrors] = useState({});
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState('');
   const [submitError, setSubmitError] = useState('');
@@ -633,6 +634,21 @@ function Contact({ onNavigate, currentPath }) {
     setSubmitSuccess('');
     setSubmitError('');
 
+    if (!acceptedTerms) {
+      setSubmitError('Debes declarar haber leído las bases legales antes de enviar.');
+      setFieldErrors((current) => ({
+        ...current,
+        terms: 'Debes marcar esta casilla para continuar.',
+      }));
+
+      trackEvent('form_error', {
+        form_name: 'contact',
+        reason: 'terms_not_accepted',
+      });
+
+      return;
+    }
+
     if (isTurnstileEnabled && !turnstileToken) {
       setSubmitError('Completa la verificacion de seguridad antes de enviar el formulario.');
 
@@ -701,6 +717,7 @@ function Contact({ onNavigate, currentPath }) {
 
       setSubmitSuccess('Tu mensaje fue enviado correctamente.');
       setFieldErrors({});
+      setAcceptedTerms(false);
 
       if (window.turnstile && turnstileWidgetIdRef.current) {
         window.turnstile.reset(turnstileWidgetIdRef.current);
@@ -1046,6 +1063,52 @@ function Contact({ onNavigate, currentPath }) {
                 </div>
               )}
 
+              <div className="wa-stack wa-gap-3xs">
+                <wa-checkbox
+                  checked={acceptedTerms}
+                  onwa-change={(event) => {
+                    const checked = Boolean(event.target.checked);
+                    setAcceptedTerms(checked);
+                    if (checked) {
+                      setFieldErrors((current) => {
+                        const next = { ...current };
+                        delete next.terms;
+                        return next;
+                      });
+                    }
+                  }}
+                  onInput={(event) => {
+                    const checked = Boolean(event.target.checked);
+                    setAcceptedTerms(checked);
+                    if (checked) {
+                      setFieldErrors((current) => {
+                        const next = { ...current };
+                        delete next.terms;
+                        return next;
+                      });
+                    }
+                  }}
+                  onChange={(event) => {
+                    const checked = Boolean(event.target.checked);
+                    setAcceptedTerms(checked);
+                    if (checked) {
+                      setFieldErrors((current) => {
+                        const next = { ...current };
+                        delete next.terms;
+                        return next;
+                      });
+                    }
+                  }}
+                  required
+                >
+                  He leído las bases legales
+                </wa-checkbox>
+
+                {fieldErrors.terms && (
+                  <small className="wa-color-danger">{fieldErrors.terms}</small>
+                )}
+              </div>
+
               {submitSuccess && (
                 <wa-callout variant="success">
                   <wa-icon slot="icon" name="circle-check"></wa-icon>
@@ -1060,7 +1123,7 @@ function Contact({ onNavigate, currentPath }) {
                 </wa-callout>
               )}
 
-              <wa-button type="submit" variant="brand" disabled={submitting}>
+              <wa-button type="submit" variant="brand" disabled={submitting || !acceptedTerms}>
                 {submitting ?
                 <><wa-icon name="circle-notch" slot="start" animation="spin"></wa-icon> Enviando...</> :
                 <><wa-icon name="paper-plane" slot="start"></wa-icon> Enviar mensaje</>}
