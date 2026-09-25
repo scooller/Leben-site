@@ -1160,9 +1160,9 @@ class SalesforceService
 		$soql = 'SELECT Id, Name, ProductCode, Orientacion2__c, Programa__c, Programa2__c, Modelo__r.Name, Modelo__r.Programa__c, Piso__c, '
 			. 'Precio_Base__c, Precio_Lista__c, Porcentaje_maximo_de_unidad__c, '
 			. 'Superficie_Total_Producto_Principal__c, Superficie_Interior__c, Superficie_Util__c, '
-			. 'Superficie_Terraza__c, Proyecto__c, Tipo_Producto__c '
+			. 'Superficie_Terraza__c, Proyecto__c, Tipo_Producto__c, IsActive '
 			. 'FROM Product2 '
-			. "WHERE IsActive = true AND Estado__c = 'Disponible' AND Tipo_Producto__c IN ({$productTypesInClause}) AND Proyecto__c IN ({$projectIdsInClause}) "
+			. "WHERE Estado__c = 'Disponible' AND Tipo_Producto__c IN ({$productTypesInClause}) AND Proyecto__c IN ({$projectIdsInClause}) "
 			. 'ORDER BY Name '
 			. 'LIMIT 1000';
 
@@ -1195,6 +1195,7 @@ class SalesforceService
 						'superficie_util' => (float) ($entry['Superficie_Util__c'] ?? 0),
 						'superficie_terraza' => (float) ($entry['Superficie_Terraza__c'] ?? 0),
 						'proyecto_id' => $entry['Proyecto__c'] ?? null,
+						'is_active' => (bool) ($entry['IsActive'] ?? false),
 					];
 				}, $entries);
 			} catch (Throwable $e) {
@@ -1224,6 +1225,7 @@ class SalesforceService
 						'superficie_util' => (float) ($entry['Superficie_Util__c'] ?? 0),
 						'superficie_terraza' => (float) ($entry['Superficie_Terraza__c'] ?? 0),
 						'proyecto_id' => $entry['Proyecto__c'] ?? null,
+						'is_active' => (bool) ($entry['IsActive'] ?? false),
 					];
 				}, $entries);
 			}

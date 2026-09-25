@@ -33,6 +33,7 @@ class SyncPlantsAction
         'superficie_util' => 'Superficie util',
         'superficie_terraza' => 'Superficie terraza',
         'salesforce_interior_image_url' => 'URL interior Salesforce',
+        'is_active' => 'Activo',
     ];
 
     /**
@@ -154,7 +155,7 @@ class SyncPlantsAction
                         'superficie_interior' => $plantData['superficie_interior'],
                         'superficie_util' => $plantData['superficie_util'],
                         'superficie_terraza' => $plantData['superficie_terraza'],
-                        'is_active' => true,
+                        'is_active' => array_key_exists('is_active', $plantData) ? (bool) $plantData['is_active'] : true,
                         'last_synced_at' => Carbon::now(),
                     ];
 
@@ -183,7 +184,7 @@ class SyncPlantsAction
                         'superficie_interior' => $plantData['superficie_interior'],
                         'superficie_util' => $plantData['superficie_util'],
                         'superficie_terraza' => $plantData['superficie_terraza'],
-                        'is_active' => true,
+                        'is_active' => array_key_exists('is_active', $plantData) ? (bool) $plantData['is_active'] : true,
                         'last_synced_at' => Carbon::now(),
                     ];
 

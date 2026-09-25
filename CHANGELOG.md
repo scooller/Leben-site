@@ -4,6 +4,19 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.50] - 2026-09-25
+
+### 🔄 Sincronización de Estado Activo/Inactivo en Plantas desde Salesforce
+
+- **Servicio Salesforce (`app/Services/Salesforce/SalesforceService.php`)**:
+  - Removido el filtro fijo `IsActive = true` en la consulta SOQL a `Product2` para permitir traer tanto unidades activas como inactivas (`IsActive = true/false`).
+  - Agregado campo `IsActive` en la selección SOQL y mapeo booleano `is_active`.
+- **Acción de Sincronización (`app/Filament/Actions/SyncPlantsAction.php`)**:
+  - Mapeado el campo `is_active` en la creación y actualización de registros locales respetando el valor devuelto por Salesforce.
+  - Agregado `is_active` a las opciones configurables de campos actualizables (`UPDATABLE_PLANT_FIELD_OPTIONS`).
+- **Pruebas (`tests/`)**:
+  - Agregadas pruebas unitarias y de integración para verificar la sincronización y persistencia de `is_active` (`true`/`false`).
+
 ## [1.9.49] - 2026-09-24
 
 ### 📦 Registro del Componente Checkbox de Web Awesome
