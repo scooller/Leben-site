@@ -4,6 +4,21 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.52] - 2026-09-25
+
+### 📱 Ajuste de Aspect Ratio de Video Hero en Mobile a 920x1580
+
+- **Estilos del Home (`frontend/src/styles/home.scss`)**:
+  - Actualizado `aspect-ratio` en `.video-home .hero-video` para pantallas móviles (`max-width: 768px`) a `920 / 1580` (46:79) para evitar recortes con el video vertical.
+
+## [1.9.51] - 2026-09-25
+
+### 🎬 Ajuste de Aspect Ratio de Video Hero a 1920x768
+
+- **Estilos del Home (`frontend/src/styles/home.scss`)**:
+  - Actualizado `aspect-ratio` en `.video-home .hero-video` a `1920 / 768` (2.5:1) para coincidir exactamente con las dimensiones del video y prevenir recorte superior e inferior.
+  - Ajustado `.hero-video-poster` con `object-fit: cover` para una transición limpia con el reproductor de video.
+
 ## [1.9.50] - 2026-09-25
 
 ### 🔄 Sincronización de Estado Activo/Inactivo en Plantas desde Salesforce
