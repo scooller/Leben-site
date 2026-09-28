@@ -9,7 +9,9 @@ use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Icon;
 use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
@@ -99,6 +101,45 @@ class PlantForm
                 Toggle::make('unidad_sale')
                     ->label('Unidad Sale')
                     ->helperText('Define si esta unidad debe mostrarse cuando la configuración sale está activa.'),
+                Toggle::make('priorizar_descuentos')
+                    ->label('Priorizar descuentos en esta planta')
+                    ->helperText('Si se activa, el cálculo y visualización de descuentos se basarán en los valores de esta planta y no en los del proyecto.')
+                    ->live(),
+                TextInput::make('descuento_defecto_cotizacion_web')
+                    ->label('Defecto Cotización Web (%)')
+                    ->beforeLabel(Icon::make(Heroicon::PercentBadge))
+                    ->numeric()
+                    ->step(0.01)
+                    ->minValue(0)
+                    ->maxValue(100)
+                    ->prefix('Dcto.')
+                    ->suffix('%')
+                    ->visible(fn ($get) => (bool) $get('priorizar_descuentos')),
+                TextInput::make('descuento_maximo_unidad')
+                    ->label('Máximo Unidad (%)')
+                    ->beforeLabel(Icon::make(Heroicon::PercentBadge))
+                    ->belowContent([
+                        'Se aplica cuando Sale este Activo',
+                        Icon::make(Heroicon::InformationCircle),
+                    ])
+                    ->numeric()
+                    ->step(0.01)
+                    ->minValue(0)
+                    ->maxValue(100)
+                    ->prefix('Dcto.')
+                    ->suffix('%')
+                    ->visible(fn ($get) => (bool) $get('priorizar_descuentos')),
+                TextInput::make('descuento_iva')
+                    ->label('Dcto. IVA')
+                    ->beforeLabel(Icon::make(Heroicon::PercentBadge))
+                    ->numeric()
+                    ->step(0.01)
+                    ->minValue(0)
+                    ->maxValue(100)
+                    ->default(0)
+                    ->prefix('Dcto.')
+                    ->suffix('%')
+                    ->visible(fn ($get) => (bool) $get('priorizar_descuentos')),
                 TextInput::make('superficie_total_principal')
                     ->label('Superficie Total Principal')
                     ->numeric()

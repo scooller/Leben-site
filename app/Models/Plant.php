@@ -34,6 +34,9 @@ class Plant extends Model
         'precio_lista',
         'porcentaje_maximo_unidad',
         'descuento_defecto_cotizacion_web',
+        'descuento_maximo_unidad',
+        'descuento_iva',
+        'priorizar_descuentos',
         'unidad_sale',
         'superficie_total_principal',
         'superficie_interior',
@@ -51,6 +54,9 @@ class Plant extends Model
         'precio_lista' => 'decimal:2',
         'porcentaje_maximo_unidad' => 'decimal:2',
         'descuento_defecto_cotizacion_web' => 'decimal:2',
+        'descuento_maximo_unidad' => 'decimal:2',
+        'descuento_iva' => 'decimal:2',
+        'priorizar_descuentos' => 'boolean',
         'unidad_sale' => 'boolean',
         'superficie_total_principal' => 'decimal:2',
         'superficie_interior' => 'decimal:2',
@@ -139,6 +145,9 @@ class Plant extends Model
             'precio_lista',
             'porcentaje_maximo_unidad',
             'descuento_defecto_cotizacion_web',
+            'descuento_maximo_unidad',
+            'descuento_iva',
+            'priorizar_descuentos',
             'unidad_sale',
             'superficie_total_principal',
             'superficie_interior',
@@ -202,6 +211,33 @@ class Plant extends Model
             ->latest('id');
     }
 
+    public function getEffectiveDescuentoDefectoCotizacionWeb(): float
+    {
+        if ((bool) $this->priorizar_descuentos) {
+            return (float) ($this->descuento_defecto_cotizacion_web ?? 0);
+        }
+
+        return (float) ($this->proyecto?->descuento_defecto_cotizacion_web ?? 0);
+    }
+
+    public function getEffectiveDescuentoMaximoUnidad(): float
+    {
+        if ((bool) $this->priorizar_descuentos) {
+            return (float) ($this->descuento_maximo_unidad ?? 0);
+        }
+
+        return (float) ($this->proyecto?->descuento_maximo_unidad ?? 0);
+    }
+
+    public function getEffectiveDescuentoIva(): float
+    {
+        if ((bool) $this->priorizar_descuentos) {
+            return (float) ($this->descuento_iva ?? 0);
+        }
+
+        return (float) ($this->proyecto?->descuento_iva ?? 0);
+    }
+
     public function resolveFinalPrice(string|bool|null $percentageSource = null): float
     {
         $precioLista = (float) ($this->precio_lista ?? 0);
@@ -214,10 +250,10 @@ class Plant extends Model
 
         $isMaxUnit = $percentageSource === 'max_unit' || $percentageSource === true;
         $porcentajeDescuento = $isMaxUnit
-            ? (float) ($this->proyecto?->descuento_maximo_unidad ?? 0)
-            : (float) ($this->proyecto?->descuento_defecto_cotizacion_web ?? 0);
+            ? $this->getEffectiveDescuentoMaximoUnidad()
+            : $this->getEffectiveDescuentoDefectoCotizacionWeb();
 
-        $descuentoIva = (float) ($this->proyecto?->descuento_iva ?? 0);
+        $descuentoIva = $this->getEffectiveDescuentoIva();
         $totalDescuento = $porcentajeDescuento + $descuentoIva;
 
         if ($precioLista > 0 && $totalDescuento > 0) {

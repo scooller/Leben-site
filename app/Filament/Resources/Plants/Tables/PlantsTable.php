@@ -134,11 +134,19 @@ class PlantsTable
 						$direction = strtolower($direction) === 'desc' ? 'DESC' : 'ASC';
 						$fallback = $direction === 'ASC' ? '999999999999' : '0';
 
-						$orderByDiscountExpression = $isSaleEventActive
-							? 'COALESCE((SELECT p.descuento_maximo_unidad FROM proyectos p WHERE p.salesforce_id = plants.salesforce_proyecto_id LIMIT 1), 0)'
-							: 'COALESCE((SELECT p.descuento_defecto_cotizacion_web FROM proyectos p WHERE p.salesforce_id = plants.salesforce_proyecto_id LIMIT 1), 0)';
+						$projectMaxDiscountExpression = '(SELECT p.descuento_maximo_unidad FROM proyectos p WHERE p.salesforce_id = plants.salesforce_proyecto_id LIMIT 1)';
+						$projectDefaultDiscountExpression = '(SELECT p.descuento_defecto_cotizacion_web FROM proyectos p WHERE p.salesforce_id = plants.salesforce_proyecto_id LIMIT 1)';
+						$projectIvaDiscountExpression = '(SELECT p.descuento_iva FROM proyectos p WHERE p.salesforce_id = plants.salesforce_proyecto_id LIMIT 1)';
 
-						$orderByTotalDiscount = "({$orderByDiscountExpression} + COALESCE((SELECT p.descuento_iva FROM proyectos p WHERE p.salesforce_id = plants.salesforce_proyecto_id LIMIT 1), 0))";
+						$effectiveMaxDiscount = "CASE WHEN plants.priorizar_descuentos = 1 THEN COALESCE(plants.descuento_maximo_unidad, 0) ELSE COALESCE({$projectMaxDiscountExpression}, 0) END";
+						$effectiveDefaultDiscount = "CASE WHEN plants.priorizar_descuentos = 1 THEN COALESCE(plants.descuento_defecto_cotizacion_web, 0) ELSE COALESCE({$projectDefaultDiscountExpression}, 0) END";
+						$effectiveIvaDiscount = "CASE WHEN plants.priorizar_descuentos = 1 THEN COALESCE(plants.descuento_iva, 0) ELSE COALESCE({$projectIvaDiscountExpression}, 0) END";
+
+						$orderByDiscountExpression = $isSaleEventActive
+							? $effectiveMaxDiscount
+							: $effectiveDefaultDiscount;
+
+						$orderByTotalDiscount = "({$orderByDiscountExpression} + {$effectiveIvaDiscount})";
 
 						return $query->orderByRaw(
 							"COALESCE(CASE WHEN {$orderByTotalDiscount} > 0 AND precio_lista > 0 THEN CASE WHEN (precio_lista - ((precio_lista * {$orderByTotalDiscount}) / 100)) < 0 THEN 0 ELSE (precio_lista - ((precio_lista * {$orderByTotalDiscount}) / 100)) END ELSE precio_base END, {$fallback}) {$direction}"
@@ -147,48 +155,54 @@ class PlantsTable
 				TextColumn::make('proyecto.descuento_iva')
 					->label('% Dcto. IVA')
 					->badge()
-					->color('purple')
-					->tooltip('Porcentaje de descuento IVA configurado desde el proyecto')
-					->state(fn(Plant $record): mixed => $record->proyecto?->descuento_iva)
+					->color(fn(Plant $record): string => $record->priorizar_descuentos ? 'indigo' : 'purple')
+					->tooltip(fn(Plant $record): string => $record->priorizar_descuentos ? 'Priorizado desde la planta' : 'Configurado desde el proyecto')
+					->state(fn(Plant $record): mixed => $record->getEffectiveDescuentoIva())
 					->formatStateUsing(fn($state) => $state !== null ? number_format((float) $state, 2, ',', '.') . '%' : '-')
 					->sortable(query: function ($query, string $direction) {
 						$direction = strtolower($direction) === 'desc' ? 'DESC' : 'ASC';
 						$fallback = $direction === 'ASC' ? '999999' : '-1';
 
 						return $query->orderByRaw(
-							"COALESCE((SELECT p.descuento_iva FROM proyectos p WHERE p.salesforce_id = plants.salesforce_proyecto_id LIMIT 1), {$fallback}) {$direction}"
+							"CASE WHEN plants.priorizar_descuentos = 1 THEN COALESCE(plants.descuento_iva, {$fallback}) ELSE COALESCE((SELECT p.descuento_iva FROM proyectos p WHERE p.salesforce_id = plants.salesforce_proyecto_id LIMIT 1), {$fallback}) END {$direction}"
 						);
 					}),
 				TextColumn::make('proyecto.descuento_maximo_unidad')
 					->label('% Máx. Unidad')
 					->badge()
-					->color('amber')
-					->tooltip('Porcentaje configurado desde el proyecto')
-					->state(fn(Plant $record): mixed => $record->proyecto?->descuento_maximo_unidad)
+					->color(fn(Plant $record): string => $record->priorizar_descuentos ? 'orange' : 'amber')
+					->tooltip(fn(Plant $record): string => $record->priorizar_descuentos ? 'Priorizado desde la planta' : 'Configurado desde el proyecto')
+					->state(fn(Plant $record): mixed => $record->getEffectiveDescuentoMaximoUnidad())
 					->formatStateUsing(fn($state) => $state !== null ? number_format((float) $state, 2, ',', '.') . '%' : '-')
 					->sortable(query: function ($query, string $direction) {
 						$direction = strtolower($direction) === 'desc' ? 'DESC' : 'ASC';
 						$fallback = $direction === 'ASC' ? '999999' : '-1';
 
 						return $query->orderByRaw(
-							"COALESCE((SELECT p.descuento_maximo_unidad FROM proyectos p WHERE p.salesforce_id = plants.salesforce_proyecto_id LIMIT 1), {$fallback}) {$direction}"
+							"CASE WHEN plants.priorizar_descuentos = 1 THEN COALESCE(plants.descuento_maximo_unidad, {$fallback}) ELSE COALESCE((SELECT p.descuento_maximo_unidad FROM proyectos p WHERE p.salesforce_id = plants.salesforce_proyecto_id LIMIT 1), {$fallback}) END {$direction}"
 						);
 					}),
 				TextColumn::make('proyecto.descuento_defecto_cotizacion_web')
 					->label('% Desc. Web')
 					->badge()
-					->color('teal')
-					->tooltip('Porcentaje configurado desde el proyecto')
-					->state(fn(Plant $record): mixed => $record->proyecto?->descuento_defecto_cotizacion_web)
+					->color(fn(Plant $record): string => $record->priorizar_descuentos ? 'cyan' : 'teal')
+					->tooltip(fn(Plant $record): string => $record->priorizar_descuentos ? 'Priorizado desde la planta' : 'Configurado desde el proyecto')
+					->state(fn(Plant $record): mixed => $record->getEffectiveDescuentoDefectoCotizacionWeb())
 					->formatStateUsing(fn($state) => $state !== null ? number_format((float) $state, 2, ',', '.') . '%' : '-')
 					->sortable(query: function ($query, string $direction) {
 						$direction = strtolower($direction) === 'desc' ? 'DESC' : 'ASC';
 						$fallback = $direction === 'ASC' ? '999999' : '-1';
 
 						return $query->orderByRaw(
-							"COALESCE((SELECT p.descuento_defecto_cotizacion_web FROM proyectos p WHERE p.salesforce_id = plants.salesforce_proyecto_id LIMIT 1), {$fallback}) {$direction}"
+							"CASE WHEN plants.priorizar_descuentos = 1 THEN COALESCE(plants.descuento_defecto_cotizacion_web, {$fallback}) ELSE COALESCE((SELECT p.descuento_defecto_cotizacion_web FROM proyectos p WHERE p.salesforce_id = plants.salesforce_proyecto_id LIMIT 1), {$fallback}) END {$direction}"
 						);
 					}),
+				IconColumn::make('priorizar_descuentos')
+					->label('Dcto. Propio')
+					->boolean()
+					->tooltip('Indica si esta planta tiene descuentos propios priorizados')
+					->toggleable(isToggledHiddenByDefault: true)
+					->sortable(),
 				// TextColumn::make('superficie_util')
 				//     ->label('Sup. Útil')
 				//     ->suffix(' m²')

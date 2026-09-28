@@ -4,6 +4,27 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.63] - 2026-09-28
+
+### Added
+
+- **Plantas — Check y Prioridad de Descuentos por Planta (`Plant.php`, `plants table`)**:
+  - Migración `2026_09_28_125656_add_discount_override_columns_to_plants_table.php` que agrega `priorizar_descuentos` (booleano, default `false`), `descuento_maximo_unidad` (`decimal(8,2)` nullable) y `descuento_iva` (`decimal(8,2)` nullable default `0`) a la tabla `plants`.
+  - Métodos helper en `Plant.php`: `getEffectiveDescuentoDefectoCotizacionWeb()`, `getEffectiveDescuentoMaximoUnidad()` y `getEffectiveDescuentoIva()`.
+  - Soporte de prioridad en `Plant::resolveFinalPrice()`: cuando `priorizar_descuentos` es `true`, calcula precios basados en los descuentos de la planta (asumiendo 0% ante valores no configurados en planta) en lugar de heredar los del proyecto.
+  - Campos de descuento y toggle incluidos en `$fillable`, `$casts`, `Plant::syncableFields()` y `PlantExporter.php`.
+
+### Changed
+
+- **Filament — Formulario y Tablas de Plantas (`PlantForm.php`, `PlantsTable.php`, `PlantasRelationManager.php`)**:
+  - `PlantForm`: toggle reactivo `priorizar_descuentos` que despliega condicionalmente los campos de porcentaje `descuento_defecto_cotizacion_web`, `descuento_maximo_unidad` y `descuento_iva` con el mismo formato y validación de `ProyectoForm`.
+  - `PlantsTable`: columnas `% Dcto. IVA`, `% Máx. Unidad` y `% Desc. Web` reflejan valores efectivos con colores y tooltips distintivos si provienen de la planta o del proyecto; ordenamiento SQL actualizado para considerar `CASE WHEN plants.priorizar_descuentos = 1 ...`.
+  - Añadida columna toggleable `priorizar_descuentos` en `PlantsTable` y `PlantasRelationManager`.
+
+- **API Pública — Exposición y Cálculo de Descuentos Efectivos (`EnrichesPlantPayload.php`, `PlantController.php`)**:
+  - `EnrichesPlantPayload`: expone el atributo `priorizar_descuentos` y resuelve `descuento_defecto_cotizacion_web`, `descuento_maximo_unidad`, `descuento_iva` y `precio_final` respetando la prioridad de la planta en `/api/v1/plantas` y endpoints relacionados.
+  - `PlantController`: ordenamiento SQL en el listado paginado considera el precio con descuento efectivo por planta.
+
 ## [1.9.62] - 2026-09-28
 
 ### Fixed

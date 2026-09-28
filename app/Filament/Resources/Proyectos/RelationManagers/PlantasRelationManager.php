@@ -61,6 +61,10 @@ class PlantasRelationManager extends RelationManager
                     ->label('Superficie Útil')
                     ->formatStateUsing(fn ($state) => number_format((float) $state, 2, ',', '.'))
                     ->sortable(),
+                Tables\Columns\IconColumn::make('priorizar_descuentos')
+                    ->label('Dcto. Propio')
+                    ->boolean()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\IconColumn::make('is_active')
                     ->label('Activa')
                     ->boolean(),
