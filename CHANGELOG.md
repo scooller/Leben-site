@@ -4,7 +4,14 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
-## [1.9.67] - 2026-09-28
+## [1.9.68] - 2026-09-28
+
+### Changed
+
+- **Web Awesome — Actualización y Organización de Temas y Paletas en Panel y Frontend (`SiteSettings.php`, `webAwesome.js`, `SiteConfigContext.jsx`)**:
+  - En `SiteSettings.php`: agrupación estructurada de los 11 temas (`default`, `awesome`, `shoelace` gratuitos; `active`, `brutalist`, `glossy`, `matter`, `mellow`, `playful`, `premium`, `tailspin` Pro) y las 9 paletas (`default`, `bright`, `shoelace` gratuitas; `rudimentary`, `elegant`, `mild`, `natural`, `anodized`, `vogue` Pro) con descripciones estilísticas y búsqueda (`searchable()`).
+  - En `webAwesome.js`: incorporación de mapeo dinámico `paletteImports` con carga perezosa (`lazy loading`) asíncrona para todas las paletas Pro y Core de Web Awesome 3.13.0.
+  - En `SiteConfigContext.jsx`: aplicación asíncrona de `applyPalette()` para garantizar que cualquier paleta seleccionada en el backend se cargue y aplique en el DOM sin depender de su inclusión en el tema base.
 
 ### Changed
 

@@ -145,7 +145,7 @@ export const SiteConfigProvider = ({ children }) => {
           const palette = data.webawesome_palette || 'natural';
 
           await WebAwesomeService.applyPrebuiltTheme(theme);
-          WebAwesomeService.applyPalette(palette);
+          await WebAwesomeService.applyPalette(palette);
           WebAwesomeService.applyBrandColor(data.brand_color || '#eb0029');
           WebAwesomeService.applySemanticColors({
             semantic_brand_color: data.semantic_brand_color || 'blue',

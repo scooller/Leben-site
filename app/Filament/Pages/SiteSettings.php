@@ -355,35 +355,45 @@ class SiteSettings extends Page implements HasForms
                                         Select::make('webawesome_theme')
                                             ->label('Tema Web Awesome')
                                             ->options([
-                                                'default' => 'Default',
-                                                'awesome' => 'Awesome',
-                                                'shoelace' => 'Shoelace',
-                                                'active' => 'Active',
-                                                'brutalist' => 'Brutalist',
-                                                'glossy' => 'Glossy',
-                                                'matter' => 'Matter',
-                                                'mellow' => 'Mellow',
-                                                'playful' => 'Playful',
-                                                'premium' => 'Premium',
-                                                'tailspin' => 'Tailspin',
+                                                'Temas Gratuitos (Core)' => [
+                                                    'default' => 'Default (Estándar Web Awesome)',
+                                                    'awesome' => 'Awesome (Moderno y distintivo)',
+                                                    'shoelace' => 'Shoelace (Clásico y neutral)',
+                                                ],
+                                                'Temas Pro' => [
+                                                    'active' => 'Active (Dinámico y deportivo)',
+                                                    'brutalist' => 'Brutalist (Alto contraste y bordes marcados)',
+                                                    'glossy' => 'Glossy (Reflejos y estética glassmorphism)',
+                                                    'matter' => 'Matter (Inspirado en Material Design)',
+                                                    'mellow' => 'Mellow (Cálido y redondeado)',
+                                                    'playful' => 'Playful (Lúdico y amigable)',
+                                                    'premium' => 'Premium (Elegante y refinado)',
+                                                    'tailspin' => 'Tailspin (Inspirado en Tailwind)',
+                                                ],
                                             ])
-                                            ->helperText('Define el estilo base y colores del sitio')
+                                            ->helperText('Define el estilo base, bordes, sombras y tipografía del sitio')
+                                            ->searchable()
                                             ->required(),
 
                                         Select::make('webawesome_palette')
                                             ->label('Paleta de Colores')
                                             ->options([
-                                                'default' => 'Default',
-                                                'bright' => 'Bright',
-                                                'shoelace' => 'Shoelace',
-                                                'rudimentary' => 'Rudimentary (Pro)',
-                                                'elegant' => 'Elegant (Pro)',
-                                                'mild' => 'Mild (Pro)',
-                                                'natural' => 'Natural (Pro)',
-                                                'anodized' => 'Anodized (Pro)',
-                                                'vogue' => 'Vogue (Pro)',
+                                                'Paletas Gratuitas (Core)' => [
+                                                    'default' => 'Default (Equilibrada estándar)',
+                                                    'bright' => 'Bright (Vibrante y saturada)',
+                                                    'shoelace' => 'Shoelace (Clásica neutral)',
+                                                ],
+                                                'Paletas Pro' => [
+                                                    'rudimentary' => 'Rudimentary (Tonos primarios y directos)',
+                                                    'elegant' => 'Elegant (Tonos sobrios y refinados)',
+                                                    'mild' => 'Mild (Tonos suaves y desaturados)',
+                                                    'natural' => 'Natural (Tonos orgánicos y tierra)',
+                                                    'anodized' => 'Anodized (Metálico e industrial)',
+                                                    'vogue' => 'Vogue (Alta costura y contraste editorial)',
+                                                ],
                                             ])
-                                            ->helperText('Define los tonos y matices específicos de los colores')
+                                            ->helperText('Define los tonos y matices específicos de los colores de la interfaz')
+                                            ->searchable()
                                             ->required(),
 
                                         // agregar color principal de la marca para aplicar a botones, enlaces y elementos destacados
