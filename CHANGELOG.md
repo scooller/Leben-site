@@ -4,6 +4,16 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.69] - 2026-09-28
+
+### Added
+
+- **Frontend Tracking & Analítica — Estandarización de Eventos de Conversión en Meta Pixel y GTM/GA4 (`tagManager.js`, `Payment.jsx`)**:
+  - En `tagManager.js`: mapeo de `form_submit: 'Lead'` en `FBQ_STANDARD_EVENTS` para optimización estándar de campañas de clientes potenciales en Meta Ads.
+  - En `tagManager.js`: mapeo de `wa_link: 'Contact'` en `FBQ_STANDARD_EVENTS` para reconocer interacciones directas con asesores comerciales en WhatsApp como contacto estándar.
+  - En `tagManager.js`: mapeo de `purchase` y `payment_success` a `'Purchase'` en `FBQ_STANDARD_EVENTS`.
+  - En `Payment.jsx`: disparo de evento estándar `purchase` con `transaction_id`, `value` (monto real de compra), `currency: 'CLP'`, `order_id`, `gateway`, `unit_id` y `project_id` hacia Google Tag Manager (`dataLayer`) y Meta Pixel tras confirmación de pago aprobado.
+
 ## [1.9.68] - 2026-09-28
 
 ### Changed
