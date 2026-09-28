@@ -87,15 +87,15 @@ function SiteFooter({ config, onNavigate }) {
       <BlurBar />
       <div className="site-footer wa-stack wa-gap-l">
         {hasLegalText && (
-          <wa-card appearance="filled">
-            <div className="wa-stack wa-gap-s wa-align-items-center wa-text-align-center wa-font-size-xs" style={{ padding: 'var(--wa-space-l)' }}>
+          <wa-card appearance="filled" className="site-footer-card">
+            <div className="wa-stack wa-gap-s wa-align-items-center wa-text-align-center wa-font-size-xs">
               <div dangerouslySetInnerHTML={{ __html: config.footer_legal_text }} />
             </div>
           </wa-card>
         )}
 
-        <wa-card appearance="filled">
-          <section className="wa-stack wa-gap-l" style={{ padding: 'var(--wa-space-l)' }}>
+        <wa-card appearance="filled" className="site-footer-card">
+          <section className="wa-stack wa-gap-l">
             <div className="wa-split wa-gap-m wa-align-items-center" style={{ flexWrap: 'wrap' }}>
               <div className="wa-stack wa-gap-s">
                 {logoSrc ? (
@@ -122,7 +122,7 @@ function SiteFooter({ config, onNavigate }) {
 
               <div className="wa-stack wa-gap-s wa-align-items-center wa-justify-content-center">
               {socialLinks.length > 0 && (
-                <div className="wa-stack wa-gap-2xs wa-align-items-end" style={{ marginLeft: 'auto' }}>
+                <div className="site-footer-social wa-stack wa-gap-2xs">
                   <span>Síguenos en:</span>
                   <div className="wa-cluster wa-gap-xs">
                     {socialLinks.map((socialItem) => (

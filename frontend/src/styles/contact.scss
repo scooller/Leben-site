@@ -43,12 +43,16 @@
 
 .contact-content-card::part(base),
 .contact-info-card::part(base) {
-  border-radius: 1rem;
+  border-radius: var(--wa-border-radius-l, 1rem);
 }
 
 .contact-content-card,
 .contact-info-card {
-  padding: var(--wa-space-m);
+  --spacing: var(--wa-space-l);
+
+  @media (max-width: 768px) {
+    --spacing: var(--wa-space-s);
+  }
 }
 
 .contact-content-card h2,
@@ -56,8 +60,10 @@
   margin: 0;
 }
 
-.contact-form {
-  margin-top: var(--wa-space-s);
+.contact-page .home-container {
+  @media (max-width: 768px) {
+    padding: var(--wa-space-m) var(--wa-space-s);
+  }
 }
 
 

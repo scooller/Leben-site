@@ -227,3 +227,35 @@ html.wa-light #root {
 .turnstile-wrapper > div {
   min-height: 66px;
 }
+
+// ============================================================
+// SITE FOOTER (override ::slotted([slot='footer']) de wa-page)
+// ============================================================
+footer[slot='footer'].site-footer-container {
+  padding: var(--wa-space-xl) var(--wa-space-l);
+
+  @media (max-width: 768px) {
+    margin-top: var(--wa-space-xl) !important;
+    padding: var(--wa-space-s) !important;
+  }
+}
+
+.site-footer-card {
+  --spacing: var(--wa-space-l);
+
+  @media (max-width: 768px) {
+    --spacing: var(--wa-space-s);
+  }
+}
+
+.site-footer-social {
+  align-items: flex-end;
+  margin-left: auto;
+
+  @media (max-width: 768px) {
+    align-items: center;
+    margin: 0 auto;
+    text-align: center;
+  }
+}
+

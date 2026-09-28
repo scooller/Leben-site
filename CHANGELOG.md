@@ -4,6 +4,26 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.62] - 2026-09-28
+
+### Fixed
+
+- **Frontend — Optimización de padding en mobile para footer global (`SiteFooter.jsx`, `global.scss`)**:
+  - Eliminado padding inline redundante (`padding: var(--wa-space-l)`) en `<wa-card>` dentro de `SiteFooter.jsx`.
+  - Sobrescrito el padding por defecto de `<wa-page>` (`::slotted([slot='footer']) { padding: var(--wa-space-3xl); }`) en mobile (`@media (max-width: 768px)`), reduciéndolo a `var(--wa-space-s)`.
+  - Configurado el token de Web Awesome `--spacing: var(--wa-space-s)` para `.site-footer-card` en mobile y `--spacing: var(--wa-space-l)` en desktop.
+  - Ajustado margen superior responsivo en mobile (`margin-top: var(--wa-space-xl)`).
+  - Centrado responsivo del bloque "Síguenos en:" (`.site-footer-social`) en pantallas móviles (`align-items: center`, `margin: 0 auto`).
+
+## [1.9.61] - 2026-09-28
+
+### Fixed
+
+- **Frontend — Optimización de padding en mobile para página de contacto (`contact.scss`)**:
+  - Reemplazado padding manual en el host del componente `<wa-card>` por el token oficial `--spacing: var(--wa-space-l)` (desktop) y `--spacing: var(--wa-space-s)` (mobile).
+  - Reducido el padding del contenedor `.contact-page .home-container` en pantallas móviles (`@media (max-width: 768px)`) a `var(--wa-space-m) var(--wa-space-s)`.
+  - Eliminado margen superior redundante en `.contact-form` para que la separación vertical sea administrada naturalmente por `wa-stack wa-gap-m`.
+
 ## [1.9.60] - 2026-09-28
 
 ### Changed
