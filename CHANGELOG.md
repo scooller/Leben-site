@@ -4,7 +4,13 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
-## [1.9.66] - 2026-09-28
+## [1.9.67] - 2026-09-28
+
+### Changed
+
+- **Filament — Descuentos en Plantas desde Proyecto Directo (`PlantForm.php`)**:
+  - En el toggle `priorizar_descuentos`, se extraen los valores por defecto directamente desde el proyecto asociado (`descuento_defecto_cotizacion_web`, `descuento_maximo_unidad` y `descuento_iva`) sin realizar sumas ni cálculos intermedios.
+  - Asignación de valores `default()` directos desde el proyecto para `descuento_defecto_cotizacion_web`, `descuento_maximo_unidad` y `descuento_iva`.
 
 ### Changed
 

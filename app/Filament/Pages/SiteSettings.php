@@ -1114,10 +1114,11 @@ class SiteSettings extends Page implements HasForms
                                         Select::make('extra_settings.price_source')
                                             ->label('Precio principal')
                                             ->options([
+                                                'lista' => 'Precio lista',
                                                 'final' => 'Precio final',
                                                 'base' => 'Precio base',
                                             ])
-                                            ->default('final')
+                                            ->default('lista')
                                             ->required()
                                             ->helperText('El precio lista se mostrará siempre como referencia, independientemente del valor elegido aquí.'),
 
