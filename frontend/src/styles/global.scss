@@ -259,3 +259,30 @@ footer[slot='footer'].site-footer-container {
   }
 }
 
+// ============================================================
+// GLASSMORPHISM UTILITY (wa-card.glass-card / .glass-card)
+// ============================================================
+wa-card.glass-card,
+wa-card[appearance].glass-card,
+.glass-card {
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  background-color: color-mix(in srgb, var(--wa-color-surface-default) 75%, transparent);
+  border-color: color-mix(in srgb, var(--wa-color-surface-border) 45%, transparent);
+  box-shadow: var(--wa-shadow-l);
+
+  &::part(header),
+  &::part(footer) {
+    border-color: color-mix(in srgb, var(--wa-color-surface-border) 35%, transparent);
+    background-color: transparent;
+  }
+}
+
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  wa-card.glass-card,
+  wa-card[appearance].glass-card,
+  .glass-card {
+    background-color: var(--wa-color-surface-default);
+  }
+}
+

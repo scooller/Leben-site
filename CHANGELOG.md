@@ -4,6 +4,16 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.70] - 2026-09-28
+
+### Added
+
+- **Frontend Estilos — Clase Utilitaria Glassmorphism `glass-card` para Web Awesome (`global.scss`)**:
+  - Incorporada clase utilitaria `wa-card.glass-card`, `wa-card[appearance].glass-card` y `.glass-card` con desenfoque de fondo `-webkit-backdrop-filter` y `backdrop-filter: blur(16px)`.
+  - Fondo y bordes translúcidos dinámicos calculados con `color-mix()` sobre los tokens `--wa-color-surface-default` y `--wa-color-surface-border` para compatibilidad completa con temas claro y oscuro de Web Awesome.
+  - Estilizado de `::part(header)` y `::part(footer)` para mantener bordes armonizados y fondos transparentes.
+  - Regla `@supports not` para fallback en navegadores sin soporte de `backdrop-filter`.
+
 ## [1.9.69] - 2026-09-28
 
 ### Added
