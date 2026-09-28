@@ -4,7 +4,15 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
-## [1.9.65] - 2026-09-28
+## [1.9.66] - 2026-09-28
+
+### Changed
+
+- **Filament — Carga Automática de Valores por Defecto al Priorizar Descuentos en Plantas (`PlantForm.php`)**:
+  - En el toggle `priorizar_descuentos`: hook reactivo `afterStateUpdated` que al activarse puebla automáticamente los campos con los valores por defecto del producto (Salesforce `porcentaje_maximo_unidad`) y del proyecto asociado (`descuento_defecto_cotizacion_web`, `descuento_maximo_unidad` y `descuento_iva`).
+  - Asignación de valores `default()` en los campos de formulario para persistir sugerencias iniciales al crear o editar la planta.
+  - Helper text informativo en `descuento_maximo_unidad` indicando el porcentaje sincronizado en el producto desde Salesforce cuando está disponible.
+  - Actualización de pruebas en `PlantResourceTest.php`.
 
 ### Changed
 

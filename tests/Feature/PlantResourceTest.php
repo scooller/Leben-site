@@ -97,6 +97,10 @@ class PlantResourceTest extends TestCase
 		$this->assertArrayNotHasKey('opportunity_id', $components);
 		$this->assertArrayNotHasKey('superficie_vendible', $components);
 		$this->assertArrayHasKey('unidad_sale', $components);
+		$this->assertArrayHasKey('priorizar_descuentos', $components);
+		$this->assertArrayHasKey('descuento_defecto_cotizacion_web', $components);
+		$this->assertArrayHasKey('descuento_maximo_unidad', $components);
+		$this->assertArrayHasKey('descuento_iva', $components);
 	}
 
 	public function test_plants_bulk_actions_include_activate_and_deactivate_sale(): void

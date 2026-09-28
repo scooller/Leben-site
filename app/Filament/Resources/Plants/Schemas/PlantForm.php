@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Plants\Schemas;
 
+use App\Models\Plant;
 use App\Models\Proyecto;
 use Awcodes\Curator\Components\Forms\CuratorPicker;
 use Filament\Actions\Action;
@@ -10,6 +11,8 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Icon;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Builder;
@@ -104,7 +107,34 @@ class PlantForm
                 Toggle::make('priorizar_descuentos')
                     ->label('Priorizar descuentos en esta planta')
                     ->helperText('Si se activa, el cálculo y visualización de descuentos se basarán en los valores de esta planta y no en los del proyecto.')
-                    ->live(),
+                    ->live()
+                    ->afterStateUpdated(function ($state, Set $set, Get $get, ?Plant $record) {
+                        if (! $state) {
+                            return;
+                        }
+
+                        $proyecto = $record?->proyecto
+                            ?? (filled($get('salesforce_proyecto_id')) ? Proyecto::where('salesforce_id', $get('salesforce_proyecto_id'))->first() : null);
+
+                        if (blank($get('descuento_defecto_cotizacion_web')) || (float) $get('descuento_defecto_cotizacion_web') === 0.0) {
+                            if ($proyecto?->descuento_defecto_cotizacion_web !== null) {
+                                $set('descuento_defecto_cotizacion_web', $proyecto->descuento_defecto_cotizacion_web);
+                            }
+                        }
+
+                        if (blank($get('descuento_maximo_unidad')) || (float) $get('descuento_maximo_unidad') === 0.0) {
+                            $defaultMaximo = $record?->porcentaje_maximo_unidad ?? $proyecto?->descuento_maximo_unidad;
+                            if ($defaultMaximo !== null) {
+                                $set('descuento_maximo_unidad', $defaultMaximo);
+                            }
+                        }
+
+                        if (blank($get('descuento_iva')) || (float) $get('descuento_iva') === 0.0) {
+                            if ($proyecto?->descuento_iva !== null) {
+                                $set('descuento_iva', $proyecto->descuento_iva);
+                            }
+                        }
+                    }),
                 TextInput::make('descuento_defecto_cotizacion_web')
                     ->label('Defecto Cotización Web (%)')
                     ->beforeLabel(Icon::make(Heroicon::PercentBadge))
@@ -112,6 +142,7 @@ class PlantForm
                     ->step(0.01)
                     ->minValue(0)
                     ->maxValue(100)
+                    ->default(fn (?Plant $record, Get $get) => $record?->proyecto?->descuento_defecto_cotizacion_web ?? (filled($get('salesforce_proyecto_id')) ? Proyecto::where('salesforce_id', $get('salesforce_proyecto_id'))->value('descuento_defecto_cotizacion_web') : null))
                     ->prefix('Dcto.')
                     ->suffix('%')
                     ->visible(fn ($get) => (bool) $get('priorizar_descuentos')),
@@ -126,6 +157,8 @@ class PlantForm
                     ->step(0.01)
                     ->minValue(0)
                     ->maxValue(100)
+                    ->default(fn (?Plant $record, Get $get) => $record?->porcentaje_maximo_unidad ?? $record?->proyecto?->descuento_maximo_unidad ?? (filled($get('salesforce_proyecto_id')) ? Proyecto::where('salesforce_id', $get('salesforce_proyecto_id'))->value('descuento_maximo_unidad') : null))
+                    ->helperText(fn (?Plant $record) => filled($record?->porcentaje_maximo_unidad) ? "Porcentaje máximo en producto (Salesforce): {$record->porcentaje_maximo_unidad}%" : null)
                     ->prefix('Dcto.')
                     ->suffix('%')
                     ->visible(fn ($get) => (bool) $get('priorizar_descuentos')),
@@ -136,7 +169,7 @@ class PlantForm
                     ->step(0.01)
                     ->minValue(0)
                     ->maxValue(100)
-                    ->default(0)
+                    ->default(fn (?Plant $record, Get $get) => $record?->proyecto?->descuento_iva ?? (filled($get('salesforce_proyecto_id')) ? Proyecto::where('salesforce_id', $get('salesforce_proyecto_id'))->value('descuento_iva') : 0))
                     ->prefix('Dcto.')
                     ->suffix('%')
                     ->visible(fn ($get) => (bool) $get('priorizar_descuentos')),
