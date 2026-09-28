@@ -11,8 +11,8 @@ use Filament\Actions\EditAction;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Collection;
@@ -281,19 +281,23 @@ class ProyectosTable
 				->searchable()
 				->preload(),
 
-			TernaryFilter::make('entrega_inmediata')
+			Filter::make('entrega_inmediata')
 				->label('Entrega Inmediata')
-				->native(false)
-				->placeholder('Todos')
-				->trueLabel('Sí')
-				->falseLabel('No'),
+				->toggle()
+				->query(fn ($query) => $query->where('entrega_inmediata', true)),
+			Filter::make('sin_entrega_inmediata')
+				->label('Sin Entrega Inmediata')
+				->toggle()
+				->query(fn ($query) => $query->where('entrega_inmediata', false)),
 
-			TernaryFilter::make('is_active')
-				->label('Estado')
-				->native(false)
-				->placeholder('Todos')
-				->trueLabel('Solo activos')
-				->falseLabel('Solo inactivos'),
+			Filter::make('solo_activos')
+				->label('Solo activos')
+				->toggle()
+				->query(fn ($query) => $query->where('is_active', true)),
+			Filter::make('solo_inactivos')
+				->label('Solo inactivos')
+				->toggle()
+				->query(fn ($query) => $query->where('is_active', false)),
 		];
 	}
 }

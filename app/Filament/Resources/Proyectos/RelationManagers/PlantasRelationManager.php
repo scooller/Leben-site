@@ -66,9 +66,14 @@ class PlantasRelationManager extends RelationManager
                     ->boolean(),
             ])
             ->filters([
-                Tables\Filters\TernaryFilter::make('is_active')
-                    ->label('Activas')
-                    ->native(false),
+                Tables\Filters\Filter::make('solo_activas')
+                    ->label('Solo activas')
+                    ->toggle()
+                    ->query(fn ($query) => $query->where('is_active', true)),
+                Tables\Filters\Filter::make('solo_inactivas')
+                    ->label('Solo inactivas')
+                    ->toggle()
+                    ->query(fn ($query) => $query->where('is_active', false)),
             ])
             ->recordActions([
                 // Sin acciones de edición en la relación (lectura)

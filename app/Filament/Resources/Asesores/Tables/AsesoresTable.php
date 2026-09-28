@@ -14,7 +14,7 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\TernaryFilter;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
@@ -70,12 +70,14 @@ class AsesoresTable
 					->toggleable(isToggledHiddenByDefault: true),
 			])
 			->filters([
-				TernaryFilter::make('is_active')
-					->label('Estado')
-					->native(false)
-					->placeholder('Todos')
-					->trueLabel('Activos')
-					->falseLabel('Inactivos'),
+				Filter::make('solo_activos')
+					->label('Solo activos')
+					->toggle()
+					->query(fn ($query) => $query->where('is_active', true)),
+				Filter::make('solo_inactivos')
+					->label('Solo inactivos')
+					->toggle()
+					->query(fn ($query) => $query->where('is_active', false)),
 			])
 			->recordActions([
 				ShowQrCodeAction::make(fn(Asesor $record): string => self::resolveOrCreateWhatsappShortLinkUrl($record), 'showWhatsappQr')

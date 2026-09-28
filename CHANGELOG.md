@@ -8,10 +8,11 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ### Changed
 
-- **UX — Filtros binarios como toggle**: Todos los filtros booleanos (Sí/No, Activo/Inactivo) ahora usan `TernaryFilter` con `native(false)` en vez de `SelectFilter` con dropdown. Afecta:
-  - `PlantsTable`: `is_active`, `unidad_sale`
-  - `AsesoresTable`: `is_active`
-  - `ProyectosTable`: `entrega_inmediata`, `is_active`
+- **UX — Filtros binarios como toggle switch**: Todos los filtros booleanos ahora usan `Filter::make()->toggle()` (switch real) en vez de `SelectFilter`/`TernaryFilter` (dropdown). Cada campo binario tiene dos toggles independientes (ej: "Solo activos" / "Solo inactivos"). Afecta:
+  - `PlantsTable`: `is_active` (2 toggles), `unidad_sale` (2 toggles)
+  - `AsesoresTable`: `is_active` (2 toggles)
+  - `ProyectosTable`: `entrega_inmediata` (2 toggles), `is_active` (2 toggles)
+  - `PlantasRelationManager`: `is_active` (2 toggles)
 
 ## [1.9.57] - 2026-09-28
 

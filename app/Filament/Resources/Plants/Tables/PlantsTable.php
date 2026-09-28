@@ -14,8 +14,8 @@ use Filament\Actions\ExportAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -216,19 +216,23 @@ class PlantsTable
 					->toggleable(isToggledHiddenByDefault: true),
 			])
 			->filters([
-				TernaryFilter::make('is_active')
-					->label('Estado')
-					->native(false)
-					->placeholder('Todos')
-					->trueLabel('Activos')
-					->falseLabel('Inactivos'),
+				Filter::make('solo_activos')
+					->label('Solo activos')
+					->toggle()
+					->query(fn ($query) => $query->where('is_active', true)),
+				Filter::make('solo_inactivos')
+					->label('Solo inactivos')
+					->toggle()
+					->query(fn ($query) => $query->where('is_active', false)),
 				// unidades sale
-				TernaryFilter::make('unidad_sale')
-					->label('Unidad Sale')
-					->native(false)
-					->placeholder('Todos')
-					->trueLabel('Sí')
-					->falseLabel('No'),
+				Filter::make('solo_sale')
+					->label('Solo en Sale')
+					->toggle()
+					->query(fn ($query) => $query->where('unidad_sale', true)),
+				Filter::make('solo_no_sale')
+					->label('Solo fuera de Sale')
+					->toggle()
+					->query(fn ($query) => $query->where('unidad_sale', false)),
 				// tipo de planta
 				SelectFilter::make('tipo_producto')
 					->label('Tipo de planta')
