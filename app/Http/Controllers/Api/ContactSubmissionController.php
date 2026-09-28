@@ -80,14 +80,17 @@ class ContactSubmissionController extends Controller
     {
         $settings = SiteSetting::current();
         if ($settings->evento_sale) {
-            $utmSource = $this->fieldValue($fields, ['utm_source', 'fuente', 'medio_de_llegada', 'medio_llegada', 'origen_del_prospecto', 'origen_prospecto']);
-            if ($utmSource !== null && strtolower(trim($utmSource)) === 'brevo') {
-                $extraSettings = is_array($settings->extra_settings) ? $settings->extra_settings : [];
-                $saleCampaign = trim((string) ($extraSettings['sale_utm_campaign'] ?? ''))
-                    ?: trim((string) ($extraSettings['sale_event_name'] ?? ''))
-                    ?: trim((string) ($extraSettings['utm_campaign_default'] ?? ''));
+            $extraSettings = is_array($settings->extra_settings) ? $settings->extra_settings : [];
+            $saleCampaign = trim((string) ($extraSettings['sale_utm_campaign'] ?? ''))
+                ?: trim((string) ($extraSettings['sale_event_name'] ?? ''))
+                ?: trim((string) ($extraSettings['utm_campaign_default'] ?? ''));
 
-                if ($saleCampaign !== '') {
+            if ($saleCampaign !== '') {
+                $utmSource = $this->fieldValue($fields, ['utm_source', 'fuente', 'medio_de_llegada', 'medio_llegada', 'origen_del_prospecto', 'origen_prospecto']);
+                $currentCampaign = $this->fieldValue($fields, ['utm_campaign', 'campana', 'nombre_de_la_campana']);
+                $isDefaultOrMissing = $currentCampaign === null || trim($currentCampaign) === '' || in_array(strtolower(trim($currentCampaign)), ['auto-tagging', 'campaign'], true);
+
+                if (($utmSource !== null && strtolower(trim($utmSource)) === 'brevo') || $isDefaultOrMissing) {
                     $fields['utm_campaign'] = $saleCampaign;
                 }
             }

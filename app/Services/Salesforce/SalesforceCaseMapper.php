@@ -683,6 +683,14 @@ class SalesforceCaseMapper
 			return $normalizedDefaultValue;
 		}
 
+		if ($settings->evento_sale) {
+			$extraSettings = is_array($settings->extra_settings) ? $settings->extra_settings : [];
+			$configuredSaleCampaign = trim((string) ($extraSettings['sale_utm_campaign'] ?? $extraSettings['sale_event_name'] ?? ''));
+			if ($configuredSaleCampaign !== '') {
+				return $configuredSaleCampaign;
+			}
+		}
+
 		return 'auto-tagging';
 	}
 

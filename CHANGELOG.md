@@ -4,7 +4,15 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
-## [1.9.64] - 2026-09-28
+## [1.9.65] - 2026-09-28
+
+### Changed
+
+- **Marketing y Salesforce — UTM Campaign Evento Sale como valor por defecto (`SalesforceCaseMapper.php`, `ContactSubmissionController.php`, `utmSession.js`)**:
+  - En `SalesforceCaseMapper`: cuando `evento_sale` está activo y no hay campaña explícita o ésta corresponde a un fallback (`'auto-tagging'`, `'campaign'`), se resuelve automáticamente a `sale_utm_campaign` (o `sale_event_name`) en lugar de caer en `'auto-tagging'`.
+  - En `ContactSubmissionController::enrichMarketingFields()`: si `evento_sale` está activo y `utm_campaign` viene vacío o con valor por defecto (`'auto-tagging'`, `'campaign'`), se establece por defecto la campaña configurada del evento sale.
+  - En frontend (`utmSession.js`): `resolveDefaultValue()` y captura de parámetros UTM priorizan `saleUtmCampaign` sobre valores por defecto genéricos (`'campaign'`, `'auto-tagging'`) mientras `isSaleEvent` permanezca activo.
+  - Pruebas unitarias y de integración añadidas en `SalesforceCaseMapperTest` y `ContactSubmissionApiTest`.
 
 ### Added
 

@@ -26,6 +26,13 @@ const normalizeUtmValue = (value) => {
 };
 
 const resolveDefaultValue = (config) => {
+  if (config.key === 'utm_campaign' && saleEventOptions.isSaleEvent && saleEventOptions.saleUtmCampaign) {
+    const overriddenDefaultValue = normalizeUtmValue(utmDefaultOverrides?.[config.key]);
+    if (!overriddenDefaultValue || ['auto-tagging', 'campaign'].includes(overriddenDefaultValue.toLowerCase())) {
+      return normalizeUtmValue(saleEventOptions.saleUtmCampaign);
+    }
+  }
+
   const overriddenDefaultValue = normalizeUtmValue(utmDefaultOverrides?.[config.key]);
   const effectiveDefaultValue = overriddenDefaultValue !== '' ? overriddenDefaultValue : config.defaultValue;
 
@@ -184,6 +191,11 @@ export const captureUtmParamsFromUrl = (search = '') => {
   const isCapturedBrevo = (normalizeUtmValue(nextValues.utm_source) || '').toLowerCase() === 'brevo';
   if (saleEventOptions.isSaleEvent && isCapturedBrevo && saleEventOptions.saleUtmCampaign !== '') {
     nextValues.utm_campaign = saleEventOptions.saleUtmCampaign;
+  } else if (saleEventOptions.isSaleEvent && saleEventOptions.saleUtmCampaign !== '') {
+    const currentCampaign = normalizeUtmValue(nextValues.utm_campaign);
+    if (currentCampaign === '' || ['auto-tagging', 'campaign'].includes(currentCampaign.toLowerCase())) {
+      nextValues.utm_campaign = saleEventOptions.saleUtmCampaign;
+    }
   }
 
   persistStoredUtms(nextValues);

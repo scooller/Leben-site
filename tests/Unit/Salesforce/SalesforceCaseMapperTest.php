@@ -1333,4 +1333,39 @@ class SalesforceCaseMapperTest extends TestCase
 		$this->assertSame('Edificio_Aconcagua', $payload['Informacion_Cotizacion__c'] ?? null);
 		$this->assertSame('Edificio_Aconcagua', $payload['Proyect_ID__c'] ?? null);
 	}
+
+	public function test_it_defaults_to_sale_utm_campaign_instead_of_auto_tagging_when_sale_event_is_active(): void
+	{
+		config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');
+		config()->set('services.salesforce.lead_status', 'En Contacto');
+
+		SiteSetting::current()->update([
+			'site_name' => 'iLeben',
+			'evento_sale' => true,
+			'extra_settings' => [
+				'sale_utm_campaign' => 'CyberSale2026',
+				'sale_utm_campaign_channels' => ['999999'], // unselected channel
+			],
+			'contact_form_fields' => [
+				['key' => 'name', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
+			],
+		]);
+
+		$submission = ContactSubmission::query()->create([
+			'name' => 'Test User',
+			'email' => 'test@example.com',
+			'phone' => '56911112222',
+			'fields' => [
+				'name' => 'Test User',
+				'utm_campaign' => 'auto-tagging',
+			],
+			'submitted_at' => now(),
+		]);
+
+		$payload = app(SalesforceCaseMapper::class)->mapLead($submission);
+
+		$this->assertSame('CyberSale2026', $payload['Nombre_de_la_Campa_a__c'] ?? null);
+		$this->assertSame('CyberSale2026', $payload['utm_campaign__c'] ?? null);
+	}
 }
+
