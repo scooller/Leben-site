@@ -1128,6 +1128,10 @@ function Contact({ onNavigate, currentPath }) {
                 <><wa-icon name="circle-notch" slot="start" animation="spin"></wa-icon> Enviando...</> :
                 <><wa-icon name="paper-plane" slot="start"></wa-icon> Enviar mensaje</>}
               </wa-button>
+
+              <small className="contact-required-hint wa-color-text-quiet">
+                * Los campos con * son campos requeridos
+              </small>
             </form>
           </div>
         </wa-card>

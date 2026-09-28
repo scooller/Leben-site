@@ -79,6 +79,13 @@
   justify-self: flex-start;
 }
 
+.contact-required-hint {
+  display: block;
+  font-size: var(--wa-font-size-xs, 0.75rem);
+  color: var(--wa-color-text-quiet);
+  margin-top: calc(var(--wa-space-2xs) * -1);
+}
+
 .contact-link {
   align-items: center;
   color: var(--wa-color-text-normal);

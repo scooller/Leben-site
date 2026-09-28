@@ -4,6 +4,15 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.55] - 2026-09-28
+
+### 📝 Mensaje de Campos Requeridos en Formulario de Contacto
+
+- **Página de Contacto (`frontend/src/pages/Contact.jsx`)**:
+  - Agregado mensaje explicativo `* Los campos con * son campos requeridos` inmediatamente bajo el botón de envío.
+- **Estilos de Contacto (`frontend/src/styles/contact.scss`)**:
+  - Agregada clase `.contact-required-hint` con tipografía discreta y espaciado armónico.
+
 ## [1.9.54] - 2026-09-28
 
 ### 🔍 Filtro de Comuna en Tabla de Proyectos
