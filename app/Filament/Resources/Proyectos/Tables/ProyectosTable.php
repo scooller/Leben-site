@@ -240,10 +240,27 @@ class ProyectosTable
 				->label('Región')
 				->multiple()
 				->options(
-					Proyecto::query()
+					fn (): array => Proyecto::query()
 						->distinct()
 						->whereNotNull('region')
+						->where('region', '!=', '')
+						->orderBy('region')
 						->pluck('region', 'region')
+						->toArray()
+				)
+				->searchable()
+				->preload(),
+
+			SelectFilter::make('comuna')
+				->label('Comuna')
+				->multiple()
+				->options(
+					fn (): array => Proyecto::query()
+						->distinct()
+						->whereNotNull('comuna')
+						->where('comuna', '!=', '')
+						->orderBy('comuna')
+						->pluck('comuna', 'comuna')
 						->toArray()
 				)
 				->searchable()

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Filament\Resources\ProyectoResource;
 use App\Filament\Resources\Proyectos\Schemas\ProyectoForm;
+use App\Filament\Resources\Proyectos\Tables\ProyectosTable;
 use App\Models\Proyecto;
 use App\Models\User;
 use Filament\Actions\Action;
@@ -162,6 +163,23 @@ class ProyectoResourceTest extends TestCase
         $comunaComponent = $components['comuna'];
         $this->assertSame('Comuna', $comunaComponent->getLabel());
         $this->assertFalse($comunaComponent->isDisabled());
+    }
+
+    public function test_proyectos_table_has_comuna_filter(): void
+    {
+        Proyecto::factory()->create(['comuna' => 'Las Condes']);
+        Proyecto::factory()->create(['comuna' => 'Providencia']);
+
+        $filters = ProyectosTable::getFilters();
+        $comunaFilter = collect($filters)->first(fn ($filter) => $filter->getName() === 'comuna');
+
+        $this->assertNotNull($comunaFilter);
+        $this->assertSame('Comuna', $comunaFilter->getLabel());
+        $this->assertTrue($comunaFilter->isMultiple());
+
+        $options = $comunaFilter->getOptions();
+        $this->assertArrayHasKey('Las Condes', $options);
+        $this->assertArrayHasKey('Providencia', $options);
     }
 
     private function makeSchemaHost(): HasSchemas

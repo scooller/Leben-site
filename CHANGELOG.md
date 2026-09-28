@@ -4,6 +4,16 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.54] - 2026-09-28
+
+### 🔍 Filtro de Comuna en Tabla de Proyectos
+
+- **Tabla de Proyectos (`app/Filament/Resources/Proyectos/Tables/ProyectosTable.php`)**:
+  - Agregado filtro `SelectFilter` múltiple y buscable para `comuna` con carga diferida (`closure`) de comunas existentes.
+  - Convertido filtro `region` a carga diferida (`closure`) ordenada para mayor consistencia.
+- **Pruebas (`tests/Feature/ProyectoResourceTest.php`)**:
+  - Agregada prueba unitaria `test_proyectos_table_has_comuna_filter` para verificar la presencia, multiplicidad y opciones del filtro de comuna.
+
 ## [1.9.53] - 2026-09-28
 
 ### ✏️ Edición de Comuna en Proyectos
