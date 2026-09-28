@@ -4,6 +4,16 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.64] - 2026-09-28
+
+### Added
+
+- **Marketing y Salesforce — Sobrescritura de UTM Campaign para Brevo durante Evento Sale (`SalesforceCaseMapper.php`, `ContactSubmissionController.php`, `utmSession.js`)**:
+  - En `SalesforceCaseMapper`: si `utm_source` es `brevo` (case-insensitive) y `evento_sale` está activo, se sobreescribe forzosamente `utm_campaign` (`Nombre_de_la_Campa_a__c` y `utm_campaign__c`) con el valor configurado de `sale_utm_campaign` (o fallbacks del evento sale), independientemente del canal configurado.
+  - En `ContactSubmissionController::enrichMarketingFields()`: al registrar envíos de contacto con `utm_source=brevo` durante evento sale activo, se actualiza el campo `utm_campaign` en la base de datos con la campaña Sale.
+  - En frontend (`utmSession.js`, `SiteConfigContext.jsx`): si el origen detectado o capturado en URL/sesión es `brevo` y el evento sale está activo, se asigna prioritariamente `utm_campaign` al valor de `sale_utm_campaign`.
+  - Pruebas unitarias y de integración añadidas en `SalesforceCaseMapperTest.php` y `ContactSubmissionApiTest.php`.
+
 ## [1.9.63] - 2026-09-28
 
 ### Added

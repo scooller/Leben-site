@@ -117,6 +117,10 @@ export const SiteConfigProvider = ({ children }) => {
         ? (data?.seo?.sale_campaign_override || data?.seo?.sale_event?.utm_campaign || data?.seo?.sale_utm_campaign || null)
         : null;
 
+      const saleUtmCampaign = isSale
+        ? (data?.seo?.sale_utm_campaign || data?.seo?.sale_campaign_override || data?.seo?.sale_event?.utm_campaign || null)
+        : null;
+
       setUtmDefaultOverrides(
         {
           utm_source: data?.seo?.utm_source_default,
@@ -129,6 +133,7 @@ export const SiteConfigProvider = ({ children }) => {
         {
           isSaleEvent: isSale,
           saleCampaignOverride,
+          saleUtmCampaign,
         }
       );
 

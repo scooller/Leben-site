@@ -538,6 +538,119 @@ class SalesforceCaseMapperTest extends TestCase
 		$this->assertSame('summer-promo', $payload['utm_campaign__c'] ?? null);
 	}
 
+	public function test_it_overwrites_campaign_when_utm_source_is_brevo_and_sale_is_active(): void
+	{
+		config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');
+		config()->set('services.salesforce.lead_status', 'En Contacto');
+
+		$channel = ContactChannel::query()->firstOrCreate(
+			['slug' => 'unselected-channel'],
+			[
+				'name' => 'Unselected Channel',
+				'is_active' => true,
+				'is_default' => false,
+			]
+		);
+
+		SiteSetting::current()->update([
+			'site_name' => 'iLeben',
+			'evento_sale' => true,
+			'extra_settings' => [
+				'utm_campaign_default' => 'campaign',
+				'sale_utm_campaign' => 'CyberDay',
+				'sale_utm_campaign_channels' => ['99999'], // Canal distinto para probar que Brevo sobreescribe independientemente del canal
+			],
+			'contact_form_fields' => [
+				['key' => 'name', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
+				['key' => 'project_name', 'label' => 'Proyecto', 'type' => 'text', 'required' => false],
+			],
+		]);
+
+		Proyecto::query()->create([
+			'salesforce_id' => 'a0J8c00000sdXBREVO',
+			'name' => 'Edificio Brevo',
+			'slug' => 'edificio-brevo',
+			'is_active' => true,
+		]);
+
+		$submission = ContactSubmission::query()->create([
+			'contact_channel_id' => $channel->id,
+			'name' => 'Brevo User',
+			'email' => 'brevo@example.com',
+			'phone' => '56912345678',
+			'rut' => '11.111.111-1',
+			'fields' => [
+				'name' => 'Brevo User',
+				'project_name' => 'Edificio Brevo',
+				'utm_source' => 'Brevo',
+				'utm_medium' => 'email',
+				'utm_campaign' => 'newsletter-weekly',
+			],
+			'submitted_at' => now(),
+		]);
+
+		$payload = app(SalesforceCaseMapper::class)->mapLead($submission->load('channel'));
+
+		$this->assertSame('CyberDay', $payload['Nombre_de_la_Campa_a__c'] ?? null);
+		$this->assertSame('CyberDay', $payload['utm_campaign__c'] ?? null);
+	}
+
+	public function test_it_does_not_overwrite_campaign_for_brevo_when_sale_is_disabled(): void
+	{
+		config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');
+		config()->set('services.salesforce.lead_status', 'En Contacto');
+
+		$channel = ContactChannel::query()->firstOrCreate(
+			['slug' => 'brevo-channel-normal'],
+			[
+				'name' => 'Brevo Channel Normal',
+				'is_active' => true,
+				'is_default' => false,
+			]
+		);
+
+		SiteSetting::current()->update([
+			'site_name' => 'iLeben',
+			'evento_sale' => false,
+			'extra_settings' => [
+				'utm_campaign_default' => 'campaign',
+				'sale_utm_campaign' => 'CyberMondayBrevo',
+			],
+			'contact_form_fields' => [
+				['key' => 'name', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
+				['key' => 'project_name', 'label' => 'Proyecto', 'type' => 'text', 'required' => false],
+			],
+		]);
+
+		Proyecto::query()->create([
+			'salesforce_id' => 'a0J8c00000sdXBREVO2',
+			'name' => 'Edificio Brevo 2',
+			'slug' => 'edificio-brevo-2',
+			'is_active' => true,
+		]);
+
+		$submission = ContactSubmission::query()->create([
+			'contact_channel_id' => $channel->id,
+			'name' => 'Brevo User Normal',
+			'email' => 'brevonormal@example.com',
+			'phone' => '56912345678',
+			'rut' => '11.111.111-1',
+			'fields' => [
+				'name' => 'Brevo User Normal',
+				'project_name' => 'Edificio Brevo 2',
+				'utm_source' => 'brevo',
+				'utm_medium' => 'email',
+				'utm_campaign' => 'regular-newsletter',
+			],
+			'submitted_at' => now(),
+		]);
+
+		$payload = app(SalesforceCaseMapper::class)->mapLead($submission->load('channel'));
+
+		$this->assertSame('regular-newsletter', $payload['Nombre_de_la_Campa_a__c'] ?? null);
+		$this->assertSame('regular-newsletter', $payload['utm_campaign__c'] ?? null);
+	}
+
 	public function test_it_uses_site_setting_defaults_for_missing_utm_fields(): void
 	{
 		config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');

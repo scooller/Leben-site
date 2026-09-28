@@ -589,6 +589,19 @@ class SalesforceCaseMapper
 			return false;
 		}
 
+		$utmSource = $this->fieldValue($fields, [
+			'utm_source',
+			'fuente',
+			'medio_de_llegada',
+			'medio_llegada',
+			'origen_del_prospecto',
+			'origen_prospecto',
+		]);
+
+		if ($utmSource !== null && strtolower(trim($utmSource)) === 'brevo') {
+			return true;
+		}
+
 		$channel = $this->resolveSubmissionChannel($submission, $fields, $website);
 
 		$hasExplicitSetting = array_key_exists('sale_utm_campaign_channels', $extraSettings);
