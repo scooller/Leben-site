@@ -72,7 +72,7 @@ class ProyectoForm
 
                         TextInput::make('comuna')
                             ->label('Comuna')
-                            ->disabled(),
+                            ->maxLength(255),
 
                         TextInput::make('provincia')
                             ->label('Provincia')

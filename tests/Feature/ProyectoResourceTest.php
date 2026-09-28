@@ -153,6 +153,17 @@ class ProyectoResourceTest extends TestCase
         $this->assertTrue($maximoComponent->isDehydrated());
     }
 
+    public function test_proyecto_form_comuna_is_editable(): void
+    {
+        $schema = ProyectoForm::configure(Schema::make($this->makeSchemaHost()));
+        $components = $schema->getFlatComponents(withActions: false, withHidden: true, withAbsoluteKeys: true);
+
+        $this->assertArrayHasKey('comuna', $components);
+        $comunaComponent = $components['comuna'];
+        $this->assertSame('Comuna', $comunaComponent->getLabel());
+        $this->assertFalse($comunaComponent->isDisabled());
+    }
+
     private function makeSchemaHost(): HasSchemas
     {
         return new class extends LivewireComponent implements HasSchemas

@@ -4,6 +4,15 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.53] - 2026-09-28
+
+### ✏️ Edición de Comuna en Proyectos
+
+- **Formulario de Proyectos (`app/Filament/Resources/Proyectos/Schemas/ProyectoForm.php`)**:
+  - Habilitada la edición del campo `comuna` removiendo la restricción `disabled()` y configurando `maxLength(255)`.
+- **Pruebas (`tests/Feature/ProyectoResourceTest.php`)**:
+  - Agregada prueba unitaria `test_proyecto_form_comuna_is_editable` para validar que el campo no se encuentra deshabilitado en el esquema del formulario.
+
 ## [1.9.52] - 2026-09-25
 
 ### 📱 Ajuste de Aspect Ratio de Video Hero en Mobile a 920x1580
