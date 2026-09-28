@@ -15,6 +15,7 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -215,21 +216,19 @@ class PlantsTable
 					->toggleable(isToggledHiddenByDefault: true),
 			])
 			->filters([
-				SelectFilter::make('is_active')
+				TernaryFilter::make('is_active')
 					->label('Estado')
-					->options([
-						1 => 'Activo',
-						0 => 'Inactivo',
-					])
-					->default(null),
+					->native(false)
+					->placeholder('Todos')
+					->trueLabel('Activos')
+					->falseLabel('Inactivos'),
 				// unidades sale
-				SelectFilter::make('unidad_sale')
+				TernaryFilter::make('unidad_sale')
 					->label('Unidad Sale')
-					->options([
-						1 => 'Sí',
-						0 => 'No',
-					])
-					->default(null),
+					->native(false)
+					->placeholder('Todos')
+					->trueLabel('Sí')
+					->falseLabel('No'),
 				// tipo de planta
 				SelectFilter::make('tipo_producto')
 					->label('Tipo de planta')

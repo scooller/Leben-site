@@ -281,15 +281,16 @@ class ProyectosTable
 				->searchable()
 				->preload(),
 
-			SelectFilter::make('entrega_inmediata')
+			TernaryFilter::make('entrega_inmediata')
 				->label('Entrega Inmediata')
-				->options([
-					true => 'Sí',
-					false => 'No',
-				]),
+				->native(false)
+				->placeholder('Todos')
+				->trueLabel('Sí')
+				->falseLabel('No'),
 
 			TernaryFilter::make('is_active')
 				->label('Estado')
+				->native(false)
 				->placeholder('Todos')
 				->trueLabel('Solo activos')
 				->falseLabel('Solo inactivos'),

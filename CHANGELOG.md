@@ -4,6 +4,15 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.58] - 2026-09-28
+
+### Changed
+
+- **UX — Filtros binarios como toggle**: Todos los filtros booleanos (Sí/No, Activo/Inactivo) ahora usan `TernaryFilter` con `native(false)` en vez de `SelectFilter` con dropdown. Afecta:
+  - `PlantsTable`: `is_active`, `unidad_sale`
+  - `AsesoresTable`: `is_active`
+  - `ProyectosTable`: `entrega_inmediata`, `is_active`
+
 ## [1.9.57] - 2026-09-28
 
 ### Fixed
