@@ -804,7 +804,7 @@ function Contact({ onNavigate, currentPath }) {
       return 'chevron-down';
     }
 
-    if(field.type === 'textarea') {
+    if (field.type === 'textarea') {
       return null;
     }
 
@@ -889,12 +889,12 @@ function Contact({ onNavigate, currentPath }) {
           maxlength={field.type === 'rut' ? '10' : field.type === 'tel' ? '9' : undefined}
           onInput={(event) => handleFieldChange(field, event.target.value || '')}
         >
-            {field.type === 'tel' ? (
-              <div slot="start">
-                <span>+56</span>
-              </div>
-            ) : null}
-            {renderFieldLabel(field)}
+          {field.type === 'tel' ? (
+            <div slot="start">
+              <span>+56</span>
+            </div>
+          ) : null}
+          {renderFieldLabel(field)}
         </wa-input>
 
         {field.type === 'rut' && (
@@ -1125,12 +1125,12 @@ function Contact({ onNavigate, currentPath }) {
 
               <wa-button type="submit" variant="brand" disabled={submitting || !acceptedTerms}>
                 {submitting ?
-                <><wa-icon name="circle-notch" slot="start" animation="spin"></wa-icon> Enviando...</> :
-                <><wa-icon name="paper-plane" slot="start"></wa-icon> Enviar mensaje</>}
+                  <><wa-icon name="circle-notch" slot="start" animation="spin"></wa-icon> Enviando...</> :
+                  <><wa-icon name="paper-plane" slot="start"></wa-icon> Enviar mensaje</>}
               </wa-button>
 
               <small className="contact-required-hint wa-color-text-quiet">
-                * Los campos con * son campos requeridos
+                Los campos con <b>(*)</b> son obligatorios
               </small>
             </form>
           </div>
