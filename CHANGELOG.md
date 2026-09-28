@@ -4,6 +4,12 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.57] - 2026-09-28
+
+### Fixed
+
+- **Monitoreo — Limpiar registros (`ActivityLogResource.php`)**: Corregido operador invertido en acción prune. Usaba `whereDate('created_at', '>=', ...)` que borraba registros **posteriores** a la fecha seleccionada. Ahora usa `where('created_at', '<', ...)` para borrar los registros **anteriores**, como indica el label "Limpiar registros anteriores a".
+
 ## [1.9.56] - 2026-09-28
 
 ### 🔔 Notificaciones con Cantidad en Acciones de Plantas y Proyectos
