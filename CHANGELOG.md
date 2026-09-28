@@ -4,6 +4,24 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.60] - 2026-09-28
+
+### Changed
+
+- **Frontend — Checkbox de términos y botón de envío en 2 columnas (`Contact.jsx`)**:
+  - Agrupados el checkbox de bases legales y el botón de envío en un contenedor nativo Web Awesome `wa-grid wa-gap-s` con `--min-column-size: 16rem` y alineación vertical centrada.
+  - Skeletons de carga adaptados para reflejar la distribución en 2 columnas del pie del formulario.
+
+## [1.9.59] - 2026-09-28
+
+### Changed
+
+- **Frontend — Formulario de Contacto en 2 columnas con Web Awesome (`Contact.jsx`)**:
+  - Implementado layout con utilidades nativas de Web Awesome (`wa-grid`, `wa-stack`, `wa-gap-s`, `--min-column-size: 16rem`) sin CSS personalizado adicional.
+  - Campos pareados en 2 columnas: `(nombre, apellido)`, `(email, telefono)` y `(comuna, proyecto)` usando contenedores `wa-grid wa-gap-s`.
+  - Los campos individuales (`rut`, `rango`, selectores condicionales y textarea) se mantienen en el flujo vertical de `wa-stack wa-gap-s`.
+  - Adaptado el estado de carga (`wa-skeleton`) usando la misma estructura nativa de `wa-grid`.
+
 ## [1.9.58] - 2026-09-28
 
 ### Changed

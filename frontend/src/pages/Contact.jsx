@@ -408,6 +408,90 @@ function Contact({ onNavigate, currentPath }) {
     });
   }, [formFields, selectedProjects]);
 
+  const formFieldGroups = useMemo(() => {
+    const isNameKey = (key) => ['nombre', 'name'].includes(String(key || '').toLowerCase());
+    const isLastNameKey = (key) => ['apellido', 'last_name', 'lastname'].includes(String(key || '').toLowerCase());
+    const isEmailKey = (key) => ['email', 'correo'].includes(String(key || '').toLowerCase());
+    const isPhoneKey = (key) => ['telefono', 'phone', 'celular'].includes(String(key || '').toLowerCase());
+    const isComunaKey = (key) => ['comuna'].includes(String(key || '').toLowerCase());
+    const isProjectKey = (key) => ['proyecto', 'project'].includes(String(key || '').toLowerCase());
+
+    const groups = [];
+    const usedIndices = new Set();
+
+    for (let i = 0; i < activeFormFields.length; i += 1) {
+      if (usedIndices.has(i)) {
+        continue;
+      }
+
+      const field = activeFormFields[i];
+      const key = field.key;
+      let pairIndex = -1;
+
+      if (isNameKey(key)) {
+        pairIndex = activeFormFields.findIndex((f, idx) => !usedIndices.has(idx) && isLastNameKey(f.key));
+      } else if (isEmailKey(key)) {
+        pairIndex = activeFormFields.findIndex((f, idx) => !usedIndices.has(idx) && isPhoneKey(f.key));
+      } else if (isComunaKey(key)) {
+        pairIndex = activeFormFields.findIndex((f, idx) => !usedIndices.has(idx) && isProjectKey(f.key));
+      }
+
+      if (pairIndex !== -1 && pairIndex !== i) {
+        usedIndices.add(i);
+        usedIndices.add(pairIndex);
+        groups.push({
+          type: 'pair',
+          fields: [field, activeFormFields[pairIndex]],
+        });
+      } else {
+        usedIndices.add(i);
+        groups.push({
+          type: 'single',
+          field,
+        });
+      }
+    }
+
+    return groups;
+  }, [activeFormFields]);
+
+  const resolveCustomFieldProps = (field) => {
+    if (field.key === CONTACT_RANGE_FIELD.key) {
+      return {
+        ...field,
+        options: rangeFieldOptions.map((option) => ({ value: option.value, label: option.label })),
+        icon: configuredRangeField.icon || CONTACT_RANGE_FIELD.icon,
+        placeholder: field.placeholder || configuredRangeField.placeholder || CONTACT_RANGE_FIELD.placeholder,
+      };
+    }
+
+    if (field.key === CONTACT_COMUNA_FIELD.key) {
+      return {
+        ...field,
+        options: comunaFieldOptions,
+        icon: configuredComunaField.icon || CONTACT_COMUNA_FIELD.icon,
+        disabled: !hasSelectedRange || comunaFieldOptions.length === 0,
+        placeholder: hasSelectedRange
+          ? (field.placeholder || configuredComunaField.placeholder || CONTACT_COMUNA_FIELD.placeholder)
+          : 'Selecciona primero un rango de renta',
+      };
+    }
+
+    if (field.key === CONTACT_PROJECT_FIELD.key) {
+      return {
+        ...field,
+        options: projectFieldOptions,
+        icon: configuredProjectField.icon || CONTACT_PROJECT_FIELD.icon,
+        disabled: !hasSelectedComuna || projectFieldOptions.length === 0,
+        placeholder: hasSelectedComuna
+          ? (field.placeholder || configuredProjectField.placeholder || CONTACT_PROJECT_FIELD.placeholder)
+          : 'Selecciona primero una comuna',
+      };
+    }
+
+    return field;
+  };
+
   useEffect(() => {
     const nextValues = {
       [CONTACT_RANGE_FIELD.key]: '',
@@ -925,17 +1009,28 @@ function Contact({ onNavigate, currentPath }) {
               <wa-skeleton effect="pulse" style={{ height: '1rem', width: '82%' }}></wa-skeleton>
 
               <div className="wa-stack wa-gap-s contact-form">
-                {[...Array(11)].map((_, index) => (
-                  <wa-skeleton
-                    key={`contact-skeleton-${index}`}
-                    effect="pulse"
-                    style={{ height: '3rem', width: '100%' }}
-                  ></wa-skeleton>
-                ))}
+                <wa-skeleton effect="pulse" style={{ height: '3rem', width: '100%' }}></wa-skeleton>
+                <div className="wa-grid wa-gap-s" style={{ '--min-column-size': '16rem' }}>
+                  <wa-skeleton effect="pulse" style={{ height: '3rem', width: '100%' }}></wa-skeleton>
+                  <wa-skeleton effect="pulse" style={{ height: '3rem', width: '100%' }}></wa-skeleton>
+                </div>
+                <div className="wa-grid wa-gap-s" style={{ '--min-column-size': '16rem' }}>
+                  <wa-skeleton effect="pulse" style={{ height: '3rem', width: '100%' }}></wa-skeleton>
+                  <wa-skeleton effect="pulse" style={{ height: '3rem', width: '100%' }}></wa-skeleton>
+                </div>
+                <wa-skeleton effect="pulse" style={{ height: '3rem', width: '100%' }}></wa-skeleton>
+                <wa-skeleton effect="pulse" style={{ height: '3rem', width: '100%' }}></wa-skeleton>
+                <wa-skeleton effect="pulse" style={{ height: '3rem', width: '100%' }}></wa-skeleton>
+                <wa-skeleton effect="pulse" style={{ height: '3rem', width: '100%' }}></wa-skeleton>
+                <div className="wa-grid wa-gap-s" style={{ '--min-column-size': '16rem' }}>
+                  <wa-skeleton effect="pulse" style={{ height: '3rem', width: '100%' }}></wa-skeleton>
+                  <wa-skeleton effect="pulse" style={{ height: '3rem', width: '100%' }}></wa-skeleton>
+                </div>
 
-                <wa-skeleton effect="pulse" style={{ height: '3.25rem', width: '100%' }}></wa-skeleton>
-
-                <wa-skeleton effect="pulse" style={{ height: '2.75rem', width: '10rem' }}></wa-skeleton>
+                <div className="wa-grid wa-gap-s" style={{ '--min-column-size': '16rem', alignItems: 'center' }}>
+                  <wa-skeleton effect="pulse" style={{ height: '1.75rem', width: '14rem' }}></wa-skeleton>
+                  <wa-skeleton effect="pulse" style={{ height: '2.75rem', width: '10rem' }}></wa-skeleton>
+                </div>
               </div>
             </div>
           </wa-card>
@@ -989,65 +1084,38 @@ function Contact({ onNavigate, currentPath }) {
                 <input key={key} type="hidden" name={key} value={value || ''} readOnly />
               ))}
 
-              {activeFormFields.map((field) => {
-                if (field.key === CONTACT_RANGE_FIELD.key) {
-                  return renderField({
-                    ...field,
-                    options: rangeFieldOptions.map((option) => ({ value: option.value, label: option.label })),
-                    icon: configuredRangeField.icon || CONTACT_RANGE_FIELD.icon,
-                    placeholder: field.placeholder || CONTACT_RANGE_FIELD.placeholder,
-                  });
+              {formFieldGroups.map((group, groupIndex) => {
+                if (group.type === 'pair') {
+                  const [firstField, secondField] = group.fields;
+                  return (
+                    <div
+                      key={`field-pair-${firstField.key}-${secondField.key}-${groupIndex}`}
+                      className="wa-grid wa-gap-s"
+                      style={{ '--min-column-size': '16rem' }}
+                    >
+                      {renderField(resolveCustomFieldProps(firstField))}
+                      {renderField(resolveCustomFieldProps(secondField))}
+                    </div>
+                  );
                 }
 
-                if (field.key === CONTACT_COMUNA_FIELD.key) {
-                  return renderField({
-                    ...field,
-                    options: comunaFieldOptions,
-                    icon: configuredComunaField.icon || CONTACT_COMUNA_FIELD.icon,
-                    disabled: !hasSelectedRange || comunaFieldOptions.length === 0,
-                    placeholder: hasSelectedRange
-                      ? (field.placeholder || CONTACT_COMUNA_FIELD.placeholder)
-                      : 'Selecciona primero un rango de renta',
-                  });
-                }
-
-                if (field.key === CONTACT_PROJECT_FIELD.key) {
-                  return renderField({
-                    ...field,
-                    options: projectFieldOptions,
-                    icon: configuredProjectField.icon || CONTACT_PROJECT_FIELD.icon,
-                    disabled: !hasSelectedComuna || projectFieldOptions.length === 0,
-                    placeholder: hasSelectedComuna
-                      ? (field.placeholder || CONTACT_PROJECT_FIELD.placeholder)
-                      : 'Selecciona primero una comuna',
-                  });
-                }
-
-                return renderField(field);
+                return renderField(resolveCustomFieldProps(group.field));
               })}
 
-              {!hasConfiguredRangeField && renderField({
-                ...CONTACT_RANGE_FIELD,
-                options: rangeFieldOptions.map((option) => ({ value: option.value, label: option.label })),
-              })}
+              {!hasConfiguredRangeField && renderField(resolveCustomFieldProps(CONTACT_RANGE_FIELD))}
 
-              {!hasConfiguredComunaField && renderField({
-                ...CONTACT_COMUNA_FIELD,
-                options: comunaFieldOptions,
-                disabled: !hasSelectedRange || comunaFieldOptions.length === 0,
-                placeholder: hasSelectedRange
-                  ? CONTACT_COMUNA_FIELD.placeholder
-                  : 'Selecciona primero un rango de renta',
-              })}
+              {!hasConfiguredComunaField && !hasConfiguredProjectField ? (
+                <div key="field-pair-comuna-proyecto" className="wa-grid wa-gap-s" style={{ '--min-column-size': '16rem' }}>
+                  {renderField(resolveCustomFieldProps(CONTACT_COMUNA_FIELD))}
+                  {renderField(resolveCustomFieldProps(CONTACT_PROJECT_FIELD))}
+                </div>
+              ) : (
+                <>
+                  {!hasConfiguredComunaField && renderField(resolveCustomFieldProps(CONTACT_COMUNA_FIELD))}
+                  {!hasConfiguredProjectField && renderField(resolveCustomFieldProps(CONTACT_PROJECT_FIELD))}
+                </>
+              )}
 
-              {!hasConfiguredProjectField && renderField({
-                ...CONTACT_PROJECT_FIELD,
-                options: projectFieldOptions,
-                disabled: !hasSelectedComuna || projectFieldOptions.length === 0,
-                placeholder: hasSelectedComuna
-                  ? CONTACT_PROJECT_FIELD.placeholder
-                  : 'Selecciona primero una comuna',
-              })}
 
               {isTurnstileEnabled && (
                 <div className="turnstile-wrapper">
@@ -1063,52 +1131,6 @@ function Contact({ onNavigate, currentPath }) {
                 </div>
               )}
 
-              <div className="wa-stack wa-gap-3xs">
-                <wa-checkbox
-                  checked={acceptedTerms}
-                  onwa-change={(event) => {
-                    const checked = Boolean(event.target.checked);
-                    setAcceptedTerms(checked);
-                    if (checked) {
-                      setFieldErrors((current) => {
-                        const next = { ...current };
-                        delete next.terms;
-                        return next;
-                      });
-                    }
-                  }}
-                  onInput={(event) => {
-                    const checked = Boolean(event.target.checked);
-                    setAcceptedTerms(checked);
-                    if (checked) {
-                      setFieldErrors((current) => {
-                        const next = { ...current };
-                        delete next.terms;
-                        return next;
-                      });
-                    }
-                  }}
-                  onChange={(event) => {
-                    const checked = Boolean(event.target.checked);
-                    setAcceptedTerms(checked);
-                    if (checked) {
-                      setFieldErrors((current) => {
-                        const next = { ...current };
-                        delete next.terms;
-                        return next;
-                      });
-                    }
-                  }}
-                  required
-                >
-                  He leído las bases legales
-                </wa-checkbox>
-
-                {fieldErrors.terms && (
-                  <small className="wa-color-danger">{fieldErrors.terms}</small>
-                )}
-              </div>
-
               {submitSuccess && (
                 <wa-callout variant="success">
                   <wa-icon slot="icon" name="circle-check"></wa-icon>
@@ -1123,11 +1145,59 @@ function Contact({ onNavigate, currentPath }) {
                 </wa-callout>
               )}
 
-              <wa-button type="submit" variant="brand" disabled={submitting || !acceptedTerms}>
-                {submitting ?
-                  <><wa-icon name="circle-notch" slot="start" animation="spin"></wa-icon> Enviando...</> :
-                  <><wa-icon name="paper-plane" slot="start"></wa-icon> Enviar mensaje</>}
-              </wa-button>
+              <div className="wa-grid wa-gap-s" style={{ '--min-column-size': '16rem', alignItems: 'center' }}>
+                <div className="wa-stack wa-gap-3xs">
+                  <wa-checkbox
+                    checked={acceptedTerms}
+                    onwa-change={(event) => {
+                      const checked = Boolean(event.target.checked);
+                      setAcceptedTerms(checked);
+                      if (checked) {
+                        setFieldErrors((current) => {
+                          const next = { ...current };
+                          delete next.terms;
+                          return next;
+                        });
+                      }
+                    }}
+                    onInput={(event) => {
+                      const checked = Boolean(event.target.checked);
+                      setAcceptedTerms(checked);
+                      if (checked) {
+                        setFieldErrors((current) => {
+                          const next = { ...current };
+                          delete next.terms;
+                          return next;
+                        });
+                      }
+                    }}
+                    onChange={(event) => {
+                      const checked = Boolean(event.target.checked);
+                      setAcceptedTerms(checked);
+                      if (checked) {
+                        setFieldErrors((current) => {
+                          const next = { ...current };
+                          delete next.terms;
+                          return next;
+                        });
+                      }
+                    }}
+                    required
+                  >
+                    He leído las bases legales
+                  </wa-checkbox>
+
+                  {fieldErrors.terms && (
+                    <small className="wa-color-danger">{fieldErrors.terms}</small>
+                  )}
+                </div>
+
+                <wa-button type="submit" variant="brand" size="l" style={{ width: '100%' }} disabled={submitting || !acceptedTerms}>
+                  {submitting ?
+                    <><wa-icon name="circle-notch" slot="start" animation="spin"></wa-icon> Enviando...</> :
+                    <><wa-icon name="paper-plane" slot="start"></wa-icon> Enviar mensaje</>}
+                </wa-button>
+              </div>
 
               <small className="contact-required-hint wa-color-text-quiet">
                 Los campos con <b>(*)</b> son obligatorios
