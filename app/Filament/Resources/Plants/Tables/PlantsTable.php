@@ -264,7 +264,7 @@ class PlantsTable
 					->action(fn(Plant $record): bool => $record->update([
 						'is_active' => ! $record->is_active,
 					]))
-					->successNotificationTitle('Estado actualizado'),
+					->successNotificationTitle(fn(?Plant $record = null): string => $record?->is_active ? '1 planta activada' : '1 planta desactivada'),
 				// activar o desactivar unidad sale
 				Action::make('toggleUnidadSale')
 					->label(fn(Plant $record): string => $record->unidad_sale ? 'Desactivar en Sale' : 'Activar en Sale')
@@ -273,7 +273,7 @@ class PlantsTable
 					->action(fn(Plant $record): bool => $record->update([
 						'unidad_sale' => ! $record->unidad_sale,
 					]))
-					->successNotificationTitle('Unidad Sale actualizada'),
+					->successNotificationTitle(fn(?Plant $record = null): string => $record?->unidad_sale ? '1 planta activada en Sale' : '1 planta fuera de Sale'),
 				Action::make('viewInSalesforce')
 					->label('Ver en Salesforce')
 					->icon('heroicon-o-arrow-top-right-on-square')
@@ -302,7 +302,7 @@ class PlantsTable
 								'is_active' => true,
 							]);
 						})
-						->successNotificationTitle('Plantas activadas'),
+						->successNotificationTitle(fn ($records = null): string => ($count = is_countable($records) ? count($records) : null) ? "{$count} " . ($count === 1 ? 'planta activada' : 'plantas activadas') : 'Plantas activadas'),
 					BulkAction::make('deactivateSelected')
 						->label('Desactivar seleccionadas')
 						->icon('heroicon-o-x-circle')
@@ -313,7 +313,7 @@ class PlantsTable
 								'is_active' => false,
 							]);
 						})
-						->successNotificationTitle('Plantas desactivadas'),
+						->successNotificationTitle(fn ($records = null): string => ($count = is_countable($records) ? count($records) : null) ? "{$count} " . ($count === 1 ? 'planta desactivada' : 'plantas desactivadas') : 'Plantas desactivadas'),
 					// activateSelected Sale
 					BulkAction::make('activateSaleSelected')
 						->label('Activar en sale')
@@ -325,7 +325,7 @@ class PlantsTable
 								'unidad_sale' => true,
 							]);
 						})
-						->successNotificationTitle('Plantas Sale'),
+						->successNotificationTitle(fn ($records = null): string => ($count = is_countable($records) ? count($records) : null) ? "{$count} " . ($count === 1 ? 'planta activada en Sale' : 'plantas activadas en Sale') : 'Plantas Sale'),
 					BulkAction::make('deactivateSaleSelected')
 						->label('Desactivar en sale')
 						->icon('heroicon-o-bookmark-slash')
@@ -336,8 +336,9 @@ class PlantsTable
 								'unidad_sale' => false,
 							]);
 						})
-						->successNotificationTitle('Plantas fuera de Sale'),
-					DeleteBulkAction::make(),
+						->successNotificationTitle(fn ($records = null): string => ($count = is_countable($records) ? count($records) : null) ? "{$count} " . ($count === 1 ? 'planta fuera de Sale' : 'plantas fuera de Sale') : 'Plantas fuera de Sale'),
+					DeleteBulkAction::make()
+						->successNotificationTitle(fn ($records = null): string => ($count = is_countable($records) ? count($records) : null) ? "{$count} " . ($count === 1 ? 'planta eliminada' : 'plantas eliminadas') : 'Plantas eliminadas'),
 				]),
 			]);
 	}

@@ -60,7 +60,7 @@ class ProyectosTable
 					->action(fn(Proyecto $record): bool => $record->update([
 						'is_active' => !$record->is_active,
 					]))
-					->successNotificationTitle('Estado actualizado'),
+					->successNotificationTitle(fn(?Proyecto $record = null): string => $record?->is_active ? '1 proyecto activado' : '1 proyecto desactivado'),
 				Action::make('viewInSalesforce')
 					->label('Ver en Salesforce')
 					->icon('heroicon-o-arrow-top-right-on-square')
@@ -85,8 +85,9 @@ class ProyectosTable
 								'is_active' => false,
 							]);
 						})
-						->successNotificationTitle('Plantas desactivadas'),
-					DeleteBulkAction::make(),
+						->successNotificationTitle(fn ($records = null): string => ($count = is_countable($records) ? count($records) : null) ? "{$count} " . ($count === 1 ? 'proyecto desactivado' : 'proyectos desactivados') : 'Proyectos desactivados'),
+					DeleteBulkAction::make()
+						->successNotificationTitle(fn ($records = null): string => ($count = is_countable($records) ? count($records) : null) ? "{$count} " . ($count === 1 ? 'proyecto eliminado' : 'proyectos eliminados') : 'Proyectos eliminados'),
 				]),
 			]);
 	}

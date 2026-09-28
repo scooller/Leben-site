@@ -4,6 +4,25 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.56] - 2026-09-28
+
+### 🔔 Notificaciones con Cantidad en Acciones de Plantas y Proyectos
+
+- **Tabla de Plantas (`app/Filament/Resources/Plants/Tables/PlantsTable.php`)**:
+  - `toggleActive` (registro): muestra `'1 planta activada'` o `'1 planta desactivada'`.
+  - `toggleUnidadSale` (registro): muestra `'1 planta activada en Sale'` o `'1 planta fuera de Sale'`.
+  - `activateSelected` (masivo): muestra cantidad exacta seleccionada (`'X plantas activadas'`).
+  - `deactivateSelected` (masivo): muestra cantidad exacta seleccionada (`'X plantas desactivadas'`).
+  - `activateSaleSelected` (masivo): muestra cantidad exacta seleccionada (`'X plantas activadas en Sale'`).
+  - `deactivateSaleSelected` (masivo): muestra cantidad exacta seleccionada (`'X plantas fuera de Sale'`).
+  - `DeleteBulkAction` (masivo): muestra cantidad exacta eliminada (`'X plantas eliminadas'`).
+- **Tabla de Proyectos (`app/Filament/Resources/Proyectos/Tables/ProyectosTable.php`)**:
+  - `toggleActive` (registro): muestra `'1 proyecto activado'` o `'1 proyecto desactivado'`.
+  - `deactivateSelected` (masivo): muestra cantidad exacta desactivada (`'X proyectos desactivados'`).
+  - `DeleteBulkAction` (masivo): muestra cantidad exacta eliminada (`'X proyectos eliminados'`).
+- **Pruebas (`tests/Feature/Filament/PlantsTableNotificationTitlesTest.php`)**:
+  - Agregadas pruebas para verificar los títulos y cantidades de las notificaciones en acciones individuales y masivas.
+
 ## [1.9.55] - 2026-09-28
 
 ### 📝 Mensaje de Campos Requeridos en Formulario de Contacto
