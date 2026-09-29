@@ -137,7 +137,7 @@ const formatSeoPrice = (amount) => {
  * Usa Web Awesome components de forma nativa con íconos integrados
  */
 function Home({ onNavigate, currentPath }) {
-  const { config, loading: configLoading, colorMode, toggleColorMode } = useSiteConfig();
+  const { config, loading: configLoading } = useSiteConfig();
   const isSaleEventActive = Boolean(config?.evento_sale);
   const priceSource = (config?.price_source || config?.payment_gateways?.price_source) === 'base' ? 'base' : 'final';
   const pricePercentageSource = (config?.price_percentage_source || config?.payment_gateways?.price_percentage_source) === 'max_unit' ? 'max_unit' : 'web_discount';
@@ -1940,18 +1940,6 @@ function Home({ onNavigate, currentPath }) {
         </wa-dialog>
       )}
 
-      <wa-button
-        variant="neutral"
-        appearance="filled"
-        onClick={toggleColorMode}
-        className="theme-floating-toggle box-shadow-2"
-        id="theme-toggle-button"
-      >
-        <wa-icon name={colorMode === 'dark' ? 'sun' : 'cloud-moon'} label={colorMode === 'dark' ? 'Modo claro' : 'Modo oscuro'}></wa-icon>
-      </wa-button>
-      <wa-tooltip for="theme-toggle-button" placement="top">
-        Cambiar a {colorMode === 'dark' ? 'modo claro' : 'modo oscuro'}
-      </wa-tooltip>
     </>
   );
 }

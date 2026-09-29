@@ -1068,7 +1068,7 @@ function Contact({ onNavigate, currentPath }) {
       </section>
 
       <section className="home-container">
-        <wa-card appearance="plain" className="contact-content-card glass-card">
+        <wa-card appearance="outlined" className="contact-content-card glass-card">
           <div className="wa-stack wa-gap-m">
             <h1>{title}</h1>
             <p>{subtitle}</p>

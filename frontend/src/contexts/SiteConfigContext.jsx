@@ -8,7 +8,14 @@ export const SiteConfigContext = createContext(null);
 
 const COLOR_MODE_STORAGE_KEY = 'ileben-color-mode';
 
-const resolveInitialColorMode = () => {
+const getSystemColorMode = () => {
+  if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    return 'dark';
+  }
+  return 'light';
+};
+
+const resolveColorMode = (defaultColorMode = 'system') => {
   if (typeof window === 'undefined') {
     return 'dark';
   }
@@ -19,7 +26,11 @@ const resolveInitialColorMode = () => {
     return storedMode;
   }
 
-  return 'dark';
+  if (defaultColorMode === 'system') {
+    return getSystemColorMode();
+  }
+
+  return defaultColorMode === 'light' ? 'light' : 'dark';
 };
 
 const runWhenBrowserIdle = (callback, timeout = 1200) => {
@@ -49,7 +60,7 @@ export const SiteConfigProvider = ({ children }) => {
   const [config, setConfig] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [colorMode, setColorModeState] = useState(resolveInitialColorMode);
+  const [colorMode, setColorModeState] = useState(() => resolveColorMode('system'));
   const hasLoadedConfig = useRef(false);
   const cancelDeferredSetupRef = useRef(null);
 
@@ -87,6 +98,13 @@ export const SiteConfigProvider = ({ children }) => {
 
       const data = await siteConfigService.getConfig(forceRefresh);
       setConfig(data);
+
+      const storedUserMode = typeof window !== 'undefined' ? window.localStorage.getItem(COLOR_MODE_STORAGE_KEY) : null;
+      if (!storedUserMode || (storedUserMode !== 'light' && storedUserMode !== 'dark')) {
+        const resolved = resolveColorMode(data?.default_color_mode || 'system');
+        setColorModeState(resolved);
+        applyColorModeToDocument(resolved);
+      }
 
       // Aplicar configuración al documento
       if (data.site_name) {
@@ -215,10 +233,34 @@ export const SiteConfigProvider = ({ children }) => {
     if (hasLoadedConfig.current) return;
     hasLoadedConfig.current = true;
 
-    applyColorModeToDocument(resolveInitialColorMode());
+    applyColorModeToDocument(resolveColorMode('system'));
 
     loadConfig();
   }, [loadConfig]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleSystemChange = (event) => {
+      const stored = window.localStorage.getItem(COLOR_MODE_STORAGE_KEY);
+      if (!stored && (config?.default_color_mode ?? 'system') === 'system') {
+        const mode = event.matches ? 'dark' : 'light';
+        setColorModeState(mode);
+        applyColorModeToDocument(mode);
+      }
+    };
+
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener('change', handleSystemChange);
+      return () => mediaQuery.removeEventListener('change', handleSystemChange);
+    }
+
+    mediaQuery.addListener(handleSystemChange);
+    return () => mediaQuery.removeListener(handleSystemChange);
+  }, [config?.default_color_mode]);
 
   useEffect(() => {
     return () => {
@@ -233,6 +275,7 @@ export const SiteConfigProvider = ({ children }) => {
     loading,
     error,
     colorMode,
+    showThemeToggle: config?.show_theme_toggle ?? true,
     setColorMode,
     toggleColorMode,
     reload: loadConfig,

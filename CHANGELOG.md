@@ -4,7 +4,19 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
-## [1.9.72] - 2026-09-29
+## [1.9.73] - 2026-09-29
+
+### Added
+
+- **Backend & Filament — Control de Switch de Tema y Modo por Defecto (`SiteSettings.php`, `SiteSetting.php`, migración)**:
+  - Nueva migración `2026_04_28_100000_add_theme_mode_settings_to_site_settings_table` agregando columnas `show_theme_toggle` (boolean, default true) y `default_color_mode` (string, default 'system') en tabla `site_settings`.
+  - Agregados campos en modelo `SiteSetting` (`$fillable`, `$casts`, `syncableFields` y respuesta pública `forFrontend`).
+  - Nuevos controles en pestaña "Colores" de Filament SiteSettings: switch para mostrar/ocultar alternador en frontend y selector de modo por defecto (`system`, `dark`, `light`).
+- **Frontend — Switch Dark/Light Global y Detección de Sistema (`App.jsx`, `ThemeToggle.jsx`, `SiteConfigContext.jsx`, `App.scss`)**:
+  - Extraído alternador flotante de modo oscuro/claro de `Home.jsx` hacia un componente global reutilizable `ThemeToggle.jsx`, renderizado en `App.jsx` para estar disponible en todas las rutas (`/`, `/contacto`, `/pago`, `/f`, `/p/...`).
+  - Movidos los estilos `.theme-floating-toggle` a `App.scss` para soporte de estilo global.
+  - Sincronización en `SiteConfigContext.jsx` con preferencia de sistema (`matchMedia('(prefers-color-scheme: dark)')`) cuando no existe selección manual del usuario, adaptándose automáticamente al SO.
+
 
 ### Added
 

@@ -570,13 +570,6 @@ html.wa-light {
   transform: translateY(-1px);
 }
 
-.theme-floating-toggle {
-  bottom: clamp(0.75rem, 2vw, 1.5rem);
-  left: clamp(0.75rem, 2vw, 1.5rem);
-  position: fixed;
-  z-index: 40;
-  border-radius: var(--wa-border-radius-circle);
-}
 
 .route-plant-loading-dialog::part(panel) {
   max-width: min(90vw, 26rem);

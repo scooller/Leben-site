@@ -11,6 +11,7 @@ import { removeStructuredData, setStructuredData } from './utils/structuredData'
 import { buildSpecialAnnouncementSchema, buildSaleEventSchema } from './utils/saleEventSchema';
 import SiteHeader from './components/SiteHeader';
 import SiteFooter from './components/SiteFooter';
+import ThemeToggle from './components/ThemeToggle';
 import './App.scss';
 import './styles/maintenance.scss';
 
@@ -334,6 +335,7 @@ function AppContent() {
         </Suspense>
       </main>
       <SiteFooter config={config} onNavigate={navigate} />
+      <ThemeToggle />
     </wa-page>
   );
 }

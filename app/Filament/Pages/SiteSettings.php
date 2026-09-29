@@ -402,6 +402,22 @@ class SiteSettings extends Page implements HasForms
                                             ->default('#eb0029')
                                             ->required()
                                             ->helperText('Color principal de tu marca, aplicado a botones, enlaces y elementos destacados'),
+
+                                        Select::make('default_color_mode')
+                                            ->label('Modo de Color por Defecto')
+                                            ->options([
+                                                'system' => 'Sistema (detecta preferencia del dispositivo)',
+                                                'dark' => 'Oscuro',
+                                                'light' => 'Claro',
+                                            ])
+                                            ->default('system')
+                                            ->required()
+                                            ->helperText('Determina el modo visual inicial cuando el visitante no ha seleccionado una preferencia'),
+
+                                        Toggle::make('show_theme_toggle')
+                                            ->label('Mostrar Switch Modo Oscuro/Claro')
+                                            ->default(true)
+                                            ->helperText('Muestra u oculta el botón flotante de cambio de modo en todas las páginas del frontend'),
                                     ])
                                     ->columns(2),
 

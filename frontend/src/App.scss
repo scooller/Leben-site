@@ -87,3 +87,12 @@ wa-page[view='desktop'] .wa-mobile-only {
     font-size: var(--wa-font-size-s, 0.875rem);
     color: var(--wa-color-text-quiet, #6b7280);
 }
+
+.theme-floating-toggle {
+    bottom: clamp(0.75rem, 2vw, 1.5rem);
+    left: clamp(0.75rem, 2vw, 1.5rem);
+    position: fixed;
+    z-index: 40;
+    border-radius: var(--wa-border-radius-circle);
+}
+
