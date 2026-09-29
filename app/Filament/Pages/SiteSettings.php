@@ -1412,6 +1412,7 @@ class SiteSettings extends Page implements HasForms
 
             $settings->update($data);
             $this->rememberData();
+            $this->dispatch('site-settings-saved');
 
             Notification::make()
                 ->success()
@@ -1421,5 +1422,10 @@ class SiteSettings extends Page implements HasForms
         } catch (Halt $exception) {
             return;
         }
+    }
+
+    protected function hasUnsavedDataChangesAlert(): bool
+    {
+        return false;
     }
 }

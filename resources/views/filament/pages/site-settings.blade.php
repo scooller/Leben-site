@@ -11,4 +11,79 @@
             </x-filament::button>
         </div>
     </form>
+
+    @script
+    <script>
+        const computeHash = () => {
+            if (!$wire || !$wire.data) return ''
+            try {
+                if (typeof window.jsMd5 === 'function') {
+                    return window.jsMd5(JSON.stringify($wire.data).replace(/\\/g, ''))
+                }
+                return JSON.stringify($wire.data)
+            } catch (e) {
+                return ''
+            }
+        }
+
+        let cleanHash = computeHash()
+        let userHasModifiedForm = false
+
+        const formEl = document.querySelector('form[wire\\:submit="save"]') || document.querySelector('form')
+        if (formEl) {
+            const markModified = () => { userHasModifiedForm = true }
+            formEl.addEventListener('input', markModified, { passive: true })
+            formEl.addEventListener('change', markModified, { passive: true })
+            formEl.addEventListener('click', (e) => {
+                if (e.target.closest('button:not([type="submit"]), [role="button"], input, select, textarea')) {
+                    userHasModifiedForm = true
+                }
+            }, { passive: true })
+        }
+
+        setTimeout(() => {
+            if (!userHasModifiedForm) {
+                cleanHash = computeHash()
+            }
+        }, 500)
+
+        $wire.on('site-settings-saved', () => {
+            userHasModifiedForm = false
+            requestAnimationFrame(() => {
+                cleanHash = computeHash()
+            })
+        })
+
+        const isDirty = () => {
+            if (!cleanHash || !$wire || !$wire.data) return false
+            return userHasModifiedForm && (computeHash() !== cleanHash)
+        }
+
+        const alertMessage = @js(__('filament-panels::unsaved-changes-alert.body'))
+
+        const handleNavigate = (event) => {
+            if (!isDirty()) return
+            if (confirm(alertMessage)) {
+                userHasModifiedForm = false
+                cleanHash = computeHash()
+                return
+            }
+            event.preventDefault()
+        }
+
+        const handleBeforeUnload = (event) => {
+            if (!isDirty()) return
+            event.preventDefault()
+            event.returnValue = true
+        }
+
+        document.addEventListener('livewire:navigate', handleNavigate)
+        window.addEventListener('beforeunload', handleBeforeUnload)
+
+        document.addEventListener('livewire:navigating', () => {
+            document.removeEventListener('livewire:navigate', handleNavigate)
+            window.removeEventListener('beforeunload', handleBeforeUnload)
+        }, { once: true })
+    </script>
+    @endscript
 </x-filament-panels::page>

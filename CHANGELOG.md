@@ -4,6 +4,16 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.76] - 2026-09-29
+
+### Fixed
+
+- **Backend & Filament — Corrección de Falsa Alerta de Cambios No Guardados tras Guardar (`SiteSettings.php`, `site-settings.blade.php`)**:
+  - Resuelto falso positivo de alerta de cambios no guardados en [SiteSettings.php](file:///c:/laragon/app/back-ileben/app/Filament/Pages/SiteSettings.php) causado por discrepancias de serialización en repeaters y ausencia de redirección tras guardar.
+  - Se delega la verificación de cambios no guardados a un controlador en la vista [site-settings.blade.php](file:///c:/laragon/app/back-ileben/resources/views/filament/pages/site-settings.blade.php) mediante `@script`.
+  - El estado dirty solo se activa si el usuario realmente interactúa con el formulario (`input`, `change`, `click`).
+  - Al presionar "Guardar Configuración", se emite el evento `site-settings-saved`, reseteando el estado limpio inmediatamente y permitiendo navegar sin advertencias innecesarias.
+
 ## [1.9.75] - 2026-09-29
 
 ### Added
