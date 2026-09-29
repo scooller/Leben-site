@@ -40,11 +40,9 @@ body {
   text-align: center;
   margin-bottom: 3rem;
   padding: 2rem;
-  background: linear-gradient(
-    135deg,
-    rgba(var(--wa-color-primary-rgb), 0.1),
-    rgba(var(--wa-color-secondary-rgb), 0.1)
-  );
+  background: linear-gradient(135deg,
+      rgba(var(--wa-color-primary-rgb), 0.1),
+      rgba(var(--wa-color-secondary-rgb), 0.1));
   border-radius: 0.5rem;
 
   .hero-logo {
@@ -81,25 +79,30 @@ body {
 }
 
 .wa-position-relative {
-  position: relative!important;
+  position: relative !important;
 }
+
 .wa-position-absolute {
-  position: absolute!important;
+  position: absolute !important;
 }
+
 .wa-overflow-hidden {
-  overflow: hidden!important;
+  overflow: hidden !important;
 }
+
 .wa-text-uppercase {
-  text-transform: uppercase!important;
+  text-transform: uppercase !important;
 }
 
 @for $i from 0 through 10 {
   .wa-z-index-#{$i} {
     z-index: #{$i} !important;
   }
+
   .wa-order-#{$i} {
     order: #{$i};
   }
+
   .wa-order-mobile-#{$i} {
     @media (max-width: 768px) {
       order: #{$i} !important;
@@ -120,56 +123,90 @@ $spacing: (
   '3xl': var(--wa-space-3xl),
   '4xl': var(--wa-space-4xl)
 );
-$directions: ('t', 'r', 'b', 'l', 'x', 'y', '');
+$directions: (
+  't',
+  'r',
+  'b',
+  'l',
+  'x',
+  'y',
+  ''
+);
+
 @each $size, $value in $spacing {
   .wa-p-#{$size} {
     padding: $value;
   }
+
   .wa-m-#{$size} {
     margin: $value;
   }
+
   @each $dir in $directions {
     .wa-p#{$dir}-#{$size} {
-      @if $dir == 't' {
-        padding-top: $value!important;
-      } @else if $dir == 'r' {
-        padding-right: $value!important;
-      } @else if $dir == 'b' {
-        padding-bottom: $value!important;
-      } @else if $dir == 'l' {
-        padding-left: $value!important;
-      } @else if $dir == 'x' {
-        padding-left: $value!important;
-        padding-right: $value!important;
-      } @else if $dir == 'y' {
-        padding-top: $value!important;
-        padding-bottom: $value!important;
+      @if $dir =='t' {
+        padding-top: $value !important;
+      }
+
+      @else if $dir =='r' {
+        padding-right: $value !important;
+      }
+
+      @else if $dir =='b' {
+        padding-bottom: $value !important;
+      }
+
+      @else if $dir =='l' {
+        padding-left: $value !important;
+      }
+
+      @else if $dir =='x' {
+        padding-left: $value !important;
+        padding-right: $value !important;
+      }
+
+      @else if $dir =='y' {
+        padding-top: $value !important;
+        padding-bottom: $value !important;
       }
     }
+
     .wa-m#{$dir}-#{$size} {
-      @if $dir == 't' {
-        margin-top: $value!important;
-      } @else if $dir == 'r' {
-        margin-right: $value!important;
-      } @else if $dir == 'b' {
-        margin-bottom: $value!important;
-      } @else if $dir == 'l' {
-        margin-left: $value!important;
-      } @else if $dir == 'x' {
-        margin-left: $value!important;
-        margin-right: $value!important;
-      } @else if $dir == 'y' {
-        margin-top: $value!important;
-        margin-bottom: $value!important;
+      @if $dir =='t' {
+        margin-top: $value !important;
+      }
+
+      @else if $dir =='r' {
+        margin-right: $value !important;
+      }
+
+      @else if $dir =='b' {
+        margin-bottom: $value !important;
+      }
+
+      @else if $dir =='l' {
+        margin-left: $value !important;
+      }
+
+      @else if $dir =='x' {
+        margin-left: $value !important;
+        margin-right: $value !important;
+      }
+
+      @else if $dir =='y' {
+        margin-top: $value !important;
+        margin-bottom: $value !important;
       }
     }
   }
 }
+
 .wa-p-0 {
-  padding: 0!important;
+  padding: 0 !important;
 }
+
 .wa-m-0 {
-  margin: 0!important;
+  margin: 0 !important;
 }
 
 // ============================================================
@@ -178,9 +215,11 @@ $directions: ('t', 'r', 'b', 'l', 'x', 'y', '');
 html #root {
   transition: background-color 0.8s ease;
 }
+
 html.wa-dark #root {
   background-color: rgba(var(--wa-color-black-rgb), 1);
 }
+
 html.wa-light #root {
   background-color: rgba(var(--wa-color-black-rgb), .6);
 }
@@ -188,9 +227,14 @@ html.wa-light #root {
 // ============================================================
 // SITE HEADER (compartido por Home, Payment, Contact)
 // ============================================================
+wa-page::part(header) {
+  background-color: transparent !important;
+}
+
 .site-header {
-  background: var(--wa-color-surface-raised);
-  border-bottom: 1px solid rgba(var(--wa-color-neutral-border-normal-rgb), 0.42);
+  backdrop-filter: blur(8px);
+  background: color-mix(in srgb, var(--wa-color-surface-default) 90%, transparent) !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--wa-color-surface-border) 95%, transparent);
   position: sticky;
   top: 0;
   width: 100%;
@@ -198,6 +242,17 @@ html.wa-light #root {
 
   .site-logo {
     height: 45px;
+  }
+}
+
+.wa-dark .site-header {
+  background: color-mix(in srgb, var(--wa-color-surface-default) 90%, transparent) !important;
+  border-bottom-color: color-mix(in srgb, var(--wa-color-surface-border) 95%, transparent);
+}
+
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .site-header {
+    background-color: var(--wa-color-surface-raised) !important;
   }
 }
 
@@ -211,6 +266,7 @@ html.wa-light #root {
 .box-shadow-1 {
   box-shadow: rgb(var(--wa-color-black-rgb)) 0px 20px 30px -10px;
 }
+
 .box-shadow-2 {
   box-shadow:
     rgba(var(--wa-color-black-rgb), 0.25) 0px 14px 28px,
@@ -224,7 +280,7 @@ html.wa-light #root {
   margin-top: var(--wa-space-2xs);
 }
 
-.turnstile-wrapper > div {
+.turnstile-wrapper>div {
   min-height: 66px;
 }
 
@@ -263,26 +319,25 @@ footer[slot='footer'].site-footer-container {
 // GLASSMORPHISM UTILITY (wa-card.glass-card / .glass-card)
 // ============================================================
 wa-card.glass-card,
-wa-card[appearance].glass-card,
 .glass-card {
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
-  background-color: color-mix(in srgb, var(--wa-color-surface-default) 75%, transparent);
-  border-color: color-mix(in srgb, var(--wa-color-surface-border) 45%, transparent);
-  box-shadow: var(--wa-shadow-l);
+  backdrop-filter: blur(2px);
+}
 
-  &::part(header),
-  &::part(footer) {
-    border-color: color-mix(in srgb, var(--wa-color-surface-border) 35%, transparent);
-    background-color: transparent;
+.wa-dark {
+
+  wa-card.glass-card,
+  wa-card[appearance].glass-card,
+  .glass-card {
+    background: color-mix(in srgb, var(--wa-color-surface-default) 60%, transparent) !important;
+    border-color: color-mix(in srgb, var(--wa-color-surface-border) 80%, transparent) !important;
   }
 }
 
 @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+
   wa-card.glass-card,
   wa-card[appearance].glass-card,
   .glass-card {
-    background-color: var(--wa-color-surface-default);
+    background-color: var(--wa-color-surface-default) !important;
   }
 }
-

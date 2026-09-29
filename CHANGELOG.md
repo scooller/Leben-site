@@ -4,6 +4,26 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.72] - 2026-09-29
+
+### Added
+
+- **Frontend Estilos — Efecto Glassmorphism en Barra de Navegación del Header (`global.scss`)**:
+  - Aplicado `backdrop-filter: blur(2px)` suave y fondo translúcido dinámico (`color-mix()` al 30% con tokens `--wa-color-surface-default`) sobre `.site-header`.
+  - Configurado `wa-page::part(header) { background-color: transparent !important; }` para asegurar que el contenedor Shadow DOM de Web Awesome no aplique fondo sólido detrás de la barra.
+  - Sincronizado estilo para modo oscuro (`.wa-dark`) y fallback en `@supports not`.
+
+## [1.9.71] - 2026-09-29
+
+### Fixed
+
+- **Frontend Estilos — Corrección de Transparencia y Acabado de Cristal en `glass-card` (`global.scss`, `PlantsGrid.jsx`)**:
+  - Ajustada opacidad de fondo de 75% a 40%–50% mediante gradiente translúcido con `color-mix()` y tokens `--wa-color-surface-default`, permitiendo que el efecto de desenfoque (`backdrop-filter: blur(16px) saturate(180%)`) y el contenido posterior sean claramente visibles.
+  - Agregado `!important` a las declaraciones de fondo y bordes en `wa-card.glass-card` y `.glass-card` para anular fondos sólidos por defecto de Web Awesome.
+  - Declarado `background-color: transparent !important` en `::part(body)` para evitar capas opacas internas en el Shadow DOM.
+  - Añadida variante específica para modo oscuro (`.wa-dark`) con opacidad balanceada y contraste optimizado.
+  - Modificado atributo `appearance="filled"` a `appearance="plain"` en `wa-card` de `PlantsGrid.jsx` para evitar colisión con el fondo opaco predeterminado de Web Awesome.
+
 ## [1.9.70] - 2026-09-28
 
 ### Added
