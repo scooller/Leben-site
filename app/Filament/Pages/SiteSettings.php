@@ -47,7 +47,7 @@ class SiteSettings extends Page implements HasForms
     /**
      * @return array<string, string>
      */
-    protected static function projectOptions(): array
+    public static function projectOptions(): array
     {
         return Proyecto::query()
             ->orderBy('is_active', 'desc')
@@ -72,6 +72,93 @@ class SiteSettings extends Page implements HasForms
                 return [$name => $label];
             })
             ->toArray();
+    }
+
+    /**
+     * @return array<int, \Filament\Schemas\Components\Component>
+     */
+    public static function getContactFormFieldsSchema(): array
+    {
+        return [
+            TextInput::make('key')
+                ->label('Clave interna')
+                ->required()
+                ->maxLength(50)
+                ->helperText('Ej: name, rut, email, reason, message'),
+
+            TextInput::make('label')
+                ->label('Etiqueta')
+                ->required()
+                ->maxLength(100),
+
+            TextInput::make('icon')
+                ->label('Ícono')
+                ->maxLength(100)
+                ->placeholder('Ej: envelope, phone, map-location')
+                ->helperText('Nombre del ícono de Web Awesome que se mostrará en el campo.'),
+
+            Select::make('type')
+                ->label('Tipo')
+                ->options([
+                    'text' => 'Texto',
+                    'email' => 'Email',
+                    'tel' => 'Teléfono',
+                    'number' => 'Número',
+                    'textarea' => 'Área de texto',
+                    'rut' => 'RUT',
+                    'select' => 'Selector',
+                ])
+                ->required()
+                ->default('text')
+                ->live(),
+
+            Select::make('projects')
+                ->label('Mostrar para proyecto')
+                ->options(self::projectOptions())
+                ->multiple()
+                ->searchable()
+                ->preload()
+                ->visible(fn (Get $get): bool => $get('type') !== 'select')
+                ->helperText('Opcional. Si seleccionas proyectos, este campo solo se mostrará cuando el proyecto seleccionado pertenezca a alguno de ellos.'),
+
+            TextInput::make('placeholder')
+                ->label('Placeholder')
+                ->maxLength(255),
+
+            Repeater::make('options')
+                ->label('Opciones del selector')
+                ->schema([
+                    TextInput::make('label')
+                        ->label('Etiqueta')
+                        ->required()
+                        ->maxLength(100),
+
+                    TextInput::make('value')
+                        ->label('Valor')
+                        ->required()
+                        ->maxLength(100),
+
+                    Select::make('projects')
+                        ->label('Mostrar para proyecto')
+                        ->options(self::projectOptions())
+                        ->multiple()
+                        ->searchable()
+                        ->preload()
+                        ->columnSpanFull()
+                        ->helperText('Opcional. Si seleccionas proyectos, esta opción solo se usará para esos proyectos.'),
+                ])
+                ->visible(fn (Get $get): bool => $get('type') === 'select')
+                ->defaultItems(0)
+                ->reorderable()
+                ->collapsible()
+                ->columns(2)
+                ->columnSpanFull()
+                ->helperText('Estas opciones estarán disponibles en el frontend cuando el tipo sea Selector.'),
+
+            Toggle::make('required')
+                ->label('Obligatorio')
+                ->default(false),
+        ];
     }
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCog6Tooth;
@@ -912,86 +999,7 @@ class SiteSettings extends Page implements HasForms
 
                                         Repeater::make('contact_form_fields')
                                             ->label('Campos del formulario de contacto')
-                                            ->schema([
-                                                TextInput::make('key')
-                                                    ->label('Clave interna')
-                                                    ->required()
-                                                    ->maxLength(50)
-                                                    ->helperText('Ej: name, rut, email, reason, message'),
-
-                                                TextInput::make('label')
-                                                    ->label('Etiqueta')
-                                                    ->required()
-                                                    ->maxLength(100),
-
-                                                TextInput::make('icon')
-                                                    ->label('Ícono')
-                                                    ->maxLength(100)
-                                                    ->placeholder('Ej: envelope, phone, map-location')
-                                                    ->helperText('Nombre del ícono de Web Awesome que se mostrará en el campo.'),
-
-                                                Select::make('type')
-                                                    ->label('Tipo')
-                                                    ->options([
-                                                        'text' => 'Texto',
-                                                        'email' => 'Email',
-                                                        'tel' => 'Teléfono',
-                                                        'number' => 'Número',
-                                                        'textarea' => 'Área de texto',
-                                                        'rut' => 'RUT',
-                                                        'select' => 'Selector',
-                                                    ])
-                                                    ->required()
-                                                    ->default('text')
-                                                    ->live(),
-
-                                                Select::make('projects')
-                                                    ->label('Mostrar para proyecto')
-                                                    ->options(self::projectOptions())
-                                                    ->multiple()
-                                                    ->searchable()
-                                                    ->preload()
-                                                    ->visible(fn (Get $get): bool => $get('type') !== 'select')
-                                                    ->helperText('Opcional. Si seleccionas proyectos, este campo solo se mostrará cuando el proyecto seleccionado pertenezca a alguno de ellos.'),
-
-                                                TextInput::make('placeholder')
-                                                    ->label('Placeholder')
-                                                    ->maxLength(255),
-
-                                                Repeater::make('options')
-                                                    ->label('Opciones del selector')
-                                                    ->schema([
-                                                        TextInput::make('label')
-                                                            ->label('Etiqueta')
-                                                            ->required()
-                                                            ->maxLength(100),
-
-                                                        TextInput::make('value')
-                                                            ->label('Valor')
-                                                            ->required()
-                                                            ->maxLength(100),
-
-                                                        Select::make('projects')
-                                                            ->label('Mostrar para proyecto')
-                                                            ->options(self::projectOptions())
-                                                            ->multiple()
-                                                            ->searchable()
-                                                            ->preload()
-                                                            ->columnSpanFull()
-                                                            ->helperText('Opcional. Si seleccionas proyectos, esta opción solo se usará para esos proyectos.'),
-                                                    ])
-                                                    ->visible(fn (Get $get): bool => $get('type') === 'select')
-                                                    ->defaultItems(0)
-                                                    ->reorderable()
-                                                    ->collapsible()
-                                                    ->columns(2)
-                                                    ->columnSpanFull()
-                                                    ->helperText('Estas opciones estarán disponibles en el frontend cuando el tipo sea Selector.'),
-
-                                                Toggle::make('required')
-                                                    ->label('Obligatorio')
-                                                    ->default(false),
-                                            ])
+                                            ->schema(self::getContactFormFieldsSchema())
                                             ->defaultItems(0)
                                             ->reorderable()
                                             ->collapsible()

@@ -4,6 +4,15 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.77] - 2026-09-29
+
+### Added
+
+- **Backend & Filament — Precargar Formulario en Canales de Contacto (`ContactChannelForm.php`, `SiteSettings.php`)**:
+  - Reemplazado componente `KeyValue` por `Repeater::make('form_fields')` en la sección "Configuración de formulario" de [ContactChannelForm.php](file:///c:/laragon/app/back-ileben/app/Filament/Resources/ContactChannels/Schemas/ContactChannelForm.php), permitiendo configurar campos visualmente idénticos a los globales.
+  - Extraído esquema de campos reutilizable `SiteSettings::getContactFormFieldsSchema()` y hecho público `SiteSettings::projectOptions()` en [SiteSettings.php](file:///c:/laragon/app/back-ileben/app/Filament/Pages/SiteSettings.php).
+  - Agregada acción de cabecera `preloadGlobalForm` ("Precargar formulario") en la sección con diálogo de confirmación que carga automáticamente los campos globales del formulario de contacto (`SiteSetting::current()->contact_form_fields`) con claves UUID para edición directa por canal.
+
 ## [1.9.76] - 2026-09-29
 
 ### Fixed
