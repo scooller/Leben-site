@@ -275,7 +275,7 @@ export const SiteConfigProvider = ({ children }) => {
     loading,
     error,
     colorMode,
-    showThemeToggle: config?.show_theme_toggle ?? true,
+    showThemeToggle: Boolean(config?.show_theme_toggle),
     setColorMode,
     toggleColorMode,
     reload: loadConfig,

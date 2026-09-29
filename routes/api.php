@@ -98,7 +98,10 @@ Route::prefix('v1')->group(function () {
 
 	// Configuración del sitio
 	Route::get('/site-config', function (Request $request) {
-		return response()->json(App\Models\SiteSetting::forFrontend($request));
+		return response()->json(App\Models\SiteSetting::forFrontend($request))
+			->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+			->header('Pragma', 'no-cache')
+			->header('Expires', '0');
 	});
 
 	// Contacto público

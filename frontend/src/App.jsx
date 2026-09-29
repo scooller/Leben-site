@@ -307,36 +307,38 @@ function AppContent() {
   }, []);
 
   return (
-    <wa-page className="app">
-      <MaintenanceMode
-        maintenanceMode={config?.maintenance_mode}
-        maintenanceMessage={config?.maintenance_message}
-      />
-      <ErrorNotification
-        error={globalError}
-        onClose={() => setGlobalError(null)}
-        duration={5500}
-      />
-      <SiteHeader
-        config={config}
-        currentPath={currentPath}
-        onNavigate={navigate}
-        onMenuClick={handleMenuNavigation}
-      />
-      <main>
-        <Suspense fallback={<AppRouteFallback />}>
-          {currentPath === '/contacto' ? (
-            <Contact onNavigate={navigate} currentPath={currentPath} />
-          ) : currentPath === '/pago' ? (
-            <Payment onNavigate={navigate} currentPath={currentPath} />
-          ) : (
-            <Home onNavigate={navigate} currentPath={currentPath} />
-          )}
-        </Suspense>
-      </main>
-      <SiteFooter config={config} onNavigate={navigate} />
+    <>
+      <wa-page className="app">
+        <MaintenanceMode
+          maintenanceMode={config?.maintenance_mode}
+          maintenanceMessage={config?.maintenance_message}
+        />
+        <ErrorNotification
+          error={globalError}
+          onClose={() => setGlobalError(null)}
+          duration={5500}
+        />
+        <SiteHeader
+          config={config}
+          currentPath={currentPath}
+          onNavigate={navigate}
+          onMenuClick={handleMenuNavigation}
+        />
+        <main>
+          <Suspense fallback={<AppRouteFallback />}>
+            {currentPath === '/contacto' ? (
+              <Contact onNavigate={navigate} currentPath={currentPath} />
+            ) : currentPath === '/pago' ? (
+              <Payment onNavigate={navigate} currentPath={currentPath} />
+            ) : (
+              <Home onNavigate={navigate} currentPath={currentPath} />
+            )}
+          </Suspense>
+        </main>
+        <SiteFooter config={config} onNavigate={navigate} />
+      </wa-page>
       <ThemeToggle />
-    </wa-page>
+    </>
   );
 }
 

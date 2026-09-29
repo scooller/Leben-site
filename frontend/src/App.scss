@@ -92,7 +92,7 @@ wa-page[view='desktop'] .wa-mobile-only {
     bottom: clamp(0.75rem, 2vw, 1.5rem);
     left: clamp(0.75rem, 2vw, 1.5rem);
     position: fixed;
-    z-index: 40;
+    z-index: 1000;
     border-radius: var(--wa-border-radius-circle);
 }
 

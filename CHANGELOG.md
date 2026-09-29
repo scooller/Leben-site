@@ -4,7 +4,15 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
-## [1.9.73] - 2026-09-29
+## [1.9.74] - 2026-09-29
+
+### Fixed
+
+- **Frontend & API — Persistencia y Ocultamiento Estricto de Theme Toggle (`api.php`, `SiteConfigContext.jsx`, `ThemeToggle.jsx`)**:
+  - En `api.php`: agregados encabezados `Cache-Control: no-store, no-cache, must-revalidate` en `GET /api/v1/site-config` para evitar que navegadores sirvan respuestas obsoletas en caché HTTP.
+  - En `SiteConfigContext.jsx`: corregido `showThemeToggle` para no asumir `true` por defecto antes de que la API cargue la configuración (`Boolean(config?.show_theme_toggle)`).
+  - En `ThemeToggle.jsx`: agregado guard que mantiene el botón oculto mientras `config` esté cargando o si `config.show_theme_toggle === false`.
+
 
 ### Added
 
