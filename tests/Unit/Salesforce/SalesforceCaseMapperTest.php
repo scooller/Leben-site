@@ -1367,5 +1367,129 @@ class SalesforceCaseMapperTest extends TestCase
 		$this->assertSame('CyberSale2026', $payload['Nombre_de_la_Campa_a__c'] ?? null);
 		$this->assertSame('CyberSale2026', $payload['utm_campaign__c'] ?? null);
 	}
+
+	public function test_it_maps_custom_salesforce_field_from_global_form_fields(): void
+	{
+		SiteSetting::current()->update([
+			'contact_form_fields' => [
+				['key' => 'name', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
+				['key' => 'mi_comentario_personalizado', 'label' => 'Comentario', 'salesforce_field' => 'Comentario_Cliente__c', 'type' => 'textarea', 'required' => false],
+			],
+		]);
+
+		$submission = ContactSubmission::query()->create([
+			'name' => 'Carla Sanchez',
+			'email' => 'carla@example.com',
+			'phone' => '56933334444',
+			'fields' => [
+				'name' => 'Carla Sanchez',
+				'mi_comentario_personalizado' => 'Interesada en unidad con vista norte',
+			],
+			'submitted_at' => now(),
+		]);
+
+		$payload = app(SalesforceCaseMapper::class)->mapLead($submission);
+
+		$this->assertSame('Interesada en unidad con vista norte', $payload['Comentario_Cliente__c'] ?? null);
+	}
+
+	public function test_it_maps_custom_salesforce_field_from_channel_form_fields(): void
+	{
+		$channel = ContactChannel::query()->create([
+			'slug' => 'inversionistas',
+			'name' => 'Canal Inversionistas',
+			'is_active' => true,
+			'is_default' => false,
+			'form_fields' => [
+				['key' => 'name', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
+				['key' => 'comuna_preferida', 'label' => 'Comuna Inversión', 'salesforce_field' => 'comunaInversion__c', 'type' => 'text', 'required' => false],
+			],
+		]);
+
+		$submission = ContactSubmission::query()->create([
+			'contact_channel_id' => $channel->id,
+			'name' => 'Esteban Perez',
+			'email' => 'esteban@example.com',
+			'phone' => '56955556666',
+			'fields' => [
+				'name' => 'Esteban Perez',
+				'comuna_preferida' => 'Ñuñoa',
+			],
+			'submitted_at' => now(),
+		]);
+
+		$payload = app(SalesforceCaseMapper::class)->mapLead($submission->load('channel'));
+
+		$this->assertSame('Ñuñoa', $payload['comunaInversion__c'] ?? null);
+	}
+
+	public function test_it_does_not_send_empty_or_blank_fields_in_payload(): void
+	{
+		SiteSetting::current()->update([
+			'contact_form_fields' => [
+				['key' => 'name', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
+				['key' => 'campo_vacio', 'label' => 'Campo Vacío', 'salesforce_field' => 'Notas__c', 'type' => 'text', 'required' => false],
+			],
+		]);
+
+		$submission = ContactSubmission::query()->create([
+			'name' => 'Marcela Gomez',
+			'email' => 'marcela@example.com',
+			'phone' => '56977778888',
+			'fields' => [
+				'name' => 'Marcela Gomez',
+				'campo_vacio' => '',
+			],
+			'submitted_at' => now(),
+		]);
+
+		$payload = app(SalesforceCaseMapper::class)->mapLead($submission);
+
+		$this->assertArrayNotHasKey('Notas__c', $payload);
+	}
+
+	public function test_company_is_never_selectable_and_always_strictly_empty_in_payload(): void
+	{
+		$selectableFields = SalesforceCaseMapper::getSelectablePayloadFields();
+		$this->assertArrayNotHasKey('Company', $selectableFields);
+
+		SiteSetting::current()->update([
+			'contact_form_fields' => [
+				['key' => 'name', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
+				['key' => 'empresa', 'label' => 'Empresa', 'salesforce_field' => 'Company', 'type' => 'text', 'required' => false],
+			],
+		]);
+
+		$submission = ContactSubmission::query()->create([
+			'name' => 'Roberto Diaz',
+			'email' => 'roberto@example.com',
+			'phone' => '56911223344',
+			'fields' => [
+				'name' => 'Roberto Diaz',
+				'empresa' => 'Mi Empresa SPA',
+			],
+			'submitted_at' => now(),
+		]);
+
+		$payload = app(SalesforceCaseMapper::class)->mapLead($submission);
+
+		$this->assertArrayHasKey('Company', $payload);
+		$this->assertSame('', $payload['Company']);
+	}
+
+	public function test_default_payload_field_for_key_resolves_common_aliases(): void
+	{
+		$this->assertSame('RUT__c', SalesforceCaseMapper::defaultPayloadFieldForKey('rut'));
+		$this->assertSame('FirstName', SalesforceCaseMapper::defaultPayloadFieldForKey('nombre'));
+		$this->assertSame('LastName', SalesforceCaseMapper::defaultPayloadFieldForKey('apellido'));
+		$this->assertSame('Email', SalesforceCaseMapper::defaultPayloadFieldForKey('email'));
+		$this->assertSame('Phone', SalesforceCaseMapper::defaultPayloadFieldForKey('telefono'));
+		$this->assertSame('Rango_de_renta_liquida__c', SalesforceCaseMapper::defaultPayloadFieldForKey('rango'));
+		$this->assertSame('complementaRenta__c', SalesforceCaseMapper::defaultPayloadFieldForKey('codeudor'));
+		$this->assertSame('usoDepartamento__c', SalesforceCaseMapper::defaultPayloadFieldForKey('buscas'));
+		$this->assertSame('estadoLaboral__c', SalesforceCaseMapper::defaultPayloadFieldForKey('elaboral'));
+		$this->assertSame('comunaInversion__c', SalesforceCaseMapper::defaultPayloadFieldForKey('comuna_inversion'));
+	}
 }
+
 

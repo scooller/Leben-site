@@ -4,6 +4,20 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.78] - 2026-09-29
+
+### Added
+
+- **Salesforce & Filament — Mapeo de Payload de Salesforce en Formularios de Contacto (`SiteSettings.php`, `ContactChannelForm.php`, `SalesforceCaseMapper.php`)**:
+  - Incorporado selector `salesforce_field` ("Campo en Payload Salesforce") dentro del esquema compartido `SiteSettings::getContactFormFieldsSchema()`, disponible tanto en la configuración global de contacto (Ajustes del Sitio) como en cada canal de contacto específico.
+  - Implementado `SalesforceCaseMapper::getSelectablePayloadFields()` con el catálogo de campos admitidos por el payload de Leads en Salesforce (`RUT__c`, `FirstName`, `LastName`, `Email`, `Phone`, `MobilePhone`, `Comuna__c`, `Rango_de_renta_liquida__c`, `complementaRenta__c`, `Validaci_n_Renta__c`, `usoDepartamento__c`, `estadoLaboral__c`, `comunaInversion__c`, `Comentario_Cliente__c`, `Notas__c`, `Informacion_Cotizacion__c`, `Description`, `Medio_de_Llegada__c`, etc.).
+  - Exclusión estricta de `Company` del selector: forzado como campo siempre vacío (`$payload['Company'] = ''`) para Leads B2C sin permitir sobrescritura ni asignación de data.
+  - Preselección automática de campos (`SalesforceCaseMapper::defaultPayloadFieldForKey`): tanto los campos existentes cargados en formulario como los nuevos agregados por clave deducen y vienen preseleccionados con su mapeo correspondiente (`rut → RUT__c`, `nombre → FirstName`, `apellido → LastName`, `email → Email`, `telefono → Phone`, `rango → Rango_de_renta_liquida__c`, `codeudor → complementaRenta__c`, etc.).
+  - En `SalesforceCaseMapper::mapLead()`, se procesan dinámicamente los campos configurados del canal o sitio, asignando al payload el valor ingresado cuando existe.
+  - Se garantiza que los campos vacíos o con cadena vacía `""` no se envíen en el payload a Salesforce mediante filtrado estricto `array_filter`.
+  - Actualizado `itemLabel` en ambos repetidores para mostrar visualmente el mapeo en cabecera (`Etiqueta (clave → campo_salesforce)`).
+  - Añadidas pruebas unitarias en `SalesforceCaseMapperTest` cubriendo mapeo global, mapeo por canal, exclusión estricta de valores vacíos y cumplimiento estricto de `Company` vacío (482 tests pasando).
+
 ## [1.9.77] - 2026-09-29
 
 ### Added

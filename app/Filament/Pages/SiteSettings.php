@@ -8,6 +8,7 @@ use App\Filament\Actions\SyncProjectsAction;
 use App\Models\ContactChannel;
 use App\Models\Proyecto;
 use App\Models\SiteSetting;
+use App\Services\Salesforce\SalesforceCaseMapper;
 use Awcodes\Curator\Components\Forms\CuratorPicker;
 use Awcodes\Curator\Components\Forms\RichEditor\AttachCuratorMediaPlugin;
 use BackedEnum;
@@ -29,6 +30,7 @@ use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Exceptions\Halt;
 use Filament\Support\Icons\Heroicon;
@@ -84,6 +86,12 @@ class SiteSettings extends Page implements HasForms
                 ->label('Clave interna')
                 ->required()
                 ->maxLength(50)
+                ->live(onBlur: true)
+                ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                    if (! filled($get('salesforce_field'))) {
+                        $set('salesforce_field', SalesforceCaseMapper::defaultPayloadFieldForKey($state));
+                    }
+                })
                 ->helperText('Ej: name, rut, email, reason, message'),
 
             TextInput::make('label')
@@ -111,6 +119,16 @@ class SiteSettings extends Page implements HasForms
                 ->required()
                 ->default('text')
                 ->live(),
+
+            Select::make('salesforce_field')
+                ->label('Campo en Payload Salesforce')
+                ->placeholder('Sin mapeo directo / Automático')
+                ->options(SalesforceCaseMapper::getSelectablePayloadFields())
+                ->searchable()
+                ->nullable()
+                ->default(fn (Get $get): ?string => SalesforceCaseMapper::defaultPayloadFieldForKey($get('key')))
+                ->formatStateUsing(fn ($state, Get $get): ?string => $state ?: SalesforceCaseMapper::defaultPayloadFieldForKey($get('key')))
+                ->helperText('Campo asociado del payload que se enviará a Salesforce Lead.'),
 
             Select::make('projects')
                 ->label('Mostrar para proyecto')
@@ -1003,6 +1021,10 @@ class SiteSettings extends Page implements HasForms
                                             ->defaultItems(0)
                                             ->reorderable()
                                             ->collapsible()
+                                            ->itemLabel(fn (array $state): ?string => filled($state['label'] ?? null)
+                                                ? ($state['label'] . ' (' . ($state['key'] ?? '') . (filled($state['salesforce_field'] ?? null) ? ' → ' . $state['salesforce_field'] : '') . ')')
+                                                : null
+                                            )
                                             ->columns(2)
                                             ->helperText('Puedes definir cuántos campos deseas mostrar y validar en el formulario, incluyendo RUT y selectores.'),
                                     ])

@@ -132,7 +132,7 @@ class ContactChannelForm
                         ->reorderable()
                         ->collapsible()
                         ->itemLabel(fn (array $state): ?string => filled($state['label'] ?? null)
-                            ? ($state['label'] . ' (' . ($state['key'] ?? '') . ')')
+                            ? ($state['label'] . ' (' . ($state['key'] ?? '') . (filled($state['salesforce_field'] ?? null) ? ' → ' . $state['salesforce_field'] : '') . ')')
                             : null
                         )
                         ->columns(2)

@@ -157,10 +157,36 @@ class SalesforceCaseMapper
 			'Genero__c' => 'OTRO',
 		];
 
+		// Aplicar mapeo explícito configurado en el formulario (por canal o global)
+		$configuredFormFields = $submission->channel
+			? $submission->channel->effectiveFormFields()
+			: (is_array($settings->contact_form_fields) ? $settings->contact_form_fields : []);
+
+		foreach ($configuredFormFields as $configuredField) {
+			if (! is_array($configuredField)) {
+				continue;
+			}
+
+			$sfField = trim((string) ($configuredField['salesforce_field'] ?? ''));
+			$fieldKey = trim((string) ($configuredField['key'] ?? ''));
+
+			if ($sfField === '' || $fieldKey === '' || $sfField === 'Company') {
+				continue;
+			}
+
+			$val = $this->fieldValue($fields, [$fieldKey, $this->normalizeFieldKey($fieldKey)]);
+			if ($val !== null && $val !== '') {
+				$payload[$sfField] = $val;
+			}
+		}
+
+		// Company siempre debe ir estrictamente vacío para leads B2C
+		$payload['Company'] = '';
+
 		//
 		$payload = $this->normalizeLegacyCustomFieldsInPayload($payload);
 
-		// Para B2C Company siempre debe estar vacio
+		// Para B2C Company siempre debe estar vacio. Filtrar cualquier campo null o vacio.
 		return array_filter(
 			$payload,
 			static fn(mixed $value, string $field): bool => $field === 'Company'
@@ -171,8 +197,78 @@ class SalesforceCaseMapper
 	}
 
 	/**
+	 * Claves del payload disponibles para mapear en los formularios de contacto.
+	 *
 	 * @return array<string, string>
 	 */
+	public static function getSelectablePayloadFields(): array
+	{
+		return [
+			'RUT__c' => 'RUT__c (RUT)',
+			'FirstName' => 'FirstName (Nombre)',
+			'LastName' => 'LastName (Apellido)',
+			'Email' => 'Email (Email estándar)',
+			'Email__c' => 'Email__c (Email personalizado)',
+			'Phone' => 'Phone (Teléfono fijo / contacto)',
+			'MobilePhone' => 'MobilePhone (Teléfono móvil / WhatsApp)',
+			'Comuna__c' => 'Comuna__c (Comuna de residencia)',
+			'Rango_de_renta_liquida__c' => 'Rango_de_renta_liquida__c (Rango de renta líquida)',
+			'complementaRenta__c' => 'complementaRenta__c (Complementa renta / Codeudor)',
+			'Validaci_n_Renta__c' => 'Validaci_n_Renta__c (Validación de renta)',
+			'usoDepartamento__c' => 'usoDepartamento__c (Uso de departamento / Inversión)',
+			'estadoLaboral__c' => 'estadoLaboral__c (Estado laboral)',
+			'comunaInversion__c' => 'comunaInversion__c (Comuna de inversión)',
+			'Comentario_Cliente__c' => 'Comentario_Cliente__c (Comentario del cliente)',
+			'Notas__c' => 'Notas__c (Notas)',
+			'Informacion_Cotizacion__c' => 'Informacion_Cotizacion__c (Información de cotización)',
+			'Description' => 'Description (Descripción / Mensaje)',
+			'Medio_de_Llegada__c' => 'Medio_de_Llegada__c (Medio de llegada)',
+			'LeadSource' => 'LeadSource (Origen del prospecto)',
+			'Nombre_de_la_Campa_a__c' => 'Nombre_de_la_Campa_a__c (Nombre de campaña)',
+			'Audiencia__c' => 'Audiencia__c (Audiencia)',
+			'Pieza_Grafica__c' => 'Pieza_Grafica__c (Pieza gráfica)',
+			'GenderIdentity' => 'GenderIdentity (Identidad de género)',
+			'Genero__c' => 'Genero__c (Género)',
+		];
+	}
+
+	/**
+	 * Deduce o resuelve el campo por defecto de payload en Salesforce según la clave del campo.
+	 */
+	public static function defaultPayloadFieldForKey(?string $key): ?string
+	{
+		if ($key === null) {
+			return null;
+		}
+
+		$normalized = Str::of($key)
+			->ascii()
+			->lower()
+			->replaceMatches('/[^a-z0-9]+/', '_')
+			->trim('_')
+			->toString();
+
+		return match ($normalized) {
+			'rut' => 'RUT__c',
+			'nombre', 'name', 'first_name', 'primer_nombre' => 'FirstName',
+			'apellido', 'last_name', 'lastname', 'apellidos' => 'LastName',
+			'email', 'correo', 'e_mail', 'mail' => 'Email',
+			'telefono', 'phone', 'celular', 'fono', 'movil', 'mobile', 'whatsapp' => 'Phone',
+			'rango', 'rango_renta', 'rango_de_renta', 'renta', 'renta_liquida' => 'Rango_de_renta_liquida__c',
+			'codeudor', 'complementa_renta', 'complementarenta', 'complementa_renta_liquida' => 'complementaRenta__c',
+			'validacion_renta', 'validacion_de_renta', 'validacionrenta' => 'Validaci_n_Renta__c',
+			'buscas', 'uso_departamento', 'usodepartamento', 'uso_departamento_inversion' => 'usoDepartamento__c',
+			'elaboral', 'estado_laboral', 'estadolaboral' => 'estadoLaboral__c',
+			'comuna_inversion', 'comunainversion', 'commune_investment' => 'comunaInversion__c',
+			'comuna', 'commune' => 'Comuna__c',
+			'mensaje', 'message', 'comentario', 'comentarios', 'comentario_cliente', 'cliente_comentario', 'coment_cli' => 'Comentario_Cliente__c',
+			'nota', 'notas' => 'Notas__c',
+			'informacion_cotizacion', 'informacion_cotizacion_web', 'quote_information' => 'Informacion_Cotizacion__c',
+			'medio_de_llegada', 'medio_llegada', 'origen_del_prospecto', 'origen_prospecto' => 'Medio_de_Llegada__c',
+			'descripcion', 'description' => 'Description',
+			default => null,
+		};
+	}
 	private function buildFieldLabels(mixed $configuredFields): array
 	{
 		if (! is_array($configuredFields)) {
