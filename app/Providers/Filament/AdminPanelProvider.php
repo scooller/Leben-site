@@ -89,6 +89,7 @@ class AdminPanelProvider extends PanelProvider
 			->default()
 			->id('admin')
 			->path('admin')
+			->unsavedChangesAlerts()
 			->databaseNotifications()
 			->viteTheme('resources/css/filament/admin/theme.css')
 			->font($settings?->font_family_body, $fontStylesheetUrl, LocalFontProvider::class)

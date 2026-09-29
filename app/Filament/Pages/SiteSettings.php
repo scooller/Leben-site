@@ -24,6 +24,7 @@ use Filament\Forms\Components\Toggle;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
+use Filament\Pages\Concerns\HasUnsavedDataChangesAlert;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
@@ -40,6 +41,7 @@ use UnitEnum;
 
 class SiteSettings extends Page implements HasForms
 {
+    use HasUnsavedDataChangesAlert;
     use InteractsWithForms;
 
     /**
@@ -111,6 +113,7 @@ class SiteSettings extends Page implements HasForms
         }
 
         $this->form->fill($data);
+        $this->rememberData();
 
         if (\Illuminate\Support\Facades\Cache::pull('salesforce_oauth_just_connected')) {
             Notification::make()
@@ -1408,6 +1411,7 @@ class SiteSettings extends Page implements HasForms
             }
 
             $settings->update($data);
+            $this->rememberData();
 
             Notification::make()
                 ->success()

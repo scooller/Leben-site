@@ -4,7 +4,15 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
-## [1.9.74] - 2026-09-29
+## [1.9.75] - 2026-09-29
+
+### Added
+
+- **Backend & Filament — Advertencia de Cambios No Guardados (`AdminPanelProvider.php`, `SiteSettings.php`)**:
+  - Activado `unsavedChangesAlerts()` en el panel de Filament (`AdminPanelProvider.php`) para toda la aplicación.
+  - Implementado el trait `HasUnsavedDataChangesAlert` y llamadas a `rememberData()` en la página personalizada `SiteSettings.php` (en `mount` y `save`).
+  - Previene pérdida accidental de información al navegar a otra página dentro de Filament o cerrar/recargar la pestaña si existen cambios pendientes de guardar.
+
 
 ### Fixed
 
