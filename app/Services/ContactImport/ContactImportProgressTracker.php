@@ -50,7 +50,7 @@ class ContactImportProgressTracker
         $failedRows[] = [
             'row' => $rowNumber,
             'reason' => $this->sanitizeUtf8($reason),
-            'data' => array_map(fn($v): string => $this->sanitizeUtf8((string) $v), $rowData),
+            'data' => array_map(fn ($v): string => $this->sanitizeUtf8((string) $v), $rowData),
             'timestamp' => now()->format('H:i:s'),
         ];
 
@@ -65,7 +65,7 @@ class ContactImportProgressTracker
     {
         $cleanMessage = $this->sanitizeUtf8($message);
         $logs = (array) Cache::get($this->logsKey($importId), []);
-        $logs[] = '[' . now()->format('H:i:s') . '] ' . $cleanMessage;
+        $logs[] = '['.now()->format('H:i:s').'] '.$cleanMessage;
 
         if (count($logs) > 200) {
             $logs = array_slice($logs, -200);
@@ -92,7 +92,7 @@ class ContactImportProgressTracker
         $meta['finished_at'] = now()->toDateTimeString();
 
         Cache::put($this->metaKey($importId), $meta, self::TTL_SECONDS);
-        $this->addLog($importId, 'Error fatal: ' . $cleanError);
+        $this->addLog($importId, 'Error fatal: '.$cleanError);
     }
 
     /**
@@ -130,7 +130,7 @@ class ContactImportProgressTracker
             : 0;
 
         $rawLogs = (array) Cache::get($this->logsKey($importId), []);
-        $cleanLogs = array_map(fn($log): string => $this->sanitizeUtf8((string) $log), $rawLogs);
+        $cleanLogs = array_map(fn ($log): string => $this->sanitizeUtf8((string) $log), $rawLogs);
 
         return [
             'status' => (string) ($meta['status'] ?? 'running'),

@@ -105,7 +105,7 @@ class SyncPlantsAction
             $documentNames = self::buildPlantInteriorDocumentNames($plants, $projectNamesBySalesforceId);
             $interiorImageUrlsByDocumentName = self::buildInteriorImageUrlsByDocumentName($salesforceService, $documentNames);
 
-            Log::info('Plantas obtenidas de Salesforce: ' . count($plants));
+            Log::info('Plantas obtenidas de Salesforce: '.count($plants));
 
             if (empty($plants)) {
                 Log::warning('No se encontraron plantas en Salesforce');
@@ -208,14 +208,14 @@ class SyncPlantsAction
                 'skipped' => $skipped,
             ];
         } catch (Exception $e) {
-            Log::error('Error al sincronizar plantas: ' . $e->getMessage(), [
+            Log::error('Error al sincronizar plantas: '.$e->getMessage(), [
                 'exception' => $e::class,
                 'trace' => $e->getTraceAsString(),
             ]);
 
             return [
                 'success' => false,
-                'message' => 'Error al sincronizar: ' . $e->getMessage(),
+                'message' => 'Error al sincronizar: '.$e->getMessage(),
                 'count' => 0,
             ];
         }
@@ -386,19 +386,19 @@ class SyncPlantsAction
             return null;
         }
 
-        return $modelName . '-' . str_replace('+', '-', $program) . '-' . $orientation;
+        return $modelName.'-'.str_replace('+', '-', $program).'-'.$orientation;
     }
 
     private static function buildPlantDocumentName(string $projectName, string $identifier): string
     {
-        $projectPrefix = self::normalizeDocumentName($projectName . ' - ');
+        $projectPrefix = self::normalizeDocumentName($projectName.' - ');
         $normalizedIdentifier = self::normalizeDocumentName($identifier);
 
         if ($projectPrefix !== '' && str_starts_with($normalizedIdentifier, $projectPrefix)) {
             return trim($identifier);
         }
 
-        return $projectName . ' - ' . $identifier;
+        return $projectName.' - '.$identifier;
     }
 
     private static function normalizeDocumentName(string $value): string
@@ -425,7 +425,7 @@ class SyncPlantsAction
 
         return array_values(array_intersect(
             $allowedKeys,
-            array_map(static fn($value): string => trim((string) $value), $configured)
+            array_map(static fn ($value): string => trim((string) $value), $configured)
         ));
     }
 

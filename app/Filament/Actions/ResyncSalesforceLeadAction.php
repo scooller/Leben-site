@@ -42,7 +42,7 @@ class ResyncSalesforceLeadAction
                 if (filled($record->salesforce_case_id)) {
                     Notification::make()
                         ->title('Lead sincronizado')
-                        ->body('Lead creado en Salesforce con ID: ' . $record->salesforce_case_id)
+                        ->body('Lead creado en Salesforce con ID: '.$record->salesforce_case_id)
                         ->success()
                         ->send();
                 } else {

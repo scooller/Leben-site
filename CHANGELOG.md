@@ -4,7 +4,16 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
-## [1.9.83] - 2026-09-30
+## [1.9.84] - 2026-09-30
+
+### Fixed
+
+- **Canales de Contacto & Formularios — Vinculación Automática del Payload de Salesforce al Precargar (`ContactChannelForm.php`, `SiteSettings.php`, `SiteSetting.php`)**:
+  - Corregida la acción `preloadGlobalForm` en `ContactChannelForm.php` para asignar y vincular automáticamente `salesforce_field` mediante `SalesforceCaseMapper::defaultPayloadFieldForKey($field['key'])` en cada campo que no tenga mapeo explícito al precargar la configuración global.
+  - Añadidos `afterStateHydrated` y `dehydrateStateUsing` al componente `Select::make('salesforce_field')` en `SiteSettings::getContactFormFieldsSchema()`, garantizando la hidratación y persistencia del campo de payload por defecto.
+  - Actualizado el `itemLabel` de los repetidores de campos de formulario en `ContactChannelForm.php` y `SiteSettings.php` para reflejar visualmente la deducción del campo Salesforce (`Etiqueta (clave → campo_salesforce)`).
+  - Incluidos los mapeos por defecto (`FirstName`, `RUT__c`, `Email`, `Phone`, `Comentario_Cliente__c`) en los campos iniciales de `contact_form_fields` en `SiteSetting.php`.
+  - Agregada prueba unitaria en `SiteSettingsSalesforceSyncConfigTest` validando que la ejecución de `preloadGlobalForm` vincula correctamente los campos de payload de Salesforce en el estado del formulario.
 
 ### Added
 

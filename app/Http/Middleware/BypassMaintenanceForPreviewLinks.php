@@ -3,7 +3,6 @@
 namespace App\Http\Middleware;
 
 use App\Models\SiteSetting;
-
 use Illuminate\Http\Request;
 
 class BypassMaintenanceForPreviewLinks
@@ -15,7 +14,7 @@ class BypassMaintenanceForPreviewLinks
     {
         // Si no está en mantenimiento, sigue normal
         $settings = SiteSetting::query()->first();
-        if (empty($settings) || !$settings->maintenance_mode) {
+        if (empty($settings) || ! $settings->maintenance_mode) {
             return $next($request);
         }
 

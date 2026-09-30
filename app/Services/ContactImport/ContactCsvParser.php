@@ -27,9 +27,9 @@ class ContactCsvParser
                 maxRows: $maxRows,
             );
         } catch (Throwable $e) {
-            Log::warning('Error al leer archivo CSV para importación de contactos: ' . $e->getMessage());
+            Log::warning('Error al leer archivo CSV para importación de contactos: '.$e->getMessage());
 
-            return $this->errorResult('Error al leer el archivo CSV: ' . $e->getMessage());
+            return $this->errorResult('Error al leer el archivo CSV: '.$e->getMessage());
         }
     }
 
@@ -69,7 +69,7 @@ class ContactCsvParser
                 }
 
                 $columns = array_values(array_map(
-                    fn(mixed $column): string => $this->sanitizeUtf8(trim((string) $column)),
+                    fn (mixed $column): string => $this->sanitizeUtf8(trim((string) $column)),
                     $columns,
                 ));
 
@@ -104,9 +104,9 @@ class ContactCsvParser
                 'error' => null,
             ];
         } catch (Throwable $e) {
-            Log::warning('Error al procesar contenido CSV para importación de contactos: ' . $e->getMessage());
+            Log::warning('Error al procesar contenido CSV para importación de contactos: '.$e->getMessage());
 
-            return $this->errorResult('Error al procesar el contenido CSV: ' . $e->getMessage());
+            return $this->errorResult('Error al procesar el contenido CSV: '.$e->getMessage());
         }
     }
 
@@ -228,14 +228,14 @@ class ContactCsvParser
         return array_map(function (string $header, int $index) use (&$used): string {
             $baseHeader = trim($this->sanitizeUtf8($header));
             if ($baseHeader === '') {
-                $baseHeader = 'columna_' . ($index + 1);
+                $baseHeader = 'columna_'.($index + 1);
             }
 
             $candidate = $baseHeader;
             $suffix = 2;
 
             while (in_array(mb_strtolower($candidate, 'UTF-8'), $used, true)) {
-                $candidate = $baseHeader . '_' . $suffix;
+                $candidate = $baseHeader.'_'.$suffix;
                 $suffix++;
             }
 
@@ -253,7 +253,7 @@ class ContactCsvParser
         $headers = [];
 
         for ($i = 1; $i <= max($count, 1); $i++) {
-            $headers[] = 'columna_' . $i;
+            $headers[] = 'columna_'.$i;
         }
 
         return $headers;

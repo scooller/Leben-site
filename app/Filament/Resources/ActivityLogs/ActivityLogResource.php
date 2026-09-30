@@ -17,41 +17,41 @@ use Illuminate\Support\Facades\Log;
 
 class ActivityLogResource extends BaseActivityLogResource
 {
-	public static function table(Table $table): Table
-	{
-		$table = ActivityLogTable::configure($table);
+    public static function table(Table $table): Table
+    {
+        $table = ActivityLogTable::configure($table);
 
-		foreach ($table->getHeaderActions() as $action) {
-			if ($action->getName() === 'prune') {
-				$action->action(function (array $data) {
-					$count = Activity::query()
-						->where('created_at', '<', $data['prune_until'])
-						->delete();
+        foreach ($table->getHeaderActions() as $action) {
+            if ($action->getName() === 'prune') {
+                $action->action(function (array $data) {
+                    $count = Activity::query()
+                        ->where('created_at', '<', $data['prune_until'])
+                        ->delete();
 
-					$msj = $count > 0 ? __('filament-activity-log::activity.action.prune.success', ['count' => $count]) : 'No se han podido borrar';
-					Notification::make()
-						->success()
-						->title($msj)
-						->send();
+                    $msj = $count > 0 ? __('filament-activity-log::activity.action.prune.success', ['count' => $count]) : 'No se han podido borrar';
+                    Notification::make()
+                        ->success()
+                        ->title($msj)
+                        ->send();
 
-					Log::Info('Intento de borrado de logs activity con fecha:' . $data['prune_until']);
-				});
-			}
-		}
+                    Log::Info('Intento de borrado de logs activity con fecha:'.$data['prune_until']);
+                });
+            }
+        }
 
-		return $table;
-	}
+        return $table;
+    }
 
-	public static function infolist(Schema $schema): Schema
-	{
-		return ActivityLogInfolist::configure($schema);
-	}
+    public static function infolist(Schema $schema): Schema
+    {
+        return ActivityLogInfolist::configure($schema);
+    }
 
-	public static function getPages(): array
-	{
-		return [
-			'index' => ListActivityLogs::route('/'),
-			'view' => ViewActivityLog::route('/{record}'),
-		];
-	}
+    public static function getPages(): array
+    {
+        return [
+            'index' => ListActivityLogs::route('/'),
+            'view' => ViewActivityLog::route('/{record}'),
+        ];
+    }
 }

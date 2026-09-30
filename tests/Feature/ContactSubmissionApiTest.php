@@ -214,4 +214,3 @@ class ContactSubmissionApiTest extends TestCase
         $this->assertSame('CyberSaleGeneral', $submission->fields['utm_campaign'] ?? null);
     }
 }
-

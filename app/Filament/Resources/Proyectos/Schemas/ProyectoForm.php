@@ -12,12 +12,12 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Icon;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Filament\Schemas\Components\Icon;
-use Filament\Support\Icons\Heroicon;
 
 class ProyectoForm
 {
@@ -333,7 +333,7 @@ class ProyectoForm
                                     ->beforeLabel(Icon::make(Heroicon::PercentBadge))
                                     ->belowContent([
                                         'Se aplica cuando Sale este Activo',
-                                        Icon::make(Heroicon::InformationCircle)
+                                        Icon::make(Heroicon::InformationCircle),
                                     ])
                                     ->numeric()
                                     ->step(0.01)

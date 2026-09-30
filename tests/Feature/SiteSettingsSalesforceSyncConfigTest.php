@@ -92,4 +92,64 @@ class SiteSettingsSalesforceSyncConfigTest extends TestCase
         $this->assertInstanceOf(\Filament\Forms\Components\Select::class, $salesforceField);
         $this->assertTrue($salesforceField->isLive());
     }
+
+    public function test_preload_global_form_binds_salesforce_payload_fields(): void
+    {
+        SiteSetting::current()->update([
+            'contact_form_fields' => [
+                ['key' => 'name', 'label' => 'Nombre'],
+                ['key' => 'rut', 'label' => 'RUT'],
+                ['key' => 'phone', 'label' => 'Teléfono'],
+                ['key' => 'email', 'label' => 'Email'],
+                ['key' => 'message', 'label' => 'Mensaje'],
+                ['key' => 'rango_renta', 'label' => 'Rango Renta'],
+            ],
+        ]);
+
+        $schema = \Filament\Schemas\Schema::make();
+        \App\Filament\Resources\ContactChannels\Schemas\ContactChannelForm::configure($schema);
+
+        $section = collect($schema->getComponents())->first(
+            fn ($c) => method_exists($c, 'getHeading') && $c->getHeading() === 'Configuración de formulario'
+        );
+        $this->assertNotNull($section);
+
+        $action = collect($section->getHeaderActions())->first(
+            fn ($a) => $a->getName() === 'preloadGlobalForm'
+        );
+        $this->assertNotNull($action);
+
+        $assignedFields = null;
+        $mockComponent = new class extends \Filament\Schemas\Components\Component {};
+        $setCallback = new class($mockComponent, $assignedFields) extends \Filament\Schemas\Components\Utilities\Set
+        {
+            public function __construct(\Filament\Schemas\Components\Component $component, public &$assigned)
+            {
+                parent::__construct($component);
+            }
+
+            public function __invoke(string|\Filament\Schemas\Components\Component $path, mixed $state, bool $isAbsolute = false, bool $shouldCallUpdatedHooks = false): mixed
+            {
+                if ($path === 'form_fields') {
+                    $this->assigned = $state;
+                }
+
+                return $state;
+            }
+        };
+
+        $closure = $action->getActionFunction();
+        $closure($setCallback);
+
+        $this->assertIsArray($assignedFields);
+        $this->assertCount(6, $assignedFields);
+
+        $fields = array_values($assignedFields);
+        $this->assertSame('FirstName', $fields[0]['salesforce_field']);
+        $this->assertSame('RUT__c', $fields[1]['salesforce_field']);
+        $this->assertSame('Phone', $fields[2]['salesforce_field']);
+        $this->assertSame('Email', $fields[3]['salesforce_field']);
+        $this->assertSame('Comentario_Cliente__c', $fields[4]['salesforce_field']);
+        $this->assertSame('Rango_de_renta_liquida__c', $fields[5]['salesforce_field']);
+    }
 }

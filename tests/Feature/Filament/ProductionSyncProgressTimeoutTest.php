@@ -3,17 +3,13 @@
 namespace Tests\Feature\Filament;
 
 use App\Filament\Pages\ProductionSyncProgress;
-use App\Models\User;
 use App\Services\ProductionSync\ProductionSyncProgressTracker;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
 class ProductionSyncProgressTimeoutTest extends TestCase
 {
-
-
     public function test_progress_page_marks_sync_failed_and_logs_timeout_when_not_started_and_exceeded(): void
     {
         $syncId = 'test-timeout-sync';
@@ -28,7 +24,7 @@ class ProductionSyncProgressTimeoutTest extends TestCase
         $meta['started_at'] = Carbon::now()->subMinutes(5)->toDateTimeString();
         Cache::put($metaKey, $meta, 3600);
 
-        $page = new ProductionSyncProgress();
+        $page = new ProductionSyncProgress;
         $page->syncId = $syncId;
         $page->refreshProgress();
 
@@ -56,7 +52,7 @@ class ProductionSyncProgressTimeoutTest extends TestCase
         // Initialize sync that started 5 seconds ago
         $tracker->initialize($syncId, 0, 'https://admin.ileben.cl');
 
-        $page = new ProductionSyncProgress();
+        $page = new ProductionSyncProgress;
         $page->syncId = $syncId;
         $page->refreshProgress();
 
@@ -79,7 +75,7 @@ class ProductionSyncProgressTimeoutTest extends TestCase
         $meta['started_at'] = Carbon::now()->subMinutes(10)->toDateTimeString();
         Cache::put($metaKey, $meta, 3600);
 
-        $page = new ProductionSyncProgress();
+        $page = new ProductionSyncProgress;
         $page->syncId = $syncId;
         $page->refreshProgress();
 

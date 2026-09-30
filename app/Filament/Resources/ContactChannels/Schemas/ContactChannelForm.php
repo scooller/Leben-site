@@ -4,6 +4,7 @@ namespace App\Filament\Resources\ContactChannels\Schemas;
 
 use App\Filament\Pages\SiteSettings;
 use App\Models\SiteSetting;
+use App\Services\Salesforce\SalesforceCaseMapper;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -112,6 +113,14 @@ class ContactChannelForm
 
                             $keyedFields = [];
                             foreach ($globalFields as $field) {
+                                if (! is_array($field)) {
+                                    continue;
+                                }
+
+                                if (! filled($field['salesforce_field'] ?? null) && filled($field['key'] ?? null)) {
+                                    $field['salesforce_field'] = SalesforceCaseMapper::defaultPayloadFieldForKey($field['key']);
+                                }
+
                                 $keyedFields[(string) \Illuminate\Support\Str::uuid()] = $field;
                             }
 
@@ -132,7 +141,7 @@ class ContactChannelForm
                         ->reorderable()
                         ->collapsible()
                         ->itemLabel(fn (array $state): ?string => filled($state['label'] ?? null)
-                            ? ($state['label'] . ' (' . ($state['key'] ?? '') . (filled($state['salesforce_field'] ?? null) ? ' → ' . $state['salesforce_field'] : '') . ')')
+                            ? ($state['label'].' ('.($state['key'] ?? '').(($sf = ($state['salesforce_field'] ?? SalesforceCaseMapper::defaultPayloadFieldForKey($state['key'] ?? null))) ? ' → '.$sf : '').')')
                             : null
                         )
                         ->columns(2)

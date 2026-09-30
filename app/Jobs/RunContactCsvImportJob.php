@@ -123,7 +123,7 @@ class RunContactCsvImportJob implements ShouldQueue
                     if ($email !== '' && Validator::make(['email' => $email], ['email' => ['email']])->fails()) {
                         $tracker->increment($this->importId, 'failed');
                         $tracker->increment($this->importId, 'processed');
-                        $tracker->recordFailedRow($this->importId, $rowNumber, 'Email inválido: ' . $email, [
+                        $tracker->recordFailedRow($this->importId, $rowNumber, 'Email inválido: '.$email, [
                             'name' => (string) ($mapped['name'] ?? ''),
                             'email' => $email,
                             'phone' => (string) ($mapped['phone'] ?? ''),
@@ -188,7 +188,7 @@ class RunContactCsvImportJob implements ShouldQueue
                             $tracker->increment($this->importId, 'sync_failed');
                             $tracker->addLog($this->importId, $this->buildRowSummary(
                                 rowNumber: $rowNumber,
-                                prefix: 'error de sync Salesforce - ' . $syncErrorMessage,
+                                prefix: 'error de sync Salesforce - '.$syncErrorMessage,
                                 mapped: $mapped,
                                 email: $email,
                                 fields: $fields,
@@ -212,7 +212,7 @@ class RunContactCsvImportJob implements ShouldQueue
                     $tracker->recordFailedRow(
                         $this->importId,
                         $rowNumber,
-                        'Error inesperado: ' . $rowError->getMessage(),
+                        'Error inesperado: '.$rowError->getMessage(),
                         [
                             'name' => (string) ($mapped['name'] ?? ''),
                             'email' => (string) ($mapped['email'] ?? ''),
@@ -221,7 +221,7 @@ class RunContactCsvImportJob implements ShouldQueue
                     );
                     $tracker->addLog(
                         $this->importId,
-                        "Fila {$rowNumber}: Error al procesar fila - " . $this->displayValue($rowError->getMessage())
+                        "Fila {$rowNumber}: Error al procesar fila - ".$this->displayValue($rowError->getMessage())
                     );
                 }
             }
@@ -240,7 +240,7 @@ class RunContactCsvImportJob implements ShouldQueue
                 'trace' => $jobError->getTraceAsString(),
             ]);
 
-            $tracker->markFailed($this->importId, 'Error crítico en importación: ' . $jobError->getMessage());
+            $tracker->markFailed($this->importId, 'Error crítico en importación: '.$jobError->getMessage());
             throw $jobError;
         }
     }
@@ -275,7 +275,7 @@ class RunContactCsvImportJob implements ShouldQueue
 
                 return null;
             },
-            rescue: static fn(mixed $exception): mixed => $exception,
+            rescue: static fn (mixed $exception): mixed => $exception,
             report: false,
         );
     }

@@ -32,7 +32,7 @@ class PlantsTableNaturalSortingTest extends TestCase
         Plant::factory()->create(['name' => '1003']);
         Plant::factory()->create(['name' => '21']);
 
-        $table = PlantsTable::configure(new Table(new ListPlants()));
+        $table = PlantsTable::configure(new Table(new ListPlants));
         $column = $table->getColumn('name');
 
         // ASC
@@ -56,7 +56,7 @@ class PlantsTableNaturalSortingTest extends TestCase
         Plant::factory()->create(['precio_base' => 2000, 'precio_lista' => 2200]);
         Plant::factory()->create(['precio_base' => 10000, 'precio_lista' => 11000]);
 
-        $table = PlantsTable::configure(new Table(new ListPlants()));
+        $table = PlantsTable::configure(new Table(new ListPlants));
 
         // precio_base ASC
         $queryBase = Plant::query();
@@ -79,7 +79,7 @@ class PlantsTableNaturalSortingTest extends TestCase
         Plant::factory()->create(['salesforce_proyecto_id' => $projectB->salesforce_id]);
         Plant::factory()->create(['salesforce_proyecto_id' => $projectC->salesforce_id]);
 
-        $table = PlantsTable::configure(new Table(new ListPlants()));
+        $table = PlantsTable::configure(new Table(new ListPlants));
 
         $query = Plant::query();
         $table->getColumn('proyecto.descuento_maximo_unidad')->applySort($query, 'asc');

@@ -4,7 +4,6 @@ namespace Tests\Feature\Api;
 
 use App\Models\Plant;
 use App\Models\Proyecto;
-use App\Models\SiteSetting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\WithApiToken;
 use Tests\TestCase;

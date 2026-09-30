@@ -578,9 +578,9 @@ class StoreContactSubmissionRequest extends FormRequest
         }
 
         return array_values(array_unique(array_filter(array_map(
-            static fn(mixed $project): string => Str::of((string) $project)->trim()->lower()->toString(),
+            static fn (mixed $project): string => Str::of((string) $project)->trim()->lower()->toString(),
             $projects
-        ), static fn(string $project): bool => $project !== '')));
+        ), static fn (string $project): bool => $project !== '')));
     }
 
     private function isIncomeRangeFieldKey(string $key): bool

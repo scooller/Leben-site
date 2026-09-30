@@ -285,7 +285,7 @@ class ProyectoController extends Controller
                     $plantPayload['asesores'] = $proyecto->asesores
                         ->where('is_active', true)
                         ->values()
-                        ->map(fn(Asesor $asesor): array => $this->asesorPayload($asesor, $defaultAdvisorAvatarUrl))
+                        ->map(fn (Asesor $asesor): array => $this->asesorPayload($asesor, $defaultAdvisorAvatarUrl))
                         ->all();
                 }
 
@@ -401,7 +401,7 @@ class ProyectoController extends Controller
     private function normalizeInputValues(mixed $value): array
     {
         if (is_array($value)) {
-            return array_values(array_filter(array_map(static fn(mixed $item): string => trim((string) $item), $value), static fn(string $item): bool => $item !== ''));
+            return array_values(array_filter(array_map(static fn (mixed $item): string => trim((string) $item), $value), static fn (string $item): bool => $item !== ''));
         }
 
         if (is_string($value)) {
@@ -412,7 +412,7 @@ class ProyectoController extends Controller
             if (str_contains($value, ',')) {
                 $parts = explode(',', $value);
 
-                return array_values(array_filter(array_map(static fn(string $item): string => trim($item), $parts), static fn(string $item): bool => $item !== ''));
+                return array_values(array_filter(array_map(static fn (string $item): string => trim($item), $parts), static fn (string $item): bool => $item !== ''));
             }
 
             return [trim($value)];

@@ -113,7 +113,6 @@ class SalesforceCaseMapper
         $payload = [
             'FirstName' => $firstName,
             'LastName' => $lastName,
-            // 'Company' => (string) ($settings->site_name ?: config('app.name') ?: 'iLeben'),
             'Company' => '', // Campo "Company" obligatorio en Lead, pero lo dejamos vacío por ser un lead de consumidor final sin empresa asociada.
             'Phone' => $phone,
             'MobilePhone' => $phone,

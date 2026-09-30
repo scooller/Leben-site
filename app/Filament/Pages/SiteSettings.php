@@ -127,6 +127,12 @@ class SiteSettings extends Page implements HasForms
                 ->searchable()
                 ->nullable()
                 ->default(fn (Get $get): ?string => SalesforceCaseMapper::defaultPayloadFieldForKey($get('key')))
+                ->afterStateHydrated(function (Select $component, $state, Get $get) {
+                    if (! filled($state) && filled($get('key'))) {
+                        $component->state(SalesforceCaseMapper::defaultPayloadFieldForKey($get('key')));
+                    }
+                })
+                ->dehydrateStateUsing(fn ($state, Get $get) => filled($state) ? $state : SalesforceCaseMapper::defaultPayloadFieldForKey($get('key')))
                 ->formatStateUsing(fn ($state, Get $get): ?string => $state ?: SalesforceCaseMapper::defaultPayloadFieldForKey($get('key')))
                 ->helperText('Campo asociado del payload que se enviará a Salesforce Lead.'),
 
@@ -1022,7 +1028,7 @@ class SiteSettings extends Page implements HasForms
                                             ->reorderable()
                                             ->collapsible()
                                             ->itemLabel(fn (array $state): ?string => filled($state['label'] ?? null)
-                                                ? ($state['label'].' ('.($state['key'] ?? '').(filled($state['salesforce_field'] ?? null) ? ' → '.$state['salesforce_field'] : '').')')
+                                                ? ($state['label'].' ('.($state['key'] ?? '').(($sf = ($state['salesforce_field'] ?? SalesforceCaseMapper::defaultPayloadFieldForKey($state['key'] ?? null))) ? ' → '.$sf : '').')')
                                                 : null
                                             )
                                             ->columns(2)

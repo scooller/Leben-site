@@ -40,11 +40,11 @@ class EditMedia extends BaseEditMedia
                     return view('filament.actions.show-qr-code', [
                         'url' => $qrUrl,
                         'qrSvg' => $qrSvg,
-                        'qrDownloadUrl' => 'data:image/svg+xml;base64,' . base64_encode($qrDownloadSvg),
+                        'qrDownloadUrl' => 'data:image/svg+xml;base64,'.base64_encode($qrDownloadSvg),
                         'qrDownloadName' => $downloadName,
                     ]);
                 })
-                ->action(static fn(): null => null),
+                ->action(static fn (): null => null),
             ...parent::getHeaderActions(),
         ];
     }

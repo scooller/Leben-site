@@ -36,6 +36,7 @@ class NegotiateMarkdownForAgents
             // If non-API request, return markdown representation immediately
             if (! $request->is('api/*') && ! $request->is('payments/*')) {
                 $markdown = $this->markdownService->renderHomepageMarkdown();
+
                 return $this->markdownService->makeResponse($markdown);
             }
         }
@@ -45,6 +46,7 @@ class NegotiateMarkdownForAgents
         // Fallback: If downstream response is HTML, redirect, or error, and client wants markdown
         if ($wantsMarkdown && ! $request->is('api/*') && ! $request->is('payments/*')) {
             $markdown = $this->markdownService->renderHomepageMarkdown();
+
             return $this->markdownService->makeResponse($markdown);
         }
 

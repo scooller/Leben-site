@@ -27,7 +27,7 @@ class PlantsTableNotificationTitlesTest extends TestCase
 
     public function test_record_actions_report_single_quantity(): void
     {
-        $table = PlantsTable::configure(new Table(new ListPlants()));
+        $table = PlantsTable::configure(new Table(new ListPlants));
 
         $activePlant = new Plant(['is_active' => true]);
         $inactivePlant = new Plant(['is_active' => false]);
@@ -49,10 +49,10 @@ class PlantsTableNotificationTitlesTest extends TestCase
 
     public function test_bulk_actions_report_selected_record_counts(): void
     {
-        $table = PlantsTable::configure(new Table(new ListPlants()));
+        $table = PlantsTable::configure(new Table(new ListPlants));
 
-        $oneRecord = new Collection([new Plant()]);
-        $threeRecords = new Collection([new Plant(), new Plant(), new Plant()]);
+        $oneRecord = new Collection([new Plant]);
+        $threeRecords = new Collection([new Plant, new Plant, new Plant]);
 
         // activateSelected
         $activateBulk = $table->getBulkAction('activateSelected');
