@@ -4,6 +4,16 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.82] - 2026-09-30
+
+### Added
+
+- **Salesforce & Formularios — Catálogo Extendido de Campos UTM, Campaña y Origen (`SalesforceCaseMapper.php`)**:
+  - Incorporados al catálogo de campos seleccionables en formularios de contacto (`getSelectablePayloadFields()`): `utm_source__c`, `utm_medium__c`, `utm_campaign__c`, `utm_term__c`, `utm_content__c`, `UTM_Site_P_gina_de_origen__c`, `Pagina_Origen__c`, `PersonLeadSource`, `AccountSource`, `Tipo_Ingreso__c` y `Ultima_llamada__c`.
+  - Agregadas deducciones automáticas de campos por clave en `defaultPayloadFieldForKey()` para alias comunes (`utm_source`, `utm_medium`, `utm_campaign`, `utm_term`, `utm_content`, `utm_site`, `pagina_origen`, `person_lead_source`, `account_source`, `tipo_ingreso`, `ultima_llamada`).
+  - Protegidos campos personalizados en `$excludedCustomFields` para prevenir reemplazo indebido de espacios por guiones bajos en valores de texto libre.
+  - Añadidas pruebas unitarias en `SalesforceCaseMapperTest` verificando disponibilidad en el catálogo y resolución de alias (35 tests, 160 assertions).
+
 ## [1.9.81] - 2026-09-30
 
 ### Changed
