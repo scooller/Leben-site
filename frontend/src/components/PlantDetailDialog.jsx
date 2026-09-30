@@ -233,11 +233,12 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
     const unitDiscount = Number(plant?.porcentajeAplicado ?? plant?.discountPercentage) || 0;
     const ivaDiscount = Number(plant?.descuentoIva ?? plant?.descuento_iva) || 0;
     const hasIva = ivaDiscount > 0;
-    const totalDiscount = hasIva
-        ? Number((unitDiscount + ivaDiscount).toFixed(2))
-        : unitDiscount;
-    const displayTotalDiscount = hasIva ? Math.round(unitDiscount + ivaDiscount) : Math.round(unitDiscount);
-    const shouldShowDiscountSeal = displayTotalDiscount > 0;
+    const totalDiscountRaw = hasIva ? (unitDiscount + ivaDiscount) : unitDiscount;
+    const totalDiscount = Number(totalDiscountRaw.toFixed(1));
+    const displayTotalDiscount = totalDiscountRaw.toFixed(1);
+    const shouldShowDiscountSeal = totalDiscountRaw > 0;
+    const ivaDiscountFormatted = ivaDiscount.toFixed(1);
+    const unitDiscountFormatted = unitDiscount.toFixed(1);
 
     return (
         <wa-dialog
@@ -289,13 +290,18 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
                             {shouldShowDiscountSeal && (
                                 <wa-animation name="flash" duration={5000} iterations={Infinity}>
                                     <div className={`discount-seal-container${hasIva ? ' has-iva' : ''}`}>
-                                        <div className="discount-seal" aria-label={`Descuento ${displayTotalDiscount}%`}>
+                                        <div id={`discount-seal-detail-${plant.id}`} className="discount-seal" aria-label={`Descuento ${displayTotalDiscount}%`}>
                                             <span className="discount-seal-value">{displayTotalDiscount}</span>
                                             <span className="discount-seal-label">
                                                 <span className='simbol'>%</span>
                                                 descto.
                                             </span>
                                         </div>
+                                        {hasIva && (
+                                            <wa-tooltip for={`discount-seal-detail-${plant.id}`}>
+                                                Dcto IVA {ivaDiscountFormatted}% + Dcto. Sale {unitDiscountFormatted}%
+                                            </wa-tooltip>
+                                        )}
                                     </div>
                                 </wa-animation>
                             )}

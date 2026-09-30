@@ -380,11 +380,15 @@ function PlantsGrid({
                   const unitDiscount = Number(plant.porcentajeAplicado ?? plant.discountPercentage) || 0;
                   const ivaDiscount = Number(plant.descuentoIva ?? plant.descuento_iva) || 0;
                   const hasIva = ivaDiscount > 0;
-                  const totalDiscount = hasIva ? Math.round(unitDiscount + ivaDiscount) : Math.round(unitDiscount);
+                  const totalDiscountRaw = hasIva ? (unitDiscount + ivaDiscount) : unitDiscount;
 
-                  if (totalDiscount <= 0) {
+                  if (totalDiscountRaw <= 0) {
                     return null;
                   }
+
+                  const totalDiscount = totalDiscountRaw.toFixed(1);
+                  const ivaDiscountFormatted = ivaDiscount.toFixed(1);
+                  const unitDiscountFormatted = unitDiscount.toFixed(1);
 
                   return (
                     <wa-animation name="flash" duration={5000} iterations={Infinity}>
@@ -398,7 +402,7 @@ function PlantsGrid({
                         </div>
                         {hasIva && (
                           <wa-tooltip for={`discount-seal-${plant.id}`}>
-                            Dcto IVA {ivaDiscount}% + Dcto. Sale {unitDiscount}%
+                            Dcto IVA {ivaDiscountFormatted}% + Dcto. Sale {unitDiscountFormatted}%
                           </wa-tooltip>
                         )}
                       </div>

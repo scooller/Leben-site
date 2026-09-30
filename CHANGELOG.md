@@ -4,6 +4,16 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.81] - 2026-09-30
+
+### Changed
+
+- **Frontend / Plantas — Formateo de Porcentajes de Descuento con 1 Decimal (`PlantsGrid.jsx`, `PlantDetailDialog.jsx`, `Home.jsx`, `home.scss`)**:
+  - Unificado el formateo de descuentos a exactamente 1 decimal (`toFixed(1)`) en la insignia `.discount-seal` tanto en grilla (`PlantsGrid.jsx`) como en el modal de detalle (`PlantDetailDialog.jsx`), reemplazando el redondeo entero `Math.round()`.
+  - Agregado desglose con 1 decimal en tooltip tanto en grilla como en diálogo (`Dcto IVA X.X% + Dcto. Sale Y.Y%`).
+  - Ajustado cálculo de `totalDiscountPercentage` a 1 decimal en `Home.jsx`.
+  - Ajustada tipografía de `.discount-seal-value` en `home.scss` (`1.45rem`, `white-space: nowrap`) para evitar saltos o solapamientos con cifras decimales dentro del sello circular.
+
 ## [1.9.80] - 2026-09-30
 
 ### Fixed
