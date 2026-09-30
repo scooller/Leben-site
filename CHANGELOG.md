@@ -4,7 +4,18 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
-## [1.9.78] - 2026-09-29
+## [1.9.79] - 2026-09-30
+
+### Added
+
+- **Contact Submissions & CSV Import — Gestor de Errores Integral y Resiliencia (`ImportContactSubmissionsCsvAction.php`, `RunContactCsvImportJob.php`, `ContactCsvParser.php`, `ContactImportProgressTracker.php`, `contact-import-progress.blade.php`)**:
+  - Detección y conversión automática de codificaciones conflictivas (Windows-1252, ISO-8859-1, UTF-16, UTF-32 con y sin BOM) a UTF-8 válido en `ContactCsvParser::ensureUtf8()`, erradicando `JsonException: Malformed UTF-8 characters` al serializar estado Livewire en el wizard.
+  - Soporte para opción delimitador `'auto'` que detecta automáticamente si el archivo está separado por comas o punto y coma (común en Excel en español / Chile).
+  - Feedback visual interactivo en el paso de archivo CSV: muestra columnas detectadas, delimitador encontrado y alerta inmediata si solo se detecta una sola columna por discrepancia de separador.
+  - Validación de campos obligatorios en el mapeo (`map_name`, `map_email`, `map_comuna`, `map_proyecto`) en frontend y backend antes de iniciar la importación.
+  - Tabla de resumen de mapeo con badges visuales de campos obligatorios/opcionales y banner de advertencia si quedan campos críticos sin mapear.
+  - Aislamiento de excepciones por fila en `RunContactCsvImportJob`: si una fila falla (ej. email inválido, error al crear registro o falta de campos), la fila fallida se aísla, se registra con detalle de motivo y datos originales, y el proceso continúa sin abortar el resto del archivo.
+  - Visualización de tabla "Filas con errores" en la vista de progreso en vivo (`contact-import-progress.blade.php`), indicando número de fila, causa del error y snapshot de datos.
 
 ### Added
 
