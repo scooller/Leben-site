@@ -79,4 +79,17 @@ class SiteSettingsSalesforceSyncConfigTest extends TestCase
         $this->assertSame('H', $options['correction']);
         $this->assertSame('square', $options['eye_style']);
     }
+
+    public function test_contact_form_fields_schema_disables_duplicate_salesforce_fields(): void
+    {
+        $schema = \App\Filament\Pages\SiteSettings::getContactFormFieldsSchema();
+
+        $salesforceField = collect($schema)->first(
+            fn ($comp) => method_exists($comp, 'getName') && $comp->getName() === 'salesforce_field'
+        );
+
+        $this->assertNotNull($salesforceField);
+        $this->assertInstanceOf(\Filament\Forms\Components\Select::class, $salesforceField);
+        $this->assertTrue($salesforceField->isLive());
+    }
 }

@@ -37,7 +37,6 @@ use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\HtmlString;
-use Omniphx\Forrest\Providers\Laravel\Facades\Forrest;
 use Throwable;
 use UnitEnum;
 
@@ -124,6 +123,7 @@ class SiteSettings extends Page implements HasForms
                 ->label('Campo en Payload Salesforce')
                 ->placeholder('Sin mapeo directo / Automático')
                 ->options(SalesforceCaseMapper::getSelectablePayloadFields())
+                ->disableOptionsWhenSelectedInSiblingRepeaterItems()
                 ->searchable()
                 ->nullable()
                 ->default(fn (Get $get): ?string => SalesforceCaseMapper::defaultPayloadFieldForKey($get('key')))
@@ -684,7 +684,7 @@ class SiteSettings extends Page implements HasForms
                                         Placeholder::make('serp_snippet_preview')
                                             ->hiddenLabel()
                                             ->content(fn (Get $get): \Illuminate\Contracts\View\View => view('filament.components.serp-snippet-preview', [
-                                                'title' => $get('extra_settings.default_meta_title') ?: ($get('site_name') ? $get('site_name') . ' | Departamentos y Proyectos en Venta' : ''),
+                                                'title' => $get('extra_settings.default_meta_title') ?: ($get('site_name') ? $get('site_name').' | Departamentos y Proyectos en Venta' : ''),
                                                 'description' => $get('extra_settings.default_og_description') ?: ($get('site_description') ?: ''),
                                                 'siteUrl' => $get('site_url') ?: 'https://sale.ileben.cl',
                                                 'siteName' => $get('site_name') ?: 'iLeben',
@@ -1022,7 +1022,7 @@ class SiteSettings extends Page implements HasForms
                                             ->reorderable()
                                             ->collapsible()
                                             ->itemLabel(fn (array $state): ?string => filled($state['label'] ?? null)
-                                                ? ($state['label'] . ' (' . ($state['key'] ?? '') . (filled($state['salesforce_field'] ?? null) ? ' → ' . $state['salesforce_field'] : '') . ')')
+                                                ? ($state['label'].' ('.($state['key'] ?? '').(filled($state['salesforce_field'] ?? null) ? ' → '.$state['salesforce_field'] : '').')')
                                                 : null
                                             )
                                             ->columns(2)
@@ -1106,13 +1106,13 @@ class SiteSettings extends Page implements HasForms
                                         Textarea::make('extra_settings.post_contact_script')
                                             ->label('Script Post-Contacto')
                                             ->rows(6)
-                                            ->placeholder('<script>' . "\n" . '  if (typeof fbq === "function") {' . "\n" . '    fbq("track", "Lead", { name: "{name}", email: "{email}" });' . "\n" . '  }' . "\n" . '</script>')
+                                            ->placeholder('<script>'."\n".'  if (typeof fbq === "function") {'."\n".'    fbq("track", "Lead", { name: "{name}", email: "{email}" });'."\n".'  }'."\n".'</script>')
                                             ->helperText('Se dispara inmediatamente tras enviar con éxito el formulario de contacto. Tokens disponibles: {form_id}, {channel}, {name}, {email}, {phone}, {rut}, {project_id}.'),
 
                                         Textarea::make('extra_settings.post_payment_script')
                                             ->label('Script Post-Pago / Reserva')
                                             ->rows(6)
-                                            ->placeholder('<script>' . "\n" . '  if (typeof fbq === "function") {' . "\n" . '    fbq("track", "Purchase", { value: {amount}, currency: "CLP" });' . "\n" . '  }' . "\n" . '</script>')
+                                            ->placeholder('<script>'."\n".'  if (typeof fbq === "function") {'."\n".'    fbq("track", "Purchase", { value: {amount}, currency: "CLP" });'."\n".'  }'."\n".'</script>')
                                             ->helperText('Se dispara tras iniciar un checkout, enviar comprobante o confirmar el pago con éxito. Tokens disponibles: {payment_id}, {order_id}, {amount}, {gateway}, {unit_id}, {project_id}, {customer_email}, {customer_name}, {customer_phone}, {customer_rut}.'),
                                     ])
                                     ->columns(1),
@@ -1257,7 +1257,7 @@ class SiteSettings extends Page implements HasForms
                                             ->searchable()
                                             ->preload()
                                             ->default([]),
-                                    ]),                                
+                                    ]),
 
                                 Section::make('Conexión OAuth')
                                     ->description('Conecta con Salesforce para autorizar la integración.')

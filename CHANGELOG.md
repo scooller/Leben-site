@@ -4,6 +4,15 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.83] - 2026-09-30
+
+### Added
+
+- **Filament & Canales de Contacto — Deshabilitar Opciones Duplicadas en Selector de Campos Salesforce (`SiteSettings.php`, `ContactChannelForm.php`)**:
+  - Incorporado `->disableOptionsWhenSelectedInSiblingRepeaterItems()` al selector `salesforce_field` dentro del esquema de campos compartidos de formulario (`SiteSettings::getContactFormFieldsSchema()`).
+  - Las opciones de campo de Salesforce ya seleccionadas en un ítem del repetidor se deshabilitan reactivamente en los demás ítems hermanos dentro del canal o configuración global, previniendo asignaciones duplicadas de payload.
+  - Añadida prueba unitaria en `SiteSettingsSalesforceSyncConfigTest` comprobando que el selector aplica comportamiento reactivo y regla de unicidad en repetidores.
+
 ## [1.9.82] - 2026-09-30
 
 ### Added
