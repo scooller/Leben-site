@@ -153,7 +153,10 @@ class PlantForm
                     ->step(0.01)
                     ->minValue(0)
                     ->maxValue(100)
-                    ->default(fn (?Plant $record, Get $get) => $record?->proyecto?->descuento_defecto_cotizacion_web ?? (filled($get('salesforce_proyecto_id')) ? Proyecto::where('salesforce_id', $get('salesforce_proyecto_id'))->value('descuento_defecto_cotizacion_web') : null))
+                    ->placeholder(fn (?Plant $record, Get $get): ?string => filled($record?->proyecto?->descuento_defecto_cotizacion_web)
+                        ? 'Del proyecto: '.$record->proyecto->descuento_defecto_cotizacion_web.'%'
+                        : null
+                    )
                     ->prefix('Dcto.')
                     ->suffix('%')
                     ->visible(fn ($get) => (bool) $get('priorizar_descuentos')),
@@ -168,7 +171,10 @@ class PlantForm
                     ->step(0.01)
                     ->minValue(0)
                     ->maxValue(100)
-                    ->default(fn (?Plant $record, Get $get) => $record?->proyecto?->descuento_maximo_unidad ?? (filled($get('salesforce_proyecto_id')) ? Proyecto::where('salesforce_id', $get('salesforce_proyecto_id'))->value('descuento_maximo_unidad') : null))
+                    ->placeholder(fn (?Plant $record, Get $get): ?string => filled($record?->proyecto?->descuento_maximo_unidad)
+                        ? 'Del proyecto: '.$record->proyecto->descuento_maximo_unidad.'%'
+                        : null
+                    )
                     ->prefix('Dcto.')
                     ->suffix('%')
                     ->visible(fn ($get) => (bool) $get('priorizar_descuentos')),
@@ -179,7 +185,10 @@ class PlantForm
                     ->step(0.01)
                     ->minValue(0)
                     ->maxValue(100)
-                    ->default(fn (?Plant $record, Get $get) => $record?->proyecto?->descuento_iva ?? (filled($get('salesforce_proyecto_id')) ? Proyecto::where('salesforce_id', $get('salesforce_proyecto_id'))->value('descuento_iva') : 0))
+                    ->placeholder(fn (?Plant $record, Get $get): ?string => filled($record?->proyecto?->descuento_iva)
+                        ? 'Del proyecto: '.$record->proyecto->descuento_iva.'%'
+                        : null
+                    )
                     ->prefix('Dcto.')
                     ->suffix('%')
                     ->visible(fn ($get) => (bool) $get('priorizar_descuentos')),

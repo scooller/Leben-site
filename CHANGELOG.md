@@ -7,6 +7,7 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 ### Fixed
 
 - **PlantForm + ProyectoForm — aviso "Es posible que los cambios no se guarden." falso positivo**: Campos `->disabled()` sin `->dehydrated(false)` en ambos formularios causaban que Filament detectara diferencia entre estado del formulario y el modelo al guardar. Se agregó `->dehydrated(false)` a todos los campos de solo lectura sincronizados desde Salesforce en `PlantForm.php` (10 campos) y `ProyectoForm.php` (16 campos: `name`, `salesforce_id`, `descripcion`, `direccion`, `provincia`, `region`, `razon_social`, `rut`, `email`, `telefono`, `fecha_inicio_ventas`, `fecha_entrega`, `horario_atencion`, `salesforce_portada_url`, `salesforce_logo_url`, `valor_reserva_exigido_min_peso`).
+- **PlantForm — dirty state por `->default()` con closures en campos de descuento**: Los campos `descuento_defecto_cotizacion_web`, `descuento_maximo_unidad` y `descuento_iva` usaban `->default(fn (?Plant $record) => ...)` con queries al proyecto. En Filament v5 (Livewire v4), `->default()` se evalúa en Edit rellenando campos null con valores del proyecto, generando dirty state al cargar el formulario. Reemplazado por `->placeholder()` que muestra el valor del proyecto como hint visual sin mutar el estado del modelo.
 
 ## [1.9.79] - 2026-09-30
 
