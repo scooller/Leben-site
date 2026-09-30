@@ -6,7 +6,7 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ### Fixed
 
-- **PlantForm — aviso "Es posible que los cambios no se guarden." falso positivo**: Campos `->disabled()` sin `->dehydrated(false)` causaban que Filament detectara diferencia entre estado del formulario y el modelo al guardar, mostrando el warning incluso cuando los datos se persistían correctamente. Se agregó `->dehydrated(false)` a todos los campos de solo lectura sincronizados desde Salesforce (`salesforce_product_id`, `tipo_producto`, `salesforce_proyecto_id`, `piso`, `programa`, `programa2`, `orientacion`, `precio_lista`, `superficie_*`, `last_synced_at`).
+- **PlantForm + ProyectoForm — aviso "Es posible que los cambios no se guarden." falso positivo**: Campos `->disabled()` sin `->dehydrated(false)` en ambos formularios causaban que Filament detectara diferencia entre estado del formulario y el modelo al guardar. Se agregó `->dehydrated(false)` a todos los campos de solo lectura sincronizados desde Salesforce en `PlantForm.php` (10 campos) y `ProyectoForm.php` (16 campos: `name`, `salesforce_id`, `descripcion`, `direccion`, `provincia`, `region`, `razon_social`, `rut`, `email`, `telefono`, `fecha_inicio_ventas`, `fecha_entrega`, `horario_atencion`, `salesforce_portada_url`, `salesforce_logo_url`, `valor_reserva_exigido_min_peso`).
 
 ## [1.9.79] - 2026-09-30
 
