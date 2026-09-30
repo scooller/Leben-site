@@ -28,6 +28,7 @@ class PlantForm
                     ->label('Salesforce Product ID')
                     ->required()
                     ->disabled()
+                    ->dehydrated(false)
                     ->suffixAction(
                         Action::make('openSalesforcePlant')
                             ->label('Ver en Salesforce')
@@ -46,11 +47,13 @@ class PlantForm
                     ->required(),
                 TextInput::make('tipo_producto')
                     ->label('Tipo de Planta')
-                    ->disabled(),
+                    ->disabled()
+                    ->dehydrated(false),
                 Select::make('salesforce_proyecto_id')
                     ->label('Proyecto')
                     ->options(Proyecto::pluck('name', 'salesforce_id'))
                     ->disabled()
+                    ->dehydrated(false)
                     ->searchable(),
                 Select::make('asesor_id')
                     ->label('Asesor de planta')
@@ -81,16 +84,20 @@ class PlantForm
                     ->helperText('Si está definido, el botón "Asesorate aquí" del detalle de planta usará este link (interno o externo).'),
                 TextInput::make('piso')
                     ->label('Piso')
-                    ->disabled(),
+                    ->disabled()
+                    ->dehydrated(false),
                 TextInput::make('programa')
                     ->label('Programa')
-                    ->disabled(),
+                    ->disabled()
+                    ->dehydrated(false),
                 TextInput::make('programa2')
                     ->label('Programa 2')
-                    ->disabled(),
+                    ->disabled()
+                    ->dehydrated(false),
                 TextInput::make('orientacion')
                     ->label('Orientación')
-                    ->disabled(),
+                    ->disabled()
+                    ->dehydrated(false),
                 TextInput::make('precio_base')
                     ->label('Precio Base')
                     ->numeric()
@@ -100,7 +107,8 @@ class PlantForm
                     ->label('Precio Lista')
                     ->numeric()
                     ->prefix('$')
-                    ->disabled(),
+                    ->disabled()
+                    ->dehydrated(false),
                 Toggle::make('unidad_sale')
                     ->label('Unidad Sale')
                     ->helperText('Define si esta unidad debe mostrarse cuando la configuración sale está activa.'),
@@ -179,22 +187,26 @@ class PlantForm
                     ->label('Superficie Total Principal')
                     ->numeric()
                     ->suffix('m²')
-                    ->disabled(),
+                    ->disabled()
+                    ->dehydrated(false),
                 TextInput::make('superficie_interior')
                     ->label('Superficie Interior')
                     ->numeric()
                     ->suffix('m²')
-                    ->disabled(),
+                    ->disabled()
+                    ->dehydrated(false),
                 TextInput::make('superficie_util')
                     ->label('Superficie Útil')
                     ->numeric()
                     ->suffix('m²')
-                    ->disabled(),
+                    ->disabled()
+                    ->dehydrated(false),
                 TextInput::make('superficie_terraza')
                     ->label('Superficie Terraza')
                     ->numeric()
                     ->suffix('m²')
-                    ->disabled(),
+                    ->disabled()
+                    ->dehydrated(false),
                 CuratorPicker::make('cover_image_id')
                     ->label('Imagen de Portada')
                     ->helperText('Imagen principal para mostrar la planta.'),
@@ -216,7 +228,8 @@ class PlantForm
                     ->required(),
                 DateTimePicker::make('last_synced_at')
                     ->label('Última Sincronización')
-                    ->disabled(),
+                    ->disabled()
+                    ->dehydrated(false),
             ]);
     }
 }
