@@ -1448,108 +1448,108 @@ function Home({ onNavigate, currentPath }) {
   if (configLoading) {
     return (
       <div className="home-container">
-          <div className="loading-skeletons wa-stack wa-gap-l">
-            <wa-card appearance="filled">
-              <div className="wa-stack wa-gap-s" style={{ padding: '1.5rem' }}>
-                <wa-skeleton effect="pulse" style={{ height: '28px', width: '35%', margin: '0 auto' }}></wa-skeleton>
-                <wa-skeleton effect="pulse" style={{ height: '18px', width: '60%', margin: '0 auto' }}></wa-skeleton>
-              </div>
-            </wa-card>
-
-            <div className="wa-stack wa-gap-xs">
-              <wa-skeleton effect="pulse" style={{ height: '26px', width: '220px' }}></wa-skeleton>
-              <wa-skeleton effect="pulse" style={{ height: '16px', width: '320px' }}></wa-skeleton>
+        <div className="loading-skeletons wa-stack wa-gap-l">
+          <wa-card appearance="filled">
+            <div className="wa-stack wa-gap-s" style={{ padding: '1.5rem' }}>
+              <wa-skeleton effect="pulse" style={{ height: '28px', width: '35%', margin: '0 auto' }}></wa-skeleton>
+              <wa-skeleton effect="pulse" style={{ height: '18px', width: '60%', margin: '0 auto' }}></wa-skeleton>
             </div>
+          </wa-card>
 
-            <wa-card appearance="outlined">
-              <div className="wa-stack wa-gap-m" style={{ padding: '1rem' }}>
-                <wa-skeleton effect="pulse" style={{ height: '18px', width: '140px' }}></wa-skeleton>
-                <div className="wa-cluster wa-gap-s">
-                  <wa-skeleton effect="pulse" style={{ height: '42px', width: '220px' }}></wa-skeleton>
-                  <wa-skeleton effect="pulse" style={{ height: '42px', width: '160px' }}></wa-skeleton>
-                  <wa-skeleton effect="pulse" style={{ height: '42px', width: '140px' }}></wa-skeleton>
-                  <wa-skeleton effect="pulse" style={{ height: '42px', width: '150px' }}></wa-skeleton>
-                  <wa-skeleton effect="pulse" style={{ height: '42px', width: '150px' }}></wa-skeleton>
-                </div>
-                <div className="wa-cluster wa-gap-s">
-                  <wa-skeleton effect="pulse" style={{ height: '34px', width: '150px' }}></wa-skeleton>
-                  <wa-skeleton effect="pulse" style={{ height: '34px', width: '150px' }}></wa-skeleton>
-                </div>
+          <div className="wa-stack wa-gap-xs">
+            <wa-skeleton effect="pulse" style={{ height: '26px', width: '220px' }}></wa-skeleton>
+            <wa-skeleton effect="pulse" style={{ height: '16px', width: '320px' }}></wa-skeleton>
+          </div>
+
+          <wa-card appearance="outlined">
+            <div className="wa-stack wa-gap-m" style={{ padding: '1rem' }}>
+              <wa-skeleton effect="pulse" style={{ height: '18px', width: '140px' }}></wa-skeleton>
+              <div className="wa-cluster wa-gap-s">
+                <wa-skeleton effect="pulse" style={{ height: '42px', width: '220px' }}></wa-skeleton>
+                <wa-skeleton effect="pulse" style={{ height: '42px', width: '160px' }}></wa-skeleton>
+                <wa-skeleton effect="pulse" style={{ height: '42px', width: '140px' }}></wa-skeleton>
+                <wa-skeleton effect="pulse" style={{ height: '42px', width: '150px' }}></wa-skeleton>
+                <wa-skeleton effect="pulse" style={{ height: '42px', width: '150px' }}></wa-skeleton>
               </div>
-            </wa-card>
-
-            <div className="plants-grid wa-grid">
-              {[...Array(6)].map((_, i) => (
-                <wa-card key={i} className="skeleton-card" appearance="filled">
-                  <wa-skeleton slot="media" effect="pulse" style={{ height: '220px' }}></wa-skeleton>
-
-                  <div slot="header" className="wa-stack wa-gap-xs" style={{ width: '100%' }}>
-                    <wa-skeleton effect="pulse" style={{ height: '18px', width: '65%' }}></wa-skeleton>
-                    <wa-skeleton effect="pulse" style={{ height: '18px', width: '45%' }}></wa-skeleton>
-                  </div>
-
-                  <div slot="header-actions">
-                    <wa-skeleton effect="pulse" style={{ height: '24px', width: '70px' }}></wa-skeleton>
-                  </div>
-
-                  <div className="wa-split wa-align-items-center">
-                    <wa-skeleton effect="pulse" style={{ height: '16px', width: '35%' }}></wa-skeleton>
-                    <div className="wa-cluster wa-gap-xs">
-                      <wa-skeleton effect="pulse" style={{ height: '24px', width: '65px' }}></wa-skeleton>
-                      <wa-skeleton effect="pulse" style={{ height: '24px', width: '65px' }}></wa-skeleton>
-                    </div>
-                  </div>
-
-                  <div slot="footer" className="wa-stack wa-gap-xs">
-                    <wa-skeleton effect="pulse" style={{ height: '14px', width: '48%' }}></wa-skeleton>
-                    <wa-skeleton effect="pulse" style={{ height: '28px', width: '38%' }}></wa-skeleton>
-                  </div>
-
-                  <div slot="footer-actions">
-                    <wa-button-group label="Skeleton actions">
-                      <wa-button size="s" disabled>
-                        <wa-skeleton effect="pulse" style={{ height: '14px', width: '72px' }}></wa-skeleton>
-                      </wa-button>
-                      <wa-button size="s" variant="brand" disabled>
-                        <wa-skeleton effect="pulse" style={{ height: '14px', width: '56px' }}></wa-skeleton>
-                      </wa-button>
-                    </wa-button-group>
-                  </div>
-                </wa-card>
-              ))}
+              <div className="wa-cluster wa-gap-s">
+                <wa-skeleton effect="pulse" style={{ height: '34px', width: '150px' }}></wa-skeleton>
+                <wa-skeleton effect="pulse" style={{ height: '34px', width: '150px' }}></wa-skeleton>
+              </div>
             </div>
+          </wa-card>
+
+          <div className="plants-grid wa-grid">
+            {[...Array(6)].map((_, i) => (
+              <wa-card key={i} className="skeleton-card" appearance="filled">
+                <wa-skeleton slot="media" effect="pulse" style={{ height: '220px' }}></wa-skeleton>
+
+                <div slot="header" className="wa-stack wa-gap-xs" style={{ width: '100%' }}>
+                  <wa-skeleton effect="pulse" style={{ height: '18px', width: '65%' }}></wa-skeleton>
+                  <wa-skeleton effect="pulse" style={{ height: '18px', width: '45%' }}></wa-skeleton>
+                </div>
+
+                <div slot="header-actions">
+                  <wa-skeleton effect="pulse" style={{ height: '24px', width: '70px' }}></wa-skeleton>
+                </div>
+
+                <div className="wa-split wa-align-items-center">
+                  <wa-skeleton effect="pulse" style={{ height: '16px', width: '35%' }}></wa-skeleton>
+                  <div className="wa-cluster wa-gap-xs">
+                    <wa-skeleton effect="pulse" style={{ height: '24px', width: '65px' }}></wa-skeleton>
+                    <wa-skeleton effect="pulse" style={{ height: '24px', width: '65px' }}></wa-skeleton>
+                  </div>
+                </div>
+
+                <div slot="footer" className="wa-stack wa-gap-xs">
+                  <wa-skeleton effect="pulse" style={{ height: '14px', width: '48%' }}></wa-skeleton>
+                  <wa-skeleton effect="pulse" style={{ height: '28px', width: '38%' }}></wa-skeleton>
+                </div>
+
+                <div slot="footer-actions">
+                  <wa-button-group label="Skeleton actions">
+                    <wa-button size="s" disabled>
+                      <wa-skeleton effect="pulse" style={{ height: '14px', width: '72px' }}></wa-skeleton>
+                    </wa-button>
+                    <wa-button size="s" variant="brand" disabled>
+                      <wa-skeleton effect="pulse" style={{ height: '14px', width: '56px' }}></wa-skeleton>
+                    </wa-button>
+                  </wa-button-group>
+                </div>
+              </wa-card>
+            ))}
           </div>
         </div>
+      </div>
     );
   }
 
   if (error) {
     return (
       <div className="home-container">
-          <wa-card>
-            <div slot="header">
-              <h2>{error.title || 'Error'}</h2>
+        <wa-card>
+          <div slot="header">
+            <h2>{error.title || 'Error'}</h2>
+          </div>
+          <wa-callout variant="danger">
+            <wa-icon slot="icon" name="circle-exclamation"></wa-icon>
+            <strong>No se pudieron cargar las plantas</strong>
+            <div style={{ marginTop: '8px' }}>
+              {error.userMessage || error.message}
             </div>
-            <wa-callout variant="danger">
-              <wa-icon slot="icon" name="circle-exclamation"></wa-icon>
-              <strong>No se pudieron cargar las plantas</strong>
-              <div style={{ marginTop: '8px' }}>
-                {error.userMessage || error.message}
-              </div>
-            </wa-callout>
-            <div style={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
-              <wa-button onClick={() => loadPlants()} variant="brand">
-                <wa-icon slot="start" name="arrow-rotate-right" animation="spin"></wa-icon>
-                Reintentar
+          </wa-callout>
+          <div style={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
+            <wa-button onClick={() => loadPlants()} variant="brand">
+              <wa-icon slot="start" name="arrow-rotate-right" animation="spin"></wa-icon>
+              Reintentar
+            </wa-button>
+            {error.canRetry && (
+              <wa-button onClick={() => window.location.reload()}>
+                Recargar página
               </wa-button>
-              {error.canRetry && (
-                <wa-button onClick={() => window.location.reload()}>
-                  Recargar página
-                </wa-button>
-              )}
-            </div>
-          </wa-card>
-        </div>
+            )}
+          </div>
+        </wa-card>
+      </div>
     );
   }
 

@@ -366,13 +366,15 @@ function PlantsGrid({
                   <wa-badge variant="neutral" className="plant-comuna-badge"><wa-icon slot="start" name="map-location"></wa-icon>{plant.proyectoComuna}</wa-badge>
                 )}
                 {isSaleEventActive && saleLogoUrl && (
-                  <wa-badge variant="neutral" appearance="outlined" className="sale-logo-badge" aria-label="Logo sale">
+                  <div className="sale-logo-badge" aria-label="Logo sale">
                     <img
                       src={saleLogoUrl}
                       alt="Logo Sale"
                       className="sale-logo-image"
+                      loading="lazy"
+                      decoding="async"
                     />
-                  </wa-badge>
+                  </div>
                 )}
                 {(() => {
                   const unitDiscount = Number(plant.porcentajeAplicado ?? plant.discountPercentage) || 0;
@@ -387,25 +389,18 @@ function PlantsGrid({
                   return (
                     <wa-animation name="flash" duration={5000} iterations={Infinity}>
                       <div className={`discount-seal-container${hasIva ? ' has-iva' : ''}`}>
-                        {hasIva && (
-                          <div className="discount-sub-seals">
-                            <div className="discount-sub-seal discount-sub-seal--iva" title={`Descuento IVA: ${ivaDiscount}%`}>
-                              <span className="discount-sub-seal-val">{ivaDiscount}%</span>
-                              <span className="discount-sub-seal-lbl">IVA</span>
-                            </div>
-                            <div className="discount-sub-seal discount-sub-seal--unit" title={`Descuento Unidad: ${unitDiscount}%`}>
-                              <span className="discount-sub-seal-val">{unitDiscount}%</span>
-                              <span className="discount-sub-seal-lbl">Unidad</span>
-                            </div>
-                          </div>
-                        )}
-                        <div className="discount-seal" aria-label={`Descuento ${totalDiscount}%`}>
+                        <div id={`discount-seal-${plant.id}`} className="discount-seal" aria-label={`Descuento ${totalDiscount}%`}>
                           <span className="discount-seal-value">{totalDiscount}</span>
                           <span className="discount-seal-label">
                             <span className='simbol'>%</span>
                             descto.
                           </span>
                         </div>
+                        {hasIva && (
+                          <wa-tooltip for={`discount-seal-${plant.id}`}>
+                            Dcto IVA {ivaDiscount}% + Dcto. Sale {unitDiscount}%
+                          </wa-tooltip>
+                        )}
                       </div>
                     </wa-animation>
                   );
@@ -423,7 +418,7 @@ function PlantsGrid({
                   <wa-badge variant="neutral">{plant.tipoProducto}</wa-badge>
                 )}
                 {plant.proyectoEtapa && (
-                  <wa-badge variant="success" style={{ fontSize: 'var(--wa-font-size-xs)' }}>{resolveStageAlias(plant.proyectoEtapa, plant.proyectoSlug)}</wa-badge>
+                  <wa-badge variant="neutral" style={{ fontSize: 'var(--wa-font-size-xs)' }}>{resolveStageAlias(plant.proyectoEtapa, plant.proyectoSlug)}</wa-badge>
                 )}
                 {plant.isPaid && (
                   <wa-badge variant="neutral"><wa-icon name="shop-slash" slot="start"></wa-icon>Pagada</wa-badge>
@@ -466,7 +461,7 @@ function PlantsGrid({
                   <div className="price-detail">
                     {(0 < plant.precioLista) && (plant.precioLista !== (plant.precioSeleccionado || plant.precioFinal || plant.precioBase)) && (
                       <div className="prices-list">
-                        <span className="price-text">Precio lista:</span>
+                        <span className="price-text">Precio normal: </span>
                         <span className="price-label">
                           UF {plant.precioLista.toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                         </span>

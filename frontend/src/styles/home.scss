@@ -437,6 +437,7 @@ html.wa-light {
 .plant-detail-media>a {
   display: block;
   height: 100%;
+  background-color: var(--wa-color-white);
 }
 
 // Dialogo de plantas
@@ -491,8 +492,9 @@ html.wa-light {
   display: block;
   height: 100%;
   max-height: none;
-  object-fit: cover;
+  object-fit: contain;
   width: 100%;
+  aspect-ratio: 32 / 15;
 }
 
 .advisor-contact-list {

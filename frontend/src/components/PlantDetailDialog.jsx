@@ -152,7 +152,7 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
         const slide = isSvg
             ? {
                 type: 'html',
-                html: `<img src="${imageUrl.replace(/"/g, '&quot;')}" alt="Planta ${plant?.nombre || ''}" style="display:block;width:min(92vw,1400px);height:auto;max-height:90vh;object-fit:contain;margin:0 auto;" />`,
+                html: `<img src="${imageUrl.replace(/"/g, '&quot;')}" alt="Planta ${plant?.nombre || ''}" style="display:block;width:min(92vw,1400px);height:auto;max-height:90vh;object-fit:contain;margin:0 auto;" loading="lazy" decoding="async" />`,
                 caption: `Planta ${plant?.nombre || ''}`,
             }
             : {
@@ -266,6 +266,8 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
                                         src={plant.projectLogoUrl}
                                         alt={`Logo de ${plant.proyectoNombre || 'proyecto'}`}
                                         className="project-logo-image"
+                                        loading="lazy"
+                                        decoding="async"
                                     />
                                 </wa-badge>
                             )}
@@ -280,24 +282,13 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
                                         src={saleLogoUrl}
                                         alt="Logo Sale"
                                         className="sale-logo-image"
-                                    />
+                                        loading="lazy"
+                                        decoding="async" />
                                 </wa-badge>
                             )}
                             {shouldShowDiscountSeal && (
                                 <wa-animation name="flash" duration={5000} iterations={Infinity}>
                                     <div className={`discount-seal-container${hasIva ? ' has-iva' : ''}`}>
-                                        {hasIva && (
-                                            <div className="discount-sub-seals">
-                                                <div className="discount-sub-seal discount-sub-seal--iva" title={`Descuento IVA: ${ivaDiscount}%`}>
-                                                    <span className="discount-sub-seal-val">{ivaDiscount}%</span>
-                                                    <span className="discount-sub-seal-lbl">IVA</span>
-                                                </div>
-                                                <div className="discount-sub-seal discount-sub-seal--unit" title={`Descuento Unidad: ${unitDiscount}%`}>
-                                                    <span className="discount-sub-seal-val">{unitDiscount}%</span>
-                                                    <span className="discount-sub-seal-lbl">Unidad</span>
-                                                </div>
-                                            </div>
-                                        )}
                                         <div className="discount-seal" aria-label={`Descuento ${displayTotalDiscount}%`}>
                                             <span className="discount-seal-value">{displayTotalDiscount}</span>
                                             <span className="discount-seal-label">
@@ -328,7 +319,7 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
                                         {plant.proyectoEtapa && (
                                             <div className="wa-split wa-align-items-center">
                                                 <strong>Etapa</strong>
-                                                <wa-badge variant="success">{resolveStageAlias(plant.proyectoEtapa, plant.proyectoSlug)}</wa-badge>
+                                                <wa-badge variant="neutral">{resolveStageAlias(plant.proyectoEtapa, plant.proyectoSlug)}</wa-badge>
                                             </div>
                                         )}
                                         {plant.proyectoDescripcion && (
@@ -350,7 +341,7 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
                                         {plant.programa && (
                                             <div className="wa-split wa-align-items-center">
                                                 <strong>Programa</strong>
-                                                <wa-badge variant="brand">{plant.programa}</wa-badge>
+                                                <wa-badge variant="neutral">{plant.programa}</wa-badge>
                                             </div>
                                         )}
                                         {plant.orientacion && (
@@ -368,13 +359,13 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
                                         {hasIva && (
                                             <div className="wa-split wa-align-items-center">
                                                 <strong>Dcto. IVA</strong>
-                                                <wa-badge variant="brand">{ivaDiscount}%</wa-badge>
+                                                <wa-badge variant="warning">{ivaDiscount}%</wa-badge>
                                             </div>
                                         )}
                                         {unitDiscount > 0 && (
                                             <div className="wa-split wa-align-items-center">
                                                 <strong>Dcto. Unidad</strong>
-                                                <wa-badge variant="danger">{unitDiscount}%</wa-badge>
+                                                <wa-badge variant="warning">{unitDiscount}%</wa-badge>
                                             </div>
                                         )}
                                         {/* Separador encima de Dcto Total y Precio Reserva */}
@@ -383,13 +374,13 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
                                         {(hasIva || unitDiscount > 0) && totalDiscount > 0 && (
                                             <div className="wa-split wa-align-items-center">
                                                 <strong>Dcto. Total</strong>
-                                                <wa-badge variant="warning">{totalDiscount}%</wa-badge>
+                                                <wa-badge variant="brand">{totalDiscount}%</wa-badge>
                                             </div>
                                         )}
                                         {/* Precio de reserva */}
                                         <div className="wa-split wa-align-items-center">
                                             <strong>Precio de Reserva</strong>
-                                            <wa-tag variant="success">{formattedReserva}</wa-tag>
+                                            <wa-tag variant="neutral">{formattedReserva}</wa-tag>
                                         </div>
                                     </div>
                                 </wa-details>
@@ -465,7 +456,10 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
                                                         <article key={advisor.id} className="advisor-contact-card">
                                                             <div className="wa-cluster wa-gap-s wa-align-items-center advisor-contact-header">
                                                                 {manualAvatarUrl ? (
-                                                                    <img src={manualAvatarUrl} alt={advisorName} className="advisor-avatar" />
+                                                                    <img src={manualAvatarUrl} alt={advisorName}
+                                                                        className="advisor-avatar"
+                                                                        loading="lazy"
+                                                                        decoding="async" />
                                                                 ) : (
                                                                     <span className="advisor-avatar-fallback" aria-hidden="true">
                                                                         <wa-icon name="user-tie"></wa-icon>
@@ -549,7 +543,7 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
                                 Cerrar
                             </wa-button>
                             <wa-button
-                                variant="success"
+                                variant="warning"
                                 size={mobile ? 'small' : 'large'}
                                 href={contactLinkMeta.href}
                                 target={contactLinkMeta.isExternal ? '_blank' : undefined}

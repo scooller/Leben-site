@@ -1055,7 +1055,7 @@ function Contact({ onNavigate, currentPath }) {
         {contactHeroDesktopImage ? (
           <picture className="contact-hero-picture">
             <source media="(max-width: 768px)" srcSet={contactHeroMobileImage || contactHeroDesktopImage} />
-            <img src={contactHeroDesktopImage} alt={config?.hero?.contact?.alt || 'Contacto'} className="contact-hero-image" />
+            <img src={contactHeroDesktopImage} alt={config?.hero?.contact?.alt || 'Contacto'} className="contact-hero-image" loading="lazy" decoding="async" />
           </picture>
         ) : (
           <wa-card appearance="filled" className="contact-hero-card">
