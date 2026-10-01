@@ -1,4 +1,5 @@
 import api from '../lib/api';
+import { getActivePreviewToken } from '../utils/previewToken';
 
 /**
  * Servicio para obtener la configuración del sitio
@@ -359,13 +360,7 @@ class SiteConfigService {
   }
 
   getPreviewToken() {
-    if (typeof window === 'undefined') {
-      return null;
-    }
-
-    const token = new URLSearchParams(window.location.search).get('preview_token');
-
-    return token ? token.trim() : null;
+    return getActivePreviewToken();
   }
 }
 

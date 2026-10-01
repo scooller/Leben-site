@@ -12,6 +12,7 @@ import { buildSpecialAnnouncementSchema, buildSaleEventSchema } from './utils/sa
 import SiteHeader from './components/SiteHeader';
 import SiteFooter from './components/SiteFooter';
 import ThemeToggle from './components/ThemeToggle';
+import { appendPreviewTokenToUrl, syncPreviewTokenToCurrentUrl } from './utils/previewToken';
 import './App.scss';
 import './styles/maintenance.scss';
 
@@ -145,9 +146,10 @@ function AppContent() {
 
   const navigate = useCallback((nextPath) => {
     const targetPath = normalizePathname(nextPath);
+    const targetWithToken = appendPreviewTokenToUrl(nextPath);
 
     if (targetPath !== pathname) {
-      window.history.pushState({}, '', targetPath);
+      window.history.pushState({}, '', targetWithToken);
       setPathname(targetPath);
     }
 
@@ -165,6 +167,7 @@ function AppContent() {
 
     captureUtmParamsFromUrl(currentSearch);
     cleanTrackedUtmsFromCurrentUrl(currentSearch);
+    syncPreviewTokenToCurrentUrl();
   }, [pathname]);
 
   useEffect(() => {

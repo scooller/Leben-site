@@ -12,6 +12,7 @@ import { trackEvent, trackPageView } from '../utils/tagManager';
 import { triggerPaymentConversion } from '../utils/conversionTracker';
 import { resolveSeoPolicy } from '../utils/seoPolicy';
 import { removeStructuredData, setStructuredData } from '../utils/structuredData';
+import { appendPreviewTokenToUrl } from '../utils/previewToken';
 import '../styles/home.scss' with { type: 'css' };
 
 const PlantsGrid = lazy(() => import('../components/PlantsGrid'));
@@ -691,7 +692,7 @@ function Home({ onNavigate, currentPath }) {
     }
 
     event.preventDefault();
-    onNavigate?.(href);
+    onNavigate?.(appendPreviewTokenToUrl(href));
   }, [onNavigate]);
 
   const mapPlant = useCallback((plant) => {
@@ -1040,10 +1041,11 @@ function Home({ onNavigate, currentPath }) {
           ? normalizeBrowserUrl(window.history.state?.previousUrl || '/')
           : currentUrl;
 
-        window.history.pushState({ plantDetail: true, previousUrl }, '', nextPath);
+        const targetUrl = appendPreviewTokenToUrl(nextPath);
+        window.history.pushState({ plantDetail: true, previousUrl }, '', targetUrl);
 
         trackPageView({
-          path: nextPath,
+          path: targetUrl,
           title: `${config?.site_name || 'iLeben'} | Planta ${plant.nombre || plant.name || ''}`,
         });
       }
@@ -1063,9 +1065,10 @@ function Home({ onNavigate, currentPath }) {
     setSelectedPlantDetail(null);
     setRoutePlantLoading(false);
 
-    const targetUrl = parsePlantDetailPath(window.location.pathname)
+    const rawTargetUrl = parsePlantDetailPath(window.location.pathname)
       ? normalizeBrowserUrl(window.history.state?.previousUrl || '/plantas')
       : normalizeBrowserUrl(window.location.pathname || '/');
+    const targetUrl = appendPreviewTokenToUrl(rawTargetUrl);
 
     window.history.replaceState({}, '', targetUrl);
     window.dispatchEvent(new PopStateEvent('popstate'));
@@ -1714,7 +1717,7 @@ function Home({ onNavigate, currentPath }) {
             {breadcrumbItems.map((item, index) => (
               <li key={`${item.label}-${index}`}>
                 {item.href && !item.current ? (
-                  <a href={item.href} onClick={(event) => handleInternalNavigationLink(event, item.href)}>{item.label}</a>
+                  <a href={appendPreviewTokenToUrl(item.href)} onClick={(event) => handleInternalNavigationLink(event, item.href)}>{item.label}</a>
                 ) : (
                   <span aria-current={item.current ? 'page' : undefined}>{item.label}</span>
                 )}

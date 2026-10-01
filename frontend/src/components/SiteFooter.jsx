@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useSiteConfig } from '../contexts/SiteConfigContext';
 import { appendSessionUtmsToExternalUrl } from '../utils/externalLinks';
+import { appendPreviewTokenToUrl } from '../utils/previewToken';
 import BlurBar from './BlurBar';
 
 const normalizeFooterMenu = (menuItems) => {
@@ -152,7 +153,7 @@ function SiteFooter({ config, onNavigate }) {
                         appearance="plain"
                         variant="neutral"
                         style={{ fontSize: 'var(--wa-font-size-sm)' }}
-                        href={appendSessionUtmsToExternalUrl(menuItem.url)}
+                        href={appendPreviewTokenToUrl(appendSessionUtmsToExternalUrl(menuItem.url))}
                         target={menuItem.newTab ? '_blank' : undefined}
                         rel={menuItem.newTab ? 'noopener noreferrer' : undefined}
                         onClick={(event) => handleFooterNavigation(event, menuItem.url, menuItem.newTab)}

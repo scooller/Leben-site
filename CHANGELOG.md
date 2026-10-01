@@ -4,6 +4,21 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.55] - 2026-10-01
+
+### 🔗 Persistencia de Preview Token en Enlaces y Navegación del Frontend
+
+- **Utilidad `previewToken` (`frontend/src/utils/previewToken.js`)**:
+  - Creada utilidad centralizada para obtener (`getActivePreviewToken`), anexar (`appendPreviewTokenToUrl`) y sincronizar en barra de direcciones (`syncPreviewTokenToCurrentUrl`) el token de preview (`preview_token`).
+  - Almacena el token en `sessionStorage` (`ileben_preview_token`) para conservarlo incluso ante recargas o enlaces directos, e impide la fuga de tokens hacia dominios externos de terceros.
+- **Servicios y Clientes API (`frontend/src/lib/api.js`, `frontend/src/services/siteConfig.js`)**:
+  - Actualizados para resolver el token de preview activo desde la utilidad unificada en vez de consultar únicamente `window.location.search`.
+- **Navegación e Interfaz (`frontend/src/App.jsx`, `frontend/src/pages/Home.jsx`, `frontend/src/components/SiteHeader.jsx`, `frontend/src/components/SiteFooter.jsx`, `frontend/src/components/PlantDetailDialog.jsx`)**:
+  - `navigate` en `App.jsx` preserva automáticamente el token activo en cada cambio de ruta con `history.pushState` y re-sincroniza la URL actual tras eventos `popstate`.
+  - Enlaces de cabecera (`SiteHeader`) y pie de página (`SiteFooter`) conservan el token en navegación interna y botones de asesoría.
+  - Apertura y cierre del modal de detalle de planta (`Home.jsx: openPlantDetail`, `handleClosePlantDetail`) mantienen el parámetro `preview_token` en `window.history.pushState` y `replaceState`.
+  - Migas de pan (breadcrumbs) y enlaces de contacto interno en modal de detalle (`PlantDetailDialog`) anexan el token para evitar perder el modo preview durante testing.
+
 ## [1.9.54] - 2026-10-01
 
 ### 🎨 Filtros con Estilo Glass y Toolbar de Ordenamiento de DEV

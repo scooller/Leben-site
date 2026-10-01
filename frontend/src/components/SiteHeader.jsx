@@ -1,6 +1,7 @@
 import { useSiteConfig } from '../contexts/SiteConfigContext';
 import { trackEvent } from '../utils/tagManager';
 import { appendSessionUtmsToExternalUrl } from '../utils/externalLinks';
+import { appendPreviewTokenToUrl } from '../utils/previewToken';
 
 function SiteHeader({ config, currentPath = '/', onNavigate, onMenuClick }) {
   const { colorMode } = useSiteConfig();
@@ -8,7 +9,7 @@ function SiteHeader({ config, currentPath = '/', onNavigate, onMenuClick }) {
   const isCatalogEnabled = Boolean(config?.mostrar_plantas ?? true);
 
   const goToHome = () => {
-    onNavigate?.('/');
+    onNavigate?.(appendPreviewTokenToUrl('/'));
   };
 
   const siteUrl = `${config?.site_url || '/'}`.trim() || '/';
@@ -27,10 +28,10 @@ function SiteHeader({ config, currentPath = '/', onNavigate, onMenuClick }) {
       return;
     }
 
-    onNavigate?.('/plantas');
+    onNavigate?.(appendPreviewTokenToUrl('/plantas'));
   };
 
-  const contactHref = '/contacto';
+  const contactHref = appendPreviewTokenToUrl('/contacto');
 
   const handleContactClick = (source = 'site_header_desktop') => {
     trackEvent('wa_link', {

@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import { resolveStageAlias } from '../utils/stageAlias';
 import { getStoredUtmParams } from '../utils/utmSession';
 import { appendSessionUtmsToExternalUrl } from '../utils/externalLinks';
+import { appendPreviewTokenToUrl } from '../utils/previewToken';
 
 function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = null, dialogRef, checkoutLoading, onCheckout, onClose }) {
     const closeNotifiedRef = useRef(false);
@@ -198,16 +199,17 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
         try {
             const parsedTarget = new URL(resolveContactTarget(), window.location.origin);
             const isExternal = parsedTarget.origin !== window.location.origin;
+            const internalPath = `${parsedTarget.pathname}${parsedTarget.search}${parsedTarget.hash}` || fallbackPath;
 
             return {
                 href: isExternal
                     ? appendSessionUtmsToExternalUrl(parsedTarget.href)
-                    : `${parsedTarget.pathname}${parsedTarget.search}${parsedTarget.hash}` || fallbackPath,
+                    : appendPreviewTokenToUrl(internalPath),
                 isExternal,
             };
         } catch {
             return {
-                href: fallbackPath,
+                href: appendPreviewTokenToUrl(fallbackPath),
                 isExternal: false,
             };
         }
