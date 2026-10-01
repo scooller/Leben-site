@@ -164,6 +164,154 @@ html.wa-light {
   }
 }
 
+/* ============================================================
+   FILTROS CON ESTILO GLASS (idéntico al navbar)
+   ============================================================ */
+.filters-details {
+  border-radius: var(--wa-border-radius-l);
+  margin-bottom: var(--wa-space-m);
+
+  &::part(base) {
+    backdrop-filter: blur(4px);
+    background: color-mix(in srgb, var(--wa-color-surface-default) 50%, transparent) !important;
+    border: 1px solid color-mix(in srgb, var(--wa-color-surface-border) 95%, transparent);
+    border-radius: var(--wa-border-radius-l);
+    box-shadow: 0 10px 30px rgba(var(--wa-color-black-rgb), 0.06);
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+  }
+
+  &::part(header) {
+    background: transparent;
+    padding: var(--wa-space-s) var(--wa-space-m);
+    font-weight: var(--wa-font-weight-semibold);
+  }
+
+  &::part(summary) {
+    color: var(--wa-color-text);
+  }
+
+  &::part(content) {
+    background: transparent;
+    padding: 0 var(--wa-space-m) var(--wa-space-m);
+  }
+
+  .filters-card {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+}
+
+.wa-dark .filters-details {
+  &::part(base) {
+    background: color-mix(in srgb, var(--wa-color-surface-default) 50%, transparent) !important;
+    border-color: color-mix(in srgb, var(--wa-color-surface-border) 95%, transparent);
+  }
+}
+
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .filters-details::part(base) {
+    background-color: var(--wa-color-surface-raised) !important;
+  }
+}
+
+/* ============================================================
+   TOOLBAR DE PLANTAS (ORDENAMIENTO - DE DEV CON ESTILO GLASS)
+   ============================================================ */
+.plants-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+  padding: 1rem 1.25rem;
+  backdrop-filter: blur(2px);
+  background: color-mix(in srgb, var(--wa-color-surface-default) 90%, transparent);
+  border: 1px solid color-mix(in srgb, var(--wa-color-surface-border) 95%, transparent);
+  border-radius: var(--wa-border-radius-l);
+  box-shadow: 0 18px 40px rgba(var(--wa-color-black-rgb), 0.08);
+}
+
+.wa-dark .plants-toolbar {
+  background: color-mix(in srgb, var(--wa-color-surface-default) 50%, transparent);
+  border-color: color-mix(in srgb, var(--wa-color-surface-border) 80%, transparent);
+}
+
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .plants-toolbar {
+    background-color: var(--wa-color-surface-raised) !important;
+  }
+}
+
+.plants-toolbar-summary {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 10rem;
+
+  strong {
+    font-size: clamp(1.6rem, 2vw, 2.2rem);
+    line-height: 1;
+    color: var(--wa-color-text);
+  }
+}
+
+.plants-toolbar-summary-label,
+.plants-toolbar-sort-label,
+.plants-sort-group-title {
+  color: var(--wa-color-text-quiet);
+  font-size: var(--wa-font-size-s);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.plants-toolbar-sort {
+  display: grid;
+  gap: 0.75rem;
+  justify-items: end;
+  flex: 1 1 40rem;
+}
+
+.plants-toolbar-groups {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.75rem 1rem;
+}
+
+.plants-sort-group {
+  display: grid;
+  gap: 0.35rem;
+}
+
+@media (max-width: 768px) {
+  .plants-toolbar {
+    padding: 1rem;
+  }
+
+  .plants-toolbar-sort {
+    justify-items: stretch;
+    flex-basis: 100%;
+  }
+
+  .plants-toolbar-groups {
+    justify-content: stretch;
+  }
+
+  .plants-sort-group {
+    width: 100%;
+  }
+
+  .plants-sort-group wa-button-group {
+    width: 100%;
+  }
+
+  .plants-sort-group wa-button {
+    flex: 1;
+  }
+}
+
 /* Plants Grid */
 .plants-grid {
   --min-column-size: 50ch;

@@ -343,9 +343,6 @@ function PlantsGrid({
   return (
     <>
       <div className='wa-stack'>
-        {typeof totalPlants === 'number' && (
-          <div className="plants-count"><wa-icon name="city"></wa-icon> {totalPlants} planta{totalPlants === 1 ? '' : 's'}</div>
-        )}
         <div id='plantas' className="plants-grid wa-grid wa-gap-2xl" ref={gridContainerRef}>
           {plants.map((plant) => (
             <wa-card

@@ -4,6 +4,18 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.54] - 2026-10-01
+
+### 🎨 Filtros con Estilo Glass y Toolbar de Ordenamiento de DEV
+
+- **Estilo Glass en Filtros (`frontend/src/styles/home.scss`, `frontend/src/pages/Home.jsx`)**:
+  - Aplicado estilo glass idéntico al navbar (`.site-header`) en `.filters-details::part(base)` con `backdrop-filter: blur(8px)`, superficie con color-mix al 90%, borde sutil y transición suave.
+  - La tarjeta interna `.filters-card` se configuró en `appearance="plain"` con fondo transparente para que el efecto glass del acordeón luzca limpio y consistente tanto en modo claro como oscuro.
+- **Toolbar de Ordenamiento (`frontend/src/pages/Home.jsx`, `frontend/src/styles/home.scss`, `app/Http/Controllers/Api/PlantController.php`)**:
+  - Incorporado componente `.plants-toolbar` portado desde branch `dev` con soporte de ordenamiento interactivo (Nombre ASC/DESC, Precio ASC/DESC y Mejor Oferta ASC/DESC).
+  - Implementado ordenamiento tanto en servidor (`sort_by` y `sort_direction` en API) como en cliente con `totalDiscountPercentage` y `Intl.Collator('es-CL')`, asegurando que unidades con mayores descuentos conjuntos aparezcan en la primera página y no queden relegadas por la paginación.
+  - El toolbar adopta la misma estética glassmorphism del navbar para mantener cohesión visual.
+
 ## [1.9.53] - 2026-10-01
 
 ### 🏷️ Redirección de Contacto a Home Filtrado durante Evento Sale
