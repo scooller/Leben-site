@@ -4,6 +4,18 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.53] - 2026-10-01
+
+### 🏷️ Redirección de Contacto a Home Filtrado durante Evento Sale
+
+- **Validación de Fechas de Evento Sale (`frontend/src/utils/saleEventSchema.js`)**:
+  - Incorporada función `isSaleEventActiveByDate(config)` para determinar si el evento Sale está activo verificando la bandera `evento_sale` y el rango temporal configurado (`sale_event_start_date` y `sale_event_end_date`).
+- **Formulario de Contacto (`frontend/src/pages/Contact.jsx`)**:
+  - Al completar exitosamente el formulario durante un evento Sale activo, se genera automáticamente la URL filtrada con el proyecto y/o comuna seleccionados (`/f/proyectos/{slug}/comunas/{slug}`).
+  - Se muestra mensaje de confirmación y tras 1.8 segundos se redirige al usuario hacia el catálogo filtrado con `onNavigate`.
+  - Agregado `slugifySegment` para estandarizar los slugs de navegación.
+  - Implementada limpieza de temporizador en desmontaje de componente mediante `redirectTimeoutRef`.
+
 ## [1.9.52] - 2026-09-25
 
 ### 📱 Ajuste de Aspect Ratio de Video Hero en Mobile a 920x1580

@@ -6,7 +6,19 @@ import { triggerContactConversion } from '../utils/conversionTracker';
 import { getStoredUtmParams } from '../utils/utmSession';
 import { appendSessionUtmsToExternalUrl } from '../utils/externalLinks';
 import { proyectosService } from '../services/proyectos';
+import { isSaleEventActiveByDate } from '../utils/saleEventSchema';
 import '../styles/contact.scss' with { type: 'css' };
+
+const slugifySegment = (value) => (
+  `${value ?? ''}`
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[^\w\s-]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+);
 
 const CONTACT_RANGE_FIELD = {
   key: 'rango',
@@ -147,10 +159,19 @@ function Contact({ onNavigate, currentPath }) {
   const [projectsLoading, setProjectsLoading] = useState(true);
   const turnstileContainerRef = useRef(null);
   const turnstileWidgetIdRef = useRef(null);
+  const redirectTimeoutRef = useRef(null);
   const [turnstileReady, setTurnstileReady] = useState(typeof window !== 'undefined' && Boolean(window.turnstile));
   const [turnstileToken, setTurnstileToken] = useState('');
   const [turnstileError, setTurnstileError] = useState('');
   const [turnstileLoading, setTurnstileLoading] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      if (redirectTimeoutRef.current) {
+        clearTimeout(redirectTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const storedUtmParams = useMemo(() => getStoredUtmParams(), []);
   const channelSlug = useMemo(() => new URLSearchParams(window.location.search).get('channel') ?? 'sale', []);
@@ -715,7 +736,36 @@ function Contact({ onNavigate, currentPath }) {
         commune: values.comuna || '',
       });
 
-      setSubmitSuccess('Tu mensaje fue enviado correctamente.');
+      const isSaleActive = isSaleEventActiveByDate(config);
+      let saleRedirectUrl = null;
+
+      if (isSaleActive) {
+        const selectedComunaValue = `${values.comuna ?? ''}`.trim();
+        const selectedProjectValue = `${values.proyecto ?? ''}`.trim();
+
+        const matchedProject = selectedProjectValue !== ''
+          ? projectCatalog.find((project) => `${project.name ?? ''}`.trim().toLowerCase() === selectedProjectValue.toLowerCase())
+          : null;
+
+        const projectSlug = slugifySegment(matchedProject?.slug || matchedProject?.name || selectedProjectValue);
+        const comunaSlug = slugifySegment(selectedComunaValue);
+
+        const segments = [];
+        if (projectSlug) {
+          segments.push('proyectos', projectSlug);
+        }
+        if (comunaSlug) {
+          segments.push('comunas', comunaSlug);
+        }
+
+        saleRedirectUrl = segments.length > 0 ? `/f/${segments.join('/')}` : '/';
+      }
+
+      setSubmitSuccess(
+        isSaleActive && saleRedirectUrl
+          ? 'Tu mensaje fue enviado correctamente. Redirigiendo a las unidades disponibles...'
+          : 'Tu mensaje fue enviado correctamente.'
+      );
       setFieldErrors({});
       setAcceptedTerms(false);
 
@@ -737,6 +787,15 @@ function Contact({ onNavigate, currentPath }) {
       });
 
       setValues(resetValues);
+
+      if (isSaleActive && saleRedirectUrl && typeof onNavigate === 'function') {
+        if (redirectTimeoutRef.current) {
+          clearTimeout(redirectTimeoutRef.current);
+        }
+        redirectTimeoutRef.current = setTimeout(() => {
+          onNavigate(saleRedirectUrl);
+        }, 1800);
+      }
     } catch (error) {
       const backendErrors = error?.response?.data?.errors || {};
       const nextErrors = {};
