@@ -33,6 +33,8 @@ class SiteSetting extends Model
         'icon_id',
         'webawesome_theme',
         'webawesome_palette',
+        'show_theme_toggle',
+        'default_color_mode',
         'brand_color',
         'semantic_brand_color',
         'semantic_neutral_color',
@@ -89,6 +91,7 @@ class SiteSetting extends Model
         'maintenance_use_html' => 'boolean',
         'evento_sale' => 'boolean',
         'mostrar_plantas' => 'boolean',
+        'show_theme_toggle' => 'boolean',
         'plants_per_page' => 'integer',
         'gateway_transbank_enabled' => 'boolean',
         'gateway_mercadopago_enabled' => 'boolean',
@@ -181,6 +184,7 @@ class SiteSetting extends Model
                         'key' => 'name',
                         'label' => 'Nombre',
                         'type' => 'text',
+                        'salesforce_field' => 'FirstName',
                         'placeholder' => 'Ingresa tu nombre completo',
                         'required' => true,
                     ],
@@ -188,6 +192,7 @@ class SiteSetting extends Model
                         'key' => 'rut',
                         'label' => 'RUT',
                         'type' => 'rut',
+                        'salesforce_field' => 'RUT__c',
                         'placeholder' => '12.345.678-5',
                         'required' => false,
                     ],
@@ -195,6 +200,7 @@ class SiteSetting extends Model
                         'key' => 'email',
                         'label' => 'Email',
                         'type' => 'email',
+                        'salesforce_field' => 'Email',
                         'placeholder' => 'correo@dominio.cl',
                         'required' => true,
                     ],
@@ -202,6 +208,7 @@ class SiteSetting extends Model
                         'key' => 'phone',
                         'label' => 'Teléfono',
                         'type' => 'tel',
+                        'salesforce_field' => 'Phone',
                         'placeholder' => '+56 9 1234 5678',
                         'required' => false,
                     ],
@@ -209,6 +216,7 @@ class SiteSetting extends Model
                         'key' => 'message',
                         'label' => 'Mensaje',
                         'type' => 'textarea',
+                        'salesforce_field' => 'Comentario_Cliente__c',
                         'placeholder' => 'Escribe tu consulta...',
                         'required' => true,
                     ],
@@ -310,6 +318,8 @@ class SiteSetting extends Model
             // Branding & Colores & Tipografía
             'webawesome_theme',
             'webawesome_palette',
+            'show_theme_toggle',
+            'default_color_mode',
             'icon_family',
             'brand_color',
             'semantic_brand_color',
@@ -417,6 +427,7 @@ class SiteSetting extends Model
 
             if ($normalizedKey === 'qr' && is_array($value)) {
                 $filtered['qr'] = $value;
+
                 continue;
             }
 
@@ -496,6 +507,8 @@ class SiteSetting extends Model
             'icon' => $settings->iconMedia?->url ?? null,
             'webawesome_theme' => $settings->webawesome_theme ?? 'mellow',
             'webawesome_palette' => $settings->webawesome_palette ?? 'natural',
+            'show_theme_toggle' => (bool) ($settings->show_theme_toggle ?? true),
+            'default_color_mode' => $settings->default_color_mode ?? 'system',
             'brand_color' => $settings->brand_color ?? '#eb0029',
             'semantic_brand_color' => $settings->semantic_brand_color ?? 'blue',
             'semantic_neutral_color' => $settings->semantic_neutral_color ?? 'gray',
@@ -565,20 +578,20 @@ class SiteSetting extends Model
                     : ($ogImageFromCurator ?? ($settings->og_image ? url($settings->og_image) : null)),
                 // sale_event: null when evento_sale is off; object with all fields when on
                 'sale_event' => $settings->evento_sale ? [
-                    'name'        => is_string($extraSettings['sale_event_name'] ?? null)
+                    'name' => is_string($extraSettings['sale_event_name'] ?? null)
                         ? trim((string) $extraSettings['sale_event_name'])
                         : null,
-                    'utm_campaign'=> $saleUtmCampaign,
+                    'utm_campaign' => $saleUtmCampaign,
                     'description' => is_string($extraSettings['sale_event_description'] ?? null)
                         ? trim((string) $extraSettings['sale_event_description'])
                         : null,
-                    'start_date'  => is_string($extraSettings['sale_event_start_date'] ?? null)
+                    'start_date' => is_string($extraSettings['sale_event_start_date'] ?? null)
                         ? trim((string) $extraSettings['sale_event_start_date'])
                         : null,
-                    'end_date'    => is_string($extraSettings['sale_event_end_date'] ?? null)
+                    'end_date' => is_string($extraSettings['sale_event_end_date'] ?? null)
                         ? trim((string) $extraSettings['sale_event_end_date'])
                         : null,
-                    'og_image'    => $saleOgImageFromCurator,
+                    'og_image' => $saleOgImageFromCurator,
                 ] : null,
             ],
             'contact' => [

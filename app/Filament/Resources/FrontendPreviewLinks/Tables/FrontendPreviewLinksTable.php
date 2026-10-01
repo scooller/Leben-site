@@ -28,7 +28,7 @@ class FrontendPreviewLinksTable
 
                 TextColumn::make('preview_url')
                     ->label('URL Preview')
-                    ->state(fn(FrontendPreviewLink $record): string => $record->previewUrl())
+                    ->state(fn (FrontendPreviewLink $record): string => $record->previewUrl())
                     ->copyable()
                     ->wrap()
                     ->toggleable(),
@@ -36,7 +36,7 @@ class FrontendPreviewLinksTable
                 IconColumn::make('expires_at')
                     ->label('Activo')
                     ->boolean()
-                    ->state(fn($record): bool => blank($record->expires_at) || $record->expires_at->isFuture()),
+                    ->state(fn ($record): bool => blank($record->expires_at) || $record->expires_at->isFuture()),
 
                 TextColumn::make('expires_at')
                     ->label('Expira')
@@ -54,7 +54,7 @@ class FrontendPreviewLinksTable
                     ->sortable(),
             ])
             ->recordActions([
-                ShowQrCodeAction::make(fn(FrontendPreviewLink $record): string => $record->previewUrl()),
+                ShowQrCodeAction::make(fn (FrontendPreviewLink $record): string => $record->previewUrl()),
                 DeleteAction::make()
                     ->label('Revocar')
                     ->modalHeading('Revocar link preview')

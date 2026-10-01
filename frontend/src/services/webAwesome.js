@@ -74,9 +74,23 @@ const themeImports = {
   tailspin: () => import('@web.awesome.me/webawesome-pro/dist/styles/themes/tailspin.css'),
 }
 
+const paletteImports = {
+  default: () => import('@web.awesome.me/webawesome-pro/dist/styles/color/palettes/default.css'),
+  bright: () => import('@web.awesome.me/webawesome-pro/dist/styles/color/palettes/bright.css'),
+  shoelace: () => import('@web.awesome.me/webawesome-pro/dist/styles/color/palettes/shoelace.css'),
+  rudimentary: () => import('@web.awesome.me/webawesome-pro/dist/styles/color/palettes/rudimentary.css'),
+  elegant: () => import('@web.awesome.me/webawesome-pro/dist/styles/color/palettes/elegant.css'),
+  mild: () => import('@web.awesome.me/webawesome-pro/dist/styles/color/palettes/mild.css'),
+  natural: () => import('@web.awesome.me/webawesome-pro/dist/styles/color/palettes/natural.css'),
+  anodized: () => import('@web.awesome.me/webawesome-pro/dist/styles/color/palettes/anodized.css'),
+  vogue: () => import('@web.awesome.me/webawesome-pro/dist/styles/color/palettes/vogue.css'),
+}
+
 class WebAwesomeService {
   static themePromise = null;
   static currentTheme = null;
+  static palettePromise = null;
+  static currentPalette = null;
   static customBrandTokenProps = [
     '--wa-color-brand',
     '--wa-color-brand-fill-quiet',
@@ -116,7 +130,30 @@ class WebAwesomeService {
    *
    * @param {string} paletteName - Nombre de la paleta
    */
-  static applyPalette(paletteName = 'default') {
+  static async applyPalette(paletteName = 'default') {
+    const palette = paletteImports[paletteName] ? paletteName : 'default';
+
+    if (this.currentPalette === palette && this.palettePromise) {
+      return this.palettePromise;
+    }
+
+    if (this.palettePromise) {
+      await this.palettePromise;
+    }
+
+    this.palettePromise = this.runApplyPalette(palette);
+    return this.palettePromise;
+  }
+
+  static async runApplyPalette(palette) {
+    if (paletteImports[palette]) {
+      try {
+        await paletteImports[palette]();
+      } catch (err) {
+        console.warn(`[WebAwesome] No se pudo cargar dinámicamente la paleta "${palette}":`, err);
+      }
+    }
+
     const htmlElement = document.documentElement;
 
     // Remover clases de paletas anteriores
@@ -132,7 +169,8 @@ class WebAwesomeService {
       'wa-palette-vogue'
     );
 
-    htmlElement.classList.add(`wa-palette-${paletteName}`);
+    htmlElement.classList.add(`wa-palette-${palette}`);
+    this.currentPalette = palette;
   }
 
   /**

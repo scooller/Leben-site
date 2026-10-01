@@ -48,6 +48,8 @@ class SiteSettingFrontendConfigTest extends TestCase
 
         SiteSetting::current()->update([
             'brand_color' => '#112233',
+            'show_theme_toggle' => false,
+            'default_color_mode' => 'light',
             'gateway_reservation_timeout_minutes' => 22,
             'evento_sale' => true,
             'mostrar_plantas' => false,
@@ -117,6 +119,10 @@ class SiteSettingFrontendConfigTest extends TestCase
 
         $this->assertArrayHasKey('brand_color', $payload);
         $this->assertSame('#112233', $payload['brand_color']);
+        $this->assertArrayHasKey('show_theme_toggle', $payload);
+        $this->assertFalse($payload['show_theme_toggle']);
+        $this->assertArrayHasKey('default_color_mode', $payload);
+        $this->assertSame('light', $payload['default_color_mode']);
         $this->assertArrayHasKey('evento_sale', $payload);
         $this->assertTrue($payload['evento_sale']);
         $this->assertArrayHasKey('mostrar_plantas', $payload);

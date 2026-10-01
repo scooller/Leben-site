@@ -59,7 +59,7 @@ class SitemapXmlTest extends TestCase
         $this->assertStringContainsString('<loc>https://sale.ileben.cl/plantas</loc>', $content);
         $this->assertStringContainsString('<loc>https://sale.ileben.cl/f</loc>', $content);
         $this->assertStringContainsString(
-            '<loc>https://sale.ileben.cl/p/proyecto-activo/' . rawurlencode((string) $indexablePlant->name) . '</loc>',
+            '<loc>https://sale.ileben.cl/p/proyecto-activo/'.rawurlencode((string) $indexablePlant->name).'</loc>',
             $content
         );
 

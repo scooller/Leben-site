@@ -151,4 +151,66 @@ class ContactSubmissionApiTest extends TestCase
         $response->assertUnprocessable()
             ->assertJsonValidationErrors(['channel']);
     }
+
+    public function test_it_overwrites_campaign_when_utm_source_is_brevo_and_sale_is_active(): void
+    {
+        $channel = ContactChannel::factory()->create(['slug' => 'test-channel']);
+
+        \App\Models\SiteSetting::current()->update([
+            'evento_sale' => true,
+            'extra_settings' => [
+                'sale_utm_campaign' => 'CyberBrevo2026',
+            ],
+        ]);
+
+        $response = $this->postJson('/api/v1/contact-submissions', [
+            'channel' => 'test-channel',
+            'fields' => [
+                'name' => 'Juan',
+                'email' => 'juan@example.cl',
+                'message' => 'Test',
+                'comuna' => 'Santiago',
+                'proyecto' => 'Argomedo',
+                'utm_source' => 'Brevo',
+                'utm_campaign' => 'original-newsletter',
+            ],
+        ]);
+
+        $response->assertCreated();
+
+        $submission = ContactSubmission::query()->latest('id')->first();
+        $this->assertNotNull($submission);
+        $this->assertSame('CyberBrevo2026', $submission->fields['utm_campaign'] ?? null);
+    }
+
+    public function test_it_defaults_campaign_to_sale_utm_campaign_when_sale_is_active_and_campaign_is_missing_or_auto_tagging(): void
+    {
+        $channel = ContactChannel::factory()->create(['slug' => 'test-channel-sale-default']);
+
+        \App\Models\SiteSetting::current()->update([
+            'evento_sale' => true,
+            'extra_settings' => [
+                'sale_utm_campaign' => 'CyberSaleGeneral',
+            ],
+        ]);
+
+        $response = $this->postJson('/api/v1/contact-submissions', [
+            'channel' => 'test-channel-sale-default',
+            'fields' => [
+                'name' => 'Maria',
+                'email' => 'maria@example.cl',
+                'message' => 'Test',
+                'comuna' => 'Santiago',
+                'proyecto' => 'Argomedo',
+                'utm_source' => 'google',
+                'utm_campaign' => 'auto-tagging',
+            ],
+        ]);
+
+        $response->assertCreated();
+
+        $submission = ContactSubmission::query()->latest('id')->first();
+        $this->assertNotNull($submission);
+        $this->assertSame('CyberSaleGeneral', $submission->fields['utm_campaign'] ?? null);
+    }
 }

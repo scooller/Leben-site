@@ -11,806 +11,958 @@ use Illuminate\Support\Str;
 
 class SalesforceCaseMapper
 {
-	/**
-	 * @return array<string, mixed>
-	 */
-	public function map(ContactSubmission $submission): array
-	{
-		return $this->mapLead($submission);
-	}
-
-	/**
-	 * @return array<string, mixed>
-	 */
-	public function mapLead(ContactSubmission $submission): array
-	{
-		$settings = SiteSetting::current();
-		$fields = is_array($submission->fields) ? $submission->fields : [];
-		$isCsvImport = $this->isCsvImportSubmission($submission);
-		$extraSettings = is_array($settings->extra_settings) ? $settings->extra_settings : [];
-		$fieldLabels = $this->buildFieldLabels($settings->contact_form_fields);
-
-		$fullName = $this->fieldValue($fields, ['name', 'nombre']) ?: $submission->name;
-		$firstName = $this->fieldValue($fields, ['first_name', 'nombre'])
-			?: $this->extractFirstName($fullName);
-		$lastName = $this->fieldValue($fields, ['last_name', 'lastname', 'apellido'])
-			?: $this->extractLastName($fullName)
-			?: 'Sin Apellido';
-
-		$rawProjectInput = $this->fieldValue($fields, ['nombre_proyecto', 'proyecto', 'project_name', 'proyecto_formulario', 'project']);
-		$project = $this->resolveProject($fields, $rawProjectInput);
-		$projectName = $project?->name ?: ($this->normalizeSalesforceId($rawProjectInput) === null ? $rawProjectInput : null);
-		$projectSalesforceId = $project?->salesforce_id ?: $this->resolveProjectSalesforceIdFromFields($fields) ?: $this->normalizeSalesforceId($rawProjectInput);
-		$quotationInfo = $this->fieldValue($fields, [
-			'informacion_cotizacion',
-			'informacion_cotizaci_n',
-			'informacion_cotizacion_web',
-			'quote_information',
-		]) ?: $projectName;
-		$utmSourceInput = $this->fieldValue($fields, [
-			'utm_source',
-			'lead_source',
-		]);
-		$utmSourceDefault = $isCsvImport
-			? null
-			: ($this->normalizeFieldValue($extraSettings['utm_source_default'] ?? null) ?: 'direct');
-		$utmSourceValue = $utmSourceInput ?: $utmSourceDefault;
-		$arrivalMedium = $this->fieldValue($fields, [
-			'medio_de_llegada',
-			'medio_llegada',
-		])
-			?: $this->fieldValue($fields, ['origen_del_prospecto', 'origen_prospecto'])
-			?: $utmSourceValue;
-		$originProspect = $this->fieldValue($fields, [
-			'origen_del_prospecto',
-			'origen_prospecto',
-		]);
-		$utmSiteDefault = $this->normalizeFieldValue($extraSettings['utm_site_default'] ?? null);
-		$website = $this->resolveWebsiteSource($submission, $fields, $utmSourceInput, $utmSiteDefault);
-		$utmMediumDefault = $isCsvImport
-			? null
-			: ($this->normalizeFieldValue($extraSettings['utm_medium_default'] ?? null) ?: 'organic');
-		$utmMedium = $this->fieldValue($fields, ['utm_medium', 'audiencia'])
-			?: $this->fieldValue($fields, ['medio_de_llegada', 'medio_llegada', 'origen_del_prospecto', 'origen_prospecto'])
-			?: $utmMediumDefault;
-		$saleCampaign = null;
-		if ($this->shouldOverrideCampaignForSale($submission, $settings, $fields, $website)) {
-			$saleCampaign = $this->normalizeFieldValue($extraSettings['sale_utm_campaign'] ?? null)
-				?: $this->normalizeFieldValue($extraSettings['sale_event_name'] ?? null)
-				?: $this->normalizeFieldValue($extraSettings['utm_campaign_default'] ?? null);
-		}
-		$utmCampaignDefault = $isCsvImport
-			? null
-			: $this->normalizeFieldValue($extraSettings['utm_campaign_default'] ?? null);
-		$utmCampaign = $this->resolveUtmCampaign($fields, $utmCampaignDefault, $settings, $saleCampaign);
-		$utmContentDefault = $this->normalizeFieldValue($extraSettings['utm_content_default'] ?? null) ?: 'none';
-		$utmContent = $this->fieldValue($fields, ['utm_content', 'pieza_grafica']) ?: $utmContentDefault;
-		$utmTermDefault = $isCsvImport
-			? null
-			: ($this->normalizeFieldValue($extraSettings['utm_term_default'] ?? null) ?: 'none');
-		$utmTerm = $this->fieldValue($fields, ['utm_term', 'audiencia']) ?: $utmTermDefault;
-		$leadSource = $this->resolveLeadSource($fields, $utmTerm, $arrivalMedium);
-		$email = $submission->email ?: $this->fieldValue($fields, ['email', 'correo']) ?: null;
-		$phone = $submission->phone ?: $this->fieldValue($fields, ['phone', 'telefono', 'fono', 'celular', 'whatsapp']);
-		$includeDescription = $this->shouldIncludeDescription($settings);
-		$commune = $this->fieldValue($fields, ['comuna', 'commune']);
-		$incomeRange = $this->fieldValue($fields, ['rango_renta', 'rango_de_renta', 'en_que_rango_se_encuentra_tu_renta_liquida', 'rango', 'renta', 'renta_liquida', 'income_range']);
-		$complementIncome = $this->fieldValue($fields, ['complementarenta', 'complementa_renta', 'complementa_renta_liquida', 'codeudor']);
-		$incomeValidation = $this->fieldValue($fields, ['validacion_renta', 'validacion_de_renta', 'validacionrenta', 'validaci_n_renta']);
-		$apartmentUsage = $this->fieldValue($fields, ['uso_departamento', 'usodepartamento', 'uso_departamento_inversion', 'buscas']);
-		$employmentStatus = $this->fieldValue($fields, ['estado_laboral', 'estadolaboral', 'elaboral']);
-		$investmentCommune = $this->fieldValue($fields, ['comuna_inversion', 'comunainversion', 'commune_investment'])
-			?: $commune;
-		$projectAdvisorPhone = $this->resolveProjectAdvisorPhone($project);
-		$normalizedLeadSource = $this->normalizeLeadSource($leadSource, $isCsvImport);
-		$ownerId = $this->resolveLeadOwnerId();
-		$ownerPhone = $projectAdvisorPhone;
-		$wspOwnerPhone = $projectAdvisorPhone;
-		$telefonoOwnerPhone = $projectAdvisorPhone;
-		$notas = $this->fieldValue($fields, ['nota', 'notas']);
-		$comentarioCliente = $this->fieldValue($fields, ['cliente_comentario', 'coment_cli', 'comentario_cliente', 'comentarios', 'comentario', 'message']);
-
-		$payload = [
-			'FirstName' => $firstName,
-			'LastName' => $lastName,
-			// 'Company' => (string) ($settings->site_name ?: config('app.name') ?: 'iLeben'),
-			'Company' => '', // Campo "Company" obligatorio en Lead, pero lo dejamos vacío por ser un lead de consumidor final sin empresa asociada.
-			'Phone' => $phone,
-			'MobilePhone' => $phone,
-			'Email' => $email,
-			'Website' => $website,
-			'Email__c' => $email,
-			'RUT__c' => $submission->rut ?: $this->fieldValue($fields, ['rut']),
-			'Status' => (string) config('services.salesforce.lead_status', 'En Contacto'),
-			'OwnerId' => $ownerId,
-			'LeadSource' => $normalizedLeadSource,
-			'Description' => $includeDescription
-				? $this->buildDescription($fields, $fieldLabels)
-				: $comentarioCliente,
-			'Tipo_Ingreso__c' => 'Online',
-			'Proyecto__c' => $projectSalesforceId,
-			'ID_Proyecto__c' => $projectSalesforceId,
-			'Informacion_Cotizacion__c' => $quotationInfo,
-			'Proyect_ID__c' => $projectName,
-			'Comuna__c' => $commune,
-			'Rango_de_renta_liquida__c' => $incomeRange,
-			'complementaRenta__c' => $complementIncome,
-			'Validaci_n_Renta__c' => $incomeValidation,
-			'usoDepartamento__c' => $apartmentUsage,
-			'estadoLaboral__c' => $employmentStatus,
-			'comunaInversion__c' => $investmentCommune,
-			'Medio_de_Llegada__c' => $arrivalMedium,
-			'Nombre_de_la_Campa_a__c' => $utmCampaign,
-			'Audiencia__c' => $utmMedium,
-			'Pieza_Grafica__c' => $utmContent,
-			'wsp_owner__c' => $wspOwnerPhone,
-			'Telefono_owner__c' => $telefonoOwnerPhone,
-			'owner_phone__c' => $ownerPhone,
-			'utm_source__c' => $arrivalMedium,
-			'utm_medium__c' => $utmMedium,
-			'utm_campaign__c' => $utmCampaign,
-			'utm_content__c' => $utmContent,
-			'utm_term__c' => $utmTerm,
-			'Notas__c' => $notas,
-			'Comentario_Cliente__c' => $comentarioCliente,
-			'GenderIdentity' => 'OTRO',
-			'Genero__c' => 'OTRO',
-		];
-
-		//
-		$payload = $this->normalizeLegacyCustomFieldsInPayload($payload);
-
-		// Para B2C Company siempre debe estar vacio
-		return array_filter(
-			$payload,
-			static fn(mixed $value, string $field): bool => $field === 'Company'
-				? $value !== null
-				: $value !== null && $value !== '',
-			ARRAY_FILTER_USE_BOTH
-		);
-	}
-
-	/**
-	 * @return array<string, string>
-	 */
-	private function buildFieldLabels(mixed $configuredFields): array
-	{
-		if (! is_array($configuredFields)) {
-			return [];
-		}
-
-		$labels = [];
-
-		foreach ($configuredFields as $field) {
-			if (! is_array($field)) {
-				continue;
-			}
-
-			$key = trim((string) ($field['key'] ?? ''));
-			$label = trim((string) ($field['label'] ?? ''));
-
-			if ($key === '' || $label === '') {
-				continue;
-			}
-
-			$labels[$key] = $label;
-		}
-
-		return $labels;
-	}
-
-	/**
-	 * @param  array<string, mixed>  $fields
-	 * @param  array<string, string>  $fieldLabels
-	 */
-	private function buildDescription(array $fields, array $fieldLabels): string
-	{
-		$lines = [];
-
-		foreach ($fields as $key => $value) {
-			$normalizedValue = $this->normalizeFieldValue($value);
-
-			if ($normalizedValue === null || $normalizedValue === '') {
-				continue;
-			}
-
-			$normalizedKey = (string) $key;
-			$label = $fieldLabels[$normalizedKey] ?? $this->humanizeFieldKey($normalizedKey);
-			$lines[] = sprintf('%s: %s', $label, $normalizedValue);
-		}
-
-		return implode("\n", $lines);
-	}
-
-	private function shouldIncludeDescription(SiteSetting $settings): bool
-	{
-		$configured = data_get($settings->extra_settings, 'salesforce_include_description');
-
-		if ($configured === null) {
-			return true;
-		}
-
-		return (bool) $configured;
-	}
-
-	private function normalizeFieldValue(mixed $value): ?string
-	{
-		if ($value === null) {
-			return null;
-		}
-
-		if (is_bool($value)) {
-			return $value ? 'Sí' : 'No';
-		}
-
-		if (is_array($value)) {
-			$items = array_values(array_filter(array_map(
-				static fn(mixed $item): string => trim((string) $item),
-				$value
-			), static fn(string $item): bool => $item !== ''));
-
-			return $items === [] ? null : implode(', ', $items);
-		}
-
-		if (is_object($value)) {
-			return \json_encode($value, \JSON_UNESCAPED_UNICODE | \JSON_UNESCAPED_SLASHES) ?: null;
-		}
-
-		$normalized = trim((string) $value);
-
-		return $normalized !== '' ? $normalized : null;
-	}
-
-	/**
-	 * @param  array<string, mixed>  $fields
-	 * @param  list<string>  $aliases
-	 */
-	private function fieldValue(array $fields, array $aliases): ?string
-	{
-		foreach ($aliases as $alias) {
-			$normalizedAlias = $this->normalizeFieldKey($alias);
-
-			if (! array_key_exists($normalizedAlias, $fields)) {
-				continue;
-			}
-
-			$normalized = $this->normalizeFieldValue($fields[$normalizedAlias]);
-
-			if ($normalized !== null && $normalized !== '') {
-				return $normalized;
-			}
-		}
-
-		return null;
-	}
-
-	private function humanizeFieldKey(string $key): string
-	{
-		$normalizedKey = strtolower(trim($key));
-
-		if (str_starts_with($normalizedKey, 'utm_')) {
-			$suffix = Str::of(substr($normalizedKey, 4))
-				->replace(['-', '_'], ' ')
-				->title()
-				->toString();
-
-			return 'UTM ' . $suffix;
-		}
-
-		return Str::of($key)
-			->replace(['-', '_'], ' ')
-			->trim()
-			->title()
-			->toString();
-	}
-
-	private function extractFirstName(?string $fullName): ?string
-	{
-		$normalized = trim((string) $fullName);
-
-		if ($normalized === '') {
-			return null;
-		}
-
-		$parts = preg_split('/\s+/', $normalized) ?: [];
-
-		return $parts[0] ?? null;
-	}
-
-	private function extractLastName(?string $fullName): ?string
-	{
-		$normalized = trim((string) $fullName);
-
-		if ($normalized === '') {
-			return null;
-		}
-
-		$parts = preg_split('/\s+/', $normalized) ?: [];
-
-		if (count($parts) <= 1) {
-			return null;
-		}
-
-		return implode(' ', array_slice($parts, 1));
-	}
-
-	/**
-	 * @param  array<string, mixed>  $fields
-	 */
-	private function resolveProjectSalesforceIdFromFields(array $fields): ?string
-	{
-		$rawProjectId = $this->fieldValue($fields, ['proyecto_id', 'id_proyecto', 'project_id', 'proyecto_salesforce_id']);
-
-		return $this->normalizeSalesforceId($rawProjectId);
-	}
-
-	private function resolveProjectByName(?string $projectName): ?Proyecto
-	{
-		if ($projectName === null || trim($projectName) === '') {
-			return null;
-		}
-
-		$project = Proyecto::query()
-			->select(['id', 'salesforce_id', 'name', 'slug'])
-			->where('name', $projectName)
-			->first();
-
-		if ($project !== null) {
-			return $project;
-		}
-
-		$project = Proyecto::query()
-			->select(['id', 'salesforce_id', 'name', 'slug'])
-			->whereRaw('LOWER(name) = ?', [mb_strtolower($projectName)])
-			->first();
-
-		if ($project !== null) {
-			return $project;
-		}
-
-		$signature = $this->textSignature($projectName);
-
-		$project = Proyecto::query()
-			->select(['id', 'salesforce_id', 'name', 'slug'])
-			->whereRaw('LOWER(slug) = ?', [$signature])
-			->first();
-
-		if ($project !== null) {
-			return $project;
-		}
-
-		foreach (Proyecto::query()->select(['id', 'salesforce_id', 'name', 'slug'])->get() as $candidate) {
-			if ($this->textSignature($candidate->name) === $signature) {
-				return $candidate;
-			}
-		}
-
-		return null;
-	}
-
-	private function textSignature(string $value): string
-	{
-		return Str::of($value)
-			->ascii()
-			->lower()
-			->replace(':', ' ')
-			->replaceMatches('/[^a-z0-9]+/', '_')
-			->trim('_')
-			->toString();
-	}
-
-	/**
-	 * @param  array<string, mixed>  $fields
-	 */
-	private function resolveProjectAdvisorPhone(?Proyecto $project): ?string
-	{
-		if ($project === null) {
-			return null;
-		}
-
-		/** @var Collection<int, \App\Models\Asesor> $asesores */
-		$asesores = $project->asesores;
-
-		$advisor = $asesores
-			->sortByDesc(static fn($asesor): int => $asesor->is_active ? 1 : 0)
-			->first();
-
-		return $this->normalizePhone($advisor?->whatsapp_owner);
-	}
-
-	/**
-	 * @param  array<string, mixed>  $fields
-	 */
-	private function resolveProject(array $fields, ?string $rawProjectInput): ?Proyecto
-	{
-		$rawProjectId = $this->fieldValue($fields, ['proyecto_id', 'id_proyecto', 'project_id', 'proyecto_salesforce_id']);
-		$normalizedProjectId = $this->normalizeSalesforceId($rawProjectId);
-
-		if ($normalizedProjectId !== null) {
-			return Proyecto::query()
-				->with(['asesores' => static function ($query): void {
-					$query->select(['asesores.id', 'asesores.whatsapp_owner', 'asesores.is_active']);
-				}])
-				->where('salesforce_id', $normalizedProjectId)
-				->first();
-		}
-
-		$normalizedProjectInputId = $this->normalizeSalesforceId($rawProjectInput);
-
-		if ($normalizedProjectInputId !== null) {
-			return Proyecto::query()
-				->with(['asesores' => static function ($query): void {
-					$query->select(['asesores.id', 'asesores.whatsapp_owner', 'asesores.is_active']);
-				}])
-				->where('salesforce_id', $normalizedProjectInputId)
-				->first();
-		}
-
-		$project = $this->resolveProjectByName($rawProjectInput);
-
-		if ($project === null) {
-			return null;
-		}
-
-		return $project->load(['asesores' => static function ($query): void {
-			$query->select(['asesores.id', 'asesores.whatsapp_owner', 'asesores.is_active']);
-		}]);
-	}
-
-	private function normalizeLeadSource(?string $value, bool $preserveOriginalCase = false): ?string
-	{
-		$normalized = trim((string) $value);
-
-		if ($normalized === '') {
-			return null;
-		}
-
-		if ($preserveOriginalCase) {
-			return $normalized;
-		}
-
-		return ucfirst(strtolower($normalized));
-	}
-
-	private function normalizeSalesforceId(mixed $value): ?string
-	{
-		$normalized = trim((string) $value);
-
-		if ($normalized === '') {
-			return null;
-		}
-
-		if (preg_match('/^[a-zA-Z0-9]{15,18}$/', $normalized) !== 1) {
-			return null;
-		}
-
-		return $normalized;
-	}
-
-	private function resolveLeadOwnerId(): ?string
-	{
-		$leadOwnerId = $this->normalizeSalesforceId(config('services.salesforce.lead_owner_id'));
-
-		if ($leadOwnerId !== null) {
-			return $leadOwnerId;
-		}
-
-		return $this->normalizeSalesforceId(config('services.salesforce.case_owner_id'));
-	}
-
-	private function normalizePhone(mixed $value): ?string
-	{
-		$normalized = trim((string) $value);
-
-		if ($normalized === '') {
-			return null;
-		}
-
-		return preg_replace('/\s+/', '', $normalized) ?: null;
-	}
-
-	/**
-	 * @param  array<string, mixed>  $fields
-	 */
-	private function resolveWebsiteSource(ContactSubmission $submission, array $fields, ?string $utmSource, ?string $utmSiteDefault = null): ?string
-	{
-		$channelWebsite = $this->resolveChannelWebsite($submission);
-
-		if ($channelWebsite !== null) {
-			return $channelWebsite;
-		}
-
-		return $this->fieldValue($fields, [
-			'utm_site',
-			'website',
-			'site',
-			'sitio_web',
-			'sitio',
-			'origen_sitio',
-			'source_site',
-			'origin_site',
-			'medio_de_llegada',
-			'medio_llegada',
-			'origen_del_prospecto',
-			'origen_prospecto',
-			'referrer',
-		]) ?: $utmSiteDefault ?: $utmSource;
-	}
-
-	private function resolveChannelWebsite(ContactSubmission $submission): ?string
-	{
-		$channel = $submission->channel;
-
-		if ($channel === null) {
-			return null;
-		}
-
-		foreach ((array) ($channel->domain_patterns ?? []) as $pattern) {
-			$normalized = $this->normalizeDomainPattern((string) $pattern);
-
-			if ($normalized !== null) {
-				return $normalized;
-			}
-		}
-
-		return null;
-	}
-
-	private function normalizeDomainPattern(string $pattern): ?string
-	{
-		$normalized = strtolower(trim($pattern));
-
-		if ($normalized === '') {
-			return null;
-		}
-
-		$normalized = str_replace(['*.', '*'], '', $normalized);
-		$normalized = ltrim($normalized, '.');
-
-		return $normalized !== '' ? $normalized : null;
-	}
-
-	/**
-	 * @param  array<string, mixed>  $fields
-	 */
-	private function shouldOverrideCampaignForSale(ContactSubmission $submission, SiteSetting $settings, array $fields, ?string $website): bool
-	{
-		if (! $settings->evento_sale) {
-			return false;
-		}
-
-		$extraSettings = is_array($settings->extra_settings) ? $settings->extra_settings : [];
-
-		$saleCampaign = $this->normalizeFieldValue($extraSettings['sale_utm_campaign'] ?? null)
-			?: $this->normalizeFieldValue($extraSettings['sale_event_name'] ?? null)
-			?: $this->normalizeFieldValue($extraSettings['utm_campaign_default'] ?? null);
-
-		if ($saleCampaign === null || trim($saleCampaign) === '') {
-			return false;
-		}
-
-		$channel = $this->resolveSubmissionChannel($submission, $fields, $website);
-
-		$hasExplicitSetting = array_key_exists('sale_utm_campaign_channels', $extraSettings);
-		$configuredChannels = $hasExplicitSetting
-			? (array) $extraSettings['sale_utm_campaign_channels']
-			: array_values(array_filter([(string) ContactChannel::getDefault()?->id]));
-
-		if (empty($configuredChannels)) {
-			return false;
-		}
-
-		if ($channel === null) {
-			return false;
-		}
-
-		$allowedIdentifiers = array_map('strval', $configuredChannels);
-
-		return in_array((string) $channel->id, $allowedIdentifiers, true)
-			|| in_array((string) $channel->slug, $allowedIdentifiers, true);
-	}
-
-	/**
-	 * @param  array<string, mixed>  $fields
-	 */
-	private function resolveSubmissionChannel(ContactSubmission $submission, array $fields, ?string $website): ?ContactChannel
-	{
-		if ($submission->relationLoaded('channel') && $submission->channel !== null) {
-			return $submission->channel;
-		}
-
-		if ($submission->contact_channel_id) {
-			$channel = ContactChannel::query()->find($submission->contact_channel_id);
-			if ($channel !== null) {
-				return $channel;
-			}
-		}
-
-		$channelSlug = $this->fieldValue($fields, ['channel', 'contact_channel', 'canal']);
-		if ($channelSlug !== null && trim($channelSlug) !== '') {
-			$channel = ContactChannel::findBySlug(trim($channelSlug));
-			if ($channel !== null) {
-				return $channel;
-			}
-		}
-
-		if ($website !== null && trim($website) !== '') {
-			$channel = ContactChannel::findByDomain($website);
-			if ($channel !== null) {
-				return $channel;
-			}
-		}
-
-		return ContactChannel::getDefault();
-	}
-
-	/**
-	 * @param  array<string, mixed>  $fields
-	 */
-	private function resolveUtmCampaign(array $fields, ?string $defaultValue, SiteSetting $settings, ?string $saleCampaign = null): string
-	{
-		$normalizedSaleCampaign = trim((string) $saleCampaign);
-
-		// Cuando evento SALE está activo y hay campaña de Sale, sobreescribe siempre
-		if (($settings->evento_sale === true) && $normalizedSaleCampaign !== '') {
-			return $normalizedSaleCampaign;
-		}
-
-		$campaign = $this->fieldValue($fields, ['utm_campaign', 'campana', 'nombre_de_la_campana']);
-
-		if ($campaign !== null && trim($campaign) !== '') {
-			$normalizedCampaign = trim($campaign);
-			if (! in_array(strtolower($normalizedCampaign), ['auto-tagging', 'campaign'], true)) {
-				return $normalizedCampaign;
-			}
-		}
-
-		$normalizedDefaultValue = trim((string) $defaultValue);
-		if ($normalizedDefaultValue !== '' && ! in_array(strtolower($normalizedDefaultValue), ['auto-tagging', 'campaign'], true)) {
-			return $normalizedDefaultValue;
-		}
-
-		return 'auto-tagging';
-	}
-
-	/**
-	 * @param  array<string, mixed>  $fields
-	 */
-	private function resolveLeadSource(array $fields, ?string $utmTerm, ?string $arrivalMedium): ?string
-	{
-		return $utmTerm
-			?: $this->fieldValue($fields, [
-				'origen_del_prospecto',
-				'origen_prospecto',
-				'lead_source',
-			])
-			?: $arrivalMedium;
-	}
-
-	private function isCsvImportSubmission(ContactSubmission $submission): bool
-	{
-		$userAgent = strtolower(trim((string) $submission->user_agent));
-
-		if ($userAgent === '') {
-			return false;
-		}
-
-		return str_contains($userAgent, 'filament-csv-import');
-	}
-
-	private function buildWhatsappLink(?string $phone, string $ownerName): ?string
-	{
-		if ($phone === null || $phone === '') {
-			return null;
-		}
-
-		$digitsOnlyPhone = preg_replace('/\D+/', '', $phone);
-
-		if ($digitsOnlyPhone === null || $digitsOnlyPhone === '') {
-			return null;
-		}
-
-		$normalizedOwnerName = trim($ownerName);
-
-		if ($normalizedOwnerName === '') {
-			$normalizedOwnerName = 'ASESOR';
-		}
-
-		$message = sprintf('Hola %s, te contacto desde Leben. ¿Tienes un minuto?', Str::upper($normalizedOwnerName));
-
-		return sprintf('https://wa.me/%s?text=%s', $digitsOnlyPhone, rawurlencode($message));
-	}
-
-	private function normalizeLegacyFieldValue(?string $value): ?string
-	{
-		if ($value === null) {
-			return null;
-		}
-
-		$normalized = trim($value);
-
-		if ($normalized === '') {
-			return null;
-		}
-
-		return str_replace(' ', '_', $normalized);
-	}
-
-	/**
-	 * @param  array<string, mixed>  $payload
-	 * @return array<string, mixed>
-	 */
-	private function normalizeLegacyCustomFieldsInPayload(array $payload): array
-	{
-		$excludedCustomFields = [
-			'Email__c',
-			'RUT__c',
-			'Proyecto__c',
-			'ID_Proyecto__c',
-			'wsp_owner__c',
-			'Telefono_owner__c',
-			'owner_phone__c',
-			'whatsapp_phone__c',
-			'utm_source__c',
-			'utm_medium__c',
-			'utm_campaign__c',
-			'utm_content__c',
-			'utm_term__c',
-			'Rango_de_renta_liquida__c',
-			'complementaRenta__c',
-			'Validaci_n_Renta__c',
-			'usoDepartamento__c',
-			'estadoLaboral__c',
-			'comunaInversion__c',
-			'Comentario_Cliente__c',
-			'Notas__c',
-		];
-
-		foreach ($payload as $field => $value) {
-			if (! is_string($value)) {
-				continue;
-			}
-
-			if (! str_ends_with($field, '__c')) {
-				continue;
-			}
-
-			if (in_array($field, $excludedCustomFields, true)) {
-				continue;
-			}
-
-			$payload[$field] = $this->normalizeLegacyFieldValue($value);
-		}
-
-		return $payload;
-	}
+    /**
+     * @return array<string, mixed>
+     */
+    public function map(ContactSubmission $submission): array
+    {
+        return $this->mapLead($submission);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function mapLead(ContactSubmission $submission): array
+    {
+        $settings = SiteSetting::current();
+        $fields = is_array($submission->fields) ? $submission->fields : [];
+        $isCsvImport = $this->isCsvImportSubmission($submission);
+        $extraSettings = is_array($settings->extra_settings) ? $settings->extra_settings : [];
+        $fieldLabels = $this->buildFieldLabels($settings->contact_form_fields);
+
+        $fullName = $this->fieldValue($fields, ['name', 'nombre']) ?: $submission->name;
+        $firstName = $this->fieldValue($fields, ['first_name', 'nombre'])
+            ?: $this->extractFirstName($fullName);
+        $lastName = $this->fieldValue($fields, ['last_name', 'lastname', 'apellido'])
+            ?: $this->extractLastName($fullName)
+            ?: 'Sin Apellido';
+
+        $rawProjectInput = $this->fieldValue($fields, ['nombre_proyecto', 'proyecto', 'project_name', 'proyecto_formulario', 'project']);
+        $project = $this->resolveProject($fields, $rawProjectInput);
+        $projectName = $project?->name ?: ($this->normalizeSalesforceId($rawProjectInput) === null ? $rawProjectInput : null);
+        $projectSalesforceId = $project?->salesforce_id ?: $this->resolveProjectSalesforceIdFromFields($fields) ?: $this->normalizeSalesforceId($rawProjectInput);
+        $quotationInfo = $this->fieldValue($fields, [
+            'informacion_cotizacion',
+            'informacion_cotizaci_n',
+            'informacion_cotizacion_web',
+            'quote_information',
+        ]) ?: $projectName;
+        $utmSourceInput = $this->fieldValue($fields, [
+            'utm_source',
+            'lead_source',
+        ]);
+        $utmSourceDefault = $isCsvImport
+            ? null
+            : ($this->normalizeFieldValue($extraSettings['utm_source_default'] ?? null) ?: 'direct');
+        $utmSourceValue = $utmSourceInput ?: $utmSourceDefault;
+        $arrivalMedium = $this->fieldValue($fields, [
+            'medio_de_llegada',
+            'medio_llegada',
+        ])
+            ?: $this->fieldValue($fields, ['origen_del_prospecto', 'origen_prospecto'])
+            ?: $utmSourceValue;
+        $originProspect = $this->fieldValue($fields, [
+            'origen_del_prospecto',
+            'origen_prospecto',
+        ]);
+        $utmSiteDefault = $this->normalizeFieldValue($extraSettings['utm_site_default'] ?? null);
+        $website = $this->resolveWebsiteSource($submission, $fields, $utmSourceInput, $utmSiteDefault);
+        $utmMediumDefault = $isCsvImport
+            ? null
+            : ($this->normalizeFieldValue($extraSettings['utm_medium_default'] ?? null) ?: 'organic');
+        $utmMedium = $this->fieldValue($fields, ['utm_medium', 'audiencia'])
+            ?: $this->fieldValue($fields, ['medio_de_llegada', 'medio_llegada', 'origen_del_prospecto', 'origen_prospecto'])
+            ?: $utmMediumDefault;
+        $saleCampaign = null;
+        if ($this->shouldOverrideCampaignForSale($submission, $settings, $fields, $website)) {
+            $saleCampaign = $this->normalizeFieldValue($extraSettings['sale_utm_campaign'] ?? null)
+                ?: $this->normalizeFieldValue($extraSettings['sale_event_name'] ?? null)
+                ?: $this->normalizeFieldValue($extraSettings['utm_campaign_default'] ?? null);
+        }
+        $utmCampaignDefault = $isCsvImport
+            ? null
+            : $this->normalizeFieldValue($extraSettings['utm_campaign_default'] ?? null);
+        $utmCampaign = $this->resolveUtmCampaign($fields, $utmCampaignDefault, $settings, $saleCampaign);
+        $utmContentDefault = $this->normalizeFieldValue($extraSettings['utm_content_default'] ?? null) ?: 'none';
+        $utmContent = $this->fieldValue($fields, ['utm_content', 'pieza_grafica']) ?: $utmContentDefault;
+        $utmTermDefault = $isCsvImport
+            ? null
+            : ($this->normalizeFieldValue($extraSettings['utm_term_default'] ?? null) ?: 'none');
+        $utmTerm = $this->fieldValue($fields, ['utm_term', 'audiencia']) ?: $utmTermDefault;
+        $leadSource = $this->resolveLeadSource($fields, $utmTerm, $arrivalMedium);
+        $email = $submission->email ?: $this->fieldValue($fields, ['email', 'correo']) ?: null;
+        $phone = $submission->phone ?: $this->fieldValue($fields, ['phone', 'telefono', 'fono', 'celular', 'whatsapp']);
+        $includeDescription = $this->shouldIncludeDescription($settings);
+        $commune = $this->fieldValue($fields, ['comuna', 'commune']);
+        $incomeRange = $this->fieldValue($fields, ['rango_renta', 'rango_de_renta', 'en_que_rango_se_encuentra_tu_renta_liquida', 'rango', 'renta', 'renta_liquida', 'income_range']);
+        $complementIncome = $this->fieldValue($fields, ['complementarenta', 'complementa_renta', 'complementa_renta_liquida', 'codeudor']);
+        $incomeValidation = $this->fieldValue($fields, ['validacion_renta', 'validacion_de_renta', 'validacionrenta', 'validaci_n_renta']);
+        $apartmentUsage = $this->fieldValue($fields, ['uso_departamento', 'usodepartamento', 'uso_departamento_inversion', 'buscas']);
+        $employmentStatus = $this->fieldValue($fields, ['estado_laboral', 'estadolaboral', 'elaboral']);
+        $investmentCommune = $this->fieldValue($fields, ['comuna_inversion', 'comunainversion', 'commune_investment'])
+            ?: $commune;
+        $projectAdvisorPhone = $this->resolveProjectAdvisorPhone($project);
+        $normalizedLeadSource = $this->normalizeLeadSource($leadSource, $isCsvImport);
+        $ownerId = $this->resolveLeadOwnerId();
+        $ownerPhone = $projectAdvisorPhone;
+        $wspOwnerPhone = $projectAdvisorPhone;
+        $telefonoOwnerPhone = $projectAdvisorPhone;
+        $notas = $this->fieldValue($fields, ['nota', 'notas']);
+        $comentarioCliente = $this->fieldValue($fields, ['cliente_comentario', 'coment_cli', 'comentario_cliente', 'comentarios', 'comentario', 'message']);
+
+        $payload = [
+            'FirstName' => $firstName,
+            'LastName' => $lastName,
+            'Company' => '', // Campo "Company" obligatorio en Lead, pero lo dejamos vacío por ser un lead de consumidor final sin empresa asociada.
+            'Phone' => $phone,
+            'MobilePhone' => $phone,
+            'Email' => $email,
+            'Website' => $website,
+            'Email__c' => $email,
+            'RUT__c' => $submission->rut ?: $this->fieldValue($fields, ['rut']),
+            'Status' => (string) config('services.salesforce.lead_status', 'En Contacto'),
+            'OwnerId' => $ownerId,
+            'LeadSource' => $normalizedLeadSource,
+            'Description' => $includeDescription
+                ? $this->buildDescription($fields, $fieldLabels)
+                : $comentarioCliente,
+            'Tipo_Ingreso__c' => 'Online',
+            'Proyecto__c' => $projectSalesforceId,
+            'ID_Proyecto__c' => $projectSalesforceId,
+            'Informacion_Cotizacion__c' => $quotationInfo,
+            'Proyect_ID__c' => $projectName,
+            'Comuna__c' => $commune,
+            'Rango_de_renta_liquida__c' => $incomeRange,
+            'complementaRenta__c' => $complementIncome,
+            'Validaci_n_Renta__c' => $incomeValidation,
+            'usoDepartamento__c' => $apartmentUsage,
+            'estadoLaboral__c' => $employmentStatus,
+            'comunaInversion__c' => $investmentCommune,
+            'Medio_de_Llegada__c' => $arrivalMedium,
+            'Nombre_de_la_Campa_a__c' => $utmCampaign,
+            'Audiencia__c' => $utmMedium,
+            'Pieza_Grafica__c' => $utmContent,
+            'wsp_owner__c' => $wspOwnerPhone,
+            'Telefono_owner__c' => $telefonoOwnerPhone,
+            'owner_phone__c' => $ownerPhone,
+            'utm_source__c' => $arrivalMedium,
+            'utm_medium__c' => $utmMedium,
+            'utm_campaign__c' => $utmCampaign,
+            'utm_content__c' => $utmContent,
+            'utm_term__c' => $utmTerm,
+            'Notas__c' => $notas,
+            'Comentario_Cliente__c' => $comentarioCliente,
+            'PersonLeadSource' => $this->fieldValue($fields, ['person_lead_source', 'personleadsource']),
+            'AccountSource' => $this->fieldValue($fields, ['account_source', 'accountsource', 'origen_cuenta', 'origen_de_cuenta']),
+            'UTM_Site_P_gina_de_origen__c' => $this->fieldValue($fields, ['utm_site', 'utm_site_p_gina_de_origen', 'utm_site_pagina_de_origen']),
+            'Pagina_Origen__c' => $this->fieldValue($fields, ['pagina_origen', 'pagina_de_origen', 'page_origin']),
+            'Ultima_llamada__c' => $this->fieldValue($fields, ['ultima_llamada', 'last_call']),
+            'GenderIdentity' => 'OTRO',
+            'Genero__c' => 'OTRO',
+        ];
+
+        // Aplicar mapeo explícito configurado en el formulario (por canal o global)
+        $configuredFormFields = $submission->channel
+            ? $submission->channel->effectiveFormFields()
+            : (is_array($settings->contact_form_fields) ? $settings->contact_form_fields : []);
+
+        foreach ($configuredFormFields as $configuredField) {
+            if (! is_array($configuredField)) {
+                continue;
+            }
+
+            $sfField = trim((string) ($configuredField['salesforce_field'] ?? ''));
+            $fieldKey = trim((string) ($configuredField['key'] ?? ''));
+
+            if ($sfField === '' || $fieldKey === '' || $sfField === 'Company') {
+                continue;
+            }
+
+            $val = $this->fieldValue($fields, [$fieldKey, $this->normalizeFieldKey($fieldKey)]);
+            if ($val !== null && $val !== '') {
+                $payload[$sfField] = $val;
+            }
+        }
+
+        // Company siempre debe ir estrictamente vacío para leads B2C
+        $payload['Company'] = '';
+
+        //
+        $payload = $this->normalizeLegacyCustomFieldsInPayload($payload);
+
+        // Para B2C Company siempre debe estar vacio. Filtrar cualquier campo null o vacio.
+        return array_filter(
+            $payload,
+            static fn (mixed $value, string $field): bool => $field === 'Company'
+                ? $value !== null
+                : $value !== null && $value !== '',
+            ARRAY_FILTER_USE_BOTH
+        );
+    }
+
+    /**
+     * Claves del payload disponibles para mapear en los formularios de contacto.
+     *
+     * @return array<string, string>
+     */
+    public static function getSelectablePayloadFields(): array
+    {
+        return [
+            'RUT__c' => 'RUT__c (RUT)',
+            'FirstName' => 'FirstName (Nombre)',
+            'LastName' => 'LastName (Apellido)',
+            'Email' => 'Email (Email estándar)',
+            'Email__c' => 'Email__c (Email personalizado)',
+            'Phone' => 'Phone (Teléfono fijo / contacto)',
+            'MobilePhone' => 'MobilePhone (Teléfono móvil / WhatsApp)',
+            'Comuna__c' => 'Comuna__c (Comuna de residencia)',
+            'Rango_de_renta_liquida__c' => 'Rango_de_renta_liquida__c (Rango de renta líquida)',
+            'complementaRenta__c' => 'complementaRenta__c (Complementa renta / Codeudor)',
+            'Validaci_n_Renta__c' => 'Validaci_n_Renta__c (Validación de renta)',
+            'usoDepartamento__c' => 'usoDepartamento__c (Uso de departamento / Inversión)',
+            'estadoLaboral__c' => 'estadoLaboral__c (Estado laboral)',
+            'comunaInversion__c' => 'comunaInversion__c (Comuna de inversión)',
+            'Comentario_Cliente__c' => 'Comentario_Cliente__c (Comentario del cliente)',
+            'Notas__c' => 'Notas__c (Notas)',
+            'Ultima_llamada__c' => 'Ultima_llamada__c (Última llamada)',
+            'Informacion_Cotizacion__c' => 'Informacion_Cotizacion__c (Información de cotización)',
+            'Description' => 'Description (Descripción / Mensaje)',
+            'Tipo_Ingreso__c' => 'Tipo_Ingreso__c (Tipo de ingreso)',
+            'Medio_de_Llegada__c' => 'Medio_de_Llegada__c (Medio de llegada)',
+            'LeadSource' => 'LeadSource (Origen del prospecto)',
+            'PersonLeadSource' => 'PersonLeadSource (Origen del prospecto - Persona)',
+            'AccountSource' => 'AccountSource (Origen de cuenta)',
+            'Nombre_de_la_Campa_a__c' => 'Nombre_de_la_Campa_a__c (Nombre de campaña)',
+            'Audiencia__c' => 'Audiencia__c (Audiencia)',
+            'Pieza_Grafica__c' => 'Pieza_Grafica__c (Pieza gráfica)',
+            'utm_source__c' => 'utm_source__c (UTM Source)',
+            'utm_medium__c' => 'utm_medium__c (UTM Medium)',
+            'utm_campaign__c' => 'utm_campaign__c (UTM Campaign)',
+            'utm_term__c' => 'utm_term__c (UTM Term)',
+            'utm_content__c' => 'utm_content__c (UTM Content)',
+            'UTM_Site_P_gina_de_origen__c' => 'UTM_Site_P_gina_de_origen__c (UTM Site / Página de origen)',
+            'Pagina_Origen__c' => 'Pagina_Origen__c (Página Origen)',
+            'GenderIdentity' => 'GenderIdentity (Identidad de género)',
+            'Genero__c' => 'Genero__c (Género)',
+        ];
+    }
+
+    /**
+     * Deduce o resuelve el campo por defecto de payload en Salesforce según la clave del campo.
+     */
+    public static function defaultPayloadFieldForKey(?string $key): ?string
+    {
+        if ($key === null) {
+            return null;
+        }
+
+        $normalized = Str::of($key)
+            ->ascii()
+            ->lower()
+            ->replaceMatches('/[^a-z0-9]+/', '_')
+            ->trim('_')
+            ->toString();
+
+        return match ($normalized) {
+            'rut' => 'RUT__c',
+            'nombre', 'name', 'first_name', 'primer_nombre' => 'FirstName',
+            'apellido', 'last_name', 'lastname', 'apellidos' => 'LastName',
+            'email', 'correo', 'e_mail', 'mail' => 'Email',
+            'telefono', 'phone', 'celular', 'fono', 'movil', 'mobile', 'whatsapp' => 'Phone',
+            'rango', 'rango_renta', 'rango_de_renta', 'renta', 'renta_liquida' => 'Rango_de_renta_liquida__c',
+            'codeudor', 'complementa_renta', 'complementarenta', 'complementa_renta_liquida' => 'complementaRenta__c',
+            'validacion_renta', 'validacion_de_renta', 'validacionrenta' => 'Validaci_n_Renta__c',
+            'buscas', 'uso_departamento', 'usodepartamento', 'uso_departamento_inversion' => 'usoDepartamento__c',
+            'elaboral', 'estado_laboral', 'estadolaboral' => 'estadoLaboral__c',
+            'comuna_inversion', 'comunainversion', 'commune_investment' => 'comunaInversion__c',
+            'comuna', 'commune' => 'Comuna__c',
+            'mensaje', 'message', 'comentario', 'comentarios', 'comentario_cliente', 'cliente_comentario', 'coment_cli' => 'Comentario_Cliente__c',
+            'nota', 'notas' => 'Notas__c',
+            'informacion_cotizacion', 'informacion_cotizacion_web', 'quote_information' => 'Informacion_Cotizacion__c',
+            'medio_de_llegada', 'medio_llegada' => 'Medio_de_Llegada__c',
+            'origen_del_prospecto', 'origen_prospecto', 'lead_source', 'leadsource' => 'LeadSource',
+            'person_lead_source', 'personleadsource' => 'PersonLeadSource',
+            'origen_de_cuenta', 'origen_cuenta', 'account_source', 'accountsource' => 'AccountSource',
+            'nombre_de_la_campana', 'nombre_campana', 'campaign_name' => 'Nombre_de_la_Campa_a__c',
+            'audiencia', 'audience' => 'Audiencia__c',
+            'pieza_grafica', 'piezagrafica' => 'Pieza_Grafica__c',
+            'utm_source', 'utmsource' => 'utm_source__c',
+            'utm_medium', 'utmmedium' => 'utm_medium__c',
+            'utm_campaign', 'utmcampaign' => 'utm_campaign__c',
+            'utm_term', 'utmterm' => 'utm_term__c',
+            'utm_content', 'utmcontent' => 'utm_content__c',
+            'utm_site', 'utmsite', 'utm_site_pagina_de_origen' => 'UTM_Site_P_gina_de_origen__c',
+            'pagina_origen', 'paginaorigen', 'pagina_de_origen' => 'Pagina_Origen__c',
+            'tipo_de_ingreso', 'tipo_ingreso' => 'Tipo_Ingreso__c',
+            'ultima_llamada', 'ultimallamada', 'last_call' => 'Ultima_llamada__c',
+            'descripcion', 'description' => 'Description',
+            default => null,
+        };
+    }
+
+    private function buildFieldLabels(mixed $configuredFields): array
+    {
+        if (! is_array($configuredFields)) {
+            return [];
+        }
+
+        $labels = [];
+
+        foreach ($configuredFields as $field) {
+            if (! is_array($field)) {
+                continue;
+            }
+
+            $key = trim((string) ($field['key'] ?? ''));
+            $label = trim((string) ($field['label'] ?? ''));
+
+            if ($key === '' || $label === '') {
+                continue;
+            }
+
+            $labels[$key] = $label;
+        }
+
+        return $labels;
+    }
+
+    /**
+     * @param  array<string, mixed>  $fields
+     * @param  array<string, string>  $fieldLabels
+     */
+    private function buildDescription(array $fields, array $fieldLabels): string
+    {
+        $lines = [];
+
+        foreach ($fields as $key => $value) {
+            $normalizedValue = $this->normalizeFieldValue($value);
+
+            if ($normalizedValue === null || $normalizedValue === '') {
+                continue;
+            }
+
+            $normalizedKey = (string) $key;
+            $label = $fieldLabels[$normalizedKey] ?? $this->humanizeFieldKey($normalizedKey);
+            $lines[] = sprintf('%s: %s', $label, $normalizedValue);
+        }
+
+        return implode("\n", $lines);
+    }
+
+    private function shouldIncludeDescription(SiteSetting $settings): bool
+    {
+        $configured = data_get($settings->extra_settings, 'salesforce_include_description');
+
+        if ($configured === null) {
+            return true;
+        }
+
+        return (bool) $configured;
+    }
+
+    private function normalizeFieldValue(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        if (is_bool($value)) {
+            return $value ? 'Sí' : 'No';
+        }
+
+        if (is_array($value)) {
+            $items = array_values(array_filter(array_map(
+                static fn (mixed $item): string => trim((string) $item),
+                $value
+            ), static fn (string $item): bool => $item !== ''));
+
+            return $items === [] ? null : implode(', ', $items);
+        }
+
+        if (is_object($value)) {
+            return \json_encode($value, \JSON_UNESCAPED_UNICODE | \JSON_UNESCAPED_SLASHES) ?: null;
+        }
+
+        $normalized = trim((string) $value);
+
+        return $normalized !== '' ? $normalized : null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $fields
+     * @param  list<string>  $aliases
+     */
+    private function fieldValue(array $fields, array $aliases): ?string
+    {
+        foreach ($aliases as $alias) {
+            $normalizedAlias = $this->normalizeFieldKey($alias);
+
+            if (! array_key_exists($normalizedAlias, $fields)) {
+                continue;
+            }
+
+            $normalized = $this->normalizeFieldValue($fields[$normalizedAlias]);
+
+            if ($normalized !== null && $normalized !== '') {
+                return $normalized;
+            }
+        }
+
+        return null;
+    }
+
+    private function humanizeFieldKey(string $key): string
+    {
+        $normalizedKey = strtolower(trim($key));
+
+        if (str_starts_with($normalizedKey, 'utm_')) {
+            $suffix = Str::of(substr($normalizedKey, 4))
+                ->replace(['-', '_'], ' ')
+                ->title()
+                ->toString();
+
+            return 'UTM '.$suffix;
+        }
+
+        return Str::of($key)
+            ->replace(['-', '_'], ' ')
+            ->trim()
+            ->title()
+            ->toString();
+    }
+
+    private function extractFirstName(?string $fullName): ?string
+    {
+        $normalized = trim((string) $fullName);
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        $parts = preg_split('/\s+/', $normalized) ?: [];
+
+        return $parts[0] ?? null;
+    }
+
+    private function extractLastName(?string $fullName): ?string
+    {
+        $normalized = trim((string) $fullName);
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        $parts = preg_split('/\s+/', $normalized) ?: [];
+
+        if (count($parts) <= 1) {
+            return null;
+        }
+
+        return implode(' ', array_slice($parts, 1));
+    }
+
+    /**
+     * @param  array<string, mixed>  $fields
+     */
+    private function resolveProjectSalesforceIdFromFields(array $fields): ?string
+    {
+        $rawProjectId = $this->fieldValue($fields, ['proyecto_id', 'id_proyecto', 'project_id', 'proyecto_salesforce_id']);
+
+        return $this->normalizeSalesforceId($rawProjectId);
+    }
+
+    private function resolveProjectByName(?string $projectName): ?Proyecto
+    {
+        if ($projectName === null || trim($projectName) === '') {
+            return null;
+        }
+
+        $project = Proyecto::query()
+            ->select(['id', 'salesforce_id', 'name', 'slug'])
+            ->where('name', $projectName)
+            ->first();
+
+        if ($project !== null) {
+            return $project;
+        }
+
+        $project = Proyecto::query()
+            ->select(['id', 'salesforce_id', 'name', 'slug'])
+            ->whereRaw('LOWER(name) = ?', [mb_strtolower($projectName)])
+            ->first();
+
+        if ($project !== null) {
+            return $project;
+        }
+
+        $signature = $this->textSignature($projectName);
+
+        $project = Proyecto::query()
+            ->select(['id', 'salesforce_id', 'name', 'slug'])
+            ->whereRaw('LOWER(slug) = ?', [$signature])
+            ->first();
+
+        if ($project !== null) {
+            return $project;
+        }
+
+        foreach (Proyecto::query()->select(['id', 'salesforce_id', 'name', 'slug'])->get() as $candidate) {
+            if ($this->textSignature($candidate->name) === $signature) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
+    private function textSignature(string $value): string
+    {
+        return Str::of($value)
+            ->ascii()
+            ->lower()
+            ->replace(':', ' ')
+            ->replaceMatches('/[^a-z0-9]+/', '_')
+            ->trim('_')
+            ->toString();
+    }
+
+    /**
+     * @param  array<string, mixed>  $fields
+     */
+    private function resolveProjectAdvisorPhone(?Proyecto $project): ?string
+    {
+        if ($project === null) {
+            return null;
+        }
+
+        /** @var Collection<int, \App\Models\Asesor> $asesores */
+        $asesores = $project->asesores;
+
+        $advisor = $asesores
+            ->sortByDesc(static fn ($asesor): int => $asesor->is_active ? 1 : 0)
+            ->first();
+
+        return $this->normalizePhone($advisor?->whatsapp_owner);
+    }
+
+    /**
+     * @param  array<string, mixed>  $fields
+     */
+    private function resolveProject(array $fields, ?string $rawProjectInput): ?Proyecto
+    {
+        $rawProjectId = $this->fieldValue($fields, ['proyecto_id', 'id_proyecto', 'project_id', 'proyecto_salesforce_id']);
+        $normalizedProjectId = $this->normalizeSalesforceId($rawProjectId);
+
+        if ($normalizedProjectId !== null) {
+            return Proyecto::query()
+                ->with(['asesores' => static function ($query): void {
+                    $query->select(['asesores.id', 'asesores.whatsapp_owner', 'asesores.is_active']);
+                }])
+                ->where('salesforce_id', $normalizedProjectId)
+                ->first();
+        }
+
+        $normalizedProjectInputId = $this->normalizeSalesforceId($rawProjectInput);
+
+        if ($normalizedProjectInputId !== null) {
+            return Proyecto::query()
+                ->with(['asesores' => static function ($query): void {
+                    $query->select(['asesores.id', 'asesores.whatsapp_owner', 'asesores.is_active']);
+                }])
+                ->where('salesforce_id', $normalizedProjectInputId)
+                ->first();
+        }
+
+        $project = $this->resolveProjectByName($rawProjectInput);
+
+        if ($project === null) {
+            return null;
+        }
+
+        return $project->load(['asesores' => static function ($query): void {
+            $query->select(['asesores.id', 'asesores.whatsapp_owner', 'asesores.is_active']);
+        }]);
+    }
+
+    private function normalizeLeadSource(?string $value, bool $preserveOriginalCase = false): ?string
+    {
+        $normalized = trim((string) $value);
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        if ($preserveOriginalCase) {
+            return $normalized;
+        }
+
+        return ucfirst(strtolower($normalized));
+    }
+
+    private function normalizeSalesforceId(mixed $value): ?string
+    {
+        $normalized = trim((string) $value);
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        if (preg_match('/^[a-zA-Z0-9]{15,18}$/', $normalized) !== 1) {
+            return null;
+        }
+
+        return $normalized;
+    }
+
+    private function resolveLeadOwnerId(): ?string
+    {
+        $leadOwnerId = $this->normalizeSalesforceId(config('services.salesforce.lead_owner_id'));
+
+        if ($leadOwnerId !== null) {
+            return $leadOwnerId;
+        }
+
+        return $this->normalizeSalesforceId(config('services.salesforce.case_owner_id'));
+    }
+
+    private function normalizePhone(mixed $value): ?string
+    {
+        $normalized = trim((string) $value);
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        return preg_replace('/\s+/', '', $normalized) ?: null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $fields
+     */
+    private function resolveWebsiteSource(ContactSubmission $submission, array $fields, ?string $utmSource, ?string $utmSiteDefault = null): ?string
+    {
+        $channelWebsite = $this->resolveChannelWebsite($submission);
+
+        if ($channelWebsite !== null) {
+            return $channelWebsite;
+        }
+
+        return $this->fieldValue($fields, [
+            'utm_site',
+            'website',
+            'site',
+            'sitio_web',
+            'sitio',
+            'origen_sitio',
+            'source_site',
+            'origin_site',
+            'medio_de_llegada',
+            'medio_llegada',
+            'origen_del_prospecto',
+            'origen_prospecto',
+            'referrer',
+        ]) ?: $utmSiteDefault ?: $utmSource;
+    }
+
+    private function resolveChannelWebsite(ContactSubmission $submission): ?string
+    {
+        $channel = $submission->channel;
+
+        if ($channel === null) {
+            return null;
+        }
+
+        foreach ((array) ($channel->domain_patterns ?? []) as $pattern) {
+            $normalized = $this->normalizeDomainPattern((string) $pattern);
+
+            if ($normalized !== null) {
+                return $normalized;
+            }
+        }
+
+        return null;
+    }
+
+    private function normalizeDomainPattern(string $pattern): ?string
+    {
+        $normalized = strtolower(trim($pattern));
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        $normalized = str_replace(['*.', '*'], '', $normalized);
+        $normalized = ltrim($normalized, '.');
+
+        return $normalized !== '' ? $normalized : null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $fields
+     */
+    private function shouldOverrideCampaignForSale(ContactSubmission $submission, SiteSetting $settings, array $fields, ?string $website): bool
+    {
+        if (! $settings->evento_sale) {
+            return false;
+        }
+
+        $extraSettings = is_array($settings->extra_settings) ? $settings->extra_settings : [];
+
+        $saleCampaign = $this->normalizeFieldValue($extraSettings['sale_utm_campaign'] ?? null)
+            ?: $this->normalizeFieldValue($extraSettings['sale_event_name'] ?? null)
+            ?: $this->normalizeFieldValue($extraSettings['utm_campaign_default'] ?? null);
+
+        if ($saleCampaign === null || trim($saleCampaign) === '') {
+            return false;
+        }
+
+        $utmSource = $this->fieldValue($fields, [
+            'utm_source',
+            'fuente',
+            'medio_de_llegada',
+            'medio_llegada',
+            'origen_del_prospecto',
+            'origen_prospecto',
+        ]);
+
+        if ($utmSource !== null && strtolower(trim($utmSource)) === 'brevo') {
+            return true;
+        }
+
+        $channel = $this->resolveSubmissionChannel($submission, $fields, $website);
+
+        $hasExplicitSetting = array_key_exists('sale_utm_campaign_channels', $extraSettings);
+        $configuredChannels = $hasExplicitSetting
+            ? (array) $extraSettings['sale_utm_campaign_channels']
+            : array_values(array_filter([(string) ContactChannel::getDefault()?->id]));
+
+        if (empty($configuredChannels)) {
+            return false;
+        }
+
+        if ($channel === null) {
+            return false;
+        }
+
+        $allowedIdentifiers = array_map('strval', $configuredChannels);
+
+        return in_array((string) $channel->id, $allowedIdentifiers, true)
+            || in_array((string) $channel->slug, $allowedIdentifiers, true);
+    }
+
+    /**
+     * @param  array<string, mixed>  $fields
+     */
+    private function resolveSubmissionChannel(ContactSubmission $submission, array $fields, ?string $website): ?ContactChannel
+    {
+        if ($submission->relationLoaded('channel') && $submission->channel !== null) {
+            return $submission->channel;
+        }
+
+        if ($submission->contact_channel_id) {
+            $channel = ContactChannel::query()->find($submission->contact_channel_id);
+            if ($channel !== null) {
+                return $channel;
+            }
+        }
+
+        $channelSlug = $this->fieldValue($fields, ['channel', 'contact_channel', 'canal']);
+        if ($channelSlug !== null && trim($channelSlug) !== '') {
+            $channel = ContactChannel::findBySlug(trim($channelSlug));
+            if ($channel !== null) {
+                return $channel;
+            }
+        }
+
+        if ($website !== null && trim($website) !== '') {
+            $channel = ContactChannel::findByDomain($website);
+            if ($channel !== null) {
+                return $channel;
+            }
+        }
+
+        return ContactChannel::getDefault();
+    }
+
+    /**
+     * @param  array<string, mixed>  $fields
+     */
+    private function resolveUtmCampaign(array $fields, ?string $defaultValue, SiteSetting $settings, ?string $saleCampaign = null): string
+    {
+        $normalizedSaleCampaign = trim((string) $saleCampaign);
+
+        // Cuando evento SALE está activo y hay campaña de Sale, sobreescribe siempre
+        if (($settings->evento_sale === true) && $normalizedSaleCampaign !== '') {
+            return $normalizedSaleCampaign;
+        }
+
+        $campaign = $this->fieldValue($fields, ['utm_campaign', 'campana', 'nombre_de_la_campana']);
+
+        if ($campaign !== null && trim($campaign) !== '') {
+            $normalizedCampaign = trim($campaign);
+            if (! in_array(strtolower($normalizedCampaign), ['auto-tagging', 'campaign'], true)) {
+                return $normalizedCampaign;
+            }
+        }
+
+        $normalizedDefaultValue = trim((string) $defaultValue);
+        if ($normalizedDefaultValue !== '' && ! in_array(strtolower($normalizedDefaultValue), ['auto-tagging', 'campaign'], true)) {
+            return $normalizedDefaultValue;
+        }
+
+        if ($settings->evento_sale) {
+            $extraSettings = is_array($settings->extra_settings) ? $settings->extra_settings : [];
+            $configuredSaleCampaign = trim((string) ($extraSettings['sale_utm_campaign'] ?? $extraSettings['sale_event_name'] ?? ''));
+            if ($configuredSaleCampaign !== '') {
+                return $configuredSaleCampaign;
+            }
+        }
+
+        return 'auto-tagging';
+    }
+
+    /**
+     * @param  array<string, mixed>  $fields
+     */
+    private function resolveLeadSource(array $fields, ?string $utmTerm, ?string $arrivalMedium): ?string
+    {
+        return $utmTerm
+            ?: $this->fieldValue($fields, [
+                'origen_del_prospecto',
+                'origen_prospecto',
+                'lead_source',
+            ])
+            ?: $arrivalMedium;
+    }
+
+    private function isCsvImportSubmission(ContactSubmission $submission): bool
+    {
+        $userAgent = strtolower(trim((string) $submission->user_agent));
+
+        if ($userAgent === '') {
+            return false;
+        }
+
+        return str_contains($userAgent, 'filament-csv-import');
+    }
+
+    private function buildWhatsappLink(?string $phone, string $ownerName): ?string
+    {
+        if ($phone === null || $phone === '') {
+            return null;
+        }
+
+        $digitsOnlyPhone = preg_replace('/\D+/', '', $phone);
+
+        if ($digitsOnlyPhone === null || $digitsOnlyPhone === '') {
+            return null;
+        }
+
+        $normalizedOwnerName = trim($ownerName);
+
+        if ($normalizedOwnerName === '') {
+            $normalizedOwnerName = 'ASESOR';
+        }
+
+        $message = sprintf('Hola %s, te contacto desde Leben. ¿Tienes un minuto?', Str::upper($normalizedOwnerName));
+
+        return sprintf('https://wa.me/%s?text=%s', $digitsOnlyPhone, rawurlencode($message));
+    }
+
+    private function normalizeLegacyFieldValue(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $normalized = trim($value);
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        return str_replace(' ', '_', $normalized);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function normalizeLegacyCustomFieldsInPayload(array $payload): array
+    {
+        $excludedCustomFields = [
+            'Email__c',
+            'RUT__c',
+            'Proyecto__c',
+            'ID_Proyecto__c',
+            'wsp_owner__c',
+            'Telefono_owner__c',
+            'owner_phone__c',
+            'whatsapp_phone__c',
+            'utm_source__c',
+            'utm_medium__c',
+            'utm_campaign__c',
+            'utm_content__c',
+            'utm_term__c',
+            'UTM_Site_P_gina_de_origen__c',
+            'Pagina_Origen__c',
+            'Tipo_Ingreso__c',
+            'Ultima_llamada__c',
+            'Rango_de_renta_liquida__c',
+            'complementaRenta__c',
+            'Validaci_n_Renta__c',
+            'usoDepartamento__c',
+            'estadoLaboral__c',
+            'comunaInversion__c',
+            'Comentario_Cliente__c',
+            'Notas__c',
+        ];
+
+        foreach ($payload as $field => $value) {
+            if (! is_string($value)) {
+                continue;
+            }
+
+            if (! str_ends_with($field, '__c')) {
+                continue;
+            }
+
+            if (in_array($field, $excludedCustomFields, true)) {
+                continue;
+            }
+
+            $payload[$field] = $this->normalizeLegacyFieldValue($value);
+        }
+
+        return $payload;
+    }
 
     /*
         Extra metodos
     */
-	/**
-	 * @param  array<string, mixed>  $fields
-	 * @return array<string, mixed>
-	 */
-	private function normalizeFieldKeys(array $fields): array
-	{
-		$normalized = [];
+    /**
+     * @param  array<string, mixed>  $fields
+     * @return array<string, mixed>
+     */
+    private function normalizeFieldKeys(array $fields): array
+    {
+        $normalized = [];
 
-		foreach ($fields as $key => $value) {
-			$normalizedKey = $this->normalizeFieldKey((string) $key);
-			$normalized[$normalizedKey] = $value;
-		}
+        foreach ($fields as $key => $value) {
+            $normalizedKey = $this->normalizeFieldKey((string) $key);
+            $normalized[$normalizedKey] = $value;
+        }
 
-		return $normalized;
-	}
+        return $normalized;
+    }
 
-	private function normalizeFieldKey(string $key): string
-	{
-		return Str::of($key)
-			->ascii()                 // quita tildes y translitera ñ -> n
-			->lower()                 // minúsculas
-			->replaceMatches('/[^a-z0-9]+/', '_') // espacios y separadores a _
-			->trim('_')
-			->toString();
-	}
+    private function normalizeFieldKey(string $key): string
+    {
+        return Str::of($key)
+            ->ascii()                 // quita tildes y translitera ñ -> n
+            ->lower()                 // minúsculas
+            ->replaceMatches('/[^a-z0-9]+/', '_') // espacios y separadores a _
+            ->trim('_')
+            ->toString();
+    }
 }

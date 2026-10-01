@@ -78,6 +78,24 @@ class ContactSubmissionController extends Controller
      */
     private function enrichMarketingFields(StoreContactSubmissionRequest $request, array $fields): array
     {
+        $settings = SiteSetting::current();
+        if ($settings->evento_sale) {
+            $extraSettings = is_array($settings->extra_settings) ? $settings->extra_settings : [];
+            $saleCampaign = trim((string) ($extraSettings['sale_utm_campaign'] ?? ''))
+                ?: trim((string) ($extraSettings['sale_event_name'] ?? ''))
+                ?: trim((string) ($extraSettings['utm_campaign_default'] ?? ''));
+
+            if ($saleCampaign !== '') {
+                $utmSource = $this->fieldValue($fields, ['utm_source', 'fuente', 'medio_de_llegada', 'medio_llegada', 'origen_del_prospecto', 'origen_prospecto']);
+                $currentCampaign = $this->fieldValue($fields, ['utm_campaign', 'campana', 'nombre_de_la_campana']);
+                $isDefaultOrMissing = $currentCampaign === null || trim($currentCampaign) === '' || in_array(strtolower(trim($currentCampaign)), ['auto-tagging', 'campaign'], true);
+
+                if (($utmSource !== null && strtolower(trim($utmSource)) === 'brevo') || $isDefaultOrMissing) {
+                    $fields['utm_campaign'] = $saleCampaign;
+                }
+            }
+        }
+
         $utmSite = trim((string) ($fields['utm_site'] ?? ''));
 
         if ($utmSite !== '') {

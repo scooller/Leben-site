@@ -113,10 +113,10 @@ class EnsureTokenOriginIsAuthorized
             return null;
         }
 
-        $normalized = strtolower($parts['scheme']) . '://' . strtolower($parts['host']);
+        $normalized = strtolower($parts['scheme']).'://'.strtolower($parts['host']);
 
         if (filled($parts['port'] ?? null)) {
-            $normalized .= ':' . $parts['port'];
+            $normalized .= ':'.$parts['port'];
         }
 
         return rtrim($normalized, '/');

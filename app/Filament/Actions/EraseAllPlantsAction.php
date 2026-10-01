@@ -52,7 +52,7 @@ class EraseAllPlantsAction
         } catch (Throwable $throwable) {
             return [
                 'success' => false,
-                'message' => 'Error al borrar plantas: ' . $throwable->getMessage(),
+                'message' => 'Error al borrar plantas: '.$throwable->getMessage(),
                 'count' => 0,
             ];
         }

@@ -29,6 +29,8 @@ export default function BannerPromo({ banner }) {
         src={banner.image}
         alt="Banner Promocional"
         className="banner-promo-image"
+        loading="lazy"
+        decoding="async"
         onClick={handleBannerClick}
         style={{ cursor: banner.link ? 'pointer' : 'default' }}
       />

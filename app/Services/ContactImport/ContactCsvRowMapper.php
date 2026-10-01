@@ -357,15 +357,26 @@ class ContactCsvRowMapper
 
     private function normalizeTextValue(string $value): string
     {
-        $normalized = str_replace('_', ' ', $value);
-        $normalized = (string) preg_replace('/\s+/', ' ', $normalized);
+        $clean = mb_check_encoding($value, 'UTF-8')
+            ? $value
+            : mb_convert_encoding($value, 'UTF-8', 'Windows-1252');
+
+        $clean = mb_convert_encoding($clean, 'UTF-8', 'UTF-8');
+        $normalized = str_replace('_', ' ', $clean);
+        $normalized = (string) preg_replace('/\s+/u', ' ', $normalized);
 
         return trim($normalized);
     }
 
     public function headerSignature(string $header): string
     {
-        $signature = Str::of($header)
+        $cleanHeader = mb_check_encoding($header, 'UTF-8')
+            ? $header
+            : mb_convert_encoding($header, 'UTF-8', 'Windows-1252');
+
+        $cleanHeader = mb_convert_encoding($cleanHeader, 'UTF-8', 'UTF-8');
+
+        $signature = Str::of($cleanHeader)
             ->ascii()
             ->lower()
             ->replace(':', ' ')

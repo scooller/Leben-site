@@ -20,14 +20,14 @@ class MarkdownRepresentationService
 
         $markdown = [];
         $markdown[] = "# {$siteName}";
-        $markdown[] = "";
+        $markdown[] = '';
         $markdown[] = "> {$siteDescription}";
-        $markdown[] = "";
-        $markdown[] = "## Información General";
+        $markdown[] = '';
+        $markdown[] = '## Información General';
         $markdown[] = "- **Sitio Web Principal**: {$siteUrl}/";
         $markdown[] = "- **Catálogo de Unidades**: {$siteUrl}/f";
         $markdown[] = "- **Contacto y Asesoría**: {$siteUrl}/contacto";
-        $markdown[] = "";
+        $markdown[] = '';
 
         // Proyectos activos
         try {
@@ -37,8 +37,8 @@ class MarkdownRepresentationService
                 ->get();
 
             if ($proyectos->isNotEmpty()) {
-                $markdown[] = "## Proyectos Inmobiliarios Disponibles";
-                $markdown[] = "";
+                $markdown[] = '## Proyectos Inmobiliarios Disponibles';
+                $markdown[] = '';
 
                 foreach ($proyectos as $proyecto) {
                     $comuna = $proyecto->comuna ?: 'Chile';
@@ -55,7 +55,7 @@ class MarkdownRepresentationService
                     if ($slug) {
                         $markdown[] = "- **Ver Unidades**: {$siteUrl}/p/{$slug}";
                     }
-                    $markdown[] = "";
+                    $markdown[] = '';
                 }
             }
         } catch (\Throwable) {
@@ -64,22 +64,22 @@ class MarkdownRepresentationService
 
         // Contacto
         $contact = $settings->contact ?? [];
-        if (!empty($contact)) {
-            $markdown[] = "## Canales de Contacto";
-            if (!empty($contact['email'])) {
+        if (! empty($contact)) {
+            $markdown[] = '## Canales de Contacto';
+            if (! empty($contact['email'])) {
                 $markdown[] = "- **Email**: {$contact['email']}";
             }
-            if (!empty($contact['phone'])) {
+            if (! empty($contact['phone'])) {
                 $markdown[] = "- **Teléfono**: {$contact['phone']}";
             }
-            if (!empty($contact['address'])) {
+            if (! empty($contact['address'])) {
                 $markdown[] = "- **Dirección**: {$contact['address']}";
             }
-            $markdown[] = "";
+            $markdown[] = '';
         }
 
         // Recursos para Agentes IA y APIs
-        $markdown[] = "## Recursos para Agentes y Desarrolladores";
+        $markdown[] = '## Recursos para Agentes y Desarrolladores';
         $markdown[] = "- **Catálogo de Recursos IA (ARD)**: `{$siteUrl}/.well-known/ai-catalog.json` (Agentic Resource Discovery)";
         $markdown[] = "- **Tarjeta Servidor MCP**: `{$siteUrl}/.well-known/mcp/server-card.json` (SEP-1649)";
         $markdown[] = "- **Índice de Habilidades de Agentes**: `{$siteUrl}/.well-known/agent-skills/index.json` (RFC v0.2.0)";
@@ -93,9 +93,9 @@ class MarkdownRepresentationService
         $markdown[] = "- **UCP Discovery**: `{$siteUrl}/.well-known/ucp` (Universal Commerce Protocol)";
         $markdown[] = "- **Mapa del Sitio (Sitemap)**: `{$siteUrl}/sitemap.xml`";
         $markdown[] = "- **Archivo LLMs**: `{$siteUrl}/llms.txt`";
-        $markdown[] = "- **Métodos de pago**: Transbank Webpay Plus, Mercado Pago (tarjeta / CLP)";
+        $markdown[] = '- **Métodos de pago**: Transbank Webpay Plus, Mercado Pago (tarjeta / CLP)';
 
-        return implode("\n", $markdown) . "\n";
+        return implode("\n", $markdown)."\n";
     }
 
     /**

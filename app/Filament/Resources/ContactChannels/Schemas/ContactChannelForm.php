@@ -2,12 +2,17 @@
 
 namespace App\Filament\Resources\ContactChannels\Schemas;
 
-use Filament\Forms\Components\KeyValue;
+use App\Filament\Pages\SiteSettings;
+use App\Models\SiteSetting;
+use App\Services\Salesforce\SalesforceCaseMapper;
+use Filament\Actions\Action;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 
 class ContactChannelForm
@@ -84,14 +89,64 @@ class ContactChannelForm
 
             Section::make('Configuración de formulario')
                 ->description('Si está vacío, se usará la configuración global del formulario de contacto (Ajustes del sitio). Define aquí los campos específicos de este canal.')
+                ->headerActions([
+                    Action::make('preloadGlobalForm')
+                        ->label('Precargar formulario')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->color('gray')
+                        ->requiresConfirmation()
+                        ->modalHeading('¿Precargar formulario global?')
+                        ->modalDescription('Esto reemplazará los campos actuales con la configuración global del formulario de contacto (Ajustes del Sitio).')
+                        ->modalSubmitActionLabel('Sí, precargar')
+                        ->action(function (Set $set) {
+                            $globalFields = SiteSetting::current()->contact_form_fields;
+
+                            if (! is_array($globalFields) || empty($globalFields)) {
+                                Notification::make()
+                                    ->warning()
+                                    ->title('Sin configuración global')
+                                    ->body('No hay campos configurados globalmente en Ajustes del Sitio.')
+                                    ->send();
+
+                                return;
+                            }
+
+                            $keyedFields = [];
+                            foreach ($globalFields as $field) {
+                                if (! is_array($field)) {
+                                    continue;
+                                }
+
+                                if (! filled($field['salesforce_field'] ?? null) && filled($field['key'] ?? null)) {
+                                    $field['salesforce_field'] = SalesforceCaseMapper::defaultPayloadFieldForKey($field['key']);
+                                }
+
+                                $keyedFields[(string) \Illuminate\Support\Str::uuid()] = $field;
+                            }
+
+                            $set('form_fields', $keyedFields);
+
+                            Notification::make()
+                                ->success()
+                                ->title('Formulario precargado')
+                                ->body('Se cargó la configuración global del formulario de contacto.')
+                                ->send();
+                        }),
+                ])
                 ->schema([
-                    KeyValue::make('form_fields')
-                        ->label('Campos del formulario (JSON)')
-                        ->keyLabel('Clave')
-                        ->valueLabel('Valor JSON')
-                        ->helperText('Avanzado: edita directamente el JSON de campos de formulario para este canal.')
-                        ->nullable()
-                        ->columnSpanFull(),
+                    Repeater::make('form_fields')
+                        ->label('Campos del formulario')
+                        ->schema(SiteSettings::getContactFormFieldsSchema())
+                        ->defaultItems(0)
+                        ->reorderable()
+                        ->collapsible()
+                        ->itemLabel(fn (array $state): ?string => filled($state['label'] ?? null)
+                            ? ($state['label'].' ('.($state['key'] ?? '').(($sf = ($state['salesforce_field'] ?? SalesforceCaseMapper::defaultPayloadFieldForKey($state['key'] ?? null))) ? ' → '.$sf : '').')')
+                            : null
+                        )
+                        ->columns(2)
+                        ->columnSpanFull()
+                        ->helperText('Define aquí los campos para este canal. Si está vacío, se usará la configuración global.'),
                 ])
                 ->collapsed(),
         ]);

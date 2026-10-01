@@ -25,19 +25,19 @@ Route::get('/sitemap.xml', function () {
 
     $staticUrls = collect([
         [
-            'loc' => $baseUrl . '/',
+            'loc' => $baseUrl.'/',
             'changefreq' => 'daily',
             'priority' => '1.0',
             'lastmod' => now()->toDateString(),
         ],
         [
-            'loc' => $baseUrl . '/plantas',
+            'loc' => $baseUrl.'/plantas',
             'changefreq' => 'daily',
             'priority' => '0.9',
             'lastmod' => now()->toDateString(),
         ],
         [
-            'loc' => $baseUrl . '/f',
+            'loc' => $baseUrl.'/f',
             'changefreq' => 'daily',
             'priority' => '0.8',
             'lastmod' => now()->toDateString(),
@@ -50,7 +50,7 @@ Route::get('/sitemap.xml', function () {
         $plantUrls = Plant::query()
             ->with(['proyecto:id,salesforce_id,slug,name,is_active'])
             ->where('is_active', true)
-            ->whereHas('proyecto', fn($query) => $query->where('is_active', true))
+            ->whereHas('proyecto', fn ($query) => $query->where('is_active', true))
             ->whereDoesntHave('activeReservation')
             ->whereDoesntHave('completedReservation')
             ->whereDoesntHave('completedPayment')
@@ -64,7 +64,7 @@ Route::get('/sitemap.xml', function () {
                 }
 
                 return [
-                    'loc' => $baseUrl . '/p/' . rawurlencode($projectSlug) . '/' . rawurlencode($unitName),
+                    'loc' => $baseUrl.'/p/'.rawurlencode($projectSlug).'/'.rawurlencode($unitName),
                     'changefreq' => 'daily',
                     'priority' => '0.7',
                     'lastmod' => optional($plant->updated_at)->toDateString() ?? now()->toDateString(),
@@ -111,7 +111,7 @@ Route::match(['GET', 'HEAD'], '/.well-known/api-catalog', function () {
     $catalog = [
         'linkset' => [
             [
-                'anchor' => $baseUrl . '/',
+                'anchor' => $baseUrl.'/',
                 'profile' => 'https://www.rfc-editor.org/rfc/rfc9727',
                 'author' => (string) ($settings->site_name ?: 'iLeben'),
                 'item' => [
@@ -156,9 +156,9 @@ Route::get('/', function () {
 // Servir archivos del almacenamiento público bajo la ruta /curator/ (para compatibilidad con Curator)
 Route::get('/curator/{path}', function (string $path) {
     $basePath = realpath(storage_path('app/public'));
-    $fullPath = realpath(storage_path('app/public/' . $path));
+    $fullPath = realpath(storage_path('app/public/'.$path));
 
-    if (! $fullPath || ! $basePath || ! str_starts_with($fullPath, $basePath . DIRECTORY_SEPARATOR) || ! is_file($fullPath)) {
+    if (! $fullPath || ! $basePath || ! str_starts_with($fullPath, $basePath.DIRECTORY_SEPARATOR) || ! is_file($fullPath)) {
         abort(404);
     }
 
@@ -231,11 +231,11 @@ Route::match(['GET', 'HEAD'], '/.well-known/acp.json', function () {
 
     return response()->json([
         'protocol' => [
-            'name'    => 'acp',
+            'name' => 'acp',
             'version' => '1.0',
         ],
         'api_base_url' => $apiBaseUrl,
-        'transports'   => ['http'],
+        'transports' => ['http'],
         'capabilities' => [
             'services' => [
                 'real-estate-catalog',
@@ -246,14 +246,14 @@ Route::match(['GET', 'HEAD'], '/.well-known/acp.json', function () {
             ],
         ],
         'description' => 'iLeben real-estate project and unit catalog API with checkout and reservation flows.',
-        'contact'     => [
+        'contact' => [
             'url' => url('/api/v1'),
         ],
     ], 200, [
-        'Content-Type'                 => 'application/json; charset=UTF-8',
-        'Access-Control-Allow-Origin'  => '*',
+        'Content-Type' => 'application/json; charset=UTF-8',
+        'Access-Control-Allow-Origin' => '*',
         'Access-Control-Allow-Methods' => 'GET, HEAD, OPTIONS',
-        'Cache-Control'                => 'public, max-age=3600',
+        'Cache-Control' => 'public, max-age=3600',
     ]);
 })->name('well-known.acp');
 
@@ -267,50 +267,50 @@ Route::match(['GET', 'HEAD'], '/.well-known/ucp', function () {
 
     return response()->json([
         'protocol_version' => '1.0',
-        'services'         => [
+        'services' => [
             [
-                'id'          => 'real-estate-catalog',
-                'name'        => 'iLeben Property Catalog',
+                'id' => 'real-estate-catalog',
+                'name' => 'iLeben Property Catalog',
                 'description' => 'Browse and filter real-estate projects and floor plans available for sale in Chile.',
-                'type'        => 'catalog',
-                'url'         => $apiBaseUrl . '/proyectos',
+                'type' => 'catalog',
+                'url' => $apiBaseUrl.'/proyectos',
             ],
             [
-                'id'          => 'reservations',
-                'name'        => 'Unit Reservation',
+                'id' => 'reservations',
+                'name' => 'Unit Reservation',
                 'description' => 'Reserve a specific housing unit (planta) temporarily.',
-                'type'        => 'reservation',
-                'url'         => $apiBaseUrl . '/reservations',
+                'type' => 'reservation',
+                'url' => $apiBaseUrl.'/reservations',
             ],
             [
-                'id'          => 'checkout',
-                'name'        => 'Payment Checkout',
+                'id' => 'checkout',
+                'name' => 'Payment Checkout',
                 'description' => 'Initiate a payment transaction via Transbank Webpay or Mercado Pago.',
-                'type'        => 'checkout',
-                'url'         => $apiBaseUrl . '/checkout',
+                'type' => 'checkout',
+                'url' => $apiBaseUrl.'/checkout',
             ],
         ],
         'capabilities' => [
             'payment_methods' => ['transbank', 'mercadopago', 'card'],
-            'currencies'      => ['CLP'],
-            'reservations'    => true,
-            'catalog'         => true,
-            'checkout'        => true,
+            'currencies' => ['CLP'],
+            'reservations' => true,
+            'catalog' => true,
+            'checkout' => true,
         ],
         'endpoints' => [
-            'catalog'      => $apiBaseUrl . '/proyectos',
-            'units'        => $apiBaseUrl . '/plantas',
-            'reservations' => $apiBaseUrl . '/reservations',
-            'checkout'     => $apiBaseUrl . '/checkout',
-            'payments'     => $apiBaseUrl . '/payments',
-            'openapi'      => url('/openapi.json'),
+            'catalog' => $apiBaseUrl.'/proyectos',
+            'units' => $apiBaseUrl.'/plantas',
+            'reservations' => $apiBaseUrl.'/reservations',
+            'checkout' => $apiBaseUrl.'/checkout',
+            'payments' => $apiBaseUrl.'/payments',
+            'openapi' => url('/openapi.json'),
         ],
         'spec_url' => 'https://ucp.dev/specification/overview/',
     ], 200, [
-        'Content-Type'                 => 'application/json; charset=UTF-8',
-        'Access-Control-Allow-Origin'  => '*',
+        'Content-Type' => 'application/json; charset=UTF-8',
+        'Access-Control-Allow-Origin' => '*',
         'Access-Control-Allow-Methods' => 'GET, HEAD, OPTIONS',
-        'Cache-Control'                => 'public, max-age=3600',
+        'Cache-Control' => 'public, max-age=3600',
     ]);
 })->name('well-known.ucp');
 
@@ -321,29 +321,29 @@ Route::match(['GET', 'HEAD'], '/.well-known/ucp', function () {
  * Payment methods: Transbank / Mercado Pago map to MPP "card" method.
  */
 Route::match(['GET', 'HEAD'], '/openapi.json', function () {
-    $apiBase  = rtrim(url('/api/v1'), '/');
+    $apiBase = rtrim(url('/api/v1'), '/');
     $siteBase = rtrim(url('/'), '/');
 
     $paymentInfo = [
-        'intent'      => 'charge',
-        'method'      => 'card',
-        'amount'      => 0,
-        'currency'    => 'CLP',
+        'intent' => 'charge',
+        'method' => 'card',
+        'amount' => 0,
+        'currency' => 'CLP',
         'description' => 'Access via Transbank Webpay or Mercado Pago',
-        'payment_url' => $apiBase . '/checkout',
+        'payment_url' => $apiBase.'/checkout',
     ];
 
     return response()->json([
         'openapi' => '3.1.0',
-        'info'    => [
-            'title'       => 'iLeben API',
-            'version'     => 'v1',
-            'description' => 'Real-estate project and unit catalog with checkout, reservations, and payment flows. ' .
+        'info' => [
+            'title' => 'iLeben API',
+            'version' => 'v1',
+            'description' => 'Real-estate project and unit catalog with checkout, reservations, and payment flows. '.
                              'Supports Transbank Webpay Plus and Mercado Pago.',
             'contact' => ['url' => $siteBase],
             'x-service-info' => [
-                'categories'   => ['real-estate', 'catalog', 'reservations', 'payments'],
-                'payment_page' => $apiBase . '/checkout',
+                'categories' => ['real-estate', 'catalog', 'reservations', 'payments'],
+                'payment_page' => $apiBase.'/checkout',
             ],
         ],
         'servers' => [
@@ -352,12 +352,12 @@ Route::match(['GET', 'HEAD'], '/openapi.json', function () {
         'paths' => [
             '/proyectos' => [
                 'get' => [
-                    'operationId'   => 'listProyectos',
-                    'summary'       => 'List real-estate projects',
-                    'description'   => 'Returns paginated projects with precio_desde and tipologias.',
-                    'tags'          => ['Catalog'],
+                    'operationId' => 'listProyectos',
+                    'summary' => 'List real-estate projects',
+                    'description' => 'Returns paginated projects with precio_desde and tipologias.',
+                    'tags' => ['Catalog'],
                     'x-payment-info' => $paymentInfo,
-                    'responses'     => [
+                    'responses' => [
                         '200' => ['description' => 'Paginated project list'],
                         '401' => ['description' => 'Unauthorized'],
                     ],
@@ -365,11 +365,11 @@ Route::match(['GET', 'HEAD'], '/openapi.json', function () {
             ],
             '/proyectos/{id}' => [
                 'get' => [
-                    'operationId'   => 'getProyecto',
-                    'summary'       => 'Get project detail',
-                    'tags'          => ['Catalog'],
+                    'operationId' => 'getProyecto',
+                    'summary' => 'Get project detail',
+                    'tags' => ['Catalog'],
                     'x-payment-info' => $paymentInfo,
-                    'parameters'    => [
+                    'parameters' => [
                         ['name' => 'id', 'in' => 'path', 'required' => true, 'schema' => ['type' => 'string']],
                     ],
                     'responses' => [
@@ -380,11 +380,11 @@ Route::match(['GET', 'HEAD'], '/openapi.json', function () {
             ],
             '/plantas' => [
                 'get' => [
-                    'operationId'   => 'listPlantas',
-                    'summary'       => 'List housing units (floor plans)',
-                    'tags'          => ['Catalog'],
+                    'operationId' => 'listPlantas',
+                    'summary' => 'List housing units (floor plans)',
+                    'tags' => ['Catalog'],
                     'x-payment-info' => $paymentInfo,
-                    'responses'     => [
+                    'responses' => [
                         '200' => ['description' => 'Paginated unit list'],
                         '401' => ['description' => 'Unauthorized'],
                     ],
@@ -392,11 +392,11 @@ Route::match(['GET', 'HEAD'], '/openapi.json', function () {
             ],
             '/plantas/{id}' => [
                 'get' => [
-                    'operationId'   => 'getPlanta',
-                    'summary'       => 'Get unit detail',
-                    'tags'          => ['Catalog'],
+                    'operationId' => 'getPlanta',
+                    'summary' => 'Get unit detail',
+                    'tags' => ['Catalog'],
                     'x-payment-info' => $paymentInfo,
-                    'parameters'    => [
+                    'parameters' => [
                         ['name' => 'id', 'in' => 'path', 'required' => true, 'schema' => ['type' => 'string']],
                     ],
                     'responses' => [
@@ -407,17 +407,17 @@ Route::match(['GET', 'HEAD'], '/openapi.json', function () {
             ],
             '/checkout' => [
                 'post' => [
-                    'operationId'   => 'initiateCheckout',
-                    'summary'       => 'Initiate payment checkout',
-                    'description'   => 'Start a Transbank Webpay or Mercado Pago payment session for a unit reservation.',
-                    'tags'          => ['Payments'],
+                    'operationId' => 'initiateCheckout',
+                    'summary' => 'Initiate payment checkout',
+                    'description' => 'Start a Transbank Webpay or Mercado Pago payment session for a unit reservation.',
+                    'tags' => ['Payments'],
                     'x-payment-info' => array_merge($paymentInfo, [
-                        'intent'      => 'session',
+                        'intent' => 'session',
                         'description' => 'Initiates a payment session via Transbank or Mercado Pago',
                     ]),
                     'requestBody' => [
                         'required' => true,
-                        'content'  => ['application/json' => ['schema' => ['type' => 'object']]],
+                        'content' => ['application/json' => ['schema' => ['type' => 'object']]],
                     ],
                     'responses' => [
                         '200' => ['description' => 'Checkout session initiated'],
@@ -428,11 +428,11 @@ Route::match(['GET', 'HEAD'], '/openapi.json', function () {
             '/reservations' => [
                 'post' => [
                     'operationId' => 'createReservation',
-                    'summary'     => 'Reserve a housing unit',
-                    'tags'        => ['Reservations'],
+                    'summary' => 'Reserve a housing unit',
+                    'tags' => ['Reservations'],
                     'requestBody' => [
                         'required' => true,
-                        'content'  => ['application/json' => ['schema' => ['type' => 'object']]],
+                        'content' => ['application/json' => ['schema' => ['type' => 'object']]],
                     ],
                     'responses' => [
                         '201' => ['description' => 'Reservation created'],
@@ -443,11 +443,11 @@ Route::match(['GET', 'HEAD'], '/openapi.json', function () {
             '/contact-submissions' => [
                 'post' => [
                     'operationId' => 'submitContact',
-                    'summary'     => 'Submit a contact / lead inquiry',
-                    'tags'        => ['Contact'],
+                    'summary' => 'Submit a contact / lead inquiry',
+                    'tags' => ['Contact'],
                     'requestBody' => [
                         'required' => true,
-                        'content'  => ['application/json' => ['schema' => ['type' => 'object']]],
+                        'content' => ['application/json' => ['schema' => ['type' => 'object']]],
                     ],
                     'responses' => [
                         '201' => ['description' => 'Submission received'],
@@ -459,17 +459,17 @@ Route::match(['GET', 'HEAD'], '/openapi.json', function () {
         'components' => [
             'securitySchemes' => [
                 'bearerAuth' => [
-                    'type'        => 'http',
-                    'scheme'      => 'bearer',
+                    'type' => 'http',
+                    'scheme' => 'bearer',
                     'bearerFormat' => 'Token',
                 ],
             ],
         ],
     ], 200, [
-        'Content-Type'                 => 'application/json; charset=UTF-8',
-        'Access-Control-Allow-Origin'  => '*',
+        'Content-Type' => 'application/json; charset=UTF-8',
+        'Access-Control-Allow-Origin' => '*',
         'Access-Control-Allow-Methods' => 'GET, HEAD, OPTIONS',
-        'Cache-Control'                => 'public, max-age=3600',
+        'Cache-Control' => 'public, max-age=3600',
     ]);
 })->name('openapi.json');
 
@@ -487,7 +487,7 @@ Route::get('/auth.md', function () {
         'Este documento define el protocolo y directrices de autenticación y registro para Agentes de Inteligencia Artificial (AI Agents) que interactúan con la plataforma iLeben.',
         '',
         '## Información General',
-        "- **Audiencia**: Agentes de IA autónomos, asistentes LLM, sistemas multiagente y servicios de integración comercial.",
+        '- **Audiencia**: Agentes de IA autónomos, asistentes LLM, sistemas multiagente y servicios de integración comercial.',
         "- **Servidor de Autorización OAuth 2.0**: `{$baseUrl}/.well-known/oauth-authorization-server`",
         "- **Metadatos de Recursos Protegidos (RFC 9728)**: `{$baseUrl}/.well-known/oauth-protected-resource`",
         "- **OpenID Connect Discovery**: `{$baseUrl}/.well-known/openid-configuration`",
@@ -543,10 +543,10 @@ Route::match(['GET', 'HEAD'], '/.well-known/oauth-authorization-server', functio
 
     return response()->json([
         'issuer' => $baseUrl,
-        'authorization_endpoint' => $baseUrl . '/oauth/authorize',
-        'token_endpoint' => $baseUrl . '/oauth/token',
-        'registration_endpoint' => $baseUrl . '/agent/register',
-        'jwks_uri' => $baseUrl . '/.well-known/jwks.json',
+        'authorization_endpoint' => $baseUrl.'/oauth/authorize',
+        'token_endpoint' => $baseUrl.'/oauth/token',
+        'registration_endpoint' => $baseUrl.'/agent/register',
+        'jwks_uri' => $baseUrl.'/.well-known/jwks.json',
         'response_types_supported' => ['code', 'token'],
         'grant_types_supported' => [
             'authorization_code',
@@ -567,8 +567,8 @@ Route::match(['GET', 'HEAD'], '/.well-known/oauth-authorization-server', functio
             'write',
         ],
         'agent_auth' => [
-            'skill' => $baseUrl . '/.well-known/agent-skills/auth-md/SKILL.md',
-            'register_uri' => $baseUrl . '/agent/register',
+            'skill' => $baseUrl.'/.well-known/agent-skills/auth-md/SKILL.md',
+            'register_uri' => $baseUrl.'/agent/register',
             'supported_identity_types' => ['anonymous', 'identity_assertion'],
             'identity_types_supported' => ['anonymous', 'identity_assertion'],
             'identity_assertion' => [
@@ -577,11 +577,11 @@ Route::match(['GET', 'HEAD'], '/.well-known/oauth-authorization-server', functio
                     'verified_email',
                 ],
                 'credential_types_supported' => ['bearer_token', 'api_key'],
-                'claim_uri' => $baseUrl . '/agent/claim',
+                'claim_uri' => $baseUrl.'/agent/claim',
             ],
             'anonymous' => [
                 'credential_types_supported' => ['bearer_token'],
-                'claim_uri' => $baseUrl . '/agent/claim',
+                'claim_uri' => $baseUrl.'/agent/claim',
             ],
         ],
     ], 200, [
@@ -601,11 +601,11 @@ Route::match(['GET', 'HEAD'], '/.well-known/openid-configuration', function () {
 
     return response()->json([
         'issuer' => $baseUrl,
-        'authorization_endpoint' => $baseUrl . '/oauth/authorize',
-        'token_endpoint' => $baseUrl . '/oauth/token',
-        'userinfo_endpoint' => $baseUrl . '/api/v1/user',
-        'jwks_uri' => $baseUrl . '/.well-known/jwks.json',
-        'registration_endpoint' => $baseUrl . '/agent/register',
+        'authorization_endpoint' => $baseUrl.'/oauth/authorize',
+        'token_endpoint' => $baseUrl.'/oauth/token',
+        'userinfo_endpoint' => $baseUrl.'/api/v1/user',
+        'jwks_uri' => $baseUrl.'/.well-known/jwks.json',
+        'registration_endpoint' => $baseUrl.'/agent/register',
         'scopes_supported' => [
             'openid',
             'profile',
@@ -648,7 +648,7 @@ Route::match(['GET', 'HEAD'], '/.well-known/oauth-protected-resource', function 
             'write',
         ],
         'bearer_methods_supported' => ['header'],
-        'resource_documentation' => $baseUrl . '/openapi.json',
+        'resource_documentation' => $baseUrl.'/openapi.json',
     ], 200, [
         'Content-Type' => 'application/json; charset=UTF-8',
         'Access-Control-Allow-Origin' => '*',
@@ -674,7 +674,7 @@ Route::match(['GET', 'HEAD'], '/.well-known/mcp/server-card.json', function () {
         ],
         'transport' => [
             'type' => 'streamable-http',
-            'endpoint' => $baseUrl . '/mcp',
+            'endpoint' => $baseUrl.'/mcp',
         ],
         'capabilities' => [
             'tools' => [
@@ -713,21 +713,21 @@ Route::match(['GET', 'HEAD'], '/.well-known/agent-skills/index.json', function (
                 'name' => 'catalog-search',
                 'type' => 'skill-md',
                 'description' => 'Search and inspect real estate projects, communes, and available housing units in Chile',
-                'url' => $baseUrl . '/.well-known/agent-skills/catalog-search/SKILL.md',
+                'url' => $baseUrl.'/.well-known/agent-skills/catalog-search/SKILL.md',
                 'digest' => 'sha256:20574a739eb3ad45de0792cb49690287dfc4af4ecaefd05bf5d9238c495a7162',
             ],
             [
                 'name' => 'unit-reservation',
                 'type' => 'skill-md',
                 'description' => 'Initiate and track unit reservations for real estate developments',
-                'url' => $baseUrl . '/.well-known/agent-skills/unit-reservation/SKILL.md',
+                'url' => $baseUrl.'/.well-known/agent-skills/unit-reservation/SKILL.md',
                 'digest' => 'sha256:e8004a617f90c168b1d44e40791f88176c3b768d0ab5829261652f9ececfca9b',
             ],
             [
                 'name' => 'auth-md',
                 'type' => 'skill-md',
                 'description' => 'Register and authenticate autonomous AI agents with the iLeben API',
-                'url' => $baseUrl . '/.well-known/agent-skills/auth-md/SKILL.md',
+                'url' => $baseUrl.'/.well-known/agent-skills/auth-md/SKILL.md',
                 'digest' => 'sha256:525d111db91c8b351344d640e04dca1592722318cb88b408cfa94520b2ac94db',
             ],
         ],
@@ -746,12 +746,12 @@ Route::get('/.well-known/agent-skills/{skill}/SKILL.md', function (string $skill
         'auth-md' => 'frontend/public/.well-known/agent-skills/auth-md/SKILL.md',
     ];
 
-    if (!isset($allowed[$skill])) {
+    if (! isset($allowed[$skill])) {
         abort(404);
     }
 
     $filePath = base_path($allowed[$skill]);
-    if (!file_exists($filePath)) {
+    if (! file_exists($filePath)) {
         abort(404);
     }
 
@@ -775,14 +775,14 @@ Route::match(['GET', 'HEAD'], '/.well-known/ai-catalog.json', function () {
         'specVersion' => '1.0',
         'host' => [
             'displayName' => 'iLeben Inmobiliaria',
-            'identifier' => 'did:web:' . $host,
+            'identifier' => 'did:web:'.$host,
         ],
         'entries' => [
             [
-                'identifier' => 'urn:air:' . $host . ':server:mcp',
+                'identifier' => 'urn:air:'.$host.':server:mcp',
                 'displayName' => 'iLeben Real Estate MCP Server',
                 'type' => 'application/mcp-server-card+json',
-                'url' => $baseUrl . '/.well-known/mcp/server-card.json',
+                'url' => $baseUrl.'/.well-known/mcp/server-card.json',
                 'representativeQueries' => [
                     'buscar proyectos inmobiliarios en santiago y el sur',
                     'consultar planos y tipologias de departamentos disponibles',
@@ -790,10 +790,10 @@ Route::match(['GET', 'HEAD'], '/.well-known/ai-catalog.json', function () {
                 ],
             ],
             [
-                'identifier' => 'urn:air:' . $host . ':api:openapi',
+                'identifier' => 'urn:air:'.$host.':api:openapi',
                 'displayName' => 'iLeben OpenAPI Real Estate Catalog API',
                 'type' => 'application/vnd.oai.openapi+json',
-                'url' => $baseUrl . '/openapi.json',
+                'url' => $baseUrl.'/openapi.json',
                 'representativeQueries' => [
                     'listar departamentos disponibles en venta chile',
                     'obtener especificaciones de la api rest de ileben',
@@ -801,20 +801,20 @@ Route::match(['GET', 'HEAD'], '/.well-known/ai-catalog.json', function () {
                 ],
             ],
             [
-                'identifier' => 'urn:air:' . $host . ':agent:skills',
+                'identifier' => 'urn:air:'.$host.':agent:skills',
                 'displayName' => 'iLeben Agent Skills Index',
                 'type' => 'application/json',
-                'url' => $baseUrl . '/.well-known/agent-skills/index.json',
+                'url' => $baseUrl.'/.well-known/agent-skills/index.json',
                 'representativeQueries' => [
                     'descubrir habilidades del agente inmobiliario ileben',
                     'habilidades para buscar proyectos y reservar departamentos',
                 ],
             ],
             [
-                'identifier' => 'urn:air:' . $host . ':agent:commerce',
+                'identifier' => 'urn:air:'.$host.':agent:commerce',
                 'displayName' => 'iLeben Agentic Commerce Protocol',
                 'type' => 'application/json',
-                'url' => $baseUrl . '/.well-known/acp.json',
+                'url' => $baseUrl.'/.well-known/acp.json',
                 'representativeQueries' => [
                     'comprar departamento en chile a traves de agente',
                     'cotizar reserva de departamento inmobiliario',

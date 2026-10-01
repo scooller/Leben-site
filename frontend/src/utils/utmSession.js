@@ -26,6 +26,13 @@ const normalizeUtmValue = (value) => {
 };
 
 const resolveDefaultValue = (config) => {
+  if (config.key === 'utm_campaign' && saleEventOptions.isSaleEvent && saleEventOptions.saleUtmCampaign) {
+    const overriddenDefaultValue = normalizeUtmValue(utmDefaultOverrides?.[config.key]);
+    if (!overriddenDefaultValue || ['auto-tagging', 'campaign'].includes(overriddenDefaultValue.toLowerCase())) {
+      return normalizeUtmValue(saleEventOptions.saleUtmCampaign);
+    }
+  }
+
   const overriddenDefaultValue = normalizeUtmValue(utmDefaultOverrides?.[config.key]);
   const effectiveDefaultValue = overriddenDefaultValue !== '' ? overriddenDefaultValue : config.defaultValue;
 
@@ -40,10 +47,22 @@ const resolveDefaultValue = (config) => {
   return normalizeUtmValue(effectiveDefaultValue);
 };
 
+let saleEventOptions = {
+  isSaleEvent: false,
+  saleCampaignOverride: '',
+  saleUtmCampaign: '',
+};
+
 export const setUtmDefaultOverrides = (overrides = {}, options = {}) => {
   if (!overrides || typeof overrides !== 'object') {
     return;
   }
+
+  saleEventOptions = {
+    isSaleEvent: Boolean(options?.isSaleEvent),
+    saleCampaignOverride: normalizeUtmValue(options?.saleCampaignOverride),
+    saleUtmCampaign: normalizeUtmValue(options?.saleUtmCampaign || options?.saleCampaignOverride),
+  };
 
   utmDefaultOverrides = {
     ...utmDefaultOverrides,
@@ -55,9 +74,14 @@ export const setUtmDefaultOverrides = (overrides = {}, options = {}) => {
 
   const storedValues = readStoredUtms();
   const nextValues = { ...storedValues };
-  const isSaleActive = Boolean(options?.isSaleEvent);
-  const forcedCampaignOverride = isSaleActive && normalizeUtmValue(options?.saleCampaignOverride) !== ''
-    ? normalizeUtmValue(options.saleCampaignOverride)
+  const isSaleActive = saleEventOptions.isSaleEvent;
+  const forcedCampaignOverride = isSaleActive && saleEventOptions.saleCampaignOverride !== ''
+    ? saleEventOptions.saleCampaignOverride
+    : '';
+
+  const isBrevoSource = (normalizeUtmValue(nextValues.utm_source) || '').toLowerCase() === 'brevo';
+  const effectiveBrevoCampaign = isSaleActive && isBrevoSource && saleEventOptions.saleUtmCampaign !== ''
+    ? saleEventOptions.saleUtmCampaign
     : '';
 
   const legacyDefaultValuesByKey = {
@@ -67,9 +91,16 @@ export const setUtmDefaultOverrides = (overrides = {}, options = {}) => {
   };
 
   UTM_PARAM_CONFIG.forEach((config) => {
-    if (config.key === 'utm_campaign' && forcedCampaignOverride !== '') {
-      nextValues[config.key] = forcedCampaignOverride;
-      return;
+    if (config.key === 'utm_campaign') {
+      if (effectiveBrevoCampaign !== '') {
+        nextValues[config.key] = effectiveBrevoCampaign;
+        return;
+      }
+
+      if (forcedCampaignOverride !== '') {
+        nextValues[config.key] = forcedCampaignOverride;
+        return;
+      }
     }
 
     const fallbackValue = resolveDefaultValue(config);
@@ -157,6 +188,16 @@ export const captureUtmParamsFromUrl = (search = '') => {
     }
   });
 
+  const isCapturedBrevo = (normalizeUtmValue(nextValues.utm_source) || '').toLowerCase() === 'brevo';
+  if (saleEventOptions.isSaleEvent && isCapturedBrevo && saleEventOptions.saleUtmCampaign !== '') {
+    nextValues.utm_campaign = saleEventOptions.saleUtmCampaign;
+  } else if (saleEventOptions.isSaleEvent && saleEventOptions.saleUtmCampaign !== '') {
+    const currentCampaign = normalizeUtmValue(nextValues.utm_campaign);
+    if (currentCampaign === '' || ['auto-tagging', 'campaign'].includes(currentCampaign.toLowerCase())) {
+      nextValues.utm_campaign = saleEventOptions.saleUtmCampaign;
+    }
+  }
+
   persistStoredUtms(nextValues);
 
   return nextValues;
@@ -210,6 +251,11 @@ export const getStoredUtmParams = () => {
       }
     }
   });
+
+  const isStoredBrevo = (normalizeUtmValue(nextValues.utm_source) || '').toLowerCase() === 'brevo';
+  if (saleEventOptions.isSaleEvent && isStoredBrevo && saleEventOptions.saleUtmCampaign !== '') {
+    nextValues.utm_campaign = saleEventOptions.saleUtmCampaign;
+  }
 
   persistStoredUtms(nextValues);
 

@@ -12,12 +12,12 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Icon;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Filament\Schemas\Components\Icon;
-use Filament\Support\Icons\Heroicon;
 
 class ProyectoForm
 {
@@ -31,11 +31,13 @@ class ProyectoForm
                         TextInput::make('name')
                             ->label('Nombre del Proyecto')
                             ->disabled()
+                            ->dehydrated(false)
                             ->required(),
 
                         TextInput::make('salesforce_id')
                             ->label('Salesforce Product ID')
                             ->disabled()
+                            ->dehydrated(false)
                             ->suffixAction(
                                 Action::make('openSalesforceProject')
                                     ->label('Ver en Salesforce')
@@ -50,6 +52,7 @@ class ProyectoForm
                         Textarea::make('descripcion')
                             ->label('Descripción')
                             ->disabled()
+                            ->dehydrated(false)
                             ->rows(3),
 
                         Select::make('tipo')
@@ -68,36 +71,43 @@ class ProyectoForm
 
                         TextInput::make('direccion')
                             ->label('Dirección')
-                            ->disabled(),
+                            ->disabled()
+                            ->dehydrated(false),
 
                         TextInput::make('comuna')
                             ->label('Comuna')
-                            ->disabled(),
+                            ->maxLength(255),
 
                         TextInput::make('provincia')
                             ->label('Provincia')
-                            ->disabled(),
+                            ->disabled()
+                            ->dehydrated(false),
 
                         TextInput::make('region')
                             ->label('Región')
-                            ->disabled(),
+                            ->disabled()
+                            ->dehydrated(false),
 
                         TextInput::make('razon_social')
                             ->label('Razón Social')
-                            ->disabled(),
+                            ->disabled()
+                            ->dehydrated(false),
 
                         TextInput::make('rut')
                             ->label('RUT')
-                            ->disabled(),
+                            ->disabled()
+                            ->dehydrated(false),
 
                         TextInput::make('email')
                             ->label('Email')
                             ->email()
-                            ->disabled(),
+                            ->disabled()
+                            ->dehydrated(false),
 
                         TextInput::make('telefono')
                             ->label('Teléfono')
-                            ->disabled(),
+                            ->disabled()
+                            ->dehydrated(false),
 
                         TextInput::make('pagina_web')
                             ->label('Página Web')
@@ -118,11 +128,13 @@ class ProyectoForm
 
                         DatePicker::make('fecha_inicio_ventas')
                             ->label('Fecha Inicio Ventas')
-                            ->disabled(),
+                            ->disabled()
+                            ->dehydrated(false),
 
                         TextInput::make('fecha_entrega')
                             ->label('Fecha de Entrega')
-                            ->disabled(),
+                            ->disabled()
+                            ->dehydrated(false),
 
                         Select::make('etapa')
                             ->options(Proyecto::etapaOptions())
@@ -132,7 +144,8 @@ class ProyectoForm
 
                         TextInput::make('horario_atencion')
                             ->label('Horario de Atención')
-                            ->disabled(),
+                            ->disabled()
+                            ->dehydrated(false),
 
                         Toggle::make('is_active')
                             ->label('Activo')
@@ -175,6 +188,7 @@ class ProyectoForm
                                 TextInput::make('salesforce_portada_url')
                                     ->label('Portada (Salesforce)')
                                     ->disabled()
+                                    ->dehydrated(false)
                                     ->url()
                                     ->suffixAction(
                                         Action::make('openSalesforcePortada')
@@ -187,6 +201,7 @@ class ProyectoForm
                                 TextInput::make('salesforce_logo_url')
                                     ->label('Logo (Salesforce)')
                                     ->disabled()
+                                    ->dehydrated(false)
                                     ->url()
                                     ->suffixAction(
                                         Action::make('openSalesforceLogo')
@@ -300,6 +315,7 @@ class ProyectoForm
                                     ->beforeLabel(Icon::make(Heroicon::CurrencyDollar))
                                     ->numeric()
                                     ->disabled()
+                                    ->dehydrated(false)
                                     ->prefix('$'),
 
                                 TextInput::make('descuento_defecto_cotizacion_web')
@@ -317,7 +333,7 @@ class ProyectoForm
                                     ->beforeLabel(Icon::make(Heroicon::PercentBadge))
                                     ->belowContent([
                                         'Se aplica cuando Sale este Activo',
-                                        Icon::make(Heroicon::InformationCircle)
+                                        Icon::make(Heroicon::InformationCircle),
                                     ])
                                     ->numeric()
                                     ->step(0.01)

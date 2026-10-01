@@ -332,10 +332,10 @@ function PlantsGrid({
   // Estado vacío
   if (plants.length === 0) {
     return (
-    <wa-callout variant="warning">
+      <wa-callout variant="warning">
         <wa-icon name="heart-crack" slot="icon"></wa-icon>
         No hay plantas disponibles por el momento. Por favor, vuelve más tarde o contáctanos para más información.
-    </wa-callout>
+      </wa-callout>
     );
   }
 
@@ -350,172 +350,171 @@ function PlantsGrid({
           {plants.map((plant) => (
             <wa-card
               key={plant.id}
-              className={`plant-card box-shadow-2 ${plant.isReserved || plant.isPaid ? 'plant-card--reserved' : 'plant-card--not-reserved'} ${isSaleEventActive && plant.discountPercentage > 0 ? 'plant-card--sale-unit' : 'plant-card--regular-unit'}`}
-              appearance="filled"
+              className={`plant-card glass-card box-shadow-2 ${plant.isReserved || plant.isPaid ? 'plant-card--reserved' : 'plant-card--not-reserved'} ${isSaleEventActive && plant.discountPercentage > 0 ? 'plant-card--sale-unit' : 'plant-card--regular-unit'}`}
+              appearance="plain"
             >
-                <div slot="media" className="plant-media">
-                    <img
-                    src={plant.imageUrl}
-                    alt={plant.nombre}
-                    onClick={() => openPlantDetail(plant)}
-                    className="plant-image"
-                    loading="lazy"
-                    decoding="async"
-                    />
-                    {plant.proyectoComuna && (
-                    <wa-badge variant="neutral" className="plant-comuna-badge"><wa-icon slot="start" name="map-location"></wa-icon>{plant.proyectoComuna}</wa-badge>
-                    )}
-                    {isSaleEventActive && saleLogoUrl && (
-                    <wa-badge variant="neutral" appearance="outlined" className="sale-logo-badge" aria-label="Logo sale">
-                        <img
-                        src={saleLogoUrl}
-                        alt="Logo Sale"
-                        className="sale-logo-image"
-                        />
-                    </wa-badge>
-                    )}
-                    {(() => {
-                        const unitDiscount = Number(plant.porcentajeAplicado ?? plant.discountPercentage) || 0;
-                        const ivaDiscount = Number(plant.descuentoIva ?? plant.descuento_iva) || 0;
-                        const hasIva = ivaDiscount > 0;
-                        const totalDiscount = hasIva ? Math.round(unitDiscount + ivaDiscount) : Math.round(unitDiscount);
-
-                        if (totalDiscount <= 0) {
-                            return null;
-                        }
-
-                        return (
-                            <wa-animation name="flash" duration={5000} iterations={Infinity}>
-                                <div className={`discount-seal-container${hasIva ? ' has-iva' : ''}`}>
-                                    {hasIva && (
-                                        <div className="discount-sub-seals">
-                                            <div className="discount-sub-seal discount-sub-seal--iva" title={`Descuento IVA: ${ivaDiscount}%`}>
-                                                <span className="discount-sub-seal-val">{ivaDiscount}%</span>
-                                                <span className="discount-sub-seal-lbl">IVA</span>
-                                            </div>
-                                            <div className="discount-sub-seal discount-sub-seal--unit" title={`Descuento Unidad: ${unitDiscount}%`}>
-                                                <span className="discount-sub-seal-val">{unitDiscount}%</span>
-                                                <span className="discount-sub-seal-lbl">Unidad</span>
-                                            </div>
-                                        </div>
-                                    )}
-                                    <div className="discount-seal" aria-label={`Descuento ${totalDiscount}%`}>
-                                        <span className="discount-seal-value">{totalDiscount}</span>
-                                        <span className="discount-seal-label">
-                                            <span className='simbol'>%</span>
-                                            descto.
-                                        </span>
-                                    </div>
-                                </div>
-                            </wa-animation>
-                        );
-                    })()}
-                </div>
-                <div slot="header" className="plant-header-wrapper">
-                    <div className="wa-cluster wa-gap-m wa-align-items-center plant-header wa-heading-l">
-                        <span>{plant.proyectoNombre}</span>
-                        <wa-badge appearance="filled-outlined" variant="neutral">Planta {plant.nombre}</wa-badge>
-                    </div>
-                </div>
-
-                <div slot="header-actions" className="wa-cluster wa-gap-xs">
-                    {plant.tipoProducto && (
-                    <wa-badge variant="neutral">{plant.tipoProducto}</wa-badge>
-                    )}
-                    {plant.proyectoEtapa && (
-                    <wa-badge variant="success" style={{ fontSize: 'var(--wa-font-size-xs)' }}>{resolveStageAlias(plant.proyectoEtapa, plant.proyectoSlug)}</wa-badge>
-                    )}
-                    {plant.isPaid && (
-                    <wa-badge variant="neutral"><wa-icon name="shop-slash" slot="start"></wa-icon>Pagada</wa-badge>
-                    )}
-                    {plant.isReserved && (
-                    <wa-badge variant="warning"><wa-icon name="business-time" slot="start"></wa-icon>Reservado</wa-badge>
-                    )}
-                </div>
-
-                <div className="plant-body">
-                    <div className="wa-split wa-gap-2xs plant-tags">
-                        {plant.programa && (
-                        <div className="wa-cluster wa-gap-xs">
-                            <wa-icon name="kaaba"></wa-icon>
-                            <span>{plant.programa}</span>
-                        </div>
-                        )}
-                        {plant.orientacion && (
-                        <div className="wa-cluster wa-gap-xs">
-                            <wa-icon name="compass" slot="header"></wa-icon>
-                            <span>Orient. {plant.orientacion}</span>
-                        </div>
-                        )}
-                        {plant.piso && (
-                        <div className="wa-cluster wa-gap-xs">
-                            <wa-icon name="arrow-right-to-city" slot="header"></wa-icon>
-                            <span>Piso {plant.piso}</span>
-                        </div>
-                        )}
-                        {plant.superficie_util && (
-                        <div className="wa-cluster wa-gap-xs">
-                            <wa-icon name="ruler" slot="header"></wa-icon>
-                            <span>Sup. {plant.superficie_util} m²</span>
-                        </div>
-                        )}
-                    </div>
-                </div>
-                {(plant.precioSeleccionado || plant.precioFinal || plant.precioBase || plant.precioLista) && (
-                <div slot="footer" className="plant-price-wrapper">
-                    <div className="price-detail">
-                    {(0 < plant.precioLista) && (plant.precioLista !== (plant.precioSeleccionado || plant.precioFinal || plant.precioBase)) && (
-                            <div className="prices-list">
-                                <span className="price-text">Precio lista:</span>
-                                <span className="price-label">
-                                    UF {plant.precioLista.toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                                </span>
-                            </div>
-                        )}
-                    {(0 < (plant.precioSeleccionado || plant.precioFinal || plant.precioBase)) && (
-                            <div className="prices-sale">
-                        <span className="price-text wa-text-uppercase">{plant.precioSeleccionadoEtiqueta || (isSaleEventActive ? 'Precio Sale:' : 'Precio Base:')}</span>
-                                <span className="price-label wa-font-weight-bold">
-                          UF {(plant.precioSeleccionado || plant.precioFinal || plant.precioBase).toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                                </span>
-                            </div>
-                        )}
-                    </div>
-                </div>
+              <div slot="media" className="plant-media">
+                <img
+                  src={plant.imageUrl}
+                  alt={plant.nombre}
+                  onClick={() => openPlantDetail(plant)}
+                  className="plant-image"
+                  loading="lazy"
+                  decoding="async"
+                />
+                {plant.proyectoComuna && (
+                  <wa-badge variant="neutral" className="plant-comuna-badge"><wa-icon slot="start" name="map-location"></wa-icon>{plant.proyectoComuna}</wa-badge>
                 )}
-                {/* Acciones */}
-                <div slot="footer-actions" className="wa-cluster wa-align-items-end wa-gap-s">
-                  <wa-button-group label="Alignment">
-                    <wa-button
-                      size="s"
-                      disabled={plant.isReserved || plant.isPaid || plant.isAvailable === false}
-                      {...(detailLoadingId === plant.id && { loading: true })}
-                      onClick={() => openPlantDetail(plant)}
-                    >
-                      <wa-icon name="building-circle-exclamation" slot="start"></wa-icon>
-                      Ver Detalles
-                    </wa-button>
-                    <wa-button
-                      size="s"
-                      variant="brand"
-                      disabled={checkoutLoading || plant.isReserved || plant.isPaid || plant.isAvailable === false}
-                      {...(checkoutLoading && { loading: true })}
-                      onClick={() => onQuickCheckout(plant)}
-                    >
-                      {plant.isPaid
-                        ? <><wa-icon name="house-circle-xmark" slot="start"></wa-icon>Pagada</>
-                        : plant.isReserved
-                          ? <><wa-icon name="house-lock" slot="start"></wa-icon>Reservado</>
-                          : plant.isAvailable === false
-                            ? <><wa-icon name="house-chimney-crack" slot="start"></wa-icon>No disponible</>
-                        : checkoutLoading
-                          ? 'Cargando...'
-                          : <><wa-icon name="comments-dollar" slot="start"></wa-icon>Reservar</>
-                      }
-                    </wa-button>
-                  </wa-button-group>
+                {isSaleEventActive && saleLogoUrl && (
+                  <div className="sale-logo-badge" aria-label="Logo sale">
+                    <img
+                      src={saleLogoUrl}
+                      alt="Logo Sale"
+                      className="sale-logo-image"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </div>
+                )}
+                {(() => {
+                  const unitDiscount = Number(plant.porcentajeAplicado ?? plant.discountPercentage) || 0;
+                  const ivaDiscount = Number(plant.descuentoIva ?? plant.descuento_iva) || 0;
+                  const hasIva = ivaDiscount > 0;
+                  const totalDiscountRaw = hasIva ? (unitDiscount + ivaDiscount) : unitDiscount;
+
+                  if (totalDiscountRaw <= 0) {
+                    return null;
+                  }
+
+                  const totalDiscount = totalDiscountRaw.toFixed(1);
+                  const ivaDiscountFormatted = ivaDiscount.toFixed(1);
+                  const unitDiscountFormatted = unitDiscount.toFixed(1);
+
+                  return (
+                    <wa-animation name="flash" duration={5000} iterations={Infinity}>
+                      <div className={`discount-seal-container${hasIva ? ' has-iva' : ''}`}>
+                        <div id={`discount-seal-${plant.id}`} className="discount-seal" aria-label={`Descuento ${totalDiscount}%`}>
+                          <span className="discount-seal-value">{totalDiscount}</span>
+                          <span className="discount-seal-label">
+                            <span className='simbol'>%</span>
+                            descto.
+                          </span>
+                        </div>
+                        {hasIva && (
+                          <wa-tooltip for={`discount-seal-${plant.id}`}>
+                            Dcto IVA {ivaDiscountFormatted}% + Dcto. Sale {unitDiscountFormatted}%
+                          </wa-tooltip>
+                        )}
+                      </div>
+                    </wa-animation>
+                  );
+                })()}
+              </div>
+              <div slot="header" className="plant-header-wrapper">
+                <div className="wa-cluster wa-gap-m wa-align-items-center plant-header wa-heading-l">
+                  <span>{plant.proyectoNombre}</span>
+                  <wa-badge appearance="filled-outlined" variant="neutral">Planta {plant.nombre}</wa-badge>
                 </div>
-              </wa-card>
+              </div>
+
+              <div slot="header-actions" className="wa-cluster wa-gap-xs">
+                {plant.tipoProducto && (
+                  <wa-badge variant="neutral">{plant.tipoProducto}</wa-badge>
+                )}
+                {plant.proyectoEtapa && (
+                  <wa-badge variant="neutral" style={{ fontSize: 'var(--wa-font-size-xs)' }}>{resolveStageAlias(plant.proyectoEtapa, plant.proyectoSlug)}</wa-badge>
+                )}
+                {plant.isPaid && (
+                  <wa-badge variant="neutral"><wa-icon name="shop-slash" slot="start"></wa-icon>Pagada</wa-badge>
+                )}
+                {plant.isReserved && (
+                  <wa-badge variant="warning"><wa-icon name="business-time" slot="start"></wa-icon>Reservado</wa-badge>
+                )}
+              </div>
+
+              <div className="plant-body">
+                <div className="wa-split wa-gap-2xs plant-tags">
+                  {plant.programa && (
+                    <div className="wa-cluster wa-gap-xs">
+                      <wa-icon name="kaaba"></wa-icon>
+                      <span>{plant.programa}</span>
+                    </div>
+                  )}
+                  {plant.orientacion && (
+                    <div className="wa-cluster wa-gap-xs">
+                      <wa-icon name="compass" slot="header"></wa-icon>
+                      <span>Orient. {plant.orientacion}</span>
+                    </div>
+                  )}
+                  {plant.piso && (
+                    <div className="wa-cluster wa-gap-xs">
+                      <wa-icon name="arrow-right-to-city" slot="header"></wa-icon>
+                      <span>Piso {plant.piso}</span>
+                    </div>
+                  )}
+                  {plant.superficie_util && (
+                    <div className="wa-cluster wa-gap-xs">
+                      <wa-icon name="ruler" slot="header"></wa-icon>
+                      <span>Sup. {plant.superficie_util} m²</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              {(plant.precioSeleccionado || plant.precioFinal || plant.precioBase || plant.precioLista) && (
+                <div slot="footer" className="plant-price-wrapper">
+                  <div className="price-detail">
+                    {(0 < plant.precioLista) && (plant.precioLista !== (plant.precioSeleccionado || plant.precioFinal || plant.precioBase)) && (
+                      <div className="prices-list">
+                        <span className="price-text">Precio normal: </span>
+                        <span className="price-label">
+                          UF {plant.precioLista.toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                        </span>
+                      </div>
+                    )}
+                    {(0 < (plant.precioSeleccionado || plant.precioFinal || plant.precioBase)) && (
+                      <div className="prices-sale">
+                        <span className="price-text wa-text-uppercase">{plant.precioSeleccionadoEtiqueta || (isSaleEventActive ? 'Precio Sale:' : 'Precio Base:')}</span>
+                        <span className="price-label wa-font-weight-bold">
+                          UF {(plant.precioSeleccionado || plant.precioFinal || plant.precioBase).toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              {/* Acciones */}
+              <div slot="footer-actions" className="wa-cluster wa-align-items-end wa-gap-s">
+                <wa-button-group label="Alignment">
+                  <wa-button
+                    size="s"
+                    disabled={plant.isReserved || plant.isPaid || plant.isAvailable === false}
+                    {...(detailLoadingId === plant.id && { loading: true })}
+                    onClick={() => openPlantDetail(plant)}
+                  >
+                    <wa-icon name="building-circle-exclamation" slot="start"></wa-icon>
+                    Ver Detalles
+                  </wa-button>
+                  <wa-button
+                    size="s"
+                    variant="brand"
+                    disabled={checkoutLoading || plant.isReserved || plant.isPaid || plant.isAvailable === false}
+                    {...(checkoutLoading && { loading: true })}
+                    onClick={() => onQuickCheckout(plant)}
+                  >
+                    {plant.isPaid
+                      ? <><wa-icon name="house-circle-xmark" slot="start"></wa-icon>Pagada</>
+                      : plant.isReserved
+                        ? <><wa-icon name="house-lock" slot="start"></wa-icon>Reservado</>
+                        : plant.isAvailable === false
+                          ? <><wa-icon name="house-chimney-crack" slot="start"></wa-icon>No disponible</>
+                          : checkoutLoading
+                            ? 'Cargando...'
+                            : <><wa-icon name="comments-dollar" slot="start"></wa-icon>Reservar</>
+                    }
+                  </wa-button>
+                </wa-button-group>
+              </div>
+            </wa-card>
           ))}
         </div>
       </div>

@@ -61,14 +61,23 @@ class PlantasRelationManager extends RelationManager
                     ->label('Superficie Útil')
                     ->formatStateUsing(fn ($state) => number_format((float) $state, 2, ',', '.'))
                     ->sortable(),
+                Tables\Columns\IconColumn::make('priorizar_descuentos')
+                    ->label('Dcto. Propio')
+                    ->boolean()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\IconColumn::make('is_active')
                     ->label('Activa')
                     ->boolean(),
             ])
             ->filters([
-                Tables\Filters\TernaryFilter::make('is_active')
-                    ->label('Activas')
-                    ->native(false),
+                Tables\Filters\Filter::make('solo_activas')
+                    ->label('Solo activas')
+                    ->toggle()
+                    ->query(fn ($query) => $query->where('is_active', true)),
+                Tables\Filters\Filter::make('solo_inactivas')
+                    ->label('Solo inactivas')
+                    ->toggle()
+                    ->query(fn ($query) => $query->where('is_active', false)),
             ])
             ->recordActions([
                 // Sin acciones de edición en la relación (lectura)

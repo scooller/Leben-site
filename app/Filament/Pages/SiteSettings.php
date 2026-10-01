@@ -8,6 +8,7 @@ use App\Filament\Actions\SyncProjectsAction;
 use App\Models\ContactChannel;
 use App\Models\Proyecto;
 use App\Models\SiteSetting;
+use App\Services\Salesforce\SalesforceCaseMapper;
 use Awcodes\Curator\Components\Forms\CuratorPicker;
 use Awcodes\Curator\Components\Forms\RichEditor\AttachCuratorMediaPlugin;
 use BackedEnum;
@@ -24,28 +25,30 @@ use Filament\Forms\Components\Toggle;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
+use Filament\Pages\Concerns\HasUnsavedDataChangesAlert;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Exceptions\Halt;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\HtmlString;
-use Omniphx\Forrest\Providers\Laravel\Facades\Forrest;
 use Throwable;
 use UnitEnum;
 
 class SiteSettings extends Page implements HasForms
 {
+    use HasUnsavedDataChangesAlert;
     use InteractsWithForms;
 
     /**
      * @return array<string, string>
      */
-    protected static function projectOptions(): array
+    public static function projectOptions(): array
     {
         return Proyecto::query()
             ->orderBy('is_active', 'desc')
@@ -70,6 +73,116 @@ class SiteSettings extends Page implements HasForms
                 return [$name => $label];
             })
             ->toArray();
+    }
+
+    /**
+     * @return array<int, \Filament\Schemas\Components\Component>
+     */
+    public static function getContactFormFieldsSchema(): array
+    {
+        return [
+            TextInput::make('key')
+                ->label('Clave interna')
+                ->required()
+                ->maxLength(50)
+                ->live(onBlur: true)
+                ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                    if (! filled($get('salesforce_field'))) {
+                        $set('salesforce_field', SalesforceCaseMapper::defaultPayloadFieldForKey($state));
+                    }
+                })
+                ->helperText('Ej: name, rut, email, reason, message'),
+
+            TextInput::make('label')
+                ->label('Etiqueta')
+                ->required()
+                ->maxLength(100),
+
+            TextInput::make('icon')
+                ->label('Ícono')
+                ->maxLength(100)
+                ->placeholder('Ej: envelope, phone, map-location')
+                ->helperText('Nombre del ícono de Web Awesome que se mostrará en el campo.'),
+
+            Select::make('type')
+                ->label('Tipo')
+                ->options([
+                    'text' => 'Texto',
+                    'email' => 'Email',
+                    'tel' => 'Teléfono',
+                    'number' => 'Número',
+                    'textarea' => 'Área de texto',
+                    'rut' => 'RUT',
+                    'select' => 'Selector',
+                ])
+                ->required()
+                ->default('text')
+                ->live(),
+
+            Select::make('salesforce_field')
+                ->label('Campo en Payload Salesforce')
+                ->placeholder('Sin mapeo directo / Automático')
+                ->options(SalesforceCaseMapper::getSelectablePayloadFields())
+                ->disableOptionsWhenSelectedInSiblingRepeaterItems()
+                ->searchable()
+                ->nullable()
+                ->default(fn (Get $get): ?string => SalesforceCaseMapper::defaultPayloadFieldForKey($get('key')))
+                ->afterStateHydrated(function (Select $component, $state, Get $get) {
+                    if (! filled($state) && filled($get('key'))) {
+                        $component->state(SalesforceCaseMapper::defaultPayloadFieldForKey($get('key')));
+                    }
+                })
+                ->dehydrateStateUsing(fn ($state, Get $get) => filled($state) ? $state : SalesforceCaseMapper::defaultPayloadFieldForKey($get('key')))
+                ->formatStateUsing(fn ($state, Get $get): ?string => $state ?: SalesforceCaseMapper::defaultPayloadFieldForKey($get('key')))
+                ->helperText('Campo asociado del payload que se enviará a Salesforce Lead.'),
+
+            Select::make('projects')
+                ->label('Mostrar para proyecto')
+                ->options(self::projectOptions())
+                ->multiple()
+                ->searchable()
+                ->preload()
+                ->visible(fn (Get $get): bool => $get('type') !== 'select')
+                ->helperText('Opcional. Si seleccionas proyectos, este campo solo se mostrará cuando el proyecto seleccionado pertenezca a alguno de ellos.'),
+
+            TextInput::make('placeholder')
+                ->label('Placeholder')
+                ->maxLength(255),
+
+            Repeater::make('options')
+                ->label('Opciones del selector')
+                ->schema([
+                    TextInput::make('label')
+                        ->label('Etiqueta')
+                        ->required()
+                        ->maxLength(100),
+
+                    TextInput::make('value')
+                        ->label('Valor')
+                        ->required()
+                        ->maxLength(100),
+
+                    Select::make('projects')
+                        ->label('Mostrar para proyecto')
+                        ->options(self::projectOptions())
+                        ->multiple()
+                        ->searchable()
+                        ->preload()
+                        ->columnSpanFull()
+                        ->helperText('Opcional. Si seleccionas proyectos, esta opción solo se usará para esos proyectos.'),
+                ])
+                ->visible(fn (Get $get): bool => $get('type') === 'select')
+                ->defaultItems(0)
+                ->reorderable()
+                ->collapsible()
+                ->columns(2)
+                ->columnSpanFull()
+                ->helperText('Estas opciones estarán disponibles en el frontend cuando el tipo sea Selector.'),
+
+            Toggle::make('required')
+                ->label('Obligatorio')
+                ->default(false),
+        ];
     }
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCog6Tooth;
@@ -111,6 +224,7 @@ class SiteSettings extends Page implements HasForms
         }
 
         $this->form->fill($data);
+        $this->rememberData();
 
         if (\Illuminate\Support\Facades\Cache::pull('salesforce_oauth_just_connected')) {
             Notification::make()
@@ -355,35 +469,45 @@ class SiteSettings extends Page implements HasForms
                                         Select::make('webawesome_theme')
                                             ->label('Tema Web Awesome')
                                             ->options([
-                                                'default' => 'Default',
-                                                'awesome' => 'Awesome',
-                                                'shoelace' => 'Shoelace',
-                                                'active' => 'Active',
-                                                'brutalist' => 'Brutalist',
-                                                'glossy' => 'Glossy',
-                                                'matter' => 'Matter',
-                                                'mellow' => 'Mellow',
-                                                'playful' => 'Playful',
-                                                'premium' => 'Premium',
-                                                'tailspin' => 'Tailspin',
+                                                'Temas Gratuitos (Core)' => [
+                                                    'default' => 'Default (Estándar Web Awesome)',
+                                                    'awesome' => 'Awesome (Moderno y distintivo)',
+                                                    'shoelace' => 'Shoelace (Clásico y neutral)',
+                                                ],
+                                                'Temas Pro' => [
+                                                    'active' => 'Active (Dinámico y deportivo)',
+                                                    'brutalist' => 'Brutalist (Alto contraste y bordes marcados)',
+                                                    'glossy' => 'Glossy (Reflejos y estética glassmorphism)',
+                                                    'matter' => 'Matter (Inspirado en Material Design)',
+                                                    'mellow' => 'Mellow (Cálido y redondeado)',
+                                                    'playful' => 'Playful (Lúdico y amigable)',
+                                                    'premium' => 'Premium (Elegante y refinado)',
+                                                    'tailspin' => 'Tailspin (Inspirado en Tailwind)',
+                                                ],
                                             ])
-                                            ->helperText('Define el estilo base y colores del sitio')
+                                            ->helperText('Define el estilo base, bordes, sombras y tipografía del sitio')
+                                            ->searchable()
                                             ->required(),
 
                                         Select::make('webawesome_palette')
                                             ->label('Paleta de Colores')
                                             ->options([
-                                                'default' => 'Default',
-                                                'bright' => 'Bright',
-                                                'shoelace' => 'Shoelace',
-                                                'rudimentary' => 'Rudimentary (Pro)',
-                                                'elegant' => 'Elegant (Pro)',
-                                                'mild' => 'Mild (Pro)',
-                                                'natural' => 'Natural (Pro)',
-                                                'anodized' => 'Anodized (Pro)',
-                                                'vogue' => 'Vogue (Pro)',
+                                                'Paletas Gratuitas (Core)' => [
+                                                    'default' => 'Default (Equilibrada estándar)',
+                                                    'bright' => 'Bright (Vibrante y saturada)',
+                                                    'shoelace' => 'Shoelace (Clásica neutral)',
+                                                ],
+                                                'Paletas Pro' => [
+                                                    'rudimentary' => 'Rudimentary (Tonos primarios y directos)',
+                                                    'elegant' => 'Elegant (Tonos sobrios y refinados)',
+                                                    'mild' => 'Mild (Tonos suaves y desaturados)',
+                                                    'natural' => 'Natural (Tonos orgánicos y tierra)',
+                                                    'anodized' => 'Anodized (Metálico e industrial)',
+                                                    'vogue' => 'Vogue (Alta costura y contraste editorial)',
+                                                ],
                                             ])
-                                            ->helperText('Define los tonos y matices específicos de los colores')
+                                            ->helperText('Define los tonos y matices específicos de los colores de la interfaz')
+                                            ->searchable()
                                             ->required(),
 
                                         // agregar color principal de la marca para aplicar a botones, enlaces y elementos destacados
@@ -392,6 +516,22 @@ class SiteSettings extends Page implements HasForms
                                             ->default('#eb0029')
                                             ->required()
                                             ->helperText('Color principal de tu marca, aplicado a botones, enlaces y elementos destacados'),
+
+                                        Select::make('default_color_mode')
+                                            ->label('Modo de Color por Defecto')
+                                            ->options([
+                                                'system' => 'Sistema (detecta preferencia del dispositivo)',
+                                                'dark' => 'Oscuro',
+                                                'light' => 'Claro',
+                                            ])
+                                            ->default('system')
+                                            ->required()
+                                            ->helperText('Determina el modo visual inicial cuando el visitante no ha seleccionado una preferencia'),
+
+                                        Toggle::make('show_theme_toggle')
+                                            ->label('Mostrar Switch Modo Oscuro/Claro')
+                                            ->default(true)
+                                            ->helperText('Muestra u oculta el botón flotante de cambio de modo en todas las páginas del frontend'),
                                     ])
                                     ->columns(2),
 
@@ -550,7 +690,7 @@ class SiteSettings extends Page implements HasForms
                                         Placeholder::make('serp_snippet_preview')
                                             ->hiddenLabel()
                                             ->content(fn (Get $get): \Illuminate\Contracts\View\View => view('filament.components.serp-snippet-preview', [
-                                                'title' => $get('extra_settings.default_meta_title') ?: ($get('site_name') ? $get('site_name') . ' | Departamentos y Proyectos en Venta' : ''),
+                                                'title' => $get('extra_settings.default_meta_title') ?: ($get('site_name') ? $get('site_name').' | Departamentos y Proyectos en Venta' : ''),
                                                 'description' => $get('extra_settings.default_og_description') ?: ($get('site_description') ?: ''),
                                                 'siteUrl' => $get('site_url') ?: 'https://sale.ileben.cl',
                                                 'siteName' => $get('site_name') ?: 'iLeben',
@@ -883,89 +1023,14 @@ class SiteSettings extends Page implements HasForms
 
                                         Repeater::make('contact_form_fields')
                                             ->label('Campos del formulario de contacto')
-                                            ->schema([
-                                                TextInput::make('key')
-                                                    ->label('Clave interna')
-                                                    ->required()
-                                                    ->maxLength(50)
-                                                    ->helperText('Ej: name, rut, email, reason, message'),
-
-                                                TextInput::make('label')
-                                                    ->label('Etiqueta')
-                                                    ->required()
-                                                    ->maxLength(100),
-
-                                                TextInput::make('icon')
-                                                    ->label('Ícono')
-                                                    ->maxLength(100)
-                                                    ->placeholder('Ej: envelope, phone, map-location')
-                                                    ->helperText('Nombre del ícono de Web Awesome que se mostrará en el campo.'),
-
-                                                Select::make('type')
-                                                    ->label('Tipo')
-                                                    ->options([
-                                                        'text' => 'Texto',
-                                                        'email' => 'Email',
-                                                        'tel' => 'Teléfono',
-                                                        'number' => 'Número',
-                                                        'textarea' => 'Área de texto',
-                                                        'rut' => 'RUT',
-                                                        'select' => 'Selector',
-                                                    ])
-                                                    ->required()
-                                                    ->default('text')
-                                                    ->live(),
-
-                                                Select::make('projects')
-                                                    ->label('Mostrar para proyecto')
-                                                    ->options(self::projectOptions())
-                                                    ->multiple()
-                                                    ->searchable()
-                                                    ->preload()
-                                                    ->visible(fn (Get $get): bool => $get('type') !== 'select')
-                                                    ->helperText('Opcional. Si seleccionas proyectos, este campo solo se mostrará cuando el proyecto seleccionado pertenezca a alguno de ellos.'),
-
-                                                TextInput::make('placeholder')
-                                                    ->label('Placeholder')
-                                                    ->maxLength(255),
-
-                                                Repeater::make('options')
-                                                    ->label('Opciones del selector')
-                                                    ->schema([
-                                                        TextInput::make('label')
-                                                            ->label('Etiqueta')
-                                                            ->required()
-                                                            ->maxLength(100),
-
-                                                        TextInput::make('value')
-                                                            ->label('Valor')
-                                                            ->required()
-                                                            ->maxLength(100),
-
-                                                        Select::make('projects')
-                                                            ->label('Mostrar para proyecto')
-                                                            ->options(self::projectOptions())
-                                                            ->multiple()
-                                                            ->searchable()
-                                                            ->preload()
-                                                            ->columnSpanFull()
-                                                            ->helperText('Opcional. Si seleccionas proyectos, esta opción solo se usará para esos proyectos.'),
-                                                    ])
-                                                    ->visible(fn (Get $get): bool => $get('type') === 'select')
-                                                    ->defaultItems(0)
-                                                    ->reorderable()
-                                                    ->collapsible()
-                                                    ->columns(2)
-                                                    ->columnSpanFull()
-                                                    ->helperText('Estas opciones estarán disponibles en el frontend cuando el tipo sea Selector.'),
-
-                                                Toggle::make('required')
-                                                    ->label('Obligatorio')
-                                                    ->default(false),
-                                            ])
+                                            ->schema(self::getContactFormFieldsSchema())
                                             ->defaultItems(0)
                                             ->reorderable()
                                             ->collapsible()
+                                            ->itemLabel(fn (array $state): ?string => filled($state['label'] ?? null)
+                                                ? ($state['label'].' ('.($state['key'] ?? '').(($sf = ($state['salesforce_field'] ?? SalesforceCaseMapper::defaultPayloadFieldForKey($state['key'] ?? null))) ? ' → '.$sf : '').')')
+                                                : null
+                                            )
                                             ->columns(2)
                                             ->helperText('Puedes definir cuántos campos deseas mostrar y validar en el formulario, incluyendo RUT y selectores.'),
                                     ])
@@ -1047,13 +1112,13 @@ class SiteSettings extends Page implements HasForms
                                         Textarea::make('extra_settings.post_contact_script')
                                             ->label('Script Post-Contacto')
                                             ->rows(6)
-                                            ->placeholder('<script>' . "\n" . '  if (typeof fbq === "function") {' . "\n" . '    fbq("track", "Lead", { name: "{name}", email: "{email}" });' . "\n" . '  }' . "\n" . '</script>')
+                                            ->placeholder('<script>'."\n".'  if (typeof fbq === "function") {'."\n".'    fbq("track", "Lead", { name: "{name}", email: "{email}" });'."\n".'  }'."\n".'</script>')
                                             ->helperText('Se dispara inmediatamente tras enviar con éxito el formulario de contacto. Tokens disponibles: {form_id}, {channel}, {name}, {email}, {phone}, {rut}, {project_id}.'),
 
                                         Textarea::make('extra_settings.post_payment_script')
                                             ->label('Script Post-Pago / Reserva')
                                             ->rows(6)
-                                            ->placeholder('<script>' . "\n" . '  if (typeof fbq === "function") {' . "\n" . '    fbq("track", "Purchase", { value: {amount}, currency: "CLP" });' . "\n" . '  }' . "\n" . '</script>')
+                                            ->placeholder('<script>'."\n".'  if (typeof fbq === "function") {'."\n".'    fbq("track", "Purchase", { value: {amount}, currency: "CLP" });'."\n".'  }'."\n".'</script>')
                                             ->helperText('Se dispara tras iniciar un checkout, enviar comprobante o confirmar el pago con éxito. Tokens disponibles: {payment_id}, {order_id}, {amount}, {gateway}, {unit_id}, {project_id}, {customer_email}, {customer_name}, {customer_phone}, {customer_rut}.'),
                                     ])
                                     ->columns(1),
@@ -1114,10 +1179,11 @@ class SiteSettings extends Page implements HasForms
                                         Select::make('extra_settings.price_source')
                                             ->label('Precio principal')
                                             ->options([
+                                                'lista' => 'Precio lista',
                                                 'final' => 'Precio final',
                                                 'base' => 'Precio base',
                                             ])
-                                            ->default('final')
+                                            ->default('lista')
                                             ->required()
                                             ->helperText('El precio lista se mostrará siempre como referencia, independientemente del valor elegido aquí.'),
 
@@ -1197,7 +1263,7 @@ class SiteSettings extends Page implements HasForms
                                             ->searchable()
                                             ->preload()
                                             ->default([]),
-                                    ]),                                
+                                    ]),
 
                                 Section::make('Conexión OAuth')
                                     ->description('Conecta con Salesforce para autorizar la integración.')
@@ -1381,6 +1447,8 @@ class SiteSettings extends Page implements HasForms
             }
 
             $settings->update($data);
+            $this->rememberData();
+            $this->dispatch('site-settings-saved');
 
             Notification::make()
                 ->success()
@@ -1390,5 +1458,10 @@ class SiteSettings extends Page implements HasForms
         } catch (Halt $exception) {
             return;
         }
+    }
+
+    protected function hasUnsavedDataChangesAlert(): bool
+    {
+        return false;
     }
 }

@@ -43,12 +43,16 @@
 
 .contact-content-card::part(base),
 .contact-info-card::part(base) {
-  border-radius: 1rem;
+  border-radius: var(--wa-border-radius-l, 1rem);
 }
 
 .contact-content-card,
 .contact-info-card {
-  padding: var(--wa-space-m);
+  --spacing: var(--wa-space-l);
+
+  @media (max-width: 768px) {
+    --spacing: var(--wa-space-s);
+  }
 }
 
 .contact-content-card h2,
@@ -56,9 +60,12 @@
   margin: 0;
 }
 
-.contact-form {
-  margin-top: var(--wa-space-s);
+.contact-page .home-container {
+  @media (max-width: 768px) {
+    padding: var(--wa-space-m) var(--wa-space-s);
+  }
 }
+
 
 // Extiende la base global de .turnstile-wrapper (definida en global.scss)
 // agregando posicionamiento para superponer el skeleton de carga.
@@ -77,6 +84,13 @@
 
 .contact-form wa-button {
   justify-self: flex-start;
+}
+
+.contact-required-hint {
+  display: block;
+  font-size: var(--wa-font-size-xs, 0.75rem);
+  color: var(--wa-color-text-quiet);
+  margin-top: calc(var(--wa-space-2xs) * -1);
 }
 
 .contact-link {

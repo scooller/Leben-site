@@ -56,7 +56,7 @@ class ResetSalePlantsAction
         } catch (Throwable $throwable) {
             return [
                 'success' => false,
-                'message' => 'Error al resetear plantas Sale: ' . $throwable->getMessage(),
+                'message' => 'Error al resetear plantas Sale: '.$throwable->getMessage(),
                 'count' => 0,
             ];
         }

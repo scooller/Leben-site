@@ -23,7 +23,7 @@ class MakeContactFieldsOptional extends Command
             $this->warn('[DRY RUN] No changes will be saved.');
         }
 
-        $this->info('Target fields: ' . implode(', ', $keys));
+        $this->info('Target fields: '.implode(', ', $keys));
 
         // --- Global site_settings ---
         $settings = SiteSetting::current();

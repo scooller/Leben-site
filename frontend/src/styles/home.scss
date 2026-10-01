@@ -342,8 +342,8 @@ html.wa-light {
   color: #ffffff;
   display: inline-flex;
   flex-direction: row;
-  width: 4.55rem;
-  height: 4.55rem;
+  width: 5.55rem;
+  height: 5.55rem;
   justify-content: center;
   line-height: 1;
   padding: 0.25rem;
@@ -355,9 +355,10 @@ html.wa-light {
   z-index: 2;
 
   .discount-seal-value {
-    font-size: 1.6rem;
+    font-size: 1.45rem;
     font-weight: 800;
-    letter-spacing: 0.02em;
+    letter-spacing: -0.02em;
+    white-space: nowrap;
   }
 
   .discount-seal-label {
@@ -437,6 +438,7 @@ html.wa-light {
 .plant-detail-media>a {
   display: block;
   height: 100%;
+  background-color: var(--wa-color-white);
 }
 
 // Dialogo de plantas
@@ -491,8 +493,9 @@ html.wa-light {
   display: block;
   height: 100%;
   max-height: none;
-  object-fit: cover;
+  object-fit: contain;
   width: 100%;
+  aspect-ratio: 32 / 15;
 }
 
 .advisor-contact-list {
@@ -570,13 +573,6 @@ html.wa-light {
   transform: translateY(-1px);
 }
 
-.theme-floating-toggle {
-  bottom: clamp(0.75rem, 2vw, 1.5rem);
-  left: clamp(0.75rem, 2vw, 1.5rem);
-  position: fixed;
-  z-index: 40;
-  border-radius: var(--wa-border-radius-circle);
-}
 
 .route-plant-loading-dialog::part(panel) {
   max-width: min(90vw, 26rem);

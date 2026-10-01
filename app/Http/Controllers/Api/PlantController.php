@@ -249,11 +249,15 @@ class PlantController extends Controller
         $extraSettings = SiteSetting::current()->extra_settings;
         $pricePercentageSource = is_array($extraSettings) ? ($extraSettings['price_percentage_source'] ?? 'web_discount') : 'web_discount';
 
-        $orderByDiscountExpression = $pricePercentageSource === 'max_unit'
-            ? "COALESCE({$projectMaxDiscountExpression}, 0)"
-            : "COALESCE({$projectDefaultDiscountExpression}, 0)";
+        $effectiveMaxDiscount = "CASE WHEN plants.priorizar_descuentos = 1 THEN COALESCE(plants.descuento_maximo_unidad, 0) ELSE COALESCE({$projectMaxDiscountExpression}, 0) END";
+        $effectiveDefaultDiscount = "CASE WHEN plants.priorizar_descuentos = 1 THEN COALESCE(plants.descuento_defecto_cotizacion_web, 0) ELSE COALESCE({$projectDefaultDiscountExpression}, 0) END";
+        $effectiveIvaDiscount = "CASE WHEN plants.priorizar_descuentos = 1 THEN COALESCE(plants.descuento_iva, 0) ELSE COALESCE({$projectIvaDiscountExpression}, 0) END";
 
-        $orderByTotalDiscount = "({$orderByDiscountExpression} + COALESCE({$projectIvaDiscountExpression}, 0))";
+        $orderByDiscountExpression = $pricePercentageSource === 'max_unit'
+            ? $effectiveMaxDiscount
+            : $effectiveDefaultDiscount;
+
+        $orderByTotalDiscount = "({$orderByDiscountExpression} + {$effectiveIvaDiscount})";
 
         $query->orderByRaw(
             "COALESCE(CASE WHEN {$orderByTotalDiscount} > 0 AND precio_lista > 0 THEN CASE WHEN (precio_lista - ((precio_lista * {$orderByTotalDiscount}) / 100)) < 0 THEN 0 ELSE (precio_lista - ((precio_lista * {$orderByTotalDiscount}) / 100)) END ELSE precio_base END, 999999999999) ASC"

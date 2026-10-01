@@ -47,7 +47,7 @@ function SiteHeader({ config, currentPath = '/', onNavigate, onMenuClick }) {
         <div className="wa-split wa-gap-s wa-align-items-center" style={{ width: '100%' }}>
           <wa-button appearance="plain" href={trackedSiteUrl} target="_blank">
             {logoSrc ? (
-              <img src={logoSrc} alt={config?.site_name || 'Logo'} className="site-logo" />
+              <img src={logoSrc} alt={config?.site_name || 'Logo'} className="site-logo" loading="lazy" decoding="async" />
             ) : (
               <span className="site-name">{config?.site_name || 'iLeben'}</span>
             )}
@@ -93,7 +93,7 @@ function SiteHeader({ config, currentPath = '/', onNavigate, onMenuClick }) {
       <nav slot="navigation" className="site-mobile-nav wa-stack wa-gap-s wa-p-l" aria-label="Navegación móvil">
         <div className="wa-py-s wa-border-bottom">
           {logoSrc ? (
-            <img src={logoSrc} alt={config?.site_name || 'Logo'} className="site-logo" />
+            <img src={logoSrc} alt={config?.site_name || 'Logo'} className="site-logo" loading="lazy" decoding="async" />
           ) : (
             <span className="site-name">{config?.site_name || 'iLeben'}</span>
           )}

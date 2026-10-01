@@ -20,11 +20,13 @@ use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Components\Wizard\Step;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Throwable;
 
 class ImportContactSubmissionsCsvAction
 {
@@ -43,7 +45,7 @@ class ImportContactSubmissionsCsvAction
                     ->schema([
                         Select::make('contact_channel_id')
                             ->label('Canal de contacto (obligatorio)')
-                            ->options(fn(): array => ContactChannel::query()
+                            ->options(fn (): array => ContactChannel::query()
                                 ->where('is_active', true)
                                 ->orderBy('name')
                                 ->pluck('name', 'id')
@@ -78,25 +80,25 @@ class ImportContactSubmissionsCsvAction
                             ->disk('local')
                             ->directory('imports/contact-submissions')
                             ->acceptedFileTypes(['text/csv', 'text/plain', 'application/vnd.ms-excel'])
-                            ->visible(fn(Get $get): bool => (string) ($get('csv_source') ?? 'upload') === 'upload')
+                            ->visible(fn (Get $get): bool => (string) ($get('csv_source') ?? 'upload') === 'upload')
                             ->validationMessages([
                                 'required' => 'Debes subir un archivo CSV para continuar.',
                             ])
-                            ->required(fn(Get $get): bool => (string) ($get('csv_source') ?? 'upload') === 'upload')
+                            ->required(fn (Get $get): bool => (string) ($get('csv_source') ?? 'upload') === 'upload')
                             ->afterStateUpdated(function (Get $get, Set $set): void {
                                 self::prefillSuggestedMappings($get, $set);
                             })
                             ->live(),
                         Select::make('curator_media_id')
                             ->label('Archivo CSV desde Archivos')
-                            ->options(fn(): array => self::csvMediaOptions())
+                            ->options(fn (): array => self::csvMediaOptions())
                             ->searchable()
                             ->preload()
-                            ->visible(fn(Get $get): bool => (string) ($get('csv_source') ?? 'upload') === 'files')
+                            ->visible(fn (Get $get): bool => (string) ($get('csv_source') ?? 'upload') === 'files')
                             ->validationMessages([
                                 'required' => 'Debes elegir un archivo CSV desde Archivos para continuar.',
                             ])
-                            ->required(fn(Get $get): bool => (string) ($get('csv_source') ?? 'upload') === 'files')
+                            ->required(fn (Get $get): bool => (string) ($get('csv_source') ?? 'upload') === 'files')
                             ->live()
                             ->afterStateUpdated(function (Get $get, Set $set): void {
                                 self::prefillSuggestedMappings($get, $set);
@@ -104,12 +106,13 @@ class ImportContactSubmissionsCsvAction
                         Select::make('delimiter')
                             ->label('Delimitador')
                             ->options([
+                                'auto' => 'Detectar automáticamente (recomendado)',
                                 ',' => 'Coma (,)',
                                 ';' => 'Punto y coma (;)',
                                 "\t" => 'Tabulador',
                                 '|' => 'Pipe (|)',
                             ])
-                            ->default(',')
+                            ->default('auto')
                             ->live()
                             ->afterStateUpdated(function (Get $get, Set $set): void {
                                 self::prefillSuggestedMappings($get, $set);
@@ -125,6 +128,55 @@ class ImportContactSubmissionsCsvAction
                                 self::prefillSuggestedMappings($get, $set);
                             })
                             ->default(true),
+                        Placeholder::make('csv_file_feedback')
+                            ->hiddenLabel()
+                            ->content(function (Get $get): HtmlString {
+                                $parsed = self::parseCsvState(
+                                    csvSource: (string) ($get('csv_source') ?? 'upload'),
+                                    csvState: $get('csv_file'),
+                                    curatorMediaId: $get('curator_media_id'),
+                                    delimiter: self::normalizeDelimiter((string) ($get('delimiter') ?? 'auto')),
+                                    hasHeader: (bool) ($get('has_header') ?? true),
+                                );
+
+                                if (($parsed['error'] ?? null) === 'missing_file') {
+                                    return new HtmlString('');
+                                }
+
+                                if (filled($parsed['error'] ?? null)) {
+                                    return new HtmlString(
+                                        '<div style="padding:10px 14px; border-radius:8px; background:rgba(239, 68, 68, 0.15); border:1px solid rgba(239, 68, 68, 0.4); color:#fca5a5; font-size:0.875rem;">'
+                                        .'❌ <strong>Error en el archivo:</strong> '.e((string) $parsed['error'])
+                                        .'</div>'
+                                    );
+                                }
+
+                                $headerCount = count($parsed['headers']);
+                                $rowCount = (int) ($parsed['total_rows'] ?? 0);
+                                $detectedDelimiter = $parsed['delimiter'] ?? ',';
+                                $delimLabel = match ($detectedDelimiter) {
+                                    ',' => 'coma (,)',
+                                    ';' => 'punto y coma (;)',
+                                    "\t" => 'tabulador',
+                                    '|' => 'pipe (|)',
+                                    default => "'{$detectedDelimiter}'",
+                                };
+
+                                if ($headerCount <= 1 && $rowCount > 0) {
+                                    return new HtmlString(
+                                        '<div style="padding:10px 14px; border-radius:8px; background:rgba(234, 179, 8, 0.15); border:1px solid rgba(234, 179, 8, 0.4); color:#fde047; font-size:0.875rem;">'
+                                        .'⚠️ <strong>Atención:</strong> Se detectó solo 1 columna con delimitador '.e($delimLabel).'. Si tu archivo usa otro separador (ej. punto y coma), cámbialo en la opción "Delimitador".'
+                                        .'</div>'
+                                    );
+                                }
+
+                                return new HtmlString(
+                                    '<div style="padding:10px 14px; border-radius:8px; background:rgba(34, 197, 94, 0.15); border:1px solid rgba(34, 197, 94, 0.4); color:#86efac; font-size:0.875rem;">'
+                                    ."✅ <strong>Archivo detectado correctamente:</strong> {$headerCount} columnas (separador: {$delimLabel}), {$rowCount} fila(s) de datos."
+                                    .'</div>'
+                                );
+                            })
+                            ->columnSpanFull(),
                     ]),
                 Step::make('Mapeo')
                     ->description('Define qué columna del CSV se guarda en cada campo del canal seleccionado.')
@@ -145,7 +197,7 @@ class ImportContactSubmissionsCsvAction
                                 }
 
                                 if (filled($parsed['error'] ?? null)) {
-                                    return 'No se pudo leer el CSV para sugerencias: ' . (string) $parsed['error'];
+                                    return 'No se pudo leer el CSV para sugerencias: '.(string) $parsed['error'];
                                 }
 
                                 $mappedSimpleFields = collect([
@@ -156,10 +208,10 @@ class ImportContactSubmissionsCsvAction
                                     $get('map_comuna'),
                                     $get('map_proyecto'),
                                     $get('map_message'),
-                                ])->filter(static fn(mixed $value): bool => filled($value))->count();
+                                ])->filter(static fn (mixed $value): bool => filled($value))->count();
 
                                 $customMappingsCount = collect((array) ($get('custom_mappings') ?? []))
-                                    ->filter(static fn(array $mapping): bool => filled($mapping['source_column'] ?? null) && filled($mapping['target_field'] ?? null))
+                                    ->filter(static fn (array $mapping): bool => filled($mapping['source_column'] ?? null) && filled($mapping['target_field'] ?? null))
                                     ->count();
 
                                 $totalMappings = $mappedSimpleFields + $customMappingsCount;
@@ -173,32 +225,40 @@ class ImportContactSubmissionsCsvAction
                             ->columnSpanFull(),
                         Placeholder::make('mapping_sample_table')
                             ->hiddenLabel()
-                            ->content(fn(Get $get): HtmlString => self::mappingPreviewTable($get))
+                            ->content(fn (Get $get): HtmlString => self::mappingPreviewTable($get))
                             ->columnSpanFull(),
                         Select::make('map_name')
                             ->label('Nombre (obligatorio)')
-                            ->options(fn(Get $get): array => self::csvHeaderOptions($get))
-                            ->helperText(fn(Get $get): string => self::mappingHelperText($get, 'map_name'))
+                            ->options(fn (Get $get): array => self::csvHeaderOptions($get))
+                            ->helperText(fn (Get $get): string => self::mappingHelperText($get, 'map_name'))
+                            ->validationMessages([
+                                'required' => 'Selecciona la columna del CSV que corresponde a Nombre.',
+                            ])
+                            ->required()
                             ->searchable(),
                         Select::make('map_email')
                             ->label('Email (obligatorio)')
-                            ->options(fn(Get $get): array => self::csvHeaderOptions($get))
-                            ->helperText(fn(Get $get): string => self::mappingHelperText($get, 'map_email'))
+                            ->options(fn (Get $get): array => self::csvHeaderOptions($get))
+                            ->helperText(fn (Get $get): string => self::mappingHelperText($get, 'map_email'))
+                            ->validationMessages([
+                                'required' => 'Selecciona la columna del CSV que corresponde a Email.',
+                            ])
+                            ->required()
                             ->searchable(),
                         Select::make('map_phone')
                             ->label('Teléfono / Celular')
-                            ->options(fn(Get $get): array => self::csvHeaderOptions($get))
-                            ->helperText(fn(Get $get): string => self::mappingHelperText($get, 'map_phone'))
+                            ->options(fn (Get $get): array => self::csvHeaderOptions($get))
+                            ->helperText(fn (Get $get): string => self::mappingHelperText($get, 'map_phone'))
                             ->searchable(),
                         Select::make('map_rut')
                             ->label('RUT')
-                            ->options(fn(Get $get): array => self::csvHeaderOptions($get))
-                            ->helperText(fn(Get $get): string => self::mappingHelperText($get, 'map_rut'))
+                            ->options(fn (Get $get): array => self::csvHeaderOptions($get))
+                            ->helperText(fn (Get $get): string => self::mappingHelperText($get, 'map_rut'))
                             ->searchable(),
                         Select::make('map_comuna')
                             ->label('Comuna (obligatorio)')
-                            ->options(fn(Get $get): array => self::csvHeaderOptions($get))
-                            ->helperText(fn(Get $get): string => self::mappingHelperText($get, 'map_comuna'))
+                            ->options(fn (Get $get): array => self::csvHeaderOptions($get))
+                            ->helperText(fn (Get $get): string => self::mappingHelperText($get, 'map_comuna'))
                             ->validationMessages([
                                 'required' => 'Selecciona la columna del CSV que corresponde a Comuna.',
                             ])
@@ -206,8 +266,8 @@ class ImportContactSubmissionsCsvAction
                             ->searchable(),
                         Select::make('map_proyecto')
                             ->label('Proyecto (obligatorio)')
-                            ->options(fn(Get $get): array => self::csvHeaderOptions($get))
-                            ->helperText(fn(Get $get): string => self::mappingHelperText($get, 'map_proyecto', isProjectField: true))
+                            ->options(fn (Get $get): array => self::csvHeaderOptions($get))
+                            ->helperText(fn (Get $get): string => self::mappingHelperText($get, 'map_proyecto', isProjectField: true))
                             ->validationMessages([
                                 'required' => 'Selecciona la columna del CSV que corresponde a Proyecto.',
                             ])
@@ -215,15 +275,15 @@ class ImportContactSubmissionsCsvAction
                             ->searchable(),
                         Select::make('map_message')
                             ->label('Comentario / Mensaje')
-                            ->options(fn(Get $get): array => self::csvHeaderOptions($get))
-                            ->helperText(fn(Get $get): string => self::mappingHelperText($get, 'map_message'))
+                            ->options(fn (Get $get): array => self::csvHeaderOptions($get))
+                            ->helperText(fn (Get $get): string => self::mappingHelperText($get, 'map_message'))
                             ->searchable(),
                         Repeater::make('custom_mappings')
                             ->label('Mapeos adicionales')
                             ->schema([
                                 Select::make('source_column')
                                     ->label('Columna CSV')
-                                    ->options(fn(Get $get): array => self::csvHeaderOptions($get))
+                                    ->options(fn (Get $get): array => self::csvHeaderOptions($get))
                                     ->required()
                                     ->validationMessages([
                                         'required' => 'Selecciona una columna CSV para este mapeo adicional.',
@@ -232,7 +292,7 @@ class ImportContactSubmissionsCsvAction
                                     ->searchable(),
                                 Select::make('target_field')
                                     ->label('Campo destino')
-                                    ->options(fn(Get $get): array => self::targetFieldOptions($get))
+                                    ->options(fn (Get $get): array => self::targetFieldOptions($get))
                                     ->required()
                                     ->validationMessages([
                                         'required' => 'Selecciona un campo destino para este mapeo adicional.',
@@ -273,130 +333,194 @@ class ImportContactSubmissionsCsvAction
                     ->schema([
                         Placeholder::make('summary')
                             ->label('Resumen')
-                            ->content(fn(Get $get): HtmlString => self::summaryPreview($get))
+                            ->content(fn (Get $get): HtmlString => self::summaryPreview($get))
                             ->columnSpanFull(),
                     ]),
             ])
             ->action(function (array $data): void {
-                $csvSource = (string) ($data['csv_source'] ?? 'upload');
+                $importId = null;
 
-                if ($csvSource === 'upload' && self::resolveCsvFilePath($data['csv_file'] ?? null) === null) {
-                    Notification::make()
-                        ->title('CSV requerido')
-                        ->body('Debes subir un archivo CSV antes de importar.')
-                        ->danger()
-                        ->send();
+                try {
+                    $csvSource = (string) ($data['csv_source'] ?? 'upload');
 
-                    return;
-                }
+                    if ($csvSource === 'upload' && self::resolveCsvFilePath($data['csv_file'] ?? null) === null) {
+                        Notification::make()
+                            ->title('CSV requerido')
+                            ->body('Debes subir un archivo CSV antes de importar.')
+                            ->danger()
+                            ->send();
 
-                if ($csvSource === 'files' && blank($data['curator_media_id'] ?? null)) {
-                    Notification::make()
-                        ->title('CSV requerido')
-                        ->body('Debes elegir un CSV desde Archivos antes de importar.')
-                        ->danger()
-                        ->send();
-
-                    return;
-                }
-
-                $channel = ContactChannel::query()
-                    ->whereKey((int) ($data['contact_channel_id'] ?? 0))
-                    ->where('is_active', true)
-                    ->first();
-
-                if ($channel === null) {
-                    Notification::make()
-                        ->title('Canal inválido')
-                        ->body('Selecciona un canal de contacto activo.')
-                        ->danger()
-                        ->send();
-
-                    return;
-                }
-
-                $parsed = self::parseCsvState(
-                    csvSource: $csvSource,
-                    csvState: $data['csv_file'] ?? null,
-                    curatorMediaId: $data['curator_media_id'] ?? null,
-                    delimiter: self::normalizeDelimiter((string) ($data['delimiter'] ?? ',')),
-                    hasHeader: (bool) ($data['has_header'] ?? true),
-                );
-
-                if (filled($parsed['error'] ?? null)) {
-                    Notification::make()
-                        ->title('Error al parsear CSV')
-                        ->body((string) $parsed['error'])
-                        ->danger()
-                        ->send();
-
-                    return;
-                }
-
-                if ($csvSource === 'upload') {
-                    $csvFile = self::resolveCsvFilePath($data['csv_file'] ?? null);
-
-                    if (is_string($csvFile) && $csvFile !== '') {
-                        self::storeImportedCsvInCurator($csvFile);
+                        return;
                     }
+
+                    if ($csvSource === 'files' && blank($data['curator_media_id'] ?? null)) {
+                        Notification::make()
+                            ->title('CSV requerido')
+                            ->body('Debes elegir un CSV desde Archivos antes de importar.')
+                            ->danger()
+                            ->send();
+
+                        return;
+                    }
+
+                    $channel = ContactChannel::query()
+                        ->whereKey((int) ($data['contact_channel_id'] ?? 0))
+                        ->where('is_active', true)
+                        ->first();
+
+                    if ($channel === null) {
+                        Notification::make()
+                            ->title('Canal inválido')
+                            ->body('Selecciona un canal de contacto activo.')
+                            ->danger()
+                            ->send();
+
+                        return;
+                    }
+
+                    $parsed = self::parseCsvState(
+                        csvSource: $csvSource,
+                        csvState: $data['csv_file'] ?? null,
+                        curatorMediaId: $data['curator_media_id'] ?? null,
+                        delimiter: self::normalizeDelimiter((string) ($data['delimiter'] ?? ',')),
+                        hasHeader: (bool) ($data['has_header'] ?? true),
+                    );
+
+                    if (filled($parsed['error'] ?? null)) {
+                        Notification::make()
+                            ->title('Error al parsear CSV')
+                            ->body((string) $parsed['error'])
+                            ->danger()
+                            ->send();
+
+                        return;
+                    }
+
+                    if (empty($parsed['rows'])) {
+                        Notification::make()
+                            ->title('Archivo sin datos')
+                            ->body('El archivo CSV no contiene filas de datos para importar.')
+                            ->danger()
+                            ->send();
+
+                        return;
+                    }
+
+                    if ($csvSource === 'upload') {
+                        $csvFile = self::resolveCsvFilePath($data['csv_file'] ?? null);
+
+                        if (is_string($csvFile) && $csvFile !== '') {
+                            try {
+                                self::storeImportedCsvInCurator($csvFile);
+                            } catch (Throwable $e) {
+                                Log::warning('No se pudo respaldar el CSV en Curator: '.$e->getMessage());
+                            }
+                        }
+                    }
+
+                    // Validar que los campos obligatorios estén mapeados
+                    $missingMandatory = [];
+                    if (blank($data['map_name'] ?? null)) {
+                        $missingMandatory[] = 'Nombre';
+                    }
+                    if (blank($data['map_email'] ?? null)) {
+                        $missingMandatory[] = 'Email';
+                    }
+                    if (blank($data['map_comuna'] ?? null)) {
+                        $missingMandatory[] = 'Comuna';
+                    }
+                    if (blank($data['map_proyecto'] ?? null)) {
+                        $missingMandatory[] = 'Proyecto';
+                    }
+
+                    if (! empty($missingMandatory)) {
+                        Notification::make()
+                            ->title('Mapeo incompleto')
+                            ->body('Debes mapear los siguientes campos obligatorios antes de continuar: '.implode(', ', $missingMandatory).'.')
+                            ->danger()
+                            ->send();
+
+                        return;
+                    }
+
+                    $mappings = self::resolveMappings($data);
+                    $dryRun = (bool) ($data['dry_run'] ?? false);
+
+                    $leadEnabled = (bool) config('services.salesforce.lead_enabled', config('services.salesforce.case_enabled', false));
+                    $syncToSalesforce = (bool) ($data['sync_to_salesforce'] ?? true) && $leadEnabled;
+
+                    $importId = (string) Str::uuid();
+
+                    app(ContactImportProgressTracker::class)->initialize(
+                        importId: $importId,
+                        totalRows: count($parsed['rows']),
+                        channelName: (string) $channel->name,
+                        syncToSalesforce: $syncToSalesforce,
+                        dryRun: $dryRun,
+                    );
+
+                    app(ContactImportProgressTracker::class)->addLog(
+                        importId: $importId,
+                        message: $dryRun
+                            ? 'Simulación iniciada. Se validarán las filas sin crear contactos.'
+                            : 'Importación iniciada. Se procesarán las filas y se crearán contactos válidos.',
+                    );
+
+                    // dispatchSync ejecuta el job en el mismo request (sin necesitar queue worker),
+                    // preserva el usuario autenticado como causer en los activity logs.
+                    RunContactCsvImportJob::dispatchSync(
+                        importId: $importId,
+                        rows: $parsed['rows'],
+                        mappings: $mappings,
+                        contactChannelId: (int) $channel->id,
+                        autoMapUnmapped: (bool) ($data['auto_map_unmapped'] ?? true),
+                        homologateComuna: (bool) ($data['homologate_comuna'] ?? true),
+                        homologateProyecto: (bool) ($data['homologate_proyecto'] ?? true),
+                        syncToSalesforce: $syncToSalesforce,
+                        dryRun: $dryRun,
+                        hasHeader: (bool) ($data['has_header'] ?? true),
+                        ipAddress: Request::ip(),
+                        userAgent: 'filament-csv-import',
+                    );
+
+                    $progressUrl = ContactImportProgress::getUrl(['import' => $importId]);
+
+                    Notification::make()
+                        ->title($dryRun ? 'Simulación finalizada' : 'Importación finalizada')
+                        ->body($dryRun
+                            ? 'La simulación terminó. Revisa el detalle antes de ejecutar la importación real.'
+                            : 'La importación terminó. Puedes revisar el detalle del proceso y los resultados.')
+                        ->success()
+                        ->persistent()
+                        ->actions([
+                            Action::make('viewImportProgress')
+                                ->label('Ver progreso en vivo')
+                                ->button()
+                                ->url($progressUrl, shouldOpenInNewTab: true),
+                        ])
+                        ->send();
+                } catch (Throwable $e) {
+                    Log::error('Fallo en acción de importación de contactos CSV', [
+                        'import_id' => $importId,
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
+                    ]);
+
+                    if ($importId !== null) {
+                        try {
+                            app(ContactImportProgressTracker::class)->markFailed($importId, 'Error durante la importación: '.$e->getMessage());
+                        } catch (Throwable) {
+                            // Ignorar fallo secundario de tracker
+                        }
+                    }
+
+                    Notification::make()
+                        ->title('Error al importar contactos')
+                        ->body('Ocurrió un error al procesar el archivo CSV: '.$e->getMessage())
+                        ->danger()
+                        ->persistent()
+                        ->send();
                 }
-
-                $mappings = self::resolveMappings($data);
-                $dryRun = (bool) ($data['dry_run'] ?? false);
-
-                $leadEnabled = (bool) config('services.salesforce.lead_enabled', config('services.salesforce.case_enabled', false));
-                $syncToSalesforce = (bool) ($data['sync_to_salesforce'] ?? true) && $leadEnabled;
-
-                $importId = (string) Str::uuid();
-
-                app(ContactImportProgressTracker::class)->initialize(
-                    importId: $importId,
-                    totalRows: count($parsed['rows']),
-                    channelName: (string) $channel->name,
-                    syncToSalesforce: $syncToSalesforce,
-                    dryRun: $dryRun,
-                );
-
-                app(ContactImportProgressTracker::class)->addLog(
-                    importId: $importId,
-                    message: $dryRun
-                        ? 'Simulación iniciada. Se validarán las filas sin crear contactos.'
-                        : 'Importación iniciada. Se procesarán las filas y se crearán contactos válidos.',
-                );
-
-                // dispatchSync ejecuta el job en el mismo request (sin necesitar queue worker),
-                // preserva el usuario autenticado como causer en los activity logs.
-                RunContactCsvImportJob::dispatchSync(
-                    importId: $importId,
-                    rows: $parsed['rows'],
-                    mappings: $mappings,
-                    contactChannelId: (int) $channel->id,
-                    autoMapUnmapped: (bool) ($data['auto_map_unmapped'] ?? true),
-                    homologateComuna: (bool) ($data['homologate_comuna'] ?? true),
-                    homologateProyecto: (bool) ($data['homologate_proyecto'] ?? true),
-                    syncToSalesforce: $syncToSalesforce,
-                    dryRun: $dryRun,
-                    hasHeader: (bool) ($data['has_header'] ?? true),
-                    ipAddress: Request::ip(),
-                    userAgent: 'filament-csv-import',
-                );
-
-                $progressUrl = ContactImportProgress::getUrl(['import' => $importId]);
-
-                Notification::make()
-                    ->title($dryRun ? 'Simulación finalizada' : 'Importación finalizada')
-                    ->body($dryRun
-                        ? 'La simulación terminó. Revisa el detalle antes de ejecutar la importación real.'
-                        : 'La importación terminó. Puedes revisar el detalle del proceso y los resultados.')
-                    ->success()
-                    ->persistent()
-                    ->actions([
-                        Action::make('viewImportProgress')
-                            ->label('Ver progreso en vivo')
-                            ->button()
-                            ->url($progressUrl, shouldOpenInNewTab: true),
-                    ])
-                    ->send();
             });
     }
 
@@ -405,32 +529,38 @@ class ImportContactSubmissionsCsvAction
      */
     private static function csvHeaderOptions(Get $get): array
     {
-        $parsed = self::parseCsvState(
-            csvSource: (string) self::resolveWizardStateValue($get, 'csv_source', 'upload'),
-            csvState: self::resolveWizardStateValue($get, 'csv_file'),
-            curatorMediaId: self::resolveWizardStateValue($get, 'curator_media_id'),
-            delimiter: self::normalizeDelimiter((string) self::resolveWizardStateValue($get, 'delimiter', '')),
-            hasHeader: (bool) self::resolveWizardStateValue($get, 'has_header', true),
-        );
+        try {
+            $parsed = self::parseCsvState(
+                csvSource: (string) self::resolveWizardStateValue($get, 'csv_source', 'upload'),
+                csvState: self::resolveWizardStateValue($get, 'csv_file'),
+                curatorMediaId: self::resolveWizardStateValue($get, 'curator_media_id'),
+                delimiter: self::normalizeDelimiter((string) self::resolveWizardStateValue($get, 'delimiter', '')),
+                hasHeader: (bool) self::resolveWizardStateValue($get, 'has_header', true),
+            );
 
-        if (($parsed['error'] ?? null) === 'missing_file') {
+            if (($parsed['error'] ?? null) === 'missing_file') {
+                return [];
+            }
+
+            if (filled($parsed['error'] ?? null)) {
+                return [];
+            }
+
+            return collect($parsed['headers'])
+                ->mapWithKeys(static fn (string $header): array => [$header => $header])
+                ->all();
+        } catch (Throwable $e) {
+            Log::warning('Error obteniendo opciones de encabezado CSV: '.$e->getMessage());
+
             return [];
         }
-
-        if (filled($parsed['error'] ?? null)) {
-            return [];
-        }
-
-        return collect($parsed['headers'])
-            ->mapWithKeys(static fn(string $header): array => [$header => $header])
-            ->all();
     }
 
     private static function resolveWizardStateValue(Get $get, string $path, mixed $default = null): mixed
     {
         for ($levels = 0; $levels <= 10; $levels++) {
             $prefix = str_repeat('../', $levels);
-            $candidate = $get($prefix . $path);
+            $candidate = $get($prefix.$path);
 
             if ($candidate !== null && $candidate !== '') {
                 return $candidate;
@@ -442,36 +572,42 @@ class ImportContactSubmissionsCsvAction
 
     private static function summaryPreview(Get $get): HtmlString
     {
-        $headers = array_keys(self::csvHeaderOptions($get));
-        $selectedChannelId = (int) self::resolveWizardStateValue($get, 'contact_channel_id', 0);
-        $selectedChannel = $selectedChannelId > 0
-            ? ContactChannel::query()->find($selectedChannelId)
-            : null;
-        $selectedChannelText = $selectedChannel !== null
-            ? $selectedChannel->name . ' (ID: ' . $selectedChannel->id . ')'
-            : ($selectedChannelId > 0 ? 'ID: ' . $selectedChannelId : '-');
+        try {
+            $headers = array_keys(self::csvHeaderOptions($get));
+            $selectedChannelId = (int) self::resolveWizardStateValue($get, 'contact_channel_id', 0);
+            $selectedChannel = $selectedChannelId > 0
+                ? ContactChannel::query()->find($selectedChannelId)
+                : null;
+            $selectedChannelText = $selectedChannel !== null
+                ? $selectedChannel->name.' (ID: '.$selectedChannel->id.')'
+                : ($selectedChannelId > 0 ? 'ID: '.$selectedChannelId : '-');
 
-        $syncToSalesforce = (bool) self::resolveWizardStateValue($get, 'sync_to_salesforce', true);
-        $dryRun = (bool) self::resolveWizardStateValue($get, 'dry_run', false);
-        $homologateComuna = (bool) self::resolveWizardStateValue($get, 'homologate_comuna', true);
-        $homologateProyecto = (bool) self::resolveWizardStateValue($get, 'homologate_proyecto', true);
-        $autoMapUnmapped = (bool) self::resolveWizardStateValue($get, 'auto_map_unmapped', true);
+            $syncToSalesforce = (bool) self::resolveWizardStateValue($get, 'sync_to_salesforce', true);
+            $dryRun = (bool) self::resolveWizardStateValue($get, 'dry_run', false);
+            $homologateComuna = (bool) self::resolveWizardStateValue($get, 'homologate_comuna', true);
+            $homologateProyecto = (bool) self::resolveWizardStateValue($get, 'homologate_proyecto', true);
+            $autoMapUnmapped = (bool) self::resolveWizardStateValue($get, 'auto_map_unmapped', true);
 
-        $lines = [
-            'Columnas detectadas: ' . implode(', ', $headers),
-            'Canal seleccionado: ' . $selectedChannelText,
-            'Modo simulación (dry-run): ' . ($dryRun ? 'Si' : 'No'),
-            'Sync Salesforce: ' . ($syncToSalesforce ? 'Si' : 'No'),
-            'Homologar comuna: ' . ($homologateComuna ? 'Si' : 'No'),
-            'Homologar proyecto: ' . ($homologateProyecto ? 'Si' : 'No'),
-            'Auto-map columnas restantes: ' . ($autoMapUnmapped ? 'Si' : 'No'),
-        ];
+            $lines = [
+                'Columnas detectadas: '.implode(', ', $headers),
+                'Canal seleccionado: '.$selectedChannelText,
+                'Modo simulación (dry-run): '.($dryRun ? 'Si' : 'No'),
+                'Sync Salesforce: '.($syncToSalesforce ? 'Si' : 'No'),
+                'Homologar comuna: '.($homologateComuna ? 'Si' : 'No'),
+                'Homologar proyecto: '.($homologateProyecto ? 'Si' : 'No'),
+                'Auto-map columnas restantes: '.($autoMapUnmapped ? 'Si' : 'No'),
+            ];
 
-        return new HtmlString(
-            '<pre style="margin:0; padding:12px 14px; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.03); white-space:pre-wrap; font-size:.92rem; line-height:1.5;">'
-                . e(implode("\n", $lines))
-                . '</pre>'
-        );
+            return new HtmlString(
+                '<pre style="margin:0; padding:12px 14px; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.03); white-space:pre-wrap; font-size:.92rem; line-height:1.5;">'
+                    .e(implode("\n", $lines))
+                    .'</pre>'
+            );
+        } catch (Throwable $e) {
+            Log::warning('Error generando resumen de importación CSV: '.$e->getMessage());
+
+            return new HtmlString('<div style="opacity:.7;">No se pudo generar el resumen previo.</div>');
+        }
     }
 
     /**
@@ -499,9 +635,9 @@ class ImportContactSubmissionsCsvAction
 
         $selectedChannel = $selectedChannelId > 0
             ? ContactChannel::query()
-            ->whereKey($selectedChannelId)
-            ->where('is_active', true)
-            ->first()
+                ->whereKey($selectedChannelId)
+                ->where('is_active', true)
+                ->first()
             : null;
 
         $dynamicFieldDefinitions = $selectedChannel?->effectiveFormFields();
@@ -511,7 +647,7 @@ class ImportContactSubmissionsCsvAction
         }
 
         $dynamicFields = collect($dynamicFieldDefinitions)
-            ->filter(static fn(mixed $field): bool => is_array($field) && filled($field['key'] ?? null))
+            ->filter(static fn (mixed $field): bool => is_array($field) && filled($field['key'] ?? null))
             ->mapWithKeys(static function (array $field): array {
                 $key = trim((string) $field['key']);
                 $label = trim((string) ($field['label'] ?? $key));
@@ -569,7 +705,7 @@ class ImportContactSubmissionsCsvAction
         }
 
         return collect($mappings)
-            ->unique(static fn(array $mapping): string => $mapping['source_column'] . '::' . $mapping['target_field'])
+            ->unique(static fn (array $mapping): string => $mapping['source_column'].'::'.$mapping['target_field'])
             ->values()
             ->all();
     }
@@ -578,7 +714,7 @@ class ImportContactSubmissionsCsvAction
     {
         $cleaned = trim($delimiter);
 
-        if ($cleaned === '') {
+        if ($cleaned === '' || $cleaned === 'auto') {
             return null;
         }
 
@@ -603,7 +739,7 @@ class ImportContactSubmissionsCsvAction
             return 'No se encontró un valor de ejemplo para esa columna.';
         }
 
-        $text = 'Ejemplo: ' . $sample;
+        $text = 'Ejemplo: '.$sample;
 
         if ($isProjectField && self::looksLikeSalesforceId($sample)) {
             $text .= ' (detectado como Salesforce ID; se intentará resolver por ID y, si no existe, por nombre).';
@@ -614,87 +750,117 @@ class ImportContactSubmissionsCsvAction
 
     private static function mappingPreviewTable(Get $get): HtmlString
     {
-        $rows = [
-            ['label' => 'Nombre', 'state' => 'map_name', 'isProject' => false, 'required' => true],
-            ['label' => 'Email', 'state' => 'map_email', 'isProject' => false, 'required' => true],
-            ['label' => 'Teléfono / Celular', 'state' => 'map_phone', 'isProject' => false, 'required' => false],
-            ['label' => 'RUT', 'state' => 'map_rut', 'isProject' => false, 'required' => false],
-            ['label' => 'Comuna', 'state' => 'map_comuna', 'isProject' => false, 'required' => true],
-            ['label' => 'Proyecto', 'state' => 'map_proyecto', 'isProject' => true, 'required' => true],
-            ['label' => 'Comentario / Mensaje', 'state' => 'map_message', 'isProject' => false, 'required' => false],
-        ];
+        try {
+            $rows = [
+                ['label' => 'Nombre', 'state' => 'map_name', 'isProject' => false, 'required' => true],
+                ['label' => 'Email', 'state' => 'map_email', 'isProject' => false, 'required' => true],
+                ['label' => 'Teléfono / Celular', 'state' => 'map_phone', 'isProject' => false, 'required' => false],
+                ['label' => 'RUT', 'state' => 'map_rut', 'isProject' => false, 'required' => false],
+                ['label' => 'Comuna', 'state' => 'map_comuna', 'isProject' => false, 'required' => true],
+                ['label' => 'Proyecto', 'state' => 'map_proyecto', 'isProject' => true, 'required' => true],
+                ['label' => 'Comentario / Mensaje', 'state' => 'map_message', 'isProject' => false, 'required' => false],
+            ];
 
-        $tableRows = '';
+            $missingRequired = [];
+            $tableRows = '';
 
-        foreach ($rows as $row) {
-            $selectedColumn = trim((string) ($get($row['state']) ?? ''));
+            foreach ($rows as $row) {
+                $selectedColumn = trim((string) ($get($row['state']) ?? ''));
+                $isRequired = (bool) ($row['required'] ?? false);
 
-            if ($selectedColumn === '') {
-                continue;
+                if ($selectedColumn === '') {
+                    if ($isRequired) {
+                        $missingRequired[] = $row['label'];
+                    }
+
+                    continue;
+                }
+
+                $sample = self::firstSampleValueForColumn($get, $selectedColumn) ?? '-';
+                $note = '';
+                $typeBadge = $isRequired
+                    ? '<span style="display:inline-block; padding:2px 6px; border-radius:4px; font-size:.75rem; background:rgba(235,0,41,.2); color:#ff6b81; border:1px solid rgba(235,0,41,.35); font-weight:600;">Obligatorio</span>'
+                    : '<span style="display:inline-block; padding:2px 6px; border-radius:4px; font-size:.75rem; background:rgba(255,255,255,.08); color:rgba(255,255,255,.7); border:1px solid rgba(255,255,255,.15);">Opcional</span>';
+
+                if (($row['isProject'] ?? false) && self::looksLikeSalesforceId($sample)) {
+                    $note = 'Salesforce ID detectado (ID -> nombre fallback).';
+                }
+
+                $tableRows .= sprintf(
+                    '<tr><td style="padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.08); font-weight:500;">%s</td><td style="padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.08);">%s</td><td style="padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.08); color:#60a5fa; font-family:monospace;">%s</td><td style="padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.08); max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">%s</td><td style="padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.08); font-size:.8rem; opacity:.8;">%s</td></tr>',
+                    e((string) $row['label']),
+                    $typeBadge,
+                    e($selectedColumn),
+                    e($sample),
+                    e($note),
+                );
             }
 
-            $sample = self::firstSampleValueForColumn($get, $selectedColumn) ?? '-';
-            $note = '';
-            $requiredLabel = ($row['required'] ?? false) ? 'Obligatorio' : 'Opcional';
-
-            if (($row['isProject'] ?? false) && self::looksLikeSalesforceId($sample)) {
-                $note = 'Salesforce ID detectado (ID -> nombre fallback).';
+            $warningBanner = '';
+            if (! empty($missingRequired)) {
+                $warningBanner = '<div style="padding:8px 12px; margin-bottom:10px; border-radius:8px; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.4); color:#fca5a5; font-size:.85rem;">'
+                    .'⚠️ <strong>Faltan campos obligatorios por mapear:</strong> '.e(implode(', ', $missingRequired))
+                    .'</div>';
             }
 
-            $tableRows .= sprintf(
-                '<tr><td style="padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.08);">%s</td><td style="padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.08);">%s</td><td style="padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.08);">%s</td><td style="padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.08);">%s</td><td style="padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.08);">%s</td></tr>',
-                e((string) $row['label']),
-                e($requiredLabel),
-                e($selectedColumn),
-                e($sample),
-                e($note),
+            if ($tableRows === '') {
+                return new HtmlString(
+                    $warningBanner
+                    .'<div style="opacity:.8;">Selecciona columnas para ver una tabla resumen de mapeo con valores de ejemplo.</div><div style="margin-top:6px; font-size:.85rem; opacity:.85;">Campos obligatorios: Nombre, Email, Comuna y Proyecto. El Canal de contacto también es obligatorio y se define en el paso Archivo.</div>'
+                );
+            }
+
+            return new HtmlString(
+                '<div style="margin:4px 0 10px;">'
+                    .$warningBanner
+                    .'<div style="font-size:.92rem; margin-bottom:6px; opacity:.9; font-weight:600;">Resumen rápido de mapeo (con ejemplo por columna)</div>'
+                    .'<table style="width:100%; border-collapse:collapse; font-size:.88rem;">'
+                    .'<thead><tr>'
+                    .'<th style="text-align:left; padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.18);">Campo</th>'
+                    .'<th style="text-align:left; padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.18);">Tipo</th>'
+                    .'<th style="text-align:left; padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.18);">Columna CSV</th>'
+                    .'<th style="text-align:left; padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.18);">Ejemplo</th>'
+                    .'<th style="text-align:left; padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.18);">Nota</th>'
+                    .'</tr></thead>'
+                    .'<tbody>'.$tableRows.'</tbody>'
+                    .'</table></div>'
             );
-        }
+        } catch (Throwable $e) {
+            Log::warning('Error generando tabla de previsualización de mapeo: '.$e->getMessage());
 
-        if ($tableRows === '') {
-            return new HtmlString('<div style="opacity:.8;">Selecciona columnas para ver una tabla resumen de mapeo con valores de ejemplo.</div><div style="margin-top:6px; font-size:.85rem; opacity:.85;">Campos obligatorios: Nombre, Email, Comuna y Proyecto. El Canal de contacto también es obligatorio y se define en el paso Archivo.</div>');
+            return new HtmlString('<div style="opacity:.7;">No se pudo cargar la vista previa de las columnas.</div>');
         }
-
-        return new HtmlString(
-            '<div style="margin:4px 0 10px;">'
-                . '<div style="font-size:.92rem; margin-bottom:6px; opacity:.9;">Resumen rápido de mapeo (con ejemplo por columna)</div>'
-                . '<div style="font-size:.85rem; margin-bottom:8px; opacity:.85;">Campos obligatorios: Nombre, Email, Comuna y Proyecto. El Canal de contacto también es obligatorio y se define en el paso Archivo.</div>'
-                . '<table style="width:100%; border-collapse:collapse; font-size:.88rem;">'
-                . '<thead><tr>'
-                . '<th style="text-align:left; padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.18);">Campo</th>'
-                . '<th style="text-align:left; padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.18);">Tipo</th>'
-                . '<th style="text-align:left; padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.18);">Columna CSV</th>'
-                . '<th style="text-align:left; padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.18);">Ejemplo</th>'
-                . '<th style="text-align:left; padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.18);">Nota</th>'
-                . '</tr></thead>'
-                . '<tbody>' . $tableRows . '</tbody>'
-                . '</table></div>'
-        );
     }
 
     private static function firstSampleValueForColumn(Get $get, string $column): ?string
     {
-        $parsed = self::parseCsvState(
-            csvSource: (string) ($get('csv_source') ?? 'upload'),
-            csvState: $get('csv_file'),
-            curatorMediaId: $get('curator_media_id'),
-            delimiter: self::normalizeDelimiter((string) $get('delimiter')),
-            hasHeader: (bool) ($get('has_header') ?? true),
-        );
+        try {
+            $parsed = self::parseCsvState(
+                csvSource: (string) ($get('csv_source') ?? 'upload'),
+                csvState: $get('csv_file'),
+                curatorMediaId: $get('curator_media_id'),
+                delimiter: self::normalizeDelimiter((string) $get('delimiter')),
+                hasHeader: (bool) ($get('has_header') ?? true),
+            );
 
-        if (filled($parsed['error'] ?? null)) {
+            if (filled($parsed['error'] ?? null)) {
+                return null;
+            }
+
+            foreach ($parsed['rows'] as $row) {
+                $value = trim((string) ($row[$column] ?? ''));
+
+                if ($value !== '') {
+                    return $value;
+                }
+            }
+
+            return null;
+        } catch (Throwable $e) {
+            Log::warning('Error obteniendo muestra para columna '.$column.': '.$e->getMessage());
+
             return null;
         }
-
-        foreach ($parsed['rows'] as $row) {
-            $value = trim((string) ($row[$column] ?? ''));
-
-            if ($value !== '') {
-                return $value;
-            }
-        }
-
-        return null;
     }
 
     private static function looksLikeSalesforceId(string $value): bool
@@ -704,115 +870,123 @@ class ImportContactSubmissionsCsvAction
 
     private static function prefillSuggestedMappings(Get $get, Set $set): void
     {
-        $parsed = self::parseCsvState(
-            csvSource: (string) ($get('csv_source') ?? 'upload'),
-            csvState: $get('csv_file'),
-            curatorMediaId: $get('curator_media_id'),
-            delimiter: self::normalizeDelimiter((string) $get('delimiter')),
-            hasHeader: (bool) ($get('has_header') ?? true),
-        );
+        try {
+            $parsed = self::parseCsvState(
+                csvSource: (string) ($get('csv_source') ?? 'upload'),
+                csvState: $get('csv_file'),
+                curatorMediaId: $get('curator_media_id'),
+                delimiter: self::normalizeDelimiter((string) $get('delimiter')),
+                hasHeader: (bool) ($get('has_header') ?? true),
+            );
 
-        if (($parsed['error'] ?? null) === 'missing_file') {
-            return;
-        }
-
-        if (filled($parsed['error'] ?? null)) {
-            return;
-        }
-
-        $suggestedMappings = app(ContactCsvRowMapper::class)->buildSuggestedMappings($parsed['headers']);
-
-        $stateMapByTarget = [
-            'name' => 'map_name',
-            'email' => 'map_email',
-            'phone' => 'map_phone',
-            'rut' => 'map_rut',
-            'fields.comuna' => 'map_comuna',
-            'fields.proyecto' => 'map_proyecto',
-            'fields.mensaje' => 'map_message',
-        ];
-
-        foreach ($suggestedMappings as $suggestedMapping) {
-            $target = (string) ($suggestedMapping['target_field'] ?? '');
-            $source = (string) ($suggestedMapping['source_column'] ?? '');
-
-            if ($target === '' || $source === '') {
-                continue;
+            if (($parsed['error'] ?? null) === 'missing_file') {
+                return;
             }
 
-            $statePath = $stateMapByTarget[$target] ?? null;
-
-            if ($statePath === null) {
-                continue;
+            if (filled($parsed['error'] ?? null)) {
+                return;
             }
 
-            if (filled($get($statePath))) {
-                continue;
+            $suggestedMappings = app(ContactCsvRowMapper::class)->buildSuggestedMappings($parsed['headers']);
+
+            $stateMapByTarget = [
+                'name' => 'map_name',
+                'email' => 'map_email',
+                'phone' => 'map_phone',
+                'rut' => 'map_rut',
+                'fields.comuna' => 'map_comuna',
+                'fields.proyecto' => 'map_proyecto',
+                'fields.mensaje' => 'map_message',
+            ];
+
+            foreach ($suggestedMappings as $suggestedMapping) {
+                $target = (string) ($suggestedMapping['target_field'] ?? '');
+                $source = (string) ($suggestedMapping['source_column'] ?? '');
+
+                if ($target === '' || $source === '') {
+                    continue;
+                }
+
+                $statePath = $stateMapByTarget[$target] ?? null;
+
+                if ($statePath === null) {
+                    continue;
+                }
+
+                if (filled($get($statePath))) {
+                    continue;
+                }
+
+                $set($statePath, $source);
             }
 
-            $set($statePath, $source);
-        }
+            $existingCustomMappings = collect((array) ($get('custom_mappings') ?? []));
 
-        $existingCustomMappings = collect((array) ($get('custom_mappings') ?? []));
+            if ($existingCustomMappings->isNotEmpty()) {
+                return;
+            }
 
-        if ($existingCustomMappings->isNotEmpty()) {
-            return;
-        }
+            $availableTargets = array_fill_keys(array_keys(self::targetFieldOptions($get)), true);
 
-        $availableTargets = array_fill_keys(array_keys(self::targetFieldOptions($get)), true);
+            $extraSuggestedTargets = [
+                'fields.rango_renta',
+                'fields.codeudor',
+                'fields.medio_llegada',
+                'fields.origen_prospecto',
+                'fields.campana',
+            ];
 
-        $extraSuggestedTargets = [
-            'fields.rango_renta',
-            'fields.codeudor',
-            'fields.medio_llegada',
-            'fields.origen_prospecto',
-            'fields.campana',
-        ];
+            $customMappings = collect($suggestedMappings)
+                ->filter(static fn (array $mapping): bool => in_array((string) ($mapping['target_field'] ?? ''), $extraSuggestedTargets, true))
+                ->filter(static fn (array $mapping): bool => isset($availableTargets[(string) ($mapping['target_field'] ?? '')]))
+                ->map(static fn (array $mapping): array => [
+                    'source_column' => (string) ($mapping['source_column'] ?? ''),
+                    'target_field' => (string) ($mapping['target_field'] ?? ''),
+                ])
+                ->filter(static fn (array $mapping): bool => filled($mapping['source_column']) && filled($mapping['target_field']))
+                ->values()
+                ->all();
 
-        $customMappings = collect($suggestedMappings)
-            ->filter(static fn(array $mapping): bool => in_array((string) ($mapping['target_field'] ?? ''), $extraSuggestedTargets, true))
-            ->filter(static fn(array $mapping): bool => isset($availableTargets[(string) ($mapping['target_field'] ?? '')]))
-            ->map(static fn(array $mapping): array => [
-                'source_column' => (string) ($mapping['source_column'] ?? ''),
-                'target_field' => (string) ($mapping['target_field'] ?? ''),
-            ])
-            ->filter(static fn(array $mapping): bool => filled($mapping['source_column']) && filled($mapping['target_field']))
-            ->values()
-            ->all();
-
-        if ($customMappings !== []) {
-            $set('custom_mappings', $customMappings);
+            if ($customMappings !== []) {
+                $set('custom_mappings', $customMappings);
+            }
+        } catch (Throwable $e) {
+            Log::warning('Error sugiriendo mapeos automáticos de CSV: '.$e->getMessage());
         }
     }
 
     private static function sanitizeMappingsForSelectedChannel(Get $get, Set $set): void
     {
-        $allowedTargets = array_fill_keys(array_keys(self::targetFieldOptions($get)), true);
-        $customMappings = (array) ($get('custom_mappings') ?? []);
+        try {
+            $allowedTargets = array_fill_keys(array_keys(self::targetFieldOptions($get)), true);
+            $customMappings = (array) ($get('custom_mappings') ?? []);
 
-        $sanitizedCustomMappings = collect($customMappings)
-            ->map(static function (array $mapping) use ($allowedTargets): ?array {
-                $sourceColumn = trim((string) ($mapping['source_column'] ?? ''));
-                $targetField = trim((string) ($mapping['target_field'] ?? ''));
+            $sanitizedCustomMappings = collect($customMappings)
+                ->map(static function (array $mapping) use ($allowedTargets): ?array {
+                    $sourceColumn = trim((string) ($mapping['source_column'] ?? ''));
+                    $targetField = trim((string) ($mapping['target_field'] ?? ''));
 
-                if ($sourceColumn === '' && $targetField === '') {
-                    return null;
-                }
+                    if ($sourceColumn === '' && $targetField === '') {
+                        return null;
+                    }
 
-                if ($targetField !== '' && ! isset($allowedTargets[$targetField])) {
-                    return null;
-                }
+                    if ($targetField !== '' && ! isset($allowedTargets[$targetField])) {
+                        return null;
+                    }
 
-                return [
-                    'source_column' => $sourceColumn,
-                    'target_field' => $targetField,
-                ];
-            })
-            ->filter(static fn(?array $mapping): bool => is_array($mapping))
-            ->values()
-            ->all();
+                    return [
+                        'source_column' => $sourceColumn,
+                        'target_field' => $targetField,
+                    ];
+                })
+                ->filter(static fn (?array $mapping): bool => is_array($mapping))
+                ->values()
+                ->all();
 
-        $set('custom_mappings', $sanitizedCustomMappings);
+            $set('custom_mappings', $sanitizedCustomMappings);
+        } catch (Throwable $e) {
+            Log::warning('Error sanitizando mapeos para canal seleccionado: '.$e->getMessage());
+        }
     }
 
     /**
@@ -820,10 +994,48 @@ class ImportContactSubmissionsCsvAction
      */
     private static function parseCsvState(string $csvSource, mixed $csvState, mixed $curatorMediaId, ?string $delimiter, bool $hasHeader): array
     {
-        if ($csvSource === 'files') {
-            $media = Media::query()->find((int) $curatorMediaId);
+        try {
+            if ($csvSource === 'files') {
+                $media = Media::query()->find((int) $curatorMediaId);
 
-            if ($media === null) {
+                if ($media === null) {
+                    return [
+                        'headers' => [],
+                        'rows' => [],
+                        'preview' => [],
+                        'delimiter' => $delimiter ?? ',',
+                        'total_rows' => 0,
+                        'error' => 'missing_file',
+                    ];
+                }
+
+                return app(ContactCsvParser::class)->parseFile(
+                    filePath: (string) $media->path,
+                    delimiter: $delimiter,
+                    hasHeader: $hasHeader,
+                    disk: (string) $media->disk,
+                );
+            }
+
+            if ($csvState instanceof TemporaryUploadedFile) {
+                $realPath = $csvState->getRealPath();
+
+                if (is_string($realPath) && $realPath !== '' && file_exists($realPath)) {
+                    $content = @file_get_contents($realPath);
+
+                    if (is_string($content) && $content !== '') {
+                        return app(ContactCsvParser::class)->parseContent(
+                            content: $content,
+                            delimiter: $delimiter,
+                            hasHeader: $hasHeader,
+                        );
+                    }
+                }
+            }
+
+            $csvFile = self::resolveCsvFilePath($csvState);
+
+            if ($csvFile === null) {
                 return [
                     'headers' => [],
                     'rows' => [],
@@ -835,47 +1047,22 @@ class ImportContactSubmissionsCsvAction
             }
 
             return app(ContactCsvParser::class)->parseFile(
-                filePath: (string) $media->path,
+                filePath: $csvFile,
                 delimiter: $delimiter,
                 hasHeader: $hasHeader,
-                disk: (string) $media->disk,
             );
-        }
+        } catch (Throwable $e) {
+            Log::warning('Error analizando estado CSV en Filament: '.$e->getMessage());
 
-        if ($csvState instanceof TemporaryUploadedFile) {
-            $realPath = $csvState->getRealPath();
-
-            if (is_string($realPath) && $realPath !== '' && file_exists($realPath)) {
-                $content = file_get_contents($realPath);
-
-                if (is_string($content) && $content !== '') {
-                    return app(ContactCsvParser::class)->parseContent(
-                        content: $content,
-                        delimiter: $delimiter,
-                        hasHeader: $hasHeader,
-                    );
-                }
-            }
-        }
-
-        $csvFile = self::resolveCsvFilePath($csvState);
-
-        if ($csvFile === null) {
             return [
                 'headers' => [],
                 'rows' => [],
                 'preview' => [],
                 'delimiter' => $delimiter ?? ',',
                 'total_rows' => 0,
-                'error' => 'missing_file',
+                'error' => 'Error al leer el archivo CSV: '.$e->getMessage(),
             ];
         }
-
-        return app(ContactCsvParser::class)->parseFile(
-            filePath: $csvFile,
-            delimiter: $delimiter,
-            hasHeader: $hasHeader,
-        );
     }
 
     /**
@@ -916,14 +1103,14 @@ class ImportContactSubmissionsCsvAction
         }
 
         if ($bytes < 1024) {
-            return $bytes . ' B';
+            return $bytes.' B';
         }
 
         if ($bytes < 1024 * 1024) {
-            return number_format($bytes / 1024, 1) . ' KB';
+            return number_format($bytes / 1024, 1).' KB';
         }
 
-        return number_format($bytes / (1024 * 1024), 2) . ' MB';
+        return number_format($bytes / (1024 * 1024), 2).' MB';
     }
 
     private static function resolveCsvFilePath(mixed $state): ?string
@@ -955,7 +1142,7 @@ class ImportContactSubmissionsCsvAction
 
         $directory = 'imports/contact-submissions';
         $filename = basename($sourcePath);
-        $targetPath = trim($directory . '/' . $filename, '/');
+        $targetPath = trim($directory.'/'.$filename, '/');
 
         if (! Storage::disk('curator')->exists($targetPath)) {
             Storage::disk('curator')->put(

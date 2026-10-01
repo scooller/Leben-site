@@ -11,8 +11,8 @@ use Filament\Actions\EditAction;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Collection;
@@ -25,256 +25,279 @@ colores disponibles para badge:
 
 class ProyectosTable
 {
-	public static function configure(Table $table): Table
-	{
-		return $table
-			->description(function (): ?Htmlable {
-				$inactiveProjects = Proyecto::query()
-					->where('is_active', false)
-					->orderBy('name')
-					->pluck('name')
-					->filter()
-					->values();
+    public static function configure(Table $table): Table
+    {
+        return $table
+            ->description(function (): ?Htmlable {
+                $inactiveProjects = Proyecto::query()
+                    ->where('is_active', false)
+                    ->orderBy('name')
+                    ->pluck('name')
+                    ->filter()
+                    ->values();
 
-				if ($inactiveProjects->isEmpty()) {
-					return null;
-				}
+                if ($inactiveProjects->isEmpty()) {
+                    return null;
+                }
 
-				$count = $inactiveProjects->count();
-				$names = $inactiveProjects->implode('</span>,<span class="fi-color fi-color-rose fi-text-color-700 dark:fi-text-color-200 fi-badge fi-size-sm">');
+                $count = $inactiveProjects->count();
+                $names = $inactiveProjects->implode('</span>,<span class="fi-color fi-color-rose fi-text-color-700 dark:fi-text-color-200 fi-badge fi-size-sm">');
 
-				return new HtmlString(
-					"<div class=\"text-sm text-amber-600 dark:text-amber-400 font-medium py-1\">"
-					. "⚠️ <strong>{$count} proyecto(s) inactivo(s):</strong> <span class='fi-color fi-color-rose fi-text-color-700 dark:fi-text-color-200 fi-badge fi-size-sm'>{$names}</span>. Sus plantas no se muestran en el catálogo público ni en la API."
-					. "</div>"
-				);
-			})
-			->columns(self::getColumns())
-			->filters(self::getFilters())
-			->recordActions([
-				EditAction::make(),
-				Action::make('toggleActive')
-					->label(fn(Proyecto $record): string => $record->is_active ? 'Desactivar' : 'Activar')
-					->icon(fn(Proyecto $record): string => $record->is_active ? 'heroicon-o-x-circle' : 'heroicon-o-check-circle')
-					->color(fn(Proyecto $record): string => $record->is_active ? 'warning' : 'success')
-					->action(fn(Proyecto $record): bool => $record->update([
-						'is_active' => !$record->is_active,
-					]))
-					->successNotificationTitle('Estado actualizado'),
-				Action::make('viewInSalesforce')
-					->label('Ver en Salesforce')
-					->icon('heroicon-o-arrow-top-right-on-square')
-					->url(
-						fn(Proyecto $record): ?string => filled($record->salesforce_id)
-							? "https://leben.lightning.force.com/lightning/r/Proyecto__c/{$record->salesforce_id}/view"
-							: null,
-						shouldOpenInNewTab: true
-					)
-					->visible(fn(Proyecto $record): bool => filled($record->salesforce_id)),
-				EditAction::make(),
-			])
-			->toolbarActions([
-				BulkActionGroup::make([
-					BulkAction::make('deactivateSelected')
-						->label('Desactivar seleccionadas')
-						->icon('heroicon-o-x-circle')
-						->color('warning')
-						->requiresConfirmation()
-						->action(function (Collection $records): void {
-							$records->each->update([
-								'is_active' => false,
-							]);
-						})
-						->successNotificationTitle('Plantas desactivadas'),
-					DeleteBulkAction::make(),
-				]),
-			]);
-	}
+                return new HtmlString(
+                    '<div class="text-sm text-amber-600 dark:text-amber-400 font-medium py-1">'
+                    ."⚠️ <strong>{$count} proyecto(s) inactivo(s):</strong> <span class='fi-color fi-color-rose fi-text-color-700 dark:fi-text-color-200 fi-badge fi-size-sm'>{$names}</span>. Sus plantas no se muestran en el catálogo público ni en la API."
+                    .'</div>'
+                );
+            })
+            ->columns(self::getColumns())
+            ->filters(self::getFilters())
+            ->recordActions([
+                EditAction::make(),
+                Action::make('toggleActive')
+                    ->label(fn (Proyecto $record): string => $record->is_active ? 'Desactivar' : 'Activar')
+                    ->icon(fn (Proyecto $record): string => $record->is_active ? 'heroicon-o-x-circle' : 'heroicon-o-check-circle')
+                    ->color(fn (Proyecto $record): string => $record->is_active ? 'warning' : 'success')
+                    ->action(fn (Proyecto $record): bool => $record->update([
+                        'is_active' => ! $record->is_active,
+                    ]))
+                    ->successNotificationTitle(fn (?Proyecto $record = null): string => $record?->is_active ? '1 proyecto activado' : '1 proyecto desactivado'),
+                Action::make('viewInSalesforce')
+                    ->label('Ver en Salesforce')
+                    ->icon('heroicon-o-arrow-top-right-on-square')
+                    ->url(
+                        fn (Proyecto $record): ?string => filled($record->salesforce_id)
+                            ? "https://leben.lightning.force.com/lightning/r/Proyecto__c/{$record->salesforce_id}/view"
+                            : null,
+                        shouldOpenInNewTab: true
+                    )
+                    ->visible(fn (Proyecto $record): bool => filled($record->salesforce_id)),
+                EditAction::make(),
+            ])
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    BulkAction::make('deactivateSelected')
+                        ->label('Desactivar seleccionadas')
+                        ->icon('heroicon-o-x-circle')
+                        ->color('warning')
+                        ->requiresConfirmation()
+                        ->action(function (Collection $records): void {
+                            $records->each->update([
+                                'is_active' => false,
+                            ]);
+                        })
+                        ->successNotificationTitle(fn ($records = null): string => ($count = is_countable($records) ? count($records) : null) ? "{$count} ".($count === 1 ? 'proyecto desactivado' : 'proyectos desactivados') : 'Proyectos desactivados'),
+                    DeleteBulkAction::make()
+                        ->successNotificationTitle(fn ($records = null): string => ($count = is_countable($records) ? count($records) : null) ? "{$count} ".($count === 1 ? 'proyecto eliminado' : 'proyectos eliminados') : 'Proyectos eliminados'),
+                ]),
+            ]);
+    }
 
-	public static function getColumns(): array
-	{
-		return [
-			TextColumn::make('name')
-				->label('Nombre')
-				->searchable()
-				->sortable(),
+    public static function getColumns(): array
+    {
+        return [
+            TextColumn::make('name')
+                ->label('Nombre')
+                ->searchable()
+                ->sortable(),
 
-			TextColumn::make('etapa')
-				->label('Etapa')
-				->badge()
-				->formatStateUsing(fn(?string $state): ?string => Proyecto::etapaLabel($state))
-				->color(fn(?string $state): string => match (Proyecto::normalizeEtapa($state)) {
-					'postventa' => 'emerald',
-					'permiso_edificacion' => 'orange',
-					'demolicion' => 'red',
-					'inicio_obra' => 'amber',
-					'excavacion_masiva' => 'yellow',
-					'obra_gruesa' => 'rose',
-					'terminaciones' => 'violet',
-					'recepcion_municipal_y_copropiedad' => 'indigo',
-					'escrituracion' => 'blue',
-					'entrega' => 'sky',
-					default => 'gray',
-				})
-				->sortable()
-				->searchable(),
+            TextColumn::make('etapa')
+                ->label('Etapa')
+                ->badge()
+                ->formatStateUsing(fn (?string $state): ?string => Proyecto::etapaLabel($state))
+                ->color(fn (?string $state): string => match (Proyecto::normalizeEtapa($state)) {
+                    'postventa' => 'emerald',
+                    'permiso_edificacion' => 'orange',
+                    'demolicion' => 'red',
+                    'inicio_obra' => 'amber',
+                    'excavacion_masiva' => 'yellow',
+                    'obra_gruesa' => 'rose',
+                    'terminaciones' => 'violet',
+                    'recepcion_municipal_y_copropiedad' => 'indigo',
+                    'escrituracion' => 'blue',
+                    'entrega' => 'sky',
+                    default => 'gray',
+                })
+                ->sortable()
+                ->searchable(),
 
-			TextColumn::make('descuento_defecto_cotizacion_web')
-				->label('Desc. Defecto Web')
-				->badge()
-				->color('teal')
-				->formatStateUsing(fn($state): string => $state !== null ? number_format((float) $state, 2, ',', '.') . '%' : '-')
-				->sortable(),
+            TextColumn::make('descuento_defecto_cotizacion_web')
+                ->label('Desc. Defecto Web')
+                ->badge()
+                ->color('teal')
+                ->formatStateUsing(fn ($state): string => $state !== null ? number_format((float) $state, 2, ',', '.').'%' : '-')
+                ->sortable(),
 
-			TextColumn::make('descuento_maximo_unidad')
-				->label('Desc. Máx. Unidad')
-				->badge()
-				->color('amber')
-				->formatStateUsing(fn($state): string => $state !== null ? number_format((float) $state, 2, ',', '.') . '%' : '-')
-				->sortable(),
+            TextColumn::make('descuento_maximo_unidad')
+                ->label('Desc. Máx. Unidad')
+                ->badge()
+                ->color('amber')
+                ->formatStateUsing(fn ($state): string => $state !== null ? number_format((float) $state, 2, ',', '.').'%' : '-')
+                ->sortable(),
 
-			TextColumn::make('descuento_iva')
-				->label('Dcto. IVA')
-				->badge()
-				->color('purple')
-				->formatStateUsing(fn($state): string => $state !== null ? number_format((float) $state, 2, ',', '.') . '%' : '-')
-				->sortable()
-				->toggleable(isToggledHiddenByDefault: true),
+            TextColumn::make('descuento_iva')
+                ->label('Dcto. IVA')
+                ->badge()
+                ->color('purple')
+                ->formatStateUsing(fn ($state): string => $state !== null ? number_format((float) $state, 2, ',', '.').'%' : '-')
+                ->sortable()
+                ->toggleable(isToggledHiddenByDefault: true),
 
-			TextColumn::make('comuna')
-				->label('Comuna')
-				->sortable()
-				->searchable()
-				->toggleable(isToggledHiddenByDefault: true),
+            TextColumn::make('comuna')
+                ->label('Comuna')
+                ->sortable()
+                ->searchable()
+                ->toggleable(isToggledHiddenByDefault: true),
 
-			TextColumn::make('region')
-				->label('Región')
-				->searchable()
-				->toggleable(isToggledHiddenByDefault: true),
+            TextColumn::make('region')
+                ->label('Región')
+                ->searchable()
+                ->toggleable(isToggledHiddenByDefault: true),
 
-			TextColumn::make('asesores.full_name')
-				->label('Asesores')
-				->badge()
-				->separator(',')
-				->limitList(2)
-				->toggleable(isToggledHiddenByDefault: true)
-				->expandableLimitedList(),
+            TextColumn::make('asesores.full_name')
+                ->label('Asesores')
+                ->badge()
+                ->separator(',')
+                ->limitList(2)
+                ->toggleable(isToggledHiddenByDefault: true)
+                ->expandableLimitedList(),
 
-			TextColumn::make('rut')
-				->label('RUT')
-				->toggleable(isToggledHiddenByDefault: true),
+            TextColumn::make('rut')
+                ->label('RUT')
+                ->toggleable(isToggledHiddenByDefault: true),
 
-			TextColumn::make('plantas_count')
-				->label('Plantas')
-				->counts('plantas')
-				->toggleable(isToggledHiddenByDefault: true)
-				->sortable(),
+            TextColumn::make('plantas_count')
+                ->label('Plantas')
+                ->counts('plantas')
+                ->toggleable(isToggledHiddenByDefault: true)
+                ->sortable(),
 
-			// tipo
-			TextColumn::make('tipo')
-				->label('Tipo')
-				->badge()
-				->color(fn(string $state): string => match ($state) {
-					'best' => 'emerald',
-					'broker' => 'blue',
-					'home' => 'amber',
-					'icon' => 'cyan',
-					'invest' => 'violet',
-					default => 'gray',
-				})
-				->sortable()
-				->searchable(),
+            // tipo
+            TextColumn::make('tipo')
+                ->label('Tipo')
+                ->badge()
+                ->color(fn (string $state): string => match ($state) {
+                    'best' => 'emerald',
+                    'broker' => 'blue',
+                    'home' => 'amber',
+                    'icon' => 'cyan',
+                    'invest' => 'violet',
+                    default => 'gray',
+                })
+                ->sortable()
+                ->searchable(),
 
-			// codigo comercio
-			TextColumn::make('transbank_commerce_code')
-				->label('Código Comercio')
-				->sortable()
-				->searchable()
-				->toggleable(isToggledHiddenByDefault: false),
+            // codigo comercio
+            TextColumn::make('transbank_commerce_code')
+                ->label('Código Comercio')
+                ->sortable()
+                ->searchable()
+                ->toggleable(isToggledHiddenByDefault: false),
 
-			TextColumn::make('manual_payment_link')
-				->label('Enlace de Pago Manual')
-				->sortable()
-				->searchable()
-				->toggleable(isToggledHiddenByDefault: true),
+            TextColumn::make('manual_payment_link')
+                ->label('Enlace de Pago Manual')
+                ->sortable()
+                ->searchable()
+                ->toggleable(isToggledHiddenByDefault: true),
 
-			IconColumn::make('entrega_inmediata')
-				->label('Entrega Inmediata')
-				->boolean()
-				->trueIcon(Heroicon::OutlinedFire)
-				->falseIcon(Heroicon::OutlinedMoon)
-				->color(fn(bool $state): string => $state ? 'amber' : 'gray')
-				->toggleable(isToggledHiddenByDefault: false),
+            IconColumn::make('entrega_inmediata')
+                ->label('Entrega Inmediata')
+                ->boolean()
+                ->trueIcon(Heroicon::OutlinedFire)
+                ->falseIcon(Heroicon::OutlinedMoon)
+                ->color(fn (bool $state): string => $state ? 'amber' : 'gray')
+                ->toggleable(isToggledHiddenByDefault: false),
 
-			// active
-			IconColumn::make('is_active')
-				->label('Activo')
-				->boolean()
-				->color(fn(bool $state): string => $state ? 'green' : 'red')
-				->sortable(),
+            // active
+            IconColumn::make('is_active')
+                ->label('Activo')
+                ->boolean()
+                ->color(fn (bool $state): string => $state ? 'green' : 'red')
+                ->sortable(),
 
-			TextColumn::make('created_at')
-				->label('Creado')
-				->dateTime('d/m/Y H:i')
-				->sortable()
-				->toggleable(isToggledHiddenByDefault: true),
+            TextColumn::make('created_at')
+                ->label('Creado')
+                ->dateTime('d/m/Y H:i')
+                ->sortable()
+                ->toggleable(isToggledHiddenByDefault: true),
 
-			TextColumn::make('updated_at')
-				->label('Actualizado')
-				->dateTime('d/m/Y H:i')
-				->sortable()
-				->toggleable(isToggledHiddenByDefault: true),
-		];
-	}
+            TextColumn::make('updated_at')
+                ->label('Actualizado')
+                ->dateTime('d/m/Y H:i')
+                ->sortable()
+                ->toggleable(isToggledHiddenByDefault: true),
+        ];
+    }
 
-	public static function getFilters(): array
-	{
-		return [
-			SelectFilter::make('etapa')
-				->label('Etapa')
-				->multiple()
-				->options(Proyecto::etapaOptions())
-				->searchable(),
+    public static function getFilters(): array
+    {
+        return [
+            SelectFilter::make('etapa')
+                ->label('Etapa')
+                ->multiple()
+                ->options(Proyecto::etapaOptions())
+                ->searchable(),
 
-			SelectFilter::make('region')
-				->label('Región')
-				->multiple()
-				->options(
-					Proyecto::query()
-						->distinct()
-						->whereNotNull('region')
-						->pluck('region', 'region')
-						->toArray()
-				)
-				->searchable()
-				->preload(),
+            SelectFilter::make('region')
+                ->label('Región')
+                ->multiple()
+                ->options(
+                    fn (): array => Proyecto::query()
+                        ->distinct()
+                        ->whereNotNull('region')
+                        ->where('region', '!=', '')
+                        ->orderBy('region')
+                        ->pluck('region', 'region')
+                        ->toArray()
+                )
+                ->searchable()
+                ->preload(),
 
-			// tipo
-			SelectFilter::make('tipo')
-				->label('Tipo')
-				->multiple()
-				->options([
-					'best' => 'Best',
-					'broker' => 'Broker',
-					'home' => 'Home',
-					'icon' => 'Icon',
-					'invest' => 'Invest',
-				])
-				->searchable()
-				->preload(),
+            SelectFilter::make('comuna')
+                ->label('Comuna')
+                ->multiple()
+                ->options(
+                    fn (): array => Proyecto::query()
+                        ->distinct()
+                        ->whereNotNull('comuna')
+                        ->where('comuna', '!=', '')
+                        ->orderBy('comuna')
+                        ->pluck('comuna', 'comuna')
+                        ->toArray()
+                )
+                ->searchable()
+                ->preload(),
 
-			SelectFilter::make('entrega_inmediata')
-				->label('Entrega Inmediata')
-				->options([
-					true => 'Sí',
-					false => 'No',
-				]),
+            // tipo
+            SelectFilter::make('tipo')
+                ->label('Tipo')
+                ->multiple()
+                ->options([
+                    'best' => 'Best',
+                    'broker' => 'Broker',
+                    'home' => 'Home',
+                    'icon' => 'Icon',
+                    'invest' => 'Invest',
+                ])
+                ->searchable()
+                ->preload(),
 
-			TernaryFilter::make('is_active')
-				->label('Estado')
-				->placeholder('Todos')
-				->trueLabel('Solo activos')
-				->falseLabel('Solo inactivos'),
-		];
-	}
+            Filter::make('entrega_inmediata')
+                ->label('Entrega Inmediata')
+                ->toggle()
+                ->query(fn ($query) => $query->where('entrega_inmediata', true)),
+            Filter::make('sin_entrega_inmediata')
+                ->label('Sin Entrega Inmediata')
+                ->toggle()
+                ->query(fn ($query) => $query->where('entrega_inmediata', false)),
+
+            Filter::make('solo_activos')
+                ->label('Solo activos')
+                ->toggle()
+                ->query(fn ($query) => $query->where('is_active', true)),
+            Filter::make('solo_inactivos')
+                ->label('Solo inactivos')
+                ->toggle()
+                ->query(fn ($query) => $query->where('is_active', false)),
+        ];
+    }
 }
