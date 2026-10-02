@@ -4,6 +4,13 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.57] - 2026-10-02
+
+### 🐛 Fix — Campos excluidos de sincronización se preservan en sync desde producción
+
+- **`app/Services/ProductionSync/ProductionSyncService.php`**: En modo `overwrite` del `syncSiteSettings`, se preservan ahora **todas las claves `salesforce_sync_*`** del `extra_settings` local (además de `salesforce_oauth` que ya se preservaba). Esto incluye `salesforce_sync_plants_excluded_fields`, `salesforce_sync_projects_excluded_fields`, y cualquier otra clave futura con ese prefijo. Sin este fix, al sincronizar en modo overwrite desde producción, los campos excluidos configurados localmente se borraban porque `filterSyncableExtraSettings` los excluye correctamente del payload (son config de entorno), pero el overwrite reemplazaba todo.
+- **`tests/Feature/Feature/ProductionSync/SyncSiteSettingsExcludedFieldsTest.php`**: 4 tests nuevos que verifican la preservación en modo `update` y `overwrite`, con y sin `salesforce_oauth`.
+
 ## [1.9.56] - 2026-10-02
 
 ### 🏷️ Jerarquía de Orden por Descuentos y Orden Predeterminado en SiteSettings

@@ -1,21 +1,21 @@
 {
-    "name": "leben-site",
-    "version": "1.9.56",
-    "private": true,
-    "type": "module",
-    "scripts": {
-        "build": "vite build",
-        "build:all": "vite build && npm --prefix frontend run build",
-        "dev": "vite"
-    },
-    "devDependencies": {
-        "@tailwindcss/vite": "^4.1.18",
-        "axios": "^1.7.4",
-        "concurrently": "^9.0.1",
-        "cropperjs": "^1.6.2",
-        "laravel-vite-plugin": "^1.2.0",
-        "sass": "^1.97.3",
-        "tailwindcss": "^4.1.18",
-        "vite": "^6.0.11"
-    }
+  "name": "leben-site",
+  "version": "1.9.57",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "build:all": "vite build && npm --prefix frontend run build",
+    "dev": "vite"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.18",
+    "axios": "^1.7.4",
+    "concurrently": "^9.0.1",
+    "cropperjs": "^1.6.2",
+    "laravel-vite-plugin": "^1.2.0",
+    "sass": "^1.97.3",
+    "tailwindcss": "^4.1.18",
+    "vite": "^6.0.11"
+  }
 }

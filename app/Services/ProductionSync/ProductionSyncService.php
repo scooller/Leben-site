@@ -203,8 +203,13 @@ class ProductionSyncService
             $incomingExtraSettings = SiteSetting::filterSyncableExtraSettings((array) $payload['extra_settings']);
 
             if ($mode === 'overwrite') {
-                if (isset($currentExtraSettings['salesforce_oauth'])) {
-                    $incomingExtraSettings['salesforce_oauth'] = $currentExtraSettings['salesforce_oauth'];
+                // Preserve local environment-specific keys that are never part of the sync payload:
+                // salesforce_oauth (token), salesforce_sync_* (excluded fields, interval, plant types, etc.)
+                foreach ($currentExtraSettings as $localKey => $localValue) {
+                    $normalizedLocalKey = strtolower((string) $localKey);
+                    if ($normalizedLocalKey === 'salesforce_oauth' || str_starts_with($normalizedLocalKey, 'salesforce_sync')) {
+                        $incomingExtraSettings[$localKey] = $localValue;
+                    }
                 }
                 $attributes['extra_settings'] = $incomingExtraSettings;
             } else {
