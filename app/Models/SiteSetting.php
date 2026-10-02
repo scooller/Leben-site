@@ -626,6 +626,7 @@ class SiteSetting extends Model
                     : null,
             ],
             'plants_per_page' => (int) ($settings->plants_per_page ?? 12),
+            'plants_default_order' => $extraSettings['plants_default_order'] ?? 'discounts',
             'maintenance_mode' => $settings->maintenance_mode && ! $isPreviewAuthorized,
             'maintenance_message' => $settings->maintenance_message,
             'hero' => [

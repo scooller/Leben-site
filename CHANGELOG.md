@@ -4,6 +4,18 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.56] - 2026-10-02
+
+### 🏷️ Jerarquía de Orden por Descuentos y Orden Predeterminado en SiteSettings
+
+- **Jerarquía de Descuentos en Frontend y API (`frontend/src/pages/Home.jsx`, `app/Http/Controllers/Api/PlantController.php`)**:
+  - Implementado orden prioritario de plantas según descuentos: primero unidades con Descuento IVA + Descuento Comercial (`dcto iva + dcto`), luego unidades con solo Descuento IVA (`solo dcto iva`), y finalmente las demás unidades (con descuento comercial solo o sin descuento).
+  - Dentro de cada nivel de prioridad se ordenan de forma descendente por descuento total y ascendente por precio final.
+  - Sincronizado en el cliente (`getOfferTier` en `Home.jsx`) para el orden interactivo por "Mejor oferta".
+- **Configuración de Orden Inicial en Panel Administrativo (`app/Filament/Pages/SiteSettings.php`, `app/Models/SiteSetting.php`)**:
+  - Incorporado selector `extra_settings.plants_default_order` en Información Básica para elegir el orden inicial predeterminado: Descuentos (`discounts`), Proyecto (`project`), Nombre de planta (`plant_name`), Al azar (`random`), Menor precio (`price_asc`) o Mayor precio (`price_desc`).
+  - Expuesto el parámetro `plants_default_order` en la respuesta de configuración para frontend (`SiteSetting::forFrontend`).
+
 ## [1.9.55] - 2026-10-01
 
 ### 🔗 Persistencia de Preview Token en Enlaces y Navegación del Frontend

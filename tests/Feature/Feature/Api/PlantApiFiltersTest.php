@@ -1138,4 +1138,85 @@ class PlantApiFiltersTest extends TestCase
         $this->assertContains($salePlant->id, $saleOnlyPlantIds);
         $this->assertNotContains($nonSalePlant->id, $saleOnlyPlantIds);
     }
+
+    public function test_it_orders_plants_by_tiered_discounts_iva_plus_discount_then_solo_iva_then_others(): void
+    {
+        $project = Proyecto::factory()->create([
+            'is_active' => true,
+            'descuento_defecto_cotizacion_web' => 0,
+            'descuento_iva' => 0,
+        ]);
+
+        // Tier 4: No discount
+        $this->createPlant($project->salesforce_id, true, [
+            'name' => 'NO_DISCOUNT',
+            'priorizar_descuentos' => true,
+            'descuento_iva' => 0,
+            'descuento_defecto_cotizacion_web' => 0,
+            'precio_base' => 1000,
+            'precio_lista' => 1000,
+        ]);
+
+        // Tier 3: Solo comercial (15% total)
+        $this->createPlant($project->salesforce_id, true, [
+            'name' => 'SOLO_DISCOUNT',
+            'priorizar_descuentos' => true,
+            'descuento_iva' => 0,
+            'descuento_defecto_cotizacion_web' => 15,
+            'precio_base' => 1000,
+            'precio_lista' => 1000,
+        ]);
+
+        // Tier 2: Solo IVA (5% total)
+        $this->createPlant($project->salesforce_id, true, [
+            'name' => 'SOLO_IVA',
+            'priorizar_descuentos' => true,
+            'descuento_iva' => 5,
+            'descuento_defecto_cotizacion_web' => 0,
+            'precio_base' => 1000,
+            'precio_lista' => 1000,
+        ]);
+
+        // Tier 1: Dcto IVA + Dcto Comercial (5% IVA + 10% dcto = 15% total)
+        $this->createPlant($project->salesforce_id, true, [
+            'name' => 'IVA_AND_DISCOUNT',
+            'priorizar_descuentos' => true,
+            'descuento_iva' => 5,
+            'descuento_defecto_cotizacion_web' => 10,
+            'precio_base' => 1000,
+            'precio_lista' => 1000,
+        ]);
+
+        $response = $this->getJson('/api/v1/plantas?project_slug='.$project->slug.'&perPage=50');
+
+        $response->assertOk();
+        $this->assertSame(
+            ['IVA_AND_DISCOUNT', 'SOLO_IVA', 'SOLO_DISCOUNT', 'NO_DISCOUNT'],
+            collect($response->json('data'))->pluck('name')->all()
+        );
+    }
+
+    public function test_it_respects_plants_default_order_from_site_settings(): void
+    {
+        $settings = SiteSetting::current();
+        $extra = is_array($settings->extra_settings) ? $settings->extra_settings : [];
+        $extra['plants_default_order'] = 'plant_name';
+        $settings->update(['extra_settings' => $extra]);
+
+        $project = Proyecto::factory()->create([
+            'is_active' => true,
+        ]);
+
+        $this->createPlant($project->salesforce_id, true, ['name' => 'ZETA']);
+        $this->createPlant($project->salesforce_id, true, ['name' => 'ALFA']);
+        $this->createPlant($project->salesforce_id, true, ['name' => 'BETA']);
+
+        $response = $this->getJson('/api/v1/plantas?project_slug='.$project->slug.'&perPage=50');
+
+        $response->assertOk();
+        $this->assertSame(
+            ['ALFA', 'BETA', 'ZETA'],
+            collect($response->json('data'))->pluck('name')->all()
+        );
+    }
 }

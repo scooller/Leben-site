@@ -223,6 +223,10 @@ class SiteSettings extends Page implements HasForms
             }
         }
 
+        if (data_get($data, 'extra_settings.plants_default_order') === null) {
+            data_set($data, 'extra_settings.plants_default_order', 'discounts');
+        }
+
         $this->form->fill($data);
         $this->rememberData();
 
@@ -294,6 +298,20 @@ class SiteSettings extends Page implements HasForms
                                             ->default(12)
                                             ->required()
                                             ->helperText('Define cuántas plantas se muestran por página por defecto en el catálogo (si no se envía perPage en la API).'),
+
+                                        Select::make('extra_settings.plants_default_order')
+                                            ->label('Orden predeterminado de plantas')
+                                            ->options([
+                                                'discounts' => 'Descuentos (IVA + Dcto, Solo IVA, otros)',
+                                                'project' => 'Proyecto y nombre de planta',
+                                                'plant_name' => 'Nombre de planta',
+                                                'random' => 'Al azar / Aleatorio',
+                                                'price_asc' => 'Menor precio',
+                                                'price_desc' => 'Mayor precio',
+                                            ])
+                                            ->default('discounts')
+                                            ->required()
+                                            ->helperText('Define el orden inicial del catálogo de plantas en el frontend cuando no hay un orden seleccionado por el usuario.'),
 
                                         TextInput::make('extra_settings.catalogo_no_disponible_titulo')
                                             ->label('Título cuando no se muestran plantas')

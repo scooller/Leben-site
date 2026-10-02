@@ -309,6 +309,22 @@ function Home({ onNavigate, currentPath }) {
       return { percentage, savings };
     };
 
+    const getOfferTier = (plant) => {
+      const hasIva = Boolean(plant.hasIvaDiscount || Number(plant.descuentoIva || plant.descuento_iva) > 0);
+      const hasBase = Number(plant.discountPercentage || plant.porcentajeAplicado || plant.descuentoDefectoCotizacionWeb || plant.descuentoMaximoUnidad) > 0;
+
+      if (hasIva && hasBase) {
+        return 1;
+      }
+      if (hasIva) {
+        return 2;
+      }
+      if (hasBase) {
+        return 3;
+      }
+      return 4;
+    };
+
     const sorted = [...plants].sort((leftPlant, rightPlant) => {
       switch (selectedSort) {
         case SORT_OPTIONS.NAME_ASC:
@@ -320,6 +336,13 @@ function Home({ onNavigate, currentPath }) {
         case SORT_OPTIONS.PRICE_DESC:
           return getPriceValue(rightPlant) - getPriceValue(leftPlant);
         case SORT_OPTIONS.OFFER_ASC: {
+          const leftTier = getOfferTier(leftPlant);
+          const rightTier = getOfferTier(rightPlant);
+
+          if (leftTier !== rightTier) {
+            return rightTier - leftTier;
+          }
+
           const leftOffer = getOfferValue(leftPlant);
           const rightOffer = getOfferValue(rightPlant);
 
@@ -327,9 +350,20 @@ function Home({ onNavigate, currentPath }) {
             return leftOffer.percentage - rightOffer.percentage;
           }
 
-          return leftOffer.savings - rightOffer.savings;
+          if (leftOffer.savings !== rightOffer.savings) {
+            return leftOffer.savings - rightOffer.savings;
+          }
+
+          return getPriceValue(rightPlant) - getPriceValue(leftPlant);
         }
         case SORT_OPTIONS.OFFER_DESC: {
+          const leftTier = getOfferTier(leftPlant);
+          const rightTier = getOfferTier(rightPlant);
+
+          if (leftTier !== rightTier) {
+            return leftTier - rightTier;
+          }
+
           const leftOffer = getOfferValue(leftPlant);
           const rightOffer = getOfferValue(rightPlant);
 
@@ -337,7 +371,11 @@ function Home({ onNavigate, currentPath }) {
             return rightOffer.percentage - leftOffer.percentage;
           }
 
-          return rightOffer.savings - leftOffer.savings;
+          if (leftOffer.savings !== rightOffer.savings) {
+            return rightOffer.savings - leftOffer.savings;
+          }
+
+          return getPriceValue(leftPlant) - getPriceValue(rightPlant);
         }
         default:
           return 0;
