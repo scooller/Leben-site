@@ -4,6 +4,12 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.58] - 2026-10-02
+
+### 🐛 Fix — Inconsistencia en formato de descuentos (tooltip vs. detalle)
+
+- **`frontend/src/components/PlantDetailDialog.jsx`**: Los badges de "Dcto. IVA" y "Dcto. Unidad" en la sección de detalles ahora usan `ivaDiscountFormatted`/`unitDiscountFormatted` (`.toFixed(1)`) igual que el tooltip del sello, eliminando la inconsistencia donde el tooltip mostraba `18.0%` y los badges mostraban `17.98%` para el mismo valor.
+
 ## [1.9.57] - 2026-10-02
 
 ### 🐛 Fix — Campos excluidos de sincronización se preservan en sync desde producción

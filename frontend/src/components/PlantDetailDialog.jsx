@@ -367,13 +367,13 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
                                         {hasIva && (
                                             <div className="wa-split wa-align-items-center">
                                                 <strong>Dcto. IVA</strong>
-                                                <wa-badge variant="warning">{ivaDiscount}%</wa-badge>
+                                                <wa-badge variant="warning">{ivaDiscountFormatted}%</wa-badge>
                                             </div>
                                         )}
                                         {unitDiscount > 0 && (
                                             <div className="wa-split wa-align-items-center">
                                                 <strong>Dcto. Unidad</strong>
-                                                <wa-badge variant="warning">{unitDiscount}%</wa-badge>
+                                                <wa-badge variant="warning">{unitDiscountFormatted}%</wa-badge>
                                             </div>
                                         )}
                                         {/* Separador encima de Dcto Total y Precio Reserva */}
