@@ -4,6 +4,15 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.59] - 2026-10-02
+
+### 🐛 Fix — Preservación de decimales exactos en descuentos (detalle y tooltip)
+
+- **`frontend/src/components/PlantDetailDialog.jsx`**: Se revierte el redondeo forzado en los badges de detalle ("Dcto. IVA", "Dcto. Unidad" y "Dcto. Total") y tooltip, mostrando los valores decimales exactos (ej. `17.98%`) en lugar de redondear a `18%`.
+- **`frontend/src/components/PlantsGrid.jsx`**: El tooltip del sello de descuento ahora muestra los valores exactos de IVA y unidad sin redondear a 1 decimal.
+- **`frontend/src/pages/Home.jsx`**: `totalDiscountPercentage` conserva precisión de 2 decimales para evitar cálculo distorsionado de precios y descuentos activos.
+
+
 ## [1.9.58] - 2026-10-02
 
 ### 🐛 Fix — Inconsistencia en formato de descuentos (tooltip vs. detalle)

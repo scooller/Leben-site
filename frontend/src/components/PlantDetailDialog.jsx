@@ -232,15 +232,13 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
         }
     };
 
-    const unitDiscount = Number(plant?.porcentajeAplicado ?? plant?.discountPercentage) || 0;
-    const ivaDiscount = Number(plant?.descuentoIva ?? plant?.descuento_iva) || 0;
+    const unitDiscount = parseFloat((Number(plant?.porcentajeAplicado ?? plant?.discountPercentage) || 0).toFixed(2));
+    const ivaDiscount = parseFloat((Number(plant?.descuentoIva ?? plant?.descuento_iva) || 0).toFixed(2));
     const hasIva = ivaDiscount > 0;
     const totalDiscountRaw = hasIva ? (unitDiscount + ivaDiscount) : unitDiscount;
-    const totalDiscount = Number(totalDiscountRaw.toFixed(1));
+    const totalDiscount = parseFloat(totalDiscountRaw.toFixed(2));
     const displayTotalDiscount = totalDiscountRaw.toFixed(1);
     const shouldShowDiscountSeal = totalDiscountRaw > 0;
-    const ivaDiscountFormatted = ivaDiscount.toFixed(1);
-    const unitDiscountFormatted = unitDiscount.toFixed(1);
 
     return (
         <wa-dialog
@@ -301,7 +299,7 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
                                         </div>
                                         {hasIva && (
                                             <wa-tooltip for={`discount-seal-detail-${plant.id}`}>
-                                                Dcto IVA {ivaDiscountFormatted}% + Dcto. Sale {unitDiscountFormatted}%
+                                                Dcto IVA {ivaDiscount}% + Dcto. Sale {unitDiscount}%
                                             </wa-tooltip>
                                         )}
                                     </div>
@@ -367,13 +365,13 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
                                         {hasIva && (
                                             <div className="wa-split wa-align-items-center">
                                                 <strong>Dcto. IVA</strong>
-                                                <wa-badge variant="warning">{ivaDiscountFormatted}%</wa-badge>
+                                                <wa-badge variant="warning">{ivaDiscount}%</wa-badge>
                                             </div>
                                         )}
                                         {unitDiscount > 0 && (
                                             <div className="wa-split wa-align-items-center">
                                                 <strong>Dcto. Unidad</strong>
-                                                <wa-badge variant="warning">{unitDiscountFormatted}%</wa-badge>
+                                                <wa-badge variant="warning">{unitDiscount}%</wa-badge>
                                             </div>
                                         )}
                                         {/* Separador encima de Dcto Total y Precio Reserva */}

@@ -746,8 +746,8 @@ function Home({ onNavigate, currentPath }) {
     const discountPercentage = unitDiscountPercentage;
     const hasIvaDiscount = descuentoIva > 0;
     const totalDiscountPercentage = hasIvaDiscount
-      ? Number((discountPercentage + descuentoIva).toFixed(1))
-      : Number(discountPercentage.toFixed(1));
+      ? Number((discountPercentage + descuentoIva).toFixed(2))
+      : Number(discountPercentage.toFixed(2));
 
     const activeDiscount = totalDiscountPercentage > 0 ? totalDiscountPercentage : 0;
     const precioCalculadoPorPorcentaje = activeDiscount > 0 && precioLista > 0
