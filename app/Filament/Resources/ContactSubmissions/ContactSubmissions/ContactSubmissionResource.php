@@ -72,11 +72,7 @@ class ContactSubmissionResource extends Resource
 
     public static function canEdit($record): bool
     {
-        if (! ((auth()->user()?->isAdmin() ?? false) || (auth()->user()?->isMarketing() ?? false))) {
-            return false;
-        }
-
-        return filled($record->salesforce_case_error) || ! filled($record->salesforce_case_id);
+        return (auth()->user()?->isAdmin() ?? false) || (auth()->user()?->isMarketing() ?? false);
     }
 
     public static function canDelete($record): bool

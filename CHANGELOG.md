@@ -4,6 +4,17 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.62] - 2026-10-05
+
+### ✨ Feat — Actualización de Leads en Salesforce y habilitación de edición en Filament
+
+- **`app/Filament/Resources/ContactSubmissions/ContactSubmissions/ContactSubmissionResource.php`**: Se remueve la restricción que impedía editar un contacto una vez sincronizado con Salesforce (`salesforce_case_id` no nulo sin errores), permitiendo la edición continua a administradores y usuarios de marketing.
+- **`app/Services/Salesforce/SalesforceService.php`**: Se implementa el método `updateLead(string $leadId, array $payload)` utilizando `Forrest::sobjects("Lead/{$leadId}", ['method' => 'patch', ...])` con sanitización de campos y reintentos ante campos inaccesibles.
+- **`app/Jobs/CreateSalesforceCaseJob.php`**: Ahora verifica si el envío ya cuenta con `salesforce_case_id`; en caso afirmativo invoca `updateLead()`. Si el registro fue eliminado en Salesforce (error 404 / entity is deleted), realiza fallback a `createLead()`.
+- **`app/Filament/Actions/ResyncSalesforceLeadAction.php`**: El diálogo modal y la notificación de éxito son ahora dinámicos, distinguiendo si se actualizará un Lead existente o se creará uno nuevo.
+- **`app/Filament/Resources/ContactSubmissions/ContactSubmissions/Pages/EditContactSubmission.php`**: Se añade el hook `afterSave()` para sincronizar automáticamente los cambios hacia Salesforce en segundo plano cuando el contacto ya cuenta con ID de Lead.
+- **`tests/Feature/ContactSubmissionSalesforceUpdateSyncTest.php`**: Tests automatizados para verificar actualización con `updateLead`, creación con `createLead`, fallback ante 404 y permisos de edición.
+
 ## [1.9.61] - 2026-10-04
 
 ### 📦 Dependencies — Actualización de Web Awesome Pro a v3.14.0

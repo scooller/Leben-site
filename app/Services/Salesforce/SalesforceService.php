@@ -220,6 +220,76 @@ class SalesforceService
         }
     }
 
+    /**
+     * Actualizar un Lead existente en Salesforce.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    public function updateLead(string $leadId, array $payload): array
+    {
+        $currentPayload = $this->sanitizeLeadPayloadWithCreatableFields($payload);
+        $currentPayload = $this->sanitizeLeadPayloadWithKnownUnavailableFields($currentPayload);
+
+        Log::debug('Salesforce: Enviando solicitud de actualización de Lead', [
+            'lead_id' => $leadId,
+            'email' => $currentPayload['Email'] ?? null,
+            'payload_keys' => array_keys($currentPayload),
+        ]);
+
+        try {
+            $response = $this->executeWithTokenProtection(function () use ($leadId, $currentPayload) {
+                $result = Forrest::sobjects("Lead/{$leadId}", [
+                    'method' => 'patch',
+                    'body' => $currentPayload,
+                ]);
+
+                $response = is_array($result) ? $result : [];
+
+                Log::debug('Salesforce: Respuesta actualización de Lead', [
+                    'lead_id' => $leadId,
+                    'result' => $result,
+                ]);
+
+                return array_merge(['id' => $leadId, 'success' => true], $response);
+            });
+
+            return $response;
+        } catch (SalesforceTokenExpiredException $e) {
+            throw $e;
+        } catch (Throwable $firstException) {
+            $sanitized = $this->removeUnavailableLeadFields($currentPayload, $firstException);
+            $currentPayload = $sanitized['payload'];
+
+            if ($sanitized['removed_fields'] !== []) {
+                $this->rememberUnavailableLeadFields($sanitized['removed_fields']);
+
+                Log::warning('Salesforce: Campos removidos del payload de actualización de Lead, reintentando', [
+                    'lead_id' => $leadId,
+                    'removed_fields' => $sanitized['removed_fields'],
+                    'payload_keys' => array_keys($currentPayload),
+                ]);
+
+                $result = Forrest::sobjects("Lead/{$leadId}", [
+                    'method' => 'patch',
+                    'body' => $currentPayload,
+                ]);
+
+                $response = is_array($result) ? $result : [];
+
+                return array_merge(['id' => $leadId, 'success' => true], $response);
+            }
+
+            Log::error('Salesforce: Error actualizando Lead no recuperable', [
+                'lead_id' => $leadId,
+                'error' => $firstException->getMessage(),
+                'email' => $payload['Email'] ?? null,
+            ]);
+
+            throw $firstException;
+        }
+    }
+
     private function extractInvalidLeadField(Throwable $exception): ?string
     {
         $message = $exception->getMessage();

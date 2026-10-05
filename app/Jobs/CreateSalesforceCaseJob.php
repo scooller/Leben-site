@@ -119,6 +119,46 @@ class CreateSalesforceCaseJob implements ShouldQueue
             // $response = $salesforceService->createCase($payload);
 
             $payload = $mapper->mapLead($submission);
+
+            if (filled($submission->salesforce_case_id)) {
+                try {
+                    $response = $salesforceService->updateLead((string) $submission->salesforce_case_id, $payload);
+                    $leadId = (string) $submission->salesforce_case_id;
+
+                    $submission->update([
+                        'salesforce_case_error' => null,
+                        'salesforce_synced_at' => now(),
+                        'salesforce_sync_trigger' => $syncTrigger,
+                    ]);
+
+                    FlowLogMatrix::write('salesforce.job.lead_updated', 'CreateSalesforceCaseJob: Lead actualizado correctamente', [
+                        'contact_submission_id' => $submission->id,
+                        'salesforce_lead_id' => $leadId,
+                        'salesforce_success' => $response['success'] ?? true,
+                    ]);
+
+                    return;
+                } catch (SalesforceTokenExpiredException|MissingResourceException $exception) {
+                    throw $exception;
+                } catch (Throwable $updateException) {
+                    $message = strtolower($updateException->getMessage());
+                    $isNotFound = str_contains($message, 'not_found')
+                        || str_contains($message, 'entity_is_deleted')
+                        || str_contains($message, 'provided id does not exist')
+                        || str_contains($message, '404');
+
+                    if ($isNotFound) {
+                        FlowLogMatrix::write('salesforce.job.lead_update_fallback', 'CreateSalesforceCaseJob: Lead previo no encontrado en Salesforce, creando nuevo', [
+                            'contact_submission_id' => $submission->id,
+                            'old_lead_id' => $submission->salesforce_case_id,
+                            'error' => $updateException->getMessage(),
+                        ]);
+                    } else {
+                        throw $updateException;
+                    }
+                }
+            }
+
             $response = $salesforceService->createLead($payload);
             $leadId = (string) ($response['id'] ?? $response['Id'] ?? '');
 

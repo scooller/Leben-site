@@ -17,7 +17,9 @@ class ResyncSalesforceLeadAction
             ->color('warning')
             ->requiresConfirmation()
             ->modalHeading('Resincronizar Lead en Salesforce')
-            ->modalDescription('Se intentará crear el Lead en Salesforce nuevamente. Si ya existe un ID guardado, será reemplazado si el nuevo envío es exitoso.')
+            ->modalDescription(fn (ContactSubmission $record): string => filled($record->salesforce_case_id)
+                ? 'Se intentará actualizar el Lead existente en Salesforce (ID: '.$record->salesforce_case_id.').'
+                : 'Se intentará crear el Lead en Salesforce nuevamente.')
             ->modalSubmitActionLabel('Resincronizar')
             ->action(function (ContactSubmission $record): void {
                 $leadEnabled = (bool) config('services.salesforce.lead_enabled', config('services.salesforce.case_enabled', false));
@@ -32,6 +34,8 @@ class ResyncSalesforceLeadAction
                     return;
                 }
 
+                $hadPriorId = filled($record->salesforce_case_id);
+
                 // Limpiar error previo antes de reintentar
                 $record->update(['salesforce_case_error' => null]);
 
@@ -39,10 +43,12 @@ class ResyncSalesforceLeadAction
 
                 $record->refresh();
 
-                if (filled($record->salesforce_case_id)) {
+                if (filled($record->salesforce_case_id) && blank($record->salesforce_case_error)) {
                     Notification::make()
-                        ->title('Lead sincronizado')
-                        ->body('Lead creado en Salesforce con ID: '.$record->salesforce_case_id)
+                        ->title($hadPriorId ? 'Lead actualizado' : 'Lead sincronizado')
+                        ->body($hadPriorId
+                            ? 'Lead actualizado en Salesforce con ID: '.$record->salesforce_case_id
+                            : 'Lead creado en Salesforce con ID: '.$record->salesforce_case_id)
                         ->success()
                         ->send();
                 } else {
@@ -50,7 +56,7 @@ class ResyncSalesforceLeadAction
                         ->title('Error al sincronizar')
                         ->body(filled($record->salesforce_case_error)
                             ? $record->salesforce_case_error
-                            : 'No se pudo crear el Lead en Salesforce.')
+                            : 'No se pudo sincronizar el Lead en Salesforce.')
                         ->danger()
                         ->send();
                 }
