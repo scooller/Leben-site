@@ -212,8 +212,11 @@ class SalesforceService
             }
 
             Log::error('Salesforce: Error creando Lead no recuperable', [
-                'error' => $firstException->getMessage(),
                 'email' => $payload['Email'] ?? null,
+                'rut' => $payload['RUT__c'] ?? null,
+                'payload_keys' => array_keys($currentPayload),
+                'payload' => $currentPayload,
+                ...$this->extractSalesforceExceptionDetails($firstException),
             ]);
 
             throw $firstException;
@@ -282,12 +285,73 @@ class SalesforceService
 
             Log::error('Salesforce: Error actualizando Lead no recuperable', [
                 'lead_id' => $leadId,
-                'error' => $firstException->getMessage(),
                 'email' => $payload['Email'] ?? null,
+                'rut' => $payload['RUT__c'] ?? null,
+                'payload_keys' => array_keys($currentPayload),
+                'payload' => $currentPayload,
+                ...$this->extractSalesforceExceptionDetails($firstException),
             ]);
 
             throw $firstException;
         }
+    }
+
+    /**
+     * Extrae información detallada y estructurada de una excepción de Salesforce.
+     *
+     * @return array<string, mixed>
+     */
+    private function extractSalesforceExceptionDetails(Throwable $exception): array
+    {
+        $details = [
+            'exception_class' => get_class($exception),
+            'message' => $exception->getMessage(),
+            'code' => $exception->getCode(),
+            'file' => $exception->getFile().':'.$exception->getLine(),
+        ];
+
+        $rawBody = null;
+        if (method_exists($exception, 'getResponse')) {
+            $response = $exception->getResponse();
+            if ($response) {
+                $details['http_status'] = $response->getStatusCode();
+                $bodyStream = $response->getBody();
+                if (method_exists($bodyStream, 'isSeekable') && $bodyStream->isSeekable()) {
+                    $bodyStream->rewind();
+                }
+                $rawBody = (string) $bodyStream;
+            }
+        }
+
+        // Si el body está vacío, intentar extraer JSON embebido en el mensaje de la excepción (e.g. Guzzle)
+        if (($rawBody === null || trim($rawBody) === '') && preg_match('/(\[\s*\{.*?\}\s*\]|\{\s*".*?"\s*:.*?\})/s', $exception->getMessage(), $matches)) {
+            $rawBody = $matches[1];
+        }
+
+        if ($rawBody !== null && trim($rawBody) !== '') {
+            $decoded = json_decode($rawBody, true);
+            if (is_array($decoded)) {
+                $details['response_body'] = $decoded;
+
+                // Salesforce REST error array format: [ { "message": "...", "errorCode": "...", "fields": [] } ]
+                $firstItem = isset($decoded[0]) && is_array($decoded[0]) ? $decoded[0] : (isset($decoded['message']) ? $decoded : null);
+                if ($firstItem !== null) {
+                    if (! empty($firstItem['errorCode'])) {
+                        $details['salesforce_error_code'] = $firstItem['errorCode'];
+                    }
+                    if (! empty($firstItem['message'])) {
+                        $details['salesforce_error_message'] = $firstItem['message'];
+                    }
+                    if (isset($firstItem['fields']) && is_array($firstItem['fields'])) {
+                        $details['salesforce_error_fields'] = $firstItem['fields'];
+                    }
+                }
+            } else {
+                $details['response_body'] = Str::limit($rawBody, 2000, '');
+            }
+        }
+
+        return $details;
     }
 
     private function extractInvalidLeadField(Throwable $exception): ?string

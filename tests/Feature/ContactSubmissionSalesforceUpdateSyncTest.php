@@ -140,6 +140,85 @@ class ContactSubmissionSalesforceUpdateSyncTest extends TestCase
         $this->assertNull($submission->salesforce_case_error);
     }
 
+    public function test_job_falls_back_to_create_lead_when_lead_is_already_converted(): void
+    {
+        config()->set('services.salesforce.lead_enabled', true);
+
+        $submission = ContactSubmission::query()->create([
+            'name' => 'Converted Lead User',
+            'email' => 'converted@example.com',
+            'fields' => ['source' => 'web'],
+            'salesforce_case_id' => '00Qconverted123456',
+            'submitted_at' => now(),
+        ]);
+
+        $mapper = Mockery::mock(SalesforceCaseMapper::class);
+        $mapper->shouldReceive('mapLead')
+            ->once()
+            ->andReturn([
+                'FirstName' => 'Converted',
+                'LastName' => 'User',
+                'Email' => 'converted@example.com',
+            ]);
+
+        $service = Mockery::mock(SalesforceService::class)->makePartial();
+        $service->shouldReceive('tryAutoReconnect')->andReturn(true);
+        $service->shouldReceive('updateLead')
+            ->once()
+            ->with('00Qconverted123456', Mockery::type('array'))
+            ->andThrow(new Exception('Client error: `PATCH https://example.salesforce.com/...` resulted in a `400 Bad Request` response: [{"message":"cannot reference converted lead","errorCode":"CANNOT_UPDATE_CONVERTED_LEAD","fields":[]}]'));
+
+        $service->shouldReceive('createLead')
+            ->once()
+            ->with(Mockery::type('array'))
+            ->andReturn(['id' => '00Qnewlead987654', 'success' => true]);
+
+        $job = new CreateSalesforceCaseJob($submission, 'manual');
+        $job->handle($service, $mapper);
+
+        $submission->refresh();
+
+        $this->assertSame('00Qnewlead987654', $submission->salesforce_case_id);
+        $this->assertNull($submission->salesforce_case_error);
+    }
+
+    public function test_job_formats_salesforce_array_error_detail_in_case_error(): void
+    {
+        config()->set('services.salesforce.lead_enabled', true);
+
+        $submission = ContactSubmission::query()->create([
+            'name' => 'Failed User',
+            'email' => 'failed@example.com',
+            'fields' => ['source' => 'web'],
+            'salesforce_case_id' => null,
+            'submitted_at' => now(),
+        ]);
+
+        $mapper = Mockery::mock(SalesforceCaseMapper::class);
+        $mapper->shouldReceive('mapLead')
+            ->once()
+            ->andReturn([
+                'FirstName' => 'Failed',
+                'LastName' => 'User',
+                'Email' => 'failed@example.com',
+            ]);
+
+        $service = Mockery::mock(SalesforceService::class)->makePartial();
+        $service->shouldReceive('tryAutoReconnect')->andReturn(true);
+        $service->shouldReceive('createLead')
+            ->once()
+            ->with(Mockery::type('array'))
+            ->andThrow(new Exception('Guzzle error: [{"message":"Required field missing: City","errorCode":"REQUIRED_FIELD_MISSING","fields":["City"]}]'));
+
+        $job = new CreateSalesforceCaseJob($submission, 'manual');
+        $job->handle($service, $mapper);
+
+        $submission->refresh();
+
+        $this->assertNotNull($submission->salesforce_case_error);
+        $this->assertStringContainsString('REQUIRED_FIELD_MISSING: Required field missing: City (campos: City)', $submission->salesforce_case_error);
+    }
+
     public function test_can_edit_allows_admin_and_marketing_even_when_synced(): void
     {
         $submission = ContactSubmission::query()->create([

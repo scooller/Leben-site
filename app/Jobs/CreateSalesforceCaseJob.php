@@ -142,16 +142,32 @@ class CreateSalesforceCaseJob implements ShouldQueue
                     throw $exception;
                 } catch (Throwable $updateException) {
                     $message = strtolower($updateException->getMessage());
+                    $context = $this->extractExceptionContext($updateException);
+                    $responseBodyStr = strtolower(json_encode($context['salesforce_error_response'] ?? ''));
+
                     $isNotFound = str_contains($message, 'not_found')
                         || str_contains($message, 'entity_is_deleted')
                         || str_contains($message, 'provided id does not exist')
-                        || str_contains($message, '404');
+                        || str_contains($message, '404')
+                        || str_contains($responseBodyStr, 'not_found')
+                        || str_contains($responseBodyStr, 'entity_is_deleted');
 
-                    if ($isNotFound) {
-                        FlowLogMatrix::write('salesforce.job.lead_update_fallback', 'CreateSalesforceCaseJob: Lead previo no encontrado en Salesforce, creando nuevo', [
+                    $isConvertedLead = str_contains($message, 'cannot_update_converted_lead')
+                        || str_contains($message, 'cannot reference converted lead')
+                        || str_contains($responseBodyStr, 'cannot_update_converted_lead')
+                        || str_contains($responseBodyStr, 'cannot reference converted lead');
+
+                    if ($isNotFound || $isConvertedLead) {
+                        $reason = $isConvertedLead
+                            ? 'Lead en Salesforce ya fue convertido a Cuenta/Contacto/Oportunidad, creando nuevo Lead'
+                            : 'Lead previo no encontrado o eliminado en Salesforce, creando nuevo Lead';
+
+                        FlowLogMatrix::write('salesforce.job.lead_update_fallback', "CreateSalesforceCaseJob: {$reason}", [
                             'contact_submission_id' => $submission->id,
                             'old_lead_id' => $submission->salesforce_case_id,
+                            'fallback_reason' => $isConvertedLead ? 'converted_lead' : 'not_found',
                             'error' => $updateException->getMessage(),
+                            'salesforce_error_response' => $context['salesforce_error_response'] ?? null,
                         ]);
                     } else {
                         throw $updateException;
@@ -244,7 +260,33 @@ class CreateSalesforceCaseJob implements ShouldQueue
                 'salesforce_sync_trigger' => $syncTrigger,
             ]);
         } catch (Throwable $exception) {
-            $errorMessage = Str::limit($exception->getMessage(), 65535, '');
+            $context = $this->extractExceptionContext($exception);
+
+            $detailedMessage = null;
+            if (! empty($context['salesforce_error_response'])) {
+                if (is_array($context['salesforce_error_response'])) {
+                    $errors = [];
+                    foreach ($context['salesforce_error_response'] as $err) {
+                        if (is_array($err)) {
+                            $msg = $err['message'] ?? '';
+                            $code = $err['errorCode'] ?? '';
+                            $fields = ! empty($err['fields']) ? ' (campos: '.implode(', ', (array) $err['fields']).')' : '';
+                            $errors[] = trim("{$code}: {$msg}{$fields}", ': ');
+                        } elseif (is_string($err)) {
+                            $errors[] = $err;
+                        }
+                    }
+                    if ($errors !== []) {
+                        $detailedMessage = implode(' | ', $errors);
+                    }
+                } elseif (is_string($context['salesforce_error_response'])) {
+                    $detailedMessage = $context['salesforce_error_response'];
+                }
+            }
+
+            $errorMessage = $detailedMessage
+                ? Str::limit($exception->getMessage().' -> '.$detailedMessage, 65535, '')
+                : Str::limit($exception->getMessage(), 65535, '');
 
             $submission->update([
                 'salesforce_case_error' => $errorMessage,
@@ -252,10 +294,13 @@ class CreateSalesforceCaseJob implements ShouldQueue
                 'salesforce_sync_trigger' => $syncTrigger,
             ]);
 
-            FlowLogMatrix::write('salesforce.job.lead_error', 'CreateSalesforceCaseJob: Error al crear Lead', [
+            FlowLogMatrix::write('salesforce.job.lead_error', 'CreateSalesforceCaseJob: Error al procesar Lead en Salesforce', [
                 'contact_submission_id' => $submission->id,
+                'salesforce_case_id' => $submission->salesforce_case_id,
+                'action' => filled($submission->salesforce_case_id) ? 'update' : 'create',
                 'exception_message' => $exception->getMessage(),
-                ...$this->extractExceptionContext($exception),
+                'detailed_salesforce_error' => $detailedMessage,
+                ...$context,
             ]);
         }
     }
@@ -269,23 +314,31 @@ class CreateSalesforceCaseJob implements ShouldQueue
             'exception_class' => $exception::class,
         ];
 
-        if (! method_exists($exception, 'getResponse')) {
-            return $context;
+        $rawBody = null;
+        if (method_exists($exception, 'getResponse')) {
+            $response = $exception->getResponse();
+
+            if ($response) {
+                $context['salesforce_http_status'] = $response->getStatusCode();
+                $bodyStream = $response->getBody();
+                if (method_exists($bodyStream, 'isSeekable') && $bodyStream->isSeekable()) {
+                    $bodyStream->rewind();
+                }
+                $rawBody = (string) $bodyStream;
+            }
         }
 
-        $response = $exception->getResponse();
-
-        if (! $response) {
-            return $context;
+        // Si el response body está vacío, intentar extraer JSON embebido en el mensaje de la excepción (e.g. Guzzle)
+        if (($rawBody === null || trim($rawBody) === '') && preg_match('/(\[\s*\{.*?\}\s*\]|\{\s*".*?"\s*:.*?\})/s', $exception->getMessage(), $matches)) {
+            $rawBody = $matches[1];
         }
 
-        $body = (string) $response->getBody();
-        $decodedBody = \json_decode($body, true);
-
-        $context['salesforce_http_status'] = $response->getStatusCode();
-        $context['salesforce_error_response'] = is_array($decodedBody)
-            ? $decodedBody
-            : Str::limit($body, 4000, '');
+        if ($rawBody !== null && trim($rawBody) !== '') {
+            $decodedBody = \json_decode($rawBody, true);
+            $context['salesforce_error_response'] = is_array($decodedBody)
+                ? $decodedBody
+                : Str::limit($rawBody, 4000, '');
+        }
 
         return $context;
     }

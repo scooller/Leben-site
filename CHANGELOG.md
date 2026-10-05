@@ -4,6 +4,19 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.66] - 2026-10-05
+
+### 🪵 Logging & Resilience — Extracción de errores array REST de Salesforce y fallback ante Lead convertido
+
+- **`app/Services/Salesforce/SalesforceService.php`**:
+  - `extractSalesforceExceptionDetails()` ahora procesa el formato de error nativo en array de Salesforce REST API (`[{"message": "...", "errorCode": "...", "fields": [...]}]`), extrayendo `salesforce_error_code`, `salesforce_error_message` y `salesforce_error_fields`.
+  - Soporte de rebobinado de stream (`rewind()`) y extracción alternativa mediante regex para capturar respuestas JSON embebidas en excepciones de clientes HTTP (Guzzle).
+- **`app/Jobs/CreateSalesforceCaseJob.php`**:
+  - Soporte para error `CANNOT_UPDATE_CONVERTED_LEAD` ("cannot reference converted lead"): cuando un Lead ya fue convertido en Salesforce a Cuenta/Contacto/Oportunidad, el job detecta este bloqueo y realiza fallback automático creando un nuevo Lead en lugar de dejar el contacto trabado en error permanente.
+  - Registro enriquecido en `FlowLogMatrix` y campo `salesforce_case_error` detallando `errorCode: message (campos: ...)`.
+- **`tests/Feature/ContactSubmissionSalesforceUpdateSyncTest.php`**:
+  - Tests unitarios cubriendo fallback automático ante `CANNOT_UPDATE_CONVERTED_LEAD` y formato de detalle de error parseado desde array JSON de Salesforce.
+
 ## [1.9.64] - 2026-10-05
 
 ### ✨ Feat — Auto-completado de clave interna y slug con validación anti-duplicados
