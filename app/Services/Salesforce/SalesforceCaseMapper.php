@@ -157,8 +157,8 @@ class SalesforceCaseMapper
             'UTM_Site_P_gina_de_origen__c' => $this->fieldValue($fields, ['utm_site', 'utm_site_p_gina_de_origen', 'utm_site_pagina_de_origen']),
             'Pagina_Origen__c' => $this->fieldValue($fields, ['pagina_origen', 'pagina_de_origen', 'page_origin']),
             'Ultima_llamada__c' => $this->fieldValue($fields, ['ultima_llamada', 'last_call']),
-            'GenderIdentity' => 'OTRO',
-            'Genero__c' => 'OTRO',
+            'GenderIdentity' => $this->fieldValue($fields, ['gender_identity', 'genderidentity', 'genero', 'gender']),
+            'Genero__c' => $this->fieldValue($fields, ['genero', 'genero__c', 'gender']),
         ];
 
         // Aplicar mapeo explícito configurado en el formulario (por canal o global)

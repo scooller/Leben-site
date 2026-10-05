@@ -4,6 +4,18 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.68] - 2026-10-05
+
+### 🪵 Logging & Fix — Visibilidad de error en títulos de Log Viewer y eliminación de Genero__c forzado
+
+- **`app/Services/Salesforce/SalesforceService.php`**:
+  - `extractSalesforceExceptionDetails()` calcula `salesforce_error_summary` (`[errorCode] message`).
+  - Los mensajes principales de `Log::error()` en `createLead()` y `updateLead()` ahora incluyen el resumen visible directamente en el título (`Salesforce: Error creando Lead no recuperable - [FIELD_CUSTOM_VALIDATION_EXCEPTION: X Flujo: ...]`), permitiendo identificar inmediatamente la falla desde la lista del Log Viewer sin tener que inspeccionar el JSON de contexto.
+- **`app/Jobs/CreateSalesforceCaseJob.php`**:
+  - `FlowLogMatrix::write('salesforce.job.lead_error', ...)` ahora incluye el resumen detallado en el título principal del log.
+- **`app/Services/Salesforce/SalesforceCaseMapper.php`**:
+  - Se eliminan los valores hardcodeados `'GenderIdentity' => 'OTRO'` y `'Genero__c' => 'OTRO'`. Ahora solo se envían si vienen expresamente presentes en los datos del formulario, evitando el fallo de validación de flujos de Salesforce cuando actualiza cuentas preexistentes (`INVALID_FIELD_FOR_INSERT_UPDATE: Account: bad field names on insert/update call: Genero__pc`).
+
 ## [1.9.67] - 2026-10-05
 
 ### ⚡ Artisan — Comando de auditoría y sincronización de claves internas en canales de contacto

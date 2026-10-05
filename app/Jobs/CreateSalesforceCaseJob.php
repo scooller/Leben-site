@@ -294,7 +294,11 @@ class CreateSalesforceCaseJob implements ShouldQueue
                 'salesforce_sync_trigger' => $syncTrigger,
             ]);
 
-            FlowLogMatrix::write('salesforce.job.lead_error', 'CreateSalesforceCaseJob: Error al procesar Lead en Salesforce', [
+            $flowMessage = $detailedMessage
+                ? "CreateSalesforceCaseJob: Error al procesar Lead en Salesforce - [{$detailedMessage}]"
+                : 'CreateSalesforceCaseJob: Error al procesar Lead en Salesforce';
+
+            FlowLogMatrix::write('salesforce.job.lead_error', $flowMessage, [
                 'contact_submission_id' => $submission->id,
                 'salesforce_case_id' => $submission->salesforce_case_id,
                 'action' => filled($submission->salesforce_case_id) ? 'update' : 'create',

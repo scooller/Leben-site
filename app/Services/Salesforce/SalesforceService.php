@@ -211,12 +211,17 @@ class SalesforceService
                 return $response;
             }
 
-            Log::error('Salesforce: Error creando Lead no recuperable', [
+            $details = $this->extractSalesforceExceptionDetails($firstException);
+            $summary = ! empty($details['salesforce_error_summary'])
+                ? " - [{$details['salesforce_error_summary']}]"
+                : '';
+
+            Log::error("Salesforce: Error creando Lead no recuperable{$summary}", [
                 'email' => $payload['Email'] ?? null,
                 'rut' => $payload['RUT__c'] ?? null,
                 'payload_keys' => array_keys($currentPayload),
                 'payload' => $currentPayload,
-                ...$this->extractSalesforceExceptionDetails($firstException),
+                ...$details,
             ]);
 
             throw $firstException;
@@ -283,13 +288,18 @@ class SalesforceService
                 return array_merge(['id' => $leadId, 'success' => true], $response);
             }
 
-            Log::error('Salesforce: Error actualizando Lead no recuperable', [
+            $details = $this->extractSalesforceExceptionDetails($firstException);
+            $summary = ! empty($details['salesforce_error_summary'])
+                ? " - [{$details['salesforce_error_summary']}]"
+                : '';
+
+            Log::error("Salesforce: Error actualizando Lead no recuperable{$summary}", [
                 'lead_id' => $leadId,
                 'email' => $payload['Email'] ?? null,
                 'rut' => $payload['RUT__c'] ?? null,
                 'payload_keys' => array_keys($currentPayload),
                 'payload' => $currentPayload,
-                ...$this->extractSalesforceExceptionDetails($firstException),
+                ...$details,
             ]);
 
             throw $firstException;
@@ -344,6 +354,12 @@ class SalesforceService
                     }
                     if (isset($firstItem['fields']) && is_array($firstItem['fields'])) {
                         $details['salesforce_error_fields'] = $firstItem['fields'];
+                    }
+
+                    $code = $details['salesforce_error_code'] ?? '';
+                    $msg = $details['salesforce_error_message'] ?? '';
+                    if ($code !== '' || $msg !== '') {
+                        $details['salesforce_error_summary'] = trim("{$code}: {$msg}", ': ');
                     }
                 }
             } else {
