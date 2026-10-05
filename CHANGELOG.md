@@ -4,6 +4,12 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.61] - 2026-10-04
+
+### 📦 Dependencies — Actualización de Web Awesome Pro a v3.14.0
+
+- **`frontend/package.json`**: Actualización de `@web.awesome.me/webawesome-pro` a `^3.14.0`.
+
 ## [1.9.60] - 2026-10-04
 
 ### 🐛 Fix — Migración de propiedad deprecada `size="small"` en `wa-button`
