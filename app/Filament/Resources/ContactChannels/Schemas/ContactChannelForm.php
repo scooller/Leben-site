@@ -12,8 +12,10 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Str;
 
 class ContactChannelForm
 {
@@ -23,6 +25,16 @@ class ContactChannelForm
             Section::make('Identificación')
                 ->columns(2)
                 ->schema([
+                    TextInput::make('name')
+                        ->label('Nombre visible')
+                        ->required()
+                        ->maxLength(255)
+                        ->live(onBlur: true)
+                        ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                            if (! filled($get('slug')) && filled($state)) {
+                                $set('slug', Str::slug($state));
+                            }
+                        }),
                     TextInput::make('slug')
                         ->label('Slug (identificador único)')
                         ->required()
@@ -30,10 +42,6 @@ class ContactChannelForm
                         ->alphaDash()
                         ->maxLength(100)
                         ->helperText('Minúsculas, guiones y números. Ej: sale, argomedo, capitanes'),
-                    TextInput::make('name')
-                        ->label('Nombre visible')
-                        ->required()
-                        ->maxLength(255),
                     Select::make('slug_badge_color')
                         ->label('Color del tag (slug)')
                         ->required()

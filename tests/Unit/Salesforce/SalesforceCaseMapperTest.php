@@ -1537,4 +1537,27 @@ class SalesforceCaseMapperTest extends TestCase
             $this->assertArrayHasKey($field, $selectableFields, "Field {$field} should be selectable");
         }
     }
+
+    public function test_normalize_internal_key_generates_clean_snake_case(): void
+    {
+        $this->assertSame('renta_liquida', SalesforceCaseMapper::normalizeInternalKey('Renta Líquida'));
+        $this->assertSame('nombre_de_campana_de_plataforma', SalesforceCaseMapper::normalizeInternalKey('Nombre de campaña de plataforma'));
+        $this->assertSame('telefono_movil', SalesforceCaseMapper::normalizeInternalKey('Teléfono (móvil)'));
+        $this->assertSame('e_mail', SalesforceCaseMapper::normalizeInternalKey('E-mail'));
+        $this->assertNull(SalesforceCaseMapper::normalizeInternalKey(null));
+        $this->assertNull(SalesforceCaseMapper::normalizeInternalKey('   '));
+    }
+
+    public function test_default_key_for_payload_field_suggests_appropriate_internal_key(): void
+    {
+        $this->assertSame('rut', SalesforceCaseMapper::defaultKeyForPayloadField('RUT__c'));
+        $this->assertSame('nombre', SalesforceCaseMapper::defaultKeyForPayloadField('FirstName'));
+        $this->assertSame('apellido', SalesforceCaseMapper::defaultKeyForPayloadField('LastName'));
+        $this->assertSame('email', SalesforceCaseMapper::defaultKeyForPayloadField('Email'));
+        $this->assertSame('telefono', SalesforceCaseMapper::defaultKeyForPayloadField('Phone'));
+        $this->assertSame('red_social', SalesforceCaseMapper::defaultKeyForPayloadField('Red_social__c'));
+        $this->assertSame('nombre_de_la_campana_de_plataforma', SalesforceCaseMapper::defaultKeyForPayloadField('Nombre_de_campa_a_de_plataforma__c'));
+        $this->assertSame('utm_source', SalesforceCaseMapper::defaultKeyForPayloadField('utm_source__c'));
+        $this->assertNull(SalesforceCaseMapper::defaultKeyForPayloadField(null));
+    }
 }

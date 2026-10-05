@@ -304,6 +304,72 @@ class SalesforceCaseMapper
         };
     }
 
+    /**
+     * Deduce la clave interna sugerida a partir del campo de Salesforce seleccionado.
+     */
+    public static function defaultKeyForPayloadField(?string $salesforceField): ?string
+    {
+        if ($salesforceField === null) {
+            return null;
+        }
+
+        return match ($salesforceField) {
+            'RUT__c' => 'rut',
+            'FirstName' => 'nombre',
+            'LastName' => 'apellido',
+            'Email', 'Email__c' => 'email',
+            'Phone', 'MobilePhone' => 'telefono',
+            'Comuna__c' => 'comuna',
+            'Rango_de_renta_liquida__c' => 'rango',
+            'complementaRenta__c' => 'codeudor',
+            'Validaci_n_Renta__c' => 'validacion_renta',
+            'usoDepartamento__c' => 'buscas',
+            'estadoLaboral__c' => 'elaboral',
+            'comunaInversion__c' => 'comuna_inversion',
+            'Comentario_Cliente__c' => 'mensaje',
+            'Notas__c' => 'notas',
+            'Informacion_Cotizacion__c' => 'informacion_cotizacion',
+            'Medio_de_Llegada__c' => 'medio_de_llegada',
+            'LeadSource', 'PersonLeadSource' => 'origen_del_prospecto',
+            'AccountSource' => 'origen_de_cuenta',
+            'Nombre_de_la_Campa_a__c' => 'nombre_de_la_campana',
+            'Nombre_de_campa_a_de_plataforma__c' => 'nombre_de_la_campana_de_plataforma',
+            'Red_social__c' => 'red_social',
+            'Audiencia__c' => 'audiencia',
+            'Pieza_Grafica__c' => 'pieza_grafica',
+            'utm_source__c' => 'utm_source',
+            'utm_medium__c' => 'utm_medium',
+            'utm_campaign__c' => 'utm_campaign',
+            'utm_term__c' => 'utm_term',
+            'utm_content__c' => 'utm_content',
+            'UTM_Site_P_gina_de_origen__c' => 'utm_site',
+            'Pagina_Origen__c' => 'pagina_origen',
+            'Tipo_Ingreso__c' => 'tipo_ingreso',
+            'Ultima_llamada__c' => 'ultima_llamada',
+            'Description' => 'descripcion',
+            default => Str::of($salesforceField)->replace('__c', '')->snake()->toString(),
+        };
+    }
+
+    /**
+     * Normaliza un texto o etiqueta para convertirlo en una clave interna válida en snake_case.
+     */
+    public static function normalizeInternalKey(?string $label): ?string
+    {
+        if ($label === null || trim($label) === '') {
+            return null;
+        }
+
+        $normalized = Str::of($label)
+            ->ascii()
+            ->lower()
+            ->replaceMatches('/[^a-z0-9]+/', '_')
+            ->trim('_')
+            ->toString();
+
+        return $normalized !== '' ? $normalized : null;
+    }
+
     private function buildFieldLabels(mixed $configuredFields): array
     {
         if (! is_array($configuredFields)) {

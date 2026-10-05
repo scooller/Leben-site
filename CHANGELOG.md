@@ -4,6 +4,21 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.64] - 2026-10-05
+
+### ✨ Feat — Auto-completado de clave interna y slug con validación anti-duplicados
+
+- **`app/Services/Salesforce/SalesforceCaseMapper.php`**:
+  - Implementación de `normalizeInternalKey(?string $label)` para generar claves internas limpias en formato `snake_case` a partir de etiquetas de usuario.
+  - Implementación de `defaultKeyForPayloadField(?string $salesforceField)` para resolver automáticamente la clave interna correspondiente a partir del campo seleccionado de Salesforce.
+- **`app/Filament/Pages/SiteSettings.php`**:
+  - Auto-prellenado reactivo de la **Clave interna (`key`)** al escribir la **Etiqueta (`label`)** en `getContactFormFieldsSchema()`, deduciendo inmediatamente el campo en el payload de Salesforce vía `SalesforceCaseMapper`.
+  - Auto-prellenado inverso de la clave interna al seleccionar un campo de Salesforce si la clave está vacía.
+  - Añadida validación `->distinct()` en la clave interna dentro del Repeater para impedir claves duplicadas entre campos del formulario.
+- **`app/Filament/Resources/ContactChannels/Schemas/ContactChannelForm.php`**:
+  - Auto-prellenado reactivo del **Slug** a partir del **Nombre visible** del canal al estar vacío.
+- **`tests/Unit/Salesforce/SalesforceCaseMapperTest.php`**: Pruebas unitarias para `normalizeInternalKey` y `defaultKeyForPayloadField`.
+
 ## [1.9.63] - 2026-10-05
 
 ### 🐛 Fix — Búsqueda por RUT y email en tabla de contactos (`ContactSubmissionsTable`)

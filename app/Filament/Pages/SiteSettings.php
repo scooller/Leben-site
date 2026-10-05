@@ -81,10 +81,30 @@ class SiteSettings extends Page implements HasForms
     public static function getContactFormFieldsSchema(): array
     {
         return [
+            TextInput::make('label')
+                ->label('Etiqueta')
+                ->required()
+                ->maxLength(100)
+                ->live(onBlur: true)
+                ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                    if (filled($state) && ! filled($get('key'))) {
+                        $suggestedKey = SalesforceCaseMapper::normalizeInternalKey($state);
+                        $set('key', $suggestedKey);
+
+                        if (! filled($get('salesforce_field')) && filled($suggestedKey)) {
+                            $set('salesforce_field', SalesforceCaseMapper::defaultPayloadFieldForKey($suggestedKey));
+                        }
+                    }
+                }),
+
             TextInput::make('key')
                 ->label('Clave interna')
                 ->required()
                 ->maxLength(50)
+                ->distinct()
+                ->validationMessages([
+                    'distinct' => 'Esta clave interna ya está en uso por otro campo. Usa una clave única.',
+                ])
                 ->live(onBlur: true)
                 ->afterStateUpdated(function ($state, Set $set, Get $get) {
                     if (! filled($get('salesforce_field'))) {
@@ -92,11 +112,6 @@ class SiteSettings extends Page implements HasForms
                     }
                 })
                 ->helperText('Ej: name, rut, email, reason, message'),
-
-            TextInput::make('label')
-                ->label('Etiqueta')
-                ->required()
-                ->maxLength(100),
 
             TextInput::make('icon')
                 ->label('Ícono')
@@ -126,7 +141,16 @@ class SiteSettings extends Page implements HasForms
                 ->disableOptionsWhenSelectedInSiblingRepeaterItems()
                 ->searchable()
                 ->nullable()
+                ->live()
                 ->default(fn (Get $get): ?string => SalesforceCaseMapper::defaultPayloadFieldForKey($get('key')))
+                ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                    if (filled($state) && ! filled($get('key'))) {
+                        $suggestedKey = SalesforceCaseMapper::defaultKeyForPayloadField($state);
+                        if (filled($suggestedKey)) {
+                            $set('key', $suggestedKey);
+                        }
+                    }
+                })
                 ->afterStateHydrated(function (Select $component, $state, Get $get) {
                     if (! filled($state) && filled($get('key'))) {
                         $component->state(SalesforceCaseMapper::defaultPayloadFieldForKey($get('key')));
