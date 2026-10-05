@@ -67,6 +67,7 @@ class SalesforceCaseMapper
         ]);
         $utmSiteDefault = $this->normalizeFieldValue($extraSettings['utm_site_default'] ?? null);
         $website = $this->resolveWebsiteSource($submission, $fields, $utmSourceInput, $utmSiteDefault);
+        $utmSite = $this->resolveUtmSite($submission, $fields, $website, $utmSiteDefault);
         $utmMediumDefault = $isCsvImport
             ? null
             : ($this->normalizeFieldValue($extraSettings['utm_medium_default'] ?? null) ?: 'organic');
@@ -117,7 +118,7 @@ class SalesforceCaseMapper
             'Phone' => $phone,
             'MobilePhone' => $phone,
             'Email' => $email,
-            'Website' => $website,
+            'Website' => $website ?: $utmSite,
             'Email__c' => $email,
             'RUT__c' => $submission->rut ?: $this->fieldValue($fields, ['rut']),
             'Status' => (string) config('services.salesforce.lead_status', 'En Contacto'),
@@ -154,7 +155,7 @@ class SalesforceCaseMapper
             'Comentario_Cliente__c' => $comentarioCliente,
             'PersonLeadSource' => $this->fieldValue($fields, ['person_lead_source', 'personleadsource']),
             'AccountSource' => $this->fieldValue($fields, ['account_source', 'accountsource', 'origen_cuenta', 'origen_de_cuenta']),
-            'UTM_Site_P_gina_de_origen__c' => $this->fieldValue($fields, ['utm_site', 'utm_site_p_gina_de_origen', 'utm_site_pagina_de_origen']),
+            'UTM_Site_P_gina_de_origen__c' => $utmSite,
             'Pagina_Origen__c' => $this->fieldValue($fields, ['pagina_origen', 'pagina_de_origen', 'page_origin']),
             'Ultima_llamada__c' => $this->fieldValue($fields, ['ultima_llamada', 'last_call']),
             'GenderIdentity' => $this->fieldValue($fields, ['gender_identity', 'genderidentity', 'genero', 'gender']),
@@ -714,10 +715,10 @@ class SalesforceCaseMapper
         $channelWebsite = $this->resolveChannelWebsite($submission);
 
         if ($channelWebsite !== null) {
-            return $channelWebsite;
+            return $this->cleanHostOrDomain($channelWebsite);
         }
 
-        return $this->fieldValue($fields, [
+        $source = $this->fieldValue($fields, [
             'utm_site',
             'website',
             'site',
@@ -731,7 +732,80 @@ class SalesforceCaseMapper
             'origen_del_prospecto',
             'origen_prospecto',
             'referrer',
-        ]) ?: $utmSiteDefault ?: $utmSource;
+        ]) ?: $utmSiteDefault ?: $utmSource ?: 'admin.ileben.cl';
+
+        return $this->cleanHostOrDomain($source);
+    }
+
+    /**
+     * @param  array<string, mixed>  $fields
+     */
+    private function resolveUtmSite(ContactSubmission $submission, array $fields, ?string $website, ?string $utmSiteDefault = null): string
+    {
+        $explicit = $this->fieldValue($fields, [
+            'utm_site',
+            'utm_site_p_gina_de_origen',
+            'utm_site_pagina_de_origen',
+        ]);
+
+        if ($explicit !== null && trim($explicit) !== '') {
+            return $this->cleanHostOrDomain($explicit);
+        }
+
+        $channelWebsite = $this->resolveChannelWebsite($submission);
+
+        if ($channelWebsite !== null && trim($channelWebsite) !== '') {
+            return $this->cleanHostOrDomain($channelWebsite);
+        }
+
+        $webOrigin = $this->fieldValue($fields, [
+            'website',
+            'site',
+            'sitio_web',
+            'sitio',
+            'origen_sitio',
+            'source_site',
+            'origin_site',
+            'pagina_origen',
+            'pagina_de_origen',
+            'page_origin',
+            'referrer',
+        ]) ?: $utmSiteDefault;
+
+        if ($webOrigin !== null && trim($webOrigin) !== '') {
+            return $this->cleanHostOrDomain($webOrigin);
+        }
+
+        if ($website !== null && trim($website) !== '') {
+            $cleanedWebsite = $this->cleanHostOrDomain($website);
+
+            if ($cleanedWebsite !== '' && ! in_array(strtolower($cleanedWebsite), ['direct', 'none', 'unknown', 'auto-tagging'], true)) {
+                return $cleanedWebsite;
+            }
+        }
+
+        return 'admin.ileben.cl';
+    }
+
+    private function cleanHostOrDomain(string $value): string
+    {
+        $trimmed = trim($value);
+
+        if (str_starts_with($trimmed, 'http://') || str_starts_with($trimmed, 'https://')) {
+            $host = parse_url($trimmed, PHP_URL_HOST);
+
+            if (is_string($host) && trim($host) !== '') {
+                return trim(strtolower($host));
+            }
+        } elseif (preg_match('#^[a-z0-9.-]+\.[a-z]{2,}/#i', $trimmed)) {
+            $host = parse_url('https://'.$trimmed, PHP_URL_HOST);
+
+            if (is_string($host) && trim($host) !== '') {
+                return trim(strtolower($host));
+            }
+        }
+
+        return $trimmed;
     }
 
     private function resolveChannelWebsite(ContactSubmission $submission): ?string

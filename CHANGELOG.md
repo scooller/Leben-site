@@ -4,7 +4,20 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
-## [1.9.68] - 2026-10-05
+## [1.9.69] - 2026-10-05
+
+### 🌐 Salesforce & API — Fallback robusto para utm_site y Website (web de origen / admin.ileben.cl)
+
+- **`app/Services/Salesforce/SalesforceCaseMapper.php`**:
+  - Implementado `resolveUtmSite()` y normalizador `cleanHostOrDomain()`.
+  - Asegura que `UTM_Site_P_gina_de_origen__c` y `Website` siempre se envíen en el payload de Salesforce Lead con la jerarquía de fallback solicitada:
+    1. Valor explícito de `utm_site` en el formulario/datos.
+    2. Web de origen del contacto: dominio del canal asociado (`domain_patterns`), campos web/referrer (`website`, `site`, `referrer`, etc.) o `utm_site_default`.
+    3. En su defecto: `admin.ileben.cl` (URL del backend/administración).
+- **`app/Http/Controllers/Api/ContactSubmissionController.php`**:
+  - `enrichMarketingFields()` y `resolveRequestSourceSite()` ahora consideran el canal resuelto (`ContactChannel`) y aplican el fallback ordenado para almacenar siempre `utm_site` en `contact_submissions.fields`.
+- **`tests/Unit/Salesforce/SalesforceCaseMapperTest.php`**:
+  - Tests unitarios verificando: preservación de `utm_site` explícito, fallback a dominio del canal, fallback a `referrer`/web y fallback final a `admin.ileben.cl`.
 
 ### 🪵 Logging & Fix — Visibilidad de error en títulos de Log Viewer y eliminación de Genero__c forzado
 

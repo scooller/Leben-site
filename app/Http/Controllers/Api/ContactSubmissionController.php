@@ -19,7 +19,7 @@ class ContactSubmissionController extends Controller
     {
         $channel = $request->resolvedChannel();
         $fields = $request->validated('fields', []);
-        $fields = $this->enrichMarketingFields($request, $fields);
+        $fields = $this->enrichMarketingFields($request, $fields, $channel);
         $fields = $this->enrichProjectSalesforceId($fields);
 
         $name = $this->fieldValue($fields, ['name', 'nombre']);
@@ -76,7 +76,7 @@ class ContactSubmissionController extends Controller
      * @param  array<string, mixed>  $fields
      * @return array<string, mixed>
      */
-    private function enrichMarketingFields(StoreContactSubmissionRequest $request, array $fields): array
+    private function enrichMarketingFields(StoreContactSubmissionRequest $request, array $fields, ?\App\Models\ContactChannel $channel = null): array
     {
         $settings = SiteSetting::current();
         if ($settings->evento_sale) {
@@ -102,18 +102,16 @@ class ContactSubmissionController extends Controller
             return $fields;
         }
 
-        $requestSourceSite = $this->resolveRequestSourceSite($request);
+        $requestSourceSite = $this->resolveRequestSourceSite($request, $channel);
 
-        if ($requestSourceSite === null) {
-            return $fields;
+        if ($requestSourceSite !== null) {
+            $fields['utm_site'] = $requestSourceSite;
         }
-
-        $fields['utm_site'] = $requestSourceSite;
 
         return $fields;
     }
 
-    private function resolveRequestSourceSite(StoreContactSubmissionRequest $request): ?string
+    private function resolveRequestSourceSite(StoreContactSubmissionRequest $request, ?\App\Models\ContactChannel $channel = null): ?string
     {
         $candidates = [
             (string) $request->headers->get('Origin', ''),
@@ -137,9 +135,31 @@ class ContactSubmissionController extends Controller
             return $normalized;
         }
 
+        if ($channel !== null) {
+            foreach ((array) ($channel->domain_patterns ?? []) as $pattern) {
+                $normalized = strtolower(trim((string) $pattern));
+                $normalized = str_replace(['*.', '*'], '', $normalized);
+                $normalized = ltrim($normalized, '.');
+
+                if ($normalized !== '') {
+                    return $normalized;
+                }
+            }
+        }
+
+        $extraSettings = is_array(SiteSetting::current()->extra_settings) ? SiteSetting::current()->extra_settings : [];
+        $utmSiteDefault = trim((string) ($extraSettings['utm_site_default'] ?? ''));
+        if ($utmSiteDefault !== '') {
+            return $utmSiteDefault;
+        }
+
         $host = trim((string) $request->getHost());
 
-        return $host !== '' ? strtolower($host) : null;
+        if ($host !== '' && ! in_array(strtolower($host), ['localhost', '127.0.0.1'], true)) {
+            return strtolower($host);
+        }
+
+        return 'admin.ileben.cl';
     }
 
     /**

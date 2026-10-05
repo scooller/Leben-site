@@ -1560,4 +1560,109 @@ class SalesforceCaseMapperTest extends TestCase
         $this->assertSame('utm_source', SalesforceCaseMapper::defaultKeyForPayloadField('utm_source__c'));
         $this->assertNull(SalesforceCaseMapper::defaultKeyForPayloadField(null));
     }
+
+    public function test_it_saves_explicit_utm_site_to_salesforce_payload(): void
+    {
+        config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');
+        config()->set('services.salesforce.lead_status', 'En Contacto');
+
+        $submission = ContactSubmission::query()->create([
+            'name' => 'UTM Site User',
+            'email' => 'utmsite@example.com',
+            'phone' => '56911223344',
+            'rut' => '11.111.111-1',
+            'fields' => [
+                'name' => 'UTM Site User',
+                'utm_site' => 'landing.ileben.cl',
+            ],
+            'submitted_at' => now(),
+        ]);
+
+        $payload = app(SalesforceCaseMapper::class)->mapLead($submission);
+
+        $this->assertSame('landing.ileben.cl', $payload['UTM_Site_P_gina_de_origen__c'] ?? null);
+        $this->assertSame('landing.ileben.cl', $payload['Website'] ?? null);
+    }
+
+    public function test_it_falls_back_to_channel_website_when_utm_site_is_missing(): void
+    {
+        config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');
+        config()->set('services.salesforce.lead_status', 'En Contacto');
+
+        $channel = ContactChannel::query()->create([
+            'slug' => 'channel-origin-test',
+            'name' => 'Channel Origin Test',
+            'is_active' => true,
+            'is_default' => false,
+            'domain_patterns' => ['sale.ileben.cl', '*.sale.ileben.cl'],
+        ]);
+
+        $submission = ContactSubmission::query()->create([
+            'contact_channel_id' => $channel->id,
+            'name' => 'Channel User',
+            'email' => 'channel.user@example.com',
+            'phone' => '56911223344',
+            'rut' => '11.111.111-1',
+            'fields' => [
+                'name' => 'Channel User',
+            ],
+            'submitted_at' => now(),
+        ]);
+
+        $payload = app(SalesforceCaseMapper::class)->mapLead($submission->load('channel'));
+
+        $this->assertSame('sale.ileben.cl', $payload['UTM_Site_P_gina_de_origen__c'] ?? null);
+        $this->assertSame('sale.ileben.cl', $payload['Website'] ?? null);
+    }
+
+    public function test_it_falls_back_to_referrer_or_web_field_when_utm_site_and_channel_are_missing(): void
+    {
+        config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');
+        config()->set('services.salesforce.lead_status', 'En Contacto');
+
+        $submission = ContactSubmission::query()->create([
+            'name' => 'Referrer User',
+            'email' => 'referrer.user@example.com',
+            'phone' => '56911223344',
+            'rut' => '11.111.111-1',
+            'fields' => [
+                'name' => 'Referrer User',
+                'referrer' => 'https://promocion.ileben.cl/deptos',
+            ],
+            'submitted_at' => now(),
+        ]);
+
+        $payload = app(SalesforceCaseMapper::class)->mapLead($submission);
+
+        $this->assertSame('promocion.ileben.cl', $payload['UTM_Site_P_gina_de_origen__c'] ?? null);
+        $this->assertSame('promocion.ileben.cl', $payload['Website'] ?? null);
+    }
+
+    public function test_it_falls_back_to_admin_ileben_cl_in_default_when_no_site_is_provided(): void
+    {
+        config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');
+        config()->set('services.salesforce.lead_status', 'En Contacto');
+
+        SiteSetting::current()->update([
+            'extra_settings' => [
+                'utm_site_default' => null,
+            ],
+        ]);
+
+        $submission = ContactSubmission::query()->create([
+            'name' => 'Fallback User',
+            'email' => 'fallback.user@example.com',
+            'phone' => '56911223344',
+            'rut' => '11.111.111-1',
+            'fields' => [
+                'name' => 'Fallback User',
+            ],
+            'submitted_at' => now(),
+        ]);
+
+        $payload = app(SalesforceCaseMapper::class)->mapLead($submission);
+
+        $this->assertSame('admin.ileben.cl', $payload['UTM_Site_P_gina_de_origen__c'] ?? null);
+        $this->assertSame('admin.ileben.cl', $payload['Website'] ?? null);
+    }
 }
