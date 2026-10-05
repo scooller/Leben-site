@@ -4,6 +4,18 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.67] - 2026-10-05
+
+### ⚡ Artisan — Comando de auditoría y sincronización de claves internas en canales de contacto
+
+- **`app/Console/Commands/SyncContactFormFieldsKeysCommand.php`**:
+  - Nuevo comando `php artisan contact:sync-form-fields-keys` para revisar y corregir automáticamente la `key` (clave interna) de los `form_fields` configurados en cada canal de contacto (`ContactChannel`) y opcionalmente global (`SiteSetting`).
+  - Utiliza `SalesforceCaseMapper::defaultKeyForPayloadField()` y `SalesforceCaseMapper::normalizeInternalKey()` para deducir la clave canónica correcta según el campo de Salesforce asignado o etiqueta del campo.
+  - Previene colisiones de claves internas duplicadas dentro del mismo formulario generando sufijos ordenados (`campo_2`, etc.).
+  - Soporta modo `--dry-run` para previsualizar diferencias en formato tabla sin alterar la base de datos y flag `--include-global` para revisar también `SiteSetting::current()->contact_form_fields`.
+- **`tests/Feature/SyncContactFormFieldsKeysCommandTest.php`**:
+  - Tests unitarios cubriendo detección, dry-run, reparación en base de datos y prevención de duplicados.
+
 ## [1.9.66] - 2026-10-05
 
 ### 🪵 Logging & Resilience — Extracción de errores array REST de Salesforce y fallback ante Lead convertido
