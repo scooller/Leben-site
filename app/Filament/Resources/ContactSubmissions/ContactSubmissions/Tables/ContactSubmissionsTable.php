@@ -35,6 +35,9 @@ class ContactSubmissionsTable
             ->defaultSort('submitted_at', 'desc')
             ->searchable()
             ->searchPlaceholder('Buscar por RUT o email...')
+            ->searchUsing(function (Builder $query, string $search): void {
+                self::applySearchQuery($query, $search);
+            })
             ->filters([
                 SelectFilter::make('contact_channel_id')
                     ->label('Canal')
@@ -166,7 +169,7 @@ class ContactSubmissionsTable
 
                 $column = TextColumn::make("fields.{$key}")
                     ->label($label)
-                    ->state(fn ($record): string => self::formatDynamicValue(self::resolveDynamicFieldValue($record->fields, $key), $field))
+                    ->state(fn ($record): string => self::formatDynamicValue(self::resolveDynamicFieldValue($record->fields, $key, $record), $field))
                     ->placeholder('-')
                     ->wrap()
                     ->limit(60)
@@ -295,8 +298,71 @@ class ContactSubmissionsTable
         return implode(' | ', $items);
     }
 
-    private static function resolveDynamicFieldValue(mixed $fields, string $fieldKey): mixed
+    public static function applySearchQuery(Builder $query, string $search): Builder
     {
+        $search = trim($search);
+
+        if ($search === '') {
+            return $query;
+        }
+
+        $cleanedRut = (string) preg_replace('/[^0-9kK]/', '', $search);
+
+        return $query->where(function (Builder $q) use ($search, $cleanedRut): void {
+            $q->where('email', 'like', "%{$search}%")
+                ->orWhere('rut', 'like', "%{$search}%")
+                ->orWhere('name', 'like', "%{$search}%")
+                ->orWhere('phone', 'like', "%{$search}%");
+
+            if ($cleanedRut !== '' && strlen($cleanedRut) >= 2) {
+                $q->orWhereRaw("REPLACE(REPLACE(REPLACE(COALESCE(rut, ''), '.', ''), '-', ''), ' ', '') LIKE ?", ["%{$cleanedRut}%"]);
+            }
+
+            $q->orWhere('fields', 'like', "%{$search}%");
+
+            if ($cleanedRut !== '' && strlen($cleanedRut) >= 2) {
+                $q->orWhere('fields', 'like', "%{$cleanedRut}%");
+
+                $len = strlen($cleanedRut);
+                if ($len >= 7 && $len <= 9) {
+                    $body = substr($cleanedRut, 0, -1);
+                    $dv = substr($cleanedRut, -1);
+
+                    if (ctype_digit($body)) {
+                        $withDotsUpper = number_format((int) $body, 0, '', '.').'-'.strtoupper($dv);
+                        $withDotsLower = number_format((int) $body, 0, '', '.').'-'.strtolower($dv);
+                        $withDashUpper = $body.'-'.strtoupper($dv);
+                        $withDashLower = $body.'-'.strtolower($dv);
+
+                        $q->orWhere('fields', 'like', "%{$withDotsUpper}%")
+                            ->orWhere('fields', 'like', "%{$withDotsLower}%")
+                            ->orWhere('fields', 'like', "%{$withDashUpper}%")
+                            ->orWhere('fields', 'like', "%{$withDashLower}%");
+                    }
+                }
+            }
+        });
+    }
+
+    private static function resolveDynamicFieldValue(mixed $fields, string $fieldKey, ?ContactSubmission $record = null): mixed
+    {
+        if ($record !== null) {
+            $normalizedKey = Str::of($fieldKey)->ascii()->lower()->replaceMatches('/[^a-z0-9]+/', '_')->trim('_')->toString();
+
+            if ($normalizedKey === 'rut' && filled($record->rut)) {
+                return $record->rut;
+            }
+            if (in_array($normalizedKey, ['email', 'e_mail', 'correo'], true) && filled($record->email)) {
+                return $record->email;
+            }
+            if (in_array($normalizedKey, ['name', 'nombre'], true) && filled($record->name)) {
+                return $record->name;
+            }
+            if (in_array($normalizedKey, ['phone', 'telefono', 'celular', 'fono', 'whatsapp'], true) && filled($record->phone)) {
+                return $record->phone;
+            }
+        }
+
         if (! is_array($fields) || $fields === []) {
             return null;
         }

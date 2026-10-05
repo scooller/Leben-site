@@ -4,6 +4,18 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.63] - 2026-10-05
+
+### 🐛 Fix — Búsqueda por RUT y email en tabla de contactos (`ContactSubmissionsTable`)
+
+- **`app/Filament/Resources/ContactSubmissions/ContactSubmissions/Tables/ContactSubmissionsTable.php`**:
+  - Implementación de `searchUsing()` y `applySearchQuery()` para búsqueda en tiempo real en la tabla de Filament.
+  - Búsqueda normalizada por RUT capaz de coincidir sin importar si el usuario o la base de datos usan puntos o guión (`12.345.678-5`, `12345678-5`, `123456785` o parciales como `12345678`).
+  - Búsqueda por email en columna directa y dentro del JSON `fields`.
+  - Búsqueda ampliada a `name`, `phone` y variantes formateadas de RUT en campos JSON.
+  - Fallback en `resolveDynamicFieldValue()` hacia atributos directos del modelo (`rut`, `email`, `name`, `phone`).
+- **`tests/Feature/ContactSubmissionsSearchTest.php`**: 8 pruebas unitarias y de integración Livewire validando coincidencia exacta, parcial, con/sin formato, campos JSON y búsqueda en la tabla Filament.
+
 ## [1.9.62] - 2026-10-05
 
 ### ✨ Feat — Actualización de Leads en Salesforce y habilitación de edición en Filament
