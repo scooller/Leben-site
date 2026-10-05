@@ -4,6 +4,12 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.60] - 2026-10-04
+
+### 🐛 Fix — Migración de propiedad deprecada `size="small"` en `wa-button`
+
+- **`frontend/src/pages/Home.jsx`**: Se actualiza el atributo `size="small"` a `size="s"` en los botones de ordenamiento de la barra de herramientas de plantas (`Nombre`, `Precio`, `Mejor oferta`), eliminando la advertencia de obsolescencia de Web Awesome (`[wa-button] size="small" is deprecated. Use size="s" instead`).
+
 ## [1.9.59] - 2026-10-02
 
 ### 🐛 Fix — Preservación de decimales exactos en descuentos (detalle y tooltip)

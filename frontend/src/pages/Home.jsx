@@ -1990,7 +1990,7 @@ function Home({ onNavigate, currentPath }) {
                     <span className="plants-sort-group-title">Nombre</span>
                     <wa-button-group label="Ordenar por nombre">
                       <wa-button
-                        size="small"
+                        size="s"
                         appearance={selectedSort === SORT_OPTIONS.NAME_ASC ? 'accent' : 'outlined'}
                         variant={selectedSort === SORT_OPTIONS.NAME_ASC ? 'brand' : 'neutral'}
                         onClick={() => handleSortClick(SORT_OPTIONS.NAME_ASC)}
@@ -1998,7 +1998,7 @@ function Home({ onNavigate, currentPath }) {
                         ASC
                       </wa-button>
                       <wa-button
-                        size="small"
+                        size="s"
                         appearance={selectedSort === SORT_OPTIONS.NAME_DESC ? 'accent' : 'outlined'}
                         variant={selectedSort === SORT_OPTIONS.NAME_DESC ? 'brand' : 'neutral'}
                         onClick={() => handleSortClick(SORT_OPTIONS.NAME_DESC)}
@@ -2012,7 +2012,7 @@ function Home({ onNavigate, currentPath }) {
                     <span className="plants-sort-group-title">Precio</span>
                     <wa-button-group label="Ordenar por precio">
                       <wa-button
-                        size="small"
+                        size="s"
                         appearance={selectedSort === SORT_OPTIONS.PRICE_ASC ? 'accent' : 'outlined'}
                         variant={selectedSort === SORT_OPTIONS.PRICE_ASC ? 'brand' : 'neutral'}
                         onClick={() => handleSortClick(SORT_OPTIONS.PRICE_ASC)}
@@ -2020,7 +2020,7 @@ function Home({ onNavigate, currentPath }) {
                         ASC
                       </wa-button>
                       <wa-button
-                        size="small"
+                        size="s"
                         appearance={selectedSort === SORT_OPTIONS.PRICE_DESC ? 'accent' : 'outlined'}
                         variant={selectedSort === SORT_OPTIONS.PRICE_DESC ? 'brand' : 'neutral'}
                         onClick={() => handleSortClick(SORT_OPTIONS.PRICE_DESC)}
@@ -2034,7 +2034,7 @@ function Home({ onNavigate, currentPath }) {
                     <span className="plants-sort-group-title">Mejor oferta</span>
                     <wa-button-group label="Ordenar por mejor oferta">
                       <wa-button
-                        size="small"
+                        size="s"
                         appearance={selectedSort === SORT_OPTIONS.OFFER_ASC ? 'accent' : 'outlined'}
                         variant={selectedSort === SORT_OPTIONS.OFFER_ASC ? 'brand' : 'neutral'}
                         onClick={() => handleSortClick(SORT_OPTIONS.OFFER_ASC)}
@@ -2042,7 +2042,7 @@ function Home({ onNavigate, currentPath }) {
                         ASC
                       </wa-button>
                       <wa-button
-                        size="small"
+                        size="s"
                         appearance={selectedSort === SORT_OPTIONS.OFFER_DESC ? 'accent' : 'outlined'}
                         variant={selectedSort === SORT_OPTIONS.OFFER_DESC ? 'brand' : 'neutral'}
                         onClick={() => handleSortClick(SORT_OPTIONS.OFFER_DESC)}
