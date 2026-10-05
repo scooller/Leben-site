@@ -797,7 +797,10 @@ function Home({ onNavigate, currentPath }) {
       proyectoDireccion: plant.proyecto?.direccion,
       proyectoComuna: plant.proyecto?.comuna,
       proyectoRegion: plant.proyecto?.region,
-      proyectoEtapa: plant.proyecto?.etapa,
+      proyectoEntregaInmediata: Boolean(plant.proyecto?.entrega_inmediata ?? plant.entrega_inmediata),
+      proyectoEtapa: Boolean(plant.proyecto?.entrega_inmediata ?? plant.entrega_inmediata)
+        ? 'Entrega inmediata'
+        : plant.proyecto?.etapa,
       superficieUtil: Number(plant.superficie_util) || 0,
       superficieTotal: Number(plant.superficie_total_principal) || 0,
       asesores: advisorsSource.map((asesor) => ({

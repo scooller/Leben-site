@@ -156,37 +156,39 @@ class ProyectoController extends Controller
             $requestedFields,
         );
 
-        if (count($computedFields) > 0 || count($discountFields) > 0 || $hideSalesforceId) {
-            $plantSummaries = $needsPlantSummary
-                ? $this->batchPlantSummaries($proyectos->getCollection()->pluck('salesforce_id')->filter()->values()->all())
-                : [];
+        $plantSummaries = $needsPlantSummary
+            ? $this->batchPlantSummaries($proyectos->getCollection()->pluck('salesforce_id')->filter()->values()->all())
+            : [];
 
-            $proyectos->transform(function (Proyecto $proyecto) use ($computedFields, $discountFields, $plantSummaries, $hideSalesforceId): array {
-                $data = $proyecto->toArray();
+        $proyectos->transform(function (Proyecto $proyecto) use ($computedFields, $discountFields, $plantSummaries, $hideSalesforceId): array {
+            $data = $proyecto->toArray();
 
-                foreach ($computedFields as $field) {
-                    if ($field === 'project_image_id') {
-                        $data['project_image_id'] = $proyecto->project_image_id;
-                    } elseif ($field === 'precio_desde') {
-                        $data['precio_desde'] = $plantSummaries[$proyecto->salesforce_id]['precio_desde'] ?? null;
-                    } elseif ($field === 'tipologias') {
-                        $data['tipologias'] = $plantSummaries[$proyecto->salesforce_id]['tipologias'] ?? [];
-                    }
+            if (! empty($data['entrega_inmediata'])) {
+                $data['etapa'] = 'Entrega inmediata';
+            }
+
+            foreach ($computedFields as $field) {
+                if ($field === 'project_image_id') {
+                    $data['project_image_id'] = $proyecto->project_image_id;
+                } elseif ($field === 'precio_desde') {
+                    $data['precio_desde'] = $plantSummaries[$proyecto->salesforce_id]['precio_desde'] ?? null;
+                } elseif ($field === 'tipologias') {
+                    $data['tipologias'] = $plantSummaries[$proyecto->salesforce_id]['tipologias'] ?? [];
                 }
+            }
 
-                foreach ($discountFields as $field) {
-                    if (array_key_exists($field, $data) && $data[$field] === null) {
-                        $data[$field] = 0;
-                    }
+            foreach ($discountFields as $field) {
+                if (array_key_exists($field, $data) && $data[$field] === null) {
+                    $data[$field] = 0;
                 }
+            }
 
-                if ($hideSalesforceId) {
-                    unset($data['salesforce_id']);
-                }
+            if ($hideSalesforceId) {
+                unset($data['salesforce_id']);
+            }
 
-                return $data;
-            });
-        }
+            return $data;
+        });
 
         return response()->json($proyectos);
     }
@@ -248,6 +250,10 @@ class ProyectoController extends Controller
         }
 
         $payload = $proyecto->toArray();
+
+        if (! empty($payload['entrega_inmediata'])) {
+            $payload['etapa'] = 'Entrega inmediata';
+        }
 
         foreach (['descuento_defecto_cotizacion_web', 'descuento_maximo_unidad', 'descuento_iva'] as $discountField) {
             if (array_key_exists($discountField, $payload) && $payload[$discountField] === null) {

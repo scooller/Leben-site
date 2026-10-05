@@ -224,7 +224,16 @@ class PlantController extends Controller
                 }
 
                 if (count($entregaValues) > 0) {
-                    $projectQuery->whereIn('etapa', $entregaValues);
+                    $hasEntregaInmediata = in_array('entrega_inmediata', $entregaValues, true)
+                        || in_array('entrega', $entregaValues, true)
+                        || in_array('Entrega inmediata', $entregaValues, true);
+
+                    $projectQuery->where(function ($eq) use ($entregaValues, $hasEntregaInmediata): void {
+                        $eq->whereIn('etapa', $entregaValues);
+                        if ($hasEntregaInmediata) {
+                            $eq->orWhere('entrega_inmediata', true);
+                        }
+                    });
                 }
             });
         }
@@ -438,7 +447,7 @@ class PlantController extends Controller
             ->whereHas('plantas', function ($plantsQuery) {
                 $plantsQuery->where('is_active', true);
             })
-            ->get(['region', 'comuna', 'etapa']);
+            ->get(['region', 'comuna', 'etapa', 'entrega_inmediata']);
 
         $orientaciones = Plant::query()
             ->where('is_active', true)
@@ -510,8 +519,13 @@ class PlantController extends Controller
             });
 
         $entregas = $projects
-            ->pluck('etapa')
-            ->map(static fn (mixed $etapa): string => trim((string) (Proyecto::etapaLabel($etapa) ?? '')))
+            ->map(static function (Proyecto $project): string {
+                if ($project->entrega_inmediata) {
+                    return 'Entrega inmediata';
+                }
+
+                return trim((string) (Proyecto::etapaLabel($project->etapa) ?? ''));
+            })
             ->filter(static fn (string $etapa): bool => $etapa !== '')
             ->unique()
             ->sort(SORT_NATURAL | SORT_FLAG_CASE)
@@ -569,9 +583,9 @@ class PlantController extends Controller
             'provincia' => $proyecto->provincia,
             'region' => $proyecto->region,
             'pagina_web' => $proyecto->pagina_web,
-            'etapa' => Proyecto::etapaLabel($proyecto->etapa),
+            'etapa' => $proyecto->entrega_inmediata ? 'Entrega inmediata' : Proyecto::etapaLabel($proyecto->etapa),
             'horario_atencion' => $proyecto->horario_atencion,
-            'entrega_inmediata' => $proyecto->entrega_inmediata,
+            'entrega_inmediata' => (bool) $proyecto->entrega_inmediata,
             'is_active' => $proyecto->is_active,
             'image_url' => $proyecto->image_url,
             'salesforce_logo_url' => $proyecto->salesforce_logo_url,

@@ -416,8 +416,10 @@ function PlantsGrid({
                 {plant.tipoProducto && (
                   <wa-badge variant="neutral">{plant.tipoProducto}</wa-badge>
                 )}
-                {plant.proyectoEtapa && (
-                  <wa-badge variant="neutral" style={{ fontSize: 'var(--wa-font-size-xs)' }}>{resolveStageAlias(plant.proyectoEtapa, plant.proyectoSlug)}</wa-badge>
+                {(plant.proyectoEtapa || plant.proyectoEntregaInmediata) && (
+                  <wa-badge variant="neutral" style={{ fontSize: 'var(--wa-font-size-xs)' }}>
+                    {resolveStageAlias(plant.proyectoEtapa, plant.proyectoSlug, plant.proyectoEntregaInmediata)}
+                  </wa-badge>
                 )}
                 {plant.isPaid && (
                   <wa-badge variant="neutral"><wa-icon name="shop-slash" slot="start"></wa-icon>Pagada</wa-badge>

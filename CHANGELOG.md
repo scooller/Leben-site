@@ -4,6 +4,24 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.71] - 2026-10-05
+
+### 🚀 Frontend & API — Priorización estricta de "Entrega inmediata" como etapa
+
+- **`frontend/src/utils/stageAlias.js`**:
+  - `resolveStageAlias()` ahora recibe el flag opcional `entregaInmediata` y prioriza inmediatamente devolver `"Entrega inmediata"` antes de cualquier resolución por slug de proyecto o mapa de etapas.
+  - Se añade retorno inmediato de `"Entrega inmediata"` cuando la clave canónica normalizada es `"entrega_inmediata"`.
+- **`frontend/src/pages/Home.jsx`**:
+  - Al procesar el listado de plantas, se mapea `proyectoEntregaInmediata` y se fuerza `proyectoEtapa` a `"Entrega inmediata"` si el proyecto tiene el flag `entrega_inmediata` activo.
+- **`frontend/src/components/PlantsGrid.jsx` & `frontend/src/components/PlantDetailDialog.jsx`**:
+  - Insignia de etapa visible tanto si existe `proyectoEtapa` como si `proyectoEntregaInmediata` es verdadero, pasando dicho flag a `resolveStageAlias()`.
+- **`app/Http/Controllers/Api/PlantController.php` & `ProyectoController.php`**:
+  - En respuestas públicas de plantas (`formatPlantResponse`) y proyectos (`index` y `show`), el campo `etapa` retorna `"Entrega inmediata"` siempre que `entrega_inmediata` sea verdadero, omitiendo la etapa interna seleccionada.
+  - En `locationFilters`, las opciones de entrega incluyen `"Entrega inmediata"` cuando hay proyectos activos con entrega inmediata.
+  - En el filtro de catálogo de plantas, la búsqueda por entrega incluye proyectos con `entrega_inmediata = true` cuando se filtra por entrega inmediata.
+- **`tests/Feature/Api/ProyectoEntregaInmediataEtapaTest.php`**:
+  - Pruebas automatizadas validando la resolución prioritaria de `"Entrega inmediata"` en endpoints de proyectos, plantas y filtros de ubicación.
+
 ## [1.9.70] - 2026-10-05
 
 ### 🔐 Seguridad y Permisos — Edición de Valores y Descuentos reservada a Admin y Super Admin

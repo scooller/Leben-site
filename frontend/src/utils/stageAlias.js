@@ -120,15 +120,23 @@ const canonicalStageKey = (value) => {
   return STAGE_KEY_ALIASES[normalizedStage] ?? normalizedStage;
 };
 
-export const resolveStageAlias = (stage, projectSlug = '') => {
+export const resolveStageAlias = (stage, projectSlug = '', entregaInmediata = false) => {
+  if (entregaInmediata === true || entregaInmediata === '1' || entregaInmediata === 1) {
+    return 'Entrega inmediata';
+  }
+
   const originalStage = typeof stage === 'string' ? stage.trim() : '';
+  const normalizedStage = canonicalStageKey(stage);
+
+  if (normalizedStage === 'entrega_inmediata') {
+    return 'Entrega inmediata';
+  }
+
   const normalizedProjectSlug = normalizeProjectSlug(projectSlug);
 
   if (normalizedProjectSlug && STAGE_ALIAS_BY_PROJECT_SLUG[normalizedProjectSlug]) {
     return STAGE_ALIAS_BY_PROJECT_SLUG[normalizedProjectSlug];
   }
-
-  const normalizedStage = canonicalStageKey(stage);
 
   if (!normalizedStage) {
     return originalStage;

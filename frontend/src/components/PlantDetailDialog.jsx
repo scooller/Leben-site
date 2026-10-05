@@ -322,10 +322,10 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
                                                 <span>{plant.proyectoComuna}</span>
                                             </div>
                                         )}
-                                        {plant.proyectoEtapa && (
+                                        {(plant.proyectoEtapa || plant.proyectoEntregaInmediata) && (
                                             <div className="wa-split wa-align-items-center">
                                                 <strong>Etapa</strong>
-                                                <wa-badge variant="neutral">{resolveStageAlias(plant.proyectoEtapa, plant.proyectoSlug)}</wa-badge>
+                                                <wa-badge variant="neutral">{resolveStageAlias(plant.proyectoEtapa, plant.proyectoSlug, plant.proyectoEntregaInmediata)}</wa-badge>
                                             </div>
                                         )}
                                         {plant.proyectoDescripcion && (
