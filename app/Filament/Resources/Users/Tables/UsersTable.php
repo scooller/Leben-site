@@ -32,6 +32,7 @@ class UsersTable
                     ->label('Tipo')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
+                        'super_admin', 'super admin', 'super-admin' => 'danger',
                         'admin' => 'danger',
                         'marketing' => 'warning',
                         'cliente' => 'success',
@@ -39,6 +40,7 @@ class UsersTable
                         default => 'gray',
                     })
                     ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'super_admin', 'super admin', 'super-admin' => 'Super Administrador',
                         'admin' => 'Administrador',
                         'marketing' => 'Marketing',
                         'cliente' => 'Cliente',
@@ -79,9 +81,10 @@ class UsersTable
                 SelectFilter::make('user_type')
                     ->label('Tipo de Usuario')
                     ->options([
-                        'customer' => 'Cliente',
-                        'marketing' => 'Marketing',
+                        'super_admin' => 'Super Administrador',
                         'admin' => 'Administrador',
+                        'marketing' => 'Marketing',
+                        'customer' => 'Cliente',
                     ]),
             ])
             ->recordActions([

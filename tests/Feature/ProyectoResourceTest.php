@@ -27,7 +27,7 @@ class ProyectoResourceTest extends TestCase
     {
         parent::setUp();
 
-        $this->user = User::factory()->create();
+        $this->user = User::factory()->create(['user_type' => 'admin']);
         $this->actingAs($this->user);
     }
 

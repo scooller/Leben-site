@@ -67,7 +67,24 @@ class User extends Authenticatable implements FilamentUser
      */
     public function isAdmin(): bool
     {
-        return $this->hasRole('admin') || $this->user_type === 'admin';
+        return $this->hasRole('admin') || $this->user_type === 'admin' || $this->isSuperAdmin();
+    }
+
+    /**
+     * Verificar si el usuario es super administrador
+     */
+    public function isSuperAdmin(): bool
+    {
+        return $this->hasAnyRole(['super_admin', 'super admin', 'super-admin'])
+            || in_array($this->user_type, ['super_admin', 'super admin', 'super-admin'], true);
+    }
+
+    /**
+     * Verificar si puede gestionar valores y descuentos financieros
+     */
+    public function canManageFinancialValues(): bool
+    {
+        return $this->isAdmin() || $this->isSuperAdmin();
     }
 
     public function isMarketing(): bool

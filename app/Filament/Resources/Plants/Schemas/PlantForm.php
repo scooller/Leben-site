@@ -102,19 +102,20 @@ class PlantForm
                     ->label('Precio Base')
                     ->numeric()
                     ->prefix('$')
-                    ->helperText('Intentar no modificar, se perdera al sincronizar.'),
+                    ->helperText('Intentar no modificar, se perdera al sincronizar.')
+                    ->disabled(fn (): bool => ! (auth()->user()?->canManageFinancialValues() ?? false)),
                 TextInput::make('precio_lista')
                     ->label('Precio Lista')
                     ->numeric()
                     ->prefix('$')
-                    ->disabled()
-                    ->dehydrated(false),
+                    ->disabled(fn (): bool => ! (auth()->user()?->canManageFinancialValues() ?? false)),
                 Toggle::make('unidad_sale')
                     ->label('Unidad Sale')
                     ->helperText('Define si esta unidad debe mostrarse cuando la configuración sale está activa.'),
                 Toggle::make('priorizar_descuentos')
                     ->label('Priorizar descuentos en esta planta')
                     ->helperText('Si se activa, el cálculo y visualización de descuentos se basarán en los valores de esta planta y no en los del proyecto.')
+                    ->disabled(fn (): bool => ! (auth()->user()?->canManageFinancialValues() ?? false))
                     ->live()
                     ->afterStateUpdated(function ($state, Set $set, Get $get, ?Plant $record) {
                         if (! $state) {
@@ -159,7 +160,8 @@ class PlantForm
                     )
                     ->prefix('Dcto.')
                     ->suffix('%')
-                    ->visible(fn ($get) => (bool) $get('priorizar_descuentos')),
+                    ->visible(fn ($get) => (bool) $get('priorizar_descuentos'))
+                    ->disabled(fn (): bool => ! (auth()->user()?->canManageFinancialValues() ?? false)),
                 TextInput::make('descuento_maximo_unidad')
                     ->label('Máximo Unidad (%)')
                     ->beforeLabel(Icon::make(Heroicon::PercentBadge))
@@ -177,7 +179,8 @@ class PlantForm
                     )
                     ->prefix('Dcto.')
                     ->suffix('%')
-                    ->visible(fn ($get) => (bool) $get('priorizar_descuentos')),
+                    ->visible(fn ($get) => (bool) $get('priorizar_descuentos'))
+                    ->disabled(fn (): bool => ! (auth()->user()?->canManageFinancialValues() ?? false)),
                 TextInput::make('descuento_iva')
                     ->label('Dcto. IVA')
                     ->beforeLabel(Icon::make(Heroicon::PercentBadge))
@@ -191,7 +194,8 @@ class PlantForm
                     )
                     ->prefix('Dcto.')
                     ->suffix('%')
-                    ->visible(fn ($get) => (bool) $get('priorizar_descuentos')),
+                    ->visible(fn ($get) => (bool) $get('priorizar_descuentos'))
+                    ->disabled(fn (): bool => ! (auth()->user()?->canManageFinancialValues() ?? false)),
                 TextInput::make('superficie_total_principal')
                     ->label('Superficie Total Principal')
                     ->numeric()

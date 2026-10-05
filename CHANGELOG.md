@@ -4,6 +4,26 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.70] - 2026-10-05
+
+### 🔐 Seguridad y Permisos — Edición de Valores y Descuentos reservada a Admin y Super Admin
+
+- **`app/Models/User.php`**:
+  - Implementado `isSuperAdmin()` para reconocer roles (`super_admin`, `super admin`, `super-admin`) y `user_type`.
+  - Actualizado `isAdmin()` para incluir automáticamente `isSuperAdmin()`.
+  - Implementado `canManageFinancialValues()` como helper de autorización para valores financieros y descuentos.
+- **`app/Filament/Resources/Proyectos/Schemas/ProyectoForm.php`**:
+  - Los campos de la sección "Descuentos y valores" (`valor_reserva_exigido_defecto_peso`, `valor_reserva_exigido_min_peso`, `descuento_defecto_cotizacion_web`, `descuento_maximo_unidad`, `descuento_iva`) ahora son editables exclusivamente por administradores y super administradores.
+  - Se eliminó el bloqueo hardcodeado de `valor_reserva_exigido_min_peso` permitiendo su edición para admin/super admin, quedando deshabilitado para el resto de usuarios.
+- **`app/Filament/Resources/Plants/Schemas/PlantForm.php`**:
+  - `precio_base`, `precio_lista`, `priorizar_descuentos`, `descuento_defecto_cotizacion_web`, `descuento_maximo_unidad` y `descuento_iva` ahora son editables exclusivamente por administradores y super administradores.
+  - Se removió el bloqueo estático `disabled()->dehydrated(false)` de `precio_lista`, permitiendo su edición y guardado por admin/super admin, manteniéndose deshabilitado para otros perfiles.
+- **`app/Filament/Resources/Users/`**:
+  - Se agregó `super_admin` (`Super Administrador`) como opción en `UserForm` y visualización con filtros en `UsersTable`.
+  - Actualizado `RolesAndPermissionsSeeder` para registrar el rol `super_admin`.
+- **`tests/Feature/FinancialValuesAndDiscountsAuthorizationTest.php`**:
+  - Suite de pruebas completa verificando permisos de edición en formularios de Proyecto y Planta para admin y super admin, así como bloqueo en modo deshabilitado para usuarios sin privilegios administrativos.
+
 ## [1.9.69] - 2026-10-05
 
 ### 🌐 Salesforce & API — Fallback robusto para utm_site y Website (web de origen / admin.ileben.cl)

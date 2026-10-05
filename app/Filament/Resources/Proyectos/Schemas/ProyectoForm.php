@@ -302,21 +302,22 @@ class ProyectoForm
                             ])
                             ->columns(1),
 
-                        Section::make('Reserva Exigida')
+                        Section::make('Descuentos y valores')
+                            ->description('Solo administradores y super administradores pueden modificar los valores de reserva y descuentos.')
                             ->schema([
                                 TextInput::make('valor_reserva_exigido_defecto_peso')
                                     ->label('Valor Defecto ($)')
                                     ->beforeLabel(Icon::make(Heroicon::CurrencyDollar))
                                     ->numeric()
-                                    ->prefix('$'),
+                                    ->prefix('$')
+                                    ->disabled(fn (): bool => ! (auth()->user()?->canManageFinancialValues() ?? false)),
 
                                 TextInput::make('valor_reserva_exigido_min_peso')
                                     ->label('Valor Mínimo ($)')
                                     ->beforeLabel(Icon::make(Heroicon::CurrencyDollar))
                                     ->numeric()
-                                    ->disabled()
-                                    ->dehydrated(false)
-                                    ->prefix('$'),
+                                    ->prefix('$')
+                                    ->disabled(fn (): bool => ! (auth()->user()?->canManageFinancialValues() ?? false)),
 
                                 TextInput::make('descuento_defecto_cotizacion_web')
                                     ->label('Defecto Cotización Web (%)')
@@ -326,7 +327,8 @@ class ProyectoForm
                                     ->minValue(0)
                                     ->maxValue(100)
                                     ->prefix('Dcto.')
-                                    ->suffix('%'),
+                                    ->suffix('%')
+                                    ->disabled(fn (): bool => ! (auth()->user()?->canManageFinancialValues() ?? false)),
 
                                 TextInput::make('descuento_maximo_unidad')
                                     ->label('Máximo Unidad (%)')
@@ -340,7 +342,8 @@ class ProyectoForm
                                     ->minValue(0)
                                     ->maxValue(100)
                                     ->prefix('Dcto.')
-                                    ->suffix('%'),
+                                    ->suffix('%')
+                                    ->disabled(fn (): bool => ! (auth()->user()?->canManageFinancialValues() ?? false)),
 
                                 TextInput::make('descuento_iva')
                                     ->label('Dcto. IVA')
@@ -351,7 +354,8 @@ class ProyectoForm
                                     ->maxValue(100)
                                     ->default(0)
                                     ->prefix('Dcto.')
-                                    ->suffix('%'),
+                                    ->suffix('%')
+                                    ->disabled(fn (): bool => ! (auth()->user()?->canManageFinancialValues() ?? false)),
                             ])
                             ->columns(2),
 

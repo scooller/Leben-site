@@ -51,10 +51,11 @@ class UserForm
                                 'customer' => 'Cliente',
                                 'marketing' => 'Marketing',
                                 'admin' => 'Administrador',
+                                'super_admin' => 'Super Administrador',
                             ])
                             ->default('customer')
                             ->required()
-                            ->helperText('Solo Administrador y Marketing pueden acceder al panel'),
+                            ->helperText('Solo Administrador, Super Administrador y Marketing pueden acceder al panel'),
 
                         TextInput::make('password')
                             ->label('Contraseña')
