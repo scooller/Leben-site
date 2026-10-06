@@ -671,4 +671,27 @@ class SiteSetting extends Model
             ] : []),
         ];
     }
+
+    public function isChannelEligibleForSaleUtmCampaign(?ContactChannel $channel): bool
+    {
+        if ($channel === null || ! (bool) $this->evento_sale) {
+            return false;
+        }
+
+        $extraSettings = is_array($this->extra_settings) ? $this->extra_settings : [];
+
+        $hasExplicitSetting = array_key_exists('sale_utm_campaign_channels', $extraSettings);
+        $configuredChannels = $hasExplicitSetting
+            ? (array) $extraSettings['sale_utm_campaign_channels']
+            : array_values(array_filter([(string) ContactChannel::getDefault()?->id]));
+
+        if (empty($configuredChannels)) {
+            return false;
+        }
+
+        $allowedIdentifiers = array_map('strval', $configuredChannels);
+
+        return in_array((string) $channel->id, $allowedIdentifiers, true)
+            || in_array((string) $channel->slug, $allowedIdentifiers, true);
+    }
 }

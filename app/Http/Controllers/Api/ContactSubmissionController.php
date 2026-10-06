@@ -79,7 +79,11 @@ class ContactSubmissionController extends Controller
     private function enrichMarketingFields(StoreContactSubmissionRequest $request, array $fields, ?\App\Models\ContactChannel $channel = null): array
     {
         $settings = SiteSetting::current();
-        if ($settings->evento_sale) {
+
+        // Solo sobreescribir utm_campaign si proviene del front, el evento Sale está activo
+        // y el canal actual está seleccionado en sale_utm_campaign_channels.
+        // Peticiones provenientes de API externa o canales no seleccionados preservan su campaña original.
+        if ($settings->evento_sale && $this->isFrontendRequest($request, $channel) && $settings->isChannelEligibleForSaleUtmCampaign($channel)) {
             $extraSettings = is_array($settings->extra_settings) ? $settings->extra_settings : [];
             $saleCampaign = trim((string) ($extraSettings['sale_utm_campaign'] ?? ''))
                 ?: trim((string) ($extraSettings['sale_event_name'] ?? ''))
@@ -109,6 +113,90 @@ class ContactSubmissionController extends Controller
         }
 
         return $fields;
+    }
+
+    private function isFrontendRequest(StoreContactSubmissionRequest $request, ?\App\Models\ContactChannel $channel = null): bool
+    {
+        if ($request->headers->has('X-Contact-Channel')) {
+            return false;
+        }
+
+        $origin = $request->headers->get('Origin');
+        $referer = $request->headers->get('Referer');
+
+        if (blank($origin) && blank($referer)) {
+            return false;
+        }
+
+        $requestHosts = [];
+        foreach ([$origin, $referer] as $headerValue) {
+            if (filled($headerValue)) {
+                $host = parse_url((string) $headerValue, PHP_URL_HOST);
+                if (filled($host)) {
+                    $requestHosts[] = strtolower((string) $host);
+                }
+            }
+        }
+
+        if (empty($requestHosts)) {
+            return false;
+        }
+
+        $allowedHosts = $this->resolveAllowedFrontendHosts($channel);
+
+        foreach ($requestHosts as $host) {
+            if (in_array($host, $allowedHosts, true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function resolveAllowedFrontendHosts(?\App\Models\ContactChannel $channel = null): array
+    {
+        $hosts = [];
+
+        $settings = SiteSetting::current();
+        if (filled($settings->site_url)) {
+            $host = parse_url((string) $settings->site_url, PHP_URL_HOST);
+            if (filled($host)) {
+                $hosts[] = strtolower((string) $host);
+            }
+        }
+
+        $frontendUrl = config('app.frontend_url');
+        if (filled($frontendUrl)) {
+            $host = parse_url((string) $frontendUrl, PHP_URL_HOST);
+            if (filled($host)) {
+                $hosts[] = strtolower((string) $host);
+            }
+        }
+
+        $appUrl = config('app.url');
+        if (filled($appUrl)) {
+            $host = parse_url((string) $appUrl, PHP_URL_HOST);
+            if (filled($host)) {
+                $hosts[] = strtolower((string) $host);
+            }
+        }
+
+        if ($channel !== null && is_array($channel->domain_patterns)) {
+            foreach ($channel->domain_patterns as $pattern) {
+                $clean = strtolower(trim((string) $pattern));
+                if ($clean !== '') {
+                    $hosts[] = $clean;
+                }
+            }
+        }
+
+        $hosts[] = 'localhost';
+        $hosts[] = '127.0.0.1';
+
+        return array_values(array_unique($hosts));
     }
 
     private function resolveRequestSourceSite(StoreContactSubmissionRequest $request, ?\App\Models\ContactChannel $channel = null): ?string

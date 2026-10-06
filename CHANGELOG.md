@@ -4,6 +4,22 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.73] - 2026-10-06
+
+### 🎯 Marketing & API — Preservación Estricta de UTM Campaign en API y Canales No Seleccionados
+
+- **`app/Http/Controllers/Api/ContactSubmissionController.php`**:
+  - `enrichMarketingFields()` ahora verifica que la solicitud provenga del frontend (`isFrontendRequest()`) y que el canal esté explícitamente seleccionado en `extra_settings.sale_utm_campaign_channels` (`SiteSetting::isChannelEligibleForSaleUtmCampaign()`) antes de enriquecer o alterar `utm_campaign`.
+  - Solicitudes que ingresan por la API directa (`POST /api/v1/contact-submissions`) o desde canales no seleccionados preservan intactos sus parámetros `utm_campaign`, sin sobreescrituras indebidas hacia la campaña de Sale en base de datos.
+  - Implementado `isFrontendRequest()` y `resolveAllowedFrontendHosts()` para validar origen y referer contra dominios autorizados del sitio.
+- **`app/Models/SiteSetting.php`**:
+  - Implementado método helper `isChannelEligibleForSaleUtmCampaign(?ContactChannel $channel): bool` para centralizar la verificación de elegibilidad de sobreescritura de campaña Sale según `extra_settings.sale_utm_campaign_channels`.
+- **`app/Services/Salesforce/SalesforceCaseMapper.php`**:
+  - `shouldOverrideCampaignForSale()` ahora valida la elegibilidad del canal a través de `SiteSetting::isChannelEligibleForSaleUtmCampaign()`.
+  - `resolveUtmCampaign()` no cae en `sale_utm_campaign` como fallback cuando el canal no es elegible, respetando los valores por defecto generales o preservando la campaña enviada.
+- **`tests/Feature/ContactSubmissionApiTest.php`**:
+  - Pruebas automatizadas validando: no sobreescritura cuando la petición viene por API, no sobreescritura en canales no seleccionados desde el front, y sobreescritura correcta cuando la petición es del front en un canal elegible con evento Sale activo. Total: 11 tests pasando.
+
 ## [1.9.72] - 2026-10-06
 
 ### 🔄 Salesforce OAuth — Auto-recuperación de Recursos y Versión en Caché y DB

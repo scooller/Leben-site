@@ -152,7 +152,7 @@ class ContactSubmissionApiTest extends TestCase
             ->assertJsonValidationErrors(['channel']);
     }
 
-    public function test_it_overwrites_campaign_when_utm_source_is_brevo_and_sale_is_active(): void
+    public function test_it_overwrites_campaign_when_utm_source_is_brevo_and_sale_is_active_from_frontend(): void
     {
         $channel = ContactChannel::factory()->create(['slug' => 'test-channel']);
 
@@ -160,6 +160,7 @@ class ContactSubmissionApiTest extends TestCase
             'evento_sale' => true,
             'extra_settings' => [
                 'sale_utm_campaign' => 'CyberBrevo2026',
+                'sale_utm_campaign_channels' => [(string) $channel->id],
             ],
         ]);
 
@@ -174,6 +175,8 @@ class ContactSubmissionApiTest extends TestCase
                 'utm_source' => 'Brevo',
                 'utm_campaign' => 'original-newsletter',
             ],
+        ], [
+            'Origin' => 'http://localhost:5173',
         ]);
 
         $response->assertCreated();
@@ -183,7 +186,74 @@ class ContactSubmissionApiTest extends TestCase
         $this->assertSame('CyberBrevo2026', $submission->fields['utm_campaign'] ?? null);
     }
 
-    public function test_it_defaults_campaign_to_sale_utm_campaign_when_sale_is_active_and_campaign_is_missing_or_auto_tagging(): void
+    public function test_it_does_not_overwrite_campaign_when_request_comes_from_api(): void
+    {
+        $channel = ContactChannel::factory()->create(['slug' => 'test-channel-api']);
+
+        \App\Models\SiteSetting::current()->update([
+            'evento_sale' => true,
+            'extra_settings' => [
+                'sale_utm_campaign' => 'CyberBrevo2026',
+                'sale_utm_campaign_channels' => [(string) $channel->id],
+            ],
+        ]);
+
+        // Request proveniente de API externa sin Origin del front
+        $response = $this->postJson('/api/v1/contact-submissions', [
+            'channel' => 'test-channel-api',
+            'fields' => [
+                'name' => 'Juan API',
+                'email' => 'juanapi@example.cl',
+                'message' => 'Test',
+                'comuna' => 'Santiago',
+                'proyecto' => 'Argomedo',
+                'utm_source' => 'Brevo',
+                'utm_campaign' => 'original-newsletter',
+            ],
+        ]);
+
+        $response->assertCreated();
+
+        $submission = ContactSubmission::query()->latest('id')->first();
+        $this->assertNotNull($submission);
+        $this->assertSame('original-newsletter', $submission->fields['utm_campaign'] ?? null);
+    }
+
+    public function test_it_does_not_overwrite_campaign_when_channel_is_not_selected_even_from_frontend(): void
+    {
+        $channel = ContactChannel::factory()->create(['slug' => 'test-channel-unselected']);
+
+        \App\Models\SiteSetting::current()->update([
+            'evento_sale' => true,
+            'extra_settings' => [
+                'sale_utm_campaign' => 'CyberSale2026',
+                'sale_utm_campaign_channels' => ['999999'], // otro canal
+            ],
+        ]);
+
+        $response = $this->postJson('/api/v1/contact-submissions', [
+            'channel' => 'test-channel-unselected',
+            'fields' => [
+                'name' => 'Carlos',
+                'email' => 'carlos@example.cl',
+                'message' => 'Test',
+                'comuna' => 'Santiago',
+                'proyecto' => 'Argomedo',
+                'utm_source' => 'google',
+                'utm_campaign' => 'google-ads-inversion',
+            ],
+        ], [
+            'Origin' => 'http://localhost:5173',
+        ]);
+
+        $response->assertCreated();
+
+        $submission = ContactSubmission::query()->latest('id')->first();
+        $this->assertNotNull($submission);
+        $this->assertSame('google-ads-inversion', $submission->fields['utm_campaign'] ?? null);
+    }
+
+    public function test_it_defaults_campaign_to_sale_utm_campaign_when_sale_is_active_and_from_frontend(): void
     {
         $channel = ContactChannel::factory()->create(['slug' => 'test-channel-sale-default']);
 
@@ -191,6 +261,7 @@ class ContactSubmissionApiTest extends TestCase
             'evento_sale' => true,
             'extra_settings' => [
                 'sale_utm_campaign' => 'CyberSaleGeneral',
+                'sale_utm_campaign_channels' => [(string) $channel->id],
             ],
         ]);
 
@@ -205,6 +276,8 @@ class ContactSubmissionApiTest extends TestCase
                 'utm_source' => 'google',
                 'utm_campaign' => 'auto-tagging',
             ],
+        ], [
+            'Origin' => 'http://localhost:5173',
         ]);
 
         $response->assertCreated();

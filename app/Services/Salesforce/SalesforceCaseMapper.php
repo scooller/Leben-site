@@ -875,23 +875,12 @@ class SalesforceCaseMapper
 
         $channel = $this->resolveSubmissionChannel($submission, $fields, $website);
 
-        $hasExplicitSetting = array_key_exists('sale_utm_campaign_channels', $extraSettings);
-        $configuredChannels = $hasExplicitSetting
-            ? (array) $extraSettings['sale_utm_campaign_channels']
-            : array_values(array_filter([(string) ContactChannel::getDefault()?->id]));
-
-        if (empty($configuredChannels)) {
+        // Si el canal no está entre los seleccionados para Sale, NO sobreescribir la campaña
+        if (! $settings->isChannelEligibleForSaleUtmCampaign($channel)) {
             return false;
         }
 
-        if ($channel === null) {
-            return false;
-        }
-
-        $allowedIdentifiers = array_map('strval', $configuredChannels);
-
-        return in_array((string) $channel->id, $allowedIdentifiers, true)
-            || in_array((string) $channel->slug, $allowedIdentifiers, true);
+        return true;
     }
 
     /**
@@ -935,7 +924,7 @@ class SalesforceCaseMapper
     {
         $normalizedSaleCampaign = trim((string) $saleCampaign);
 
-        // Cuando evento SALE está activo y hay campaña de Sale, sobreescribe siempre
+        // Cuando evento SALE está activo y hay campaña de Sale permitida para este canal, sobreescribe siempre
         if (($settings->evento_sale === true) && $normalizedSaleCampaign !== '') {
             return $normalizedSaleCampaign;
         }
@@ -950,7 +939,7 @@ class SalesforceCaseMapper
         }
 
         $normalizedDefaultValue = trim((string) $defaultValue);
-        if ($normalizedDefaultValue !== '' && ! in_array(strtolower($normalizedDefaultValue), ['auto-tagging', 'campaign'], true)) {
+        if ($normalizedDefaultValue !== '' && strtolower($normalizedDefaultValue) !== 'auto-tagging') {
             return $normalizedDefaultValue;
         }
 
