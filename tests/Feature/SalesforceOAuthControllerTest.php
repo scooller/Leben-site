@@ -14,6 +14,9 @@ class SalesforceOAuthControllerTest extends TestCase
 
     public function test_callback_persists_oauth_connection_metadata_on_success(): void
     {
+        Cache::put(config('forrest.storage.path', 'forrest_').'version', ['version' => '58.0']);
+        Cache::put(config('forrest.storage.path', 'forrest_').'resources', ['sobjects' => '/services/data/v58.0/sobjects']);
+
         Forrest::shouldReceive('callback')->once()->andReturnNull();
 
         $response = $this->get(route('salesforce.callback'));
@@ -28,6 +31,8 @@ class SalesforceOAuthControllerTest extends TestCase
         $this->assertIsString(data_get($extraSettings, 'salesforce_oauth.last_connected_at'));
         $this->assertNotSame('', trim((string) data_get($extraSettings, 'salesforce_oauth.last_connected_at')));
         $this->assertSame((string) config('forrest.authentication', ''), data_get($extraSettings, 'salesforce_oauth.auth_method'));
+        $this->assertSame(['version' => '58.0'], data_get($extraSettings, 'salesforce_oauth.version_cache_backup'));
+        $this->assertSame(['sobjects' => '/services/data/v58.0/sobjects'], data_get($extraSettings, 'salesforce_oauth.resources_cache_backup'));
 
         $this->assertTrue(Cache::has('salesforce_oauth_just_connected'));
     }

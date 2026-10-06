@@ -39,7 +39,7 @@ class ProyectoFactory extends Factory
             'descuento_defecto_cotizacion_web' => fake()->optional(0.5)->randomFloat(2, 0, 20),
             'descuento_maximo_unidad' => fake()->optional(0.5)->randomFloat(2, 0, 25),
             'descuento_iva' => null,
-            'entrega_inmediata' => fake()->boolean(30),
+            'entrega_inmediata' => false,
         ];
     }
 }

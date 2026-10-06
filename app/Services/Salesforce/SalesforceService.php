@@ -11,6 +11,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Omniphx\Forrest\Exceptions\MissingRefreshTokenException;
+use Omniphx\Forrest\Exceptions\MissingResourceException;
 use Omniphx\Forrest\Providers\Laravel\Facades\Forrest;
 use Throwable;
 
@@ -432,7 +433,7 @@ class SalesforceService
         }
 
         try {
-            $describe = Forrest::describe('Lead');
+            $describe = $this->executeWithTokenProtection(fn () => Forrest::describe('Lead'));
             $fields = is_array($describe['fields'] ?? null) ? $describe['fields'] : [];
 
             $creatableFields = [];
@@ -742,14 +743,86 @@ class SalesforceService
     }
 
     /**
+     * Asegura que los recursos y versión de la API de Salesforce estén cargados en el storage de Forrest.
+     * Forrest guarda 'resources' y 'version' durante el login OAuth inicial, pero tras un reinicio de Redis
+     * o limpieza de caché, Forrest::refresh() sólo refresca el token, dejando 'resources' vacío,
+     * lo que provoca Omniphx\Forrest\Exceptions\MissingResourceException ("No resources available").
+     */
+    public function ensureResourcesLoaded(): void
+    {
+        $cachePath = config('forrest.storage.path', 'forrest_');
+
+        // Si faltan version o resources en el caché, intentar restaurar de backup o regenerar
+        if (! Cache::has($cachePath.'version') || ! Cache::has($cachePath.'resources')) {
+            $siteSettings = SiteSetting::current();
+            $extraSettings = is_array($siteSettings->extra_settings) ? $siteSettings->extra_settings : [];
+            $oauthMeta = data_get($extraSettings, 'salesforce_oauth', []);
+
+            $versionBackup = data_get($oauthMeta, 'version_cache_backup');
+            $resourcesBackup = data_get($oauthMeta, 'resources_cache_backup');
+
+            if ($versionBackup !== null && ! Cache::has($cachePath.'version')) {
+                Cache::forever($cachePath.'version', $versionBackup);
+            }
+
+            if ($resourcesBackup !== null && ! Cache::has($cachePath.'resources')) {
+                Cache::forever($cachePath.'resources', $resourcesBackup);
+            }
+        }
+
+        // Si aún falta version o resources, consultar a Salesforce para repoblarlos
+        if (! Cache::has($cachePath.'version')) {
+            try {
+                $versions = Forrest::versions();
+                if (is_array($versions) && $versions !== []) {
+                    $latestVersion = end($versions);
+                    $configVersion = config('forrest.version');
+                    $matchedVersion = null;
+
+                    if (! empty($configVersion)) {
+                        foreach ($versions as $ver) {
+                            if (($ver['version'] ?? null) === $configVersion) {
+                                $matchedVersion = $ver;
+                                break;
+                            }
+                        }
+                    }
+
+                    $selectedVersion = $matchedVersion ?? $latestVersion;
+                    Cache::forever($cachePath.'version', $selectedVersion);
+                }
+            } catch (Throwable $e) {
+                Log::warning('Salesforce: ensureResourcesLoaded - No se pudo regenerar version de API', [
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        if (! Cache::has($cachePath.'resources')) {
+            try {
+                $resources = Forrest::resources(['format' => 'json']);
+                if (is_array($resources) && $resources !== []) {
+                    Cache::forever($cachePath.'resources', $resources);
+                    Log::info('Salesforce: ensureResourcesLoaded - Recursos de Salesforce cargados y cacheados exitosamente.');
+                }
+            } catch (Throwable $e) {
+                Log::warning('Salesforce: ensureResourcesLoaded - No se pudieron regenerar recursos de Salesforce', [
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+    }
+
+    /**
      * Intenta reconectar a Salesforce usando el refresh_token persistido en la DB,
      * sin necesidad de intervención del usuario. Útil cuando el caché fue limpiado.
      *
      * Flujo:
      *  1. Lee los blobs encriptados de Forrest guardados en SiteSetting
-     *  2. Los restaura al caché (forrest_token y forrest_refresh_token)
+     *  2. Los restaura al caché (forrest_token y forrest_refresh_token, versión y recursos)
      *  3. Llama Forrest::refresh() → Salesforce retorna nuevo access_token
-     *  4. Actualiza el backup en DB con el nuevo token
+     *  4. Asegura que los recursos de Forrest estén cargados
+     *  5. Actualiza el backup en DB con el nuevo token y recursos
      *
      * @return bool True si la reconexión fue exitosa, false si falló (token verdaderamente expirado)
      */
@@ -761,6 +834,8 @@ class SalesforceService
 
         $tokenBackup = data_get($oauthMeta, 'token_cache_backup');
         $refreshTokenBackup = data_get($oauthMeta, 'refresh_token_cache_backup');
+        $versionBackup = data_get($oauthMeta, 'version_cache_backup');
+        $resourcesBackup = data_get($oauthMeta, 'resources_cache_backup');
 
         if ($refreshTokenBackup === null) {
             Log::warning('Salesforce: tryAutoReconnect - No hay refresh_token_cache_backup en DB. Reconexión manual requerida.');
@@ -778,12 +853,23 @@ class SalesforceService
 
             Cache::forever($cachePath.'refresh_token', $refreshTokenBackup);
 
+            if ($versionBackup !== null) {
+                Cache::forever($cachePath.'version', $versionBackup);
+            }
+
+            if ($resourcesBackup !== null) {
+                Cache::forever($cachePath.'resources', $resourcesBackup);
+            }
+
             // Forrest::refresh() usa el refresh_token del caché para obtener un nuevo access_token
             Forrest::refresh();
 
             Log::info('Salesforce: tryAutoReconnect - Token renovado automáticamente sin intervención de usuario.');
 
-            // Actualizar el backup en DB con el nuevo forrest_token (access_token actualizado)
+            // Asegurar que 'version' y 'resources' existan en el storage de Forrest
+            $this->ensureResourcesLoaded();
+
+            // Actualizar el backup en DB con el nuevo forrest_token y recursos
             $this->updateTokenBackup();
 
             // Marcar como conectado
@@ -825,6 +911,8 @@ class SalesforceService
         $cachePath = config('forrest.storage.path', 'forrest_');
         $newTokenBackup = Cache::get($cachePath.'token');
         $newRefreshTokenBackup = Cache::get($cachePath.'refresh_token');
+        $versionBackup = Cache::get($cachePath.'version');
+        $resourcesBackup = Cache::get($cachePath.'resources');
 
         if ($newTokenBackup === null) {
             return;
@@ -853,6 +941,14 @@ class SalesforceService
 
         if ($newRefreshTokenBackup !== null) {
             data_set($extraSettings, 'salesforce_oauth.refresh_token_cache_backup', $newRefreshTokenBackup);
+        }
+
+        if ($versionBackup !== null) {
+            data_set($extraSettings, 'salesforce_oauth.version_cache_backup', $versionBackup);
+        }
+
+        if ($resourcesBackup !== null) {
+            data_set($extraSettings, 'salesforce_oauth.resources_cache_backup', $resourcesBackup);
         }
 
         $siteSettings->update(['extra_settings' => $extraSettings]);
@@ -968,6 +1064,9 @@ class SalesforceService
 
             Log::info('Salesforce: proactiveRefresh - Token renovado proactivamente.');
 
+            // Asegurar que 'version' y 'resources' existan en el storage de Forrest
+            $this->ensureResourcesLoaded();
+
             // Actualizar backup en DB con el nuevo token
             $this->updateTokenBackup();
 
@@ -1040,23 +1139,36 @@ class SalesforceService
             $this->proactiveRefresh();
         }
 
+        // 3. Asegurar que 'version' y 'resources' existan en el storage de Forrest
+        $this->ensureResourcesLoaded();
+
         try {
-            // 3. Ejecutar la operación
+            // 4. Ejecutar la operación
             $result = $operation();
 
-            // 4. Tras éxito, actualizar backup
+            // 5. Tras éxito, actualizar backup
+            $this->updateTokenBackup();
+
+            return $result;
+        } catch (MissingResourceException $e) {
+            Log::warning('Salesforce: executeWithTokenProtection - MissingResourceException detectado, recargando recursos y reintentando.', [
+                'error' => $e->getMessage(),
+            ]);
+
+            $this->ensureResourcesLoaded();
+            $result = $operation();
             $this->updateTokenBackup();
 
             return $result;
         } catch (Throwable $e) {
-            // 5. Si es invalid_grant definitivo, no reintentar
+            // 6. Si es invalid_grant definitivo, no reintentar
             if ($this->isRefreshTokenExpiredException($e)) {
                 $this->markAsDisconnected('executeWithTokenProtection - invalid_grant: expired access/refresh token');
 
                 throw new SalesforceTokenExpiredException(previous: $e);
             }
 
-            // 6. Otro error de token → refresh + retry
+            // 7. Otro error de token → refresh + retry
             Log::warning('Salesforce: executeWithTokenProtection - Error en operación, intentando refresh + retry.', [
                 'error' => $e->getMessage(),
             ]);

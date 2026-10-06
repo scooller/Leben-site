@@ -360,6 +360,7 @@ class PlantApiFiltersTest extends TestCase
             'comuna' => 'Santiago',
             'region' => 'Metropolitana',
             'etapa' => 'entrega',
+            'entrega_inmediata' => false,
             'is_active' => true,
         ]);
 
@@ -367,6 +368,7 @@ class PlantApiFiltersTest extends TestCase
             'comuna' => 'Providencia',
             'region' => 'Metropolitana',
             'etapa' => 'obra_gruesa',
+            'entrega_inmediata' => false,
             'is_active' => true,
         ]);
 

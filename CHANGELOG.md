@@ -4,6 +4,22 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.9.72] - 2026-10-06
+
+### 🔄 Salesforce OAuth — Auto-recuperación de Recursos y Versión en Caché y DB
+
+- **`app/Services/Salesforce/SalesforceService.php`**:
+  - Implementado `ensureResourcesLoaded()`: restaura `version` y `resources` desde DB backup (`SiteSetting.extra_settings`) hacia el caché de Forrest cuando se limpian o expiran, o los consulta directamente a Salesforce (`Forrest::versions()` y `Forrest::resources()`).
+  - `tryAutoReconnect()`: restaura `version` y `resources` del backup de DB antes de llamar a `Forrest::refresh()`, invoca `ensureResourcesLoaded()` y actualiza el backup completo.
+  - `updateTokenBackup()`: persiste `version_cache_backup` y `resources_cache_backup` junto con tokens de acceso y refresh rotados en `SiteSetting.extra_settings`.
+  - `proactiveRefresh()`: llama preventivamente a `ensureResourcesLoaded()` para asegurar disponibilidad de recursos tras refresh de token.
+  - `executeWithTokenProtection()`: invoca preventivamente `ensureResourcesLoaded()` y captura `MissingResourceException` para recargar recursos de Forrest y reintentar la operación automáticamente sin requerir reconexión manual.
+  - `getCreatableLeadFields()`: envuelto `Forrest::describe('Lead')` con `executeWithTokenProtection()` para garantizar disponibilidad continua.
+- **`app/Http/Controllers/SalesforceOAuthController.php`**:
+  - En `callback()`, almacena inmediatamente `version_cache_backup` y `resources_cache_backup` en `SiteSetting.extra_settings` al completar la conexión OAuth inicial.
+- **`tests/Feature/SalesforceProactiveRefreshTest.php` & `SalesforceOAuthControllerTest.php`**:
+  - Tests unitarios y de integración para la persistencia y auto-recuperación transparente ante pérdida de claves de recursos y versión en caché.
+
 ## [1.9.71] - 2026-10-05
 
 ### 🚀 Frontend & API — Priorización estricta de "Entrega inmediata" como etapa
