@@ -56,6 +56,27 @@ class CreateSalesforceCaseJob implements ShouldQueue
             return;
         }
 
+        $settings = SiteSetting::current();
+        if ($syncTrigger === 'automatic' && ! $settings->shouldSyncInactiveProjectsToSalesforce()) {
+            $project = $mapper->resolveProjectForSubmission($submission);
+
+            if ($project !== null && ! (bool) $project->is_active) {
+                FlowLogMatrix::write('salesforce.job.inactive_project_skipped', 'CreateSalesforceCaseJob: Proyecto inactivo y sincronización automática desactivada, se omite envío', [
+                    'contact_submission_id' => $submission->id,
+                    'project_id' => $project->id,
+                    'project_name' => $project->name,
+                ]);
+
+                $submission->update([
+                    'salesforce_case_error' => 'Omitido: Proyecto inactivo (sincronización automática desactivada).',
+                    'salesforce_synced_at' => now(),
+                    'salesforce_sync_trigger' => $syncTrigger,
+                ]);
+
+                return;
+            }
+        }
+
         // Si el OAuth está marcado como desconectado o no hay token en caché, intentar
         // auto-reconexión silenciosa con el refresh_token del backup en DB antes de rendirse.
         // Esto cubre: rotación de refresh_token, cache:clear, restart de Redis, o fallo transitorio.

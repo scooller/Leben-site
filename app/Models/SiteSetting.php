@@ -694,4 +694,11 @@ class SiteSetting extends Model
         return in_array((string) $channel->id, $allowedIdentifiers, true)
             || in_array((string) $channel->slug, $allowedIdentifiers, true);
     }
+
+    public function shouldSyncInactiveProjectsToSalesforce(): bool
+    {
+        $extraSettings = is_array($this->extra_settings) ? $this->extra_settings : [];
+
+        return (bool) ($extraSettings['salesforce_sync_inactive_projects'] ?? true);
+    }
 }

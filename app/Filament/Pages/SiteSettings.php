@@ -251,6 +251,10 @@ class SiteSettings extends Page implements HasForms
             data_set($data, 'extra_settings.plants_default_order', 'discounts');
         }
 
+        if (data_get($data, 'extra_settings.salesforce_sync_inactive_projects') === null) {
+            data_set($data, 'extra_settings.salesforce_sync_inactive_projects', true);
+        }
+
         $this->form->fill($data);
         $this->rememberData();
 
@@ -1252,6 +1256,69 @@ class SiteSettings extends Page implements HasForms
                                             ->label('Incluir todos los campos en Description')
                                             ->helperText('Si está activo, el campo Description del Lead incluirá el detalle completo de los campos enviados. Si está desactivado, no se enviará Description.')
                                             ->default(true),
+
+                                        Toggle::make('extra_settings.salesforce_sync_inactive_projects')
+                                            ->label('Sincronizar automáticamente proyectos inactivos en Salesforce')
+                                            ->helperText('Si está desactivado, los contactos recibidos para proyectos inactivos se guardarán localmente pero no se enviarán automáticamente a Salesforce (podrán sincronizarse manualmente desde la tabla de contactos).')
+                                            ->default(true)
+                                            ->live(),
+
+                                        Placeholder::make('inactive_projects_notice')
+                                            ->label('Aviso de proyectos no activos')
+                                            ->content(function (Get $get): HtmlString {
+                                                $syncInactive = (bool) ($get('extra_settings.salesforce_sync_inactive_projects') ?? true);
+                                                $inactiveProjects = Proyecto::query()
+                                                    ->where('is_active', false)
+                                                    ->orderBy('name')
+                                                    ->get(['name', 'comuna']);
+
+                                                if ($inactiveProjects->isEmpty()) {
+                                                    return new HtmlString(
+                                                        '<div style="padding:0.75rem 1rem;border-radius:0.5rem;background-color:rgba(107,114,128,0.08);border:1px solid rgba(107,114,128,0.2);font-size:0.875rem;">'
+                                                        .'<span>ℹ️ No hay proyectos inactivos registrados actualmente en el sistema. Todos los proyectos están activos.</span>'
+                                                        .'</div>'
+                                                    );
+                                                }
+
+                                                $items = $inactiveProjects->map(function (Proyecto $proyecto): string {
+                                                    $name = e((string) $proyecto->name);
+                                                    $comuna = filled($proyecto->comuna) ? ' <span style="opacity:0.75;">('.e((string) $proyecto->comuna).')</span>' : '';
+
+                                                    return '<li style="margin-left:1.25rem;list-style-type:disc;">'.$name.$comuna.'</li>';
+                                                })->implode('');
+
+                                                $count = $inactiveProjects->count();
+                                                $plural = $count === 1 ? 'proyecto inactivo' : 'proyectos inactivos';
+
+                                                if (! $syncInactive) {
+                                                    $bannerColor = '#f59e0b';
+                                                    $bgColor = 'rgba(245, 158, 11, 0.1)';
+                                                    $borderColor = 'rgba(245, 158, 11, 0.3)';
+                                                    $icon = '⚠️';
+                                                    $description = 'Sincronización automática <strong>DESACTIVADA</strong>. Los contactos que ingresen para los siguientes proyectos <strong>NO se enviarán automáticamente a Salesforce</strong>:';
+                                                } else {
+                                                    $bannerColor = '#3b82f6';
+                                                    $bgColor = 'rgba(59, 130, 246, 0.08)';
+                                                    $borderColor = 'rgba(59, 130, 246, 0.25)';
+                                                    $icon = 'ℹ️';
+                                                    $description = 'Sincronización automática <strong>ACTIVA</strong>. Los contactos recibidos para los siguientes proyectos <strong>sí se sincronizarán automáticamente con Salesforce</strong>:';
+                                                }
+
+                                                $html = <<<HTML
+                                                <div style="padding:0.85rem 1rem;border-radius:0.5rem;background-color:{$bgColor};border:1px solid {$borderColor};font-size:0.875rem;line-height:1.45;">
+                                                    <div style="display:flex;align-items:center;gap:0.5rem;font-weight:600;margin-bottom:0.35rem;color:{$bannerColor};">
+                                                        <span>{$icon}</span>
+                                                        <span>Se detectaron {$count} {$plural}</span>
+                                                    </div>
+                                                    <p style="margin-bottom:0.5rem;">{$description}</p>
+                                                    <ul style="margin:0;padding-left:0.5rem;">
+                                                        {$items}
+                                                    </ul>
+                                                </div>
+                                                HTML;
+
+                                                return new HtmlString($html);
+                                            }),
                                     ]),
 
                                 Section::make('Sincronización Automática de Plantas')

@@ -4,7 +4,27 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
-## [1.9.73] - 2026-10-06
+## [1.9.74] - 2026-10-07
+
+### ⚙️ Salesforce — Control de Sincronización Automática para Proyectos Inactivos
+
+- **`app/Filament/Pages/SiteSettings.php`**:
+  - Agregado switch `extra_settings.salesforce_sync_inactive_projects` en la pestaña **Salesforce**, sección **Leads** (activo por defecto con `default(true)` e inicialización en `mount()`).
+  - Permite configurar globalmente si los contactos de proyectos inactivos deben sincronizarse automáticamente con Salesforce o solo guardarse localmente.
+  - Implementado aviso visual dinámico (`Placeholder` reactivo en tiempo real con `Get $get`) que lista los proyectos actualmente inactivos (o confirma si todos están activos) y explica el efecto inmediato según el estado del switch.
+- **`app/Models/SiteSetting.php`**:
+  - Implementado helper `shouldSyncInactiveProjectsToSalesforce(): bool` (retorna `true` por defecto).
+- **`app/Services/Salesforce/SalesforceCaseMapper.php`**:
+  - Implementado `resolveProjectForSubmission(ContactSubmission $submission): ?Proyecto` para reutilizar de manera limpia la resolución de proyectos.
+  - Incluida la columna `is_active` en las consultas de selección de `resolveProjectByName()` para asegurar la detección correcta del estado del proyecto.
+- **`app/Jobs/CreateSalesforceCaseJob.php`**:
+  - Evaluada la bandera `shouldSyncInactiveProjectsToSalesforce()` cuando `$syncTrigger === 'automatic'`.
+  - Si el proyecto está inactivo y el switch está apagado: se omite el envío a Salesforce, se registra en `FlowLogMatrix` (`salesforce.job.inactive_project_skipped`), y se marca `salesforce_case_error = 'Omitido: Proyecto inactivo (sincronización automática desactivada).'`.
+  - Las sincronizaciones manuales desde Filament (`$syncTrigger === 'manual'`) siguen permitidas aunque el proyecto esté inactivo.
+- **`app/Filament/Resources/ContactSubmissions/ContactSubmissions/Tables/ContactSubmissionsTable.php`**:
+  - Adaptada la columna `IconColumn` de Salesforce para mostrar ícono de advertencia (`heroicon-o-minus-circle` en color `warning`) y tooltip descriptivo cuando la sincronización fue omitida.
+- **`tests/Feature/SalesforceSyncInactiveProjectsTest.php`**:
+  - Pruebas automatizadas que verifican la omisión de sincronización automática cuando el switch está apagado, la ejecución normal cuando está encendido (por defecto), el envío normal en proyectos activos, y el funcionamiento de la sincronización manual sin bloqueos.
 
 ### 🎯 Marketing & API — Preservación Estricta de UTM Campaign en API y Canales No Seleccionados
 

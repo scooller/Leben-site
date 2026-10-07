@@ -549,7 +549,7 @@ class SalesforceCaseMapper
         }
 
         $project = Proyecto::query()
-            ->select(['id', 'salesforce_id', 'name', 'slug'])
+            ->select(['id', 'salesforce_id', 'name', 'slug', 'is_active'])
             ->where('name', $projectName)
             ->first();
 
@@ -558,7 +558,7 @@ class SalesforceCaseMapper
         }
 
         $project = Proyecto::query()
-            ->select(['id', 'salesforce_id', 'name', 'slug'])
+            ->select(['id', 'salesforce_id', 'name', 'slug', 'is_active'])
             ->whereRaw('LOWER(name) = ?', [mb_strtolower($projectName)])
             ->first();
 
@@ -569,7 +569,7 @@ class SalesforceCaseMapper
         $signature = $this->textSignature($projectName);
 
         $project = Proyecto::query()
-            ->select(['id', 'salesforce_id', 'name', 'slug'])
+            ->select(['id', 'salesforce_id', 'name', 'slug', 'is_active'])
             ->whereRaw('LOWER(slug) = ?', [$signature])
             ->first();
 
@@ -577,7 +577,7 @@ class SalesforceCaseMapper
             return $project;
         }
 
-        foreach (Proyecto::query()->select(['id', 'salesforce_id', 'name', 'slug'])->get() as $candidate) {
+        foreach (Proyecto::query()->select(['id', 'salesforce_id', 'name', 'slug', 'is_active'])->get() as $candidate) {
             if ($this->textSignature($candidate->name) === $signature) {
                 return $candidate;
             }
@@ -614,6 +614,17 @@ class SalesforceCaseMapper
             ->first();
 
         return $this->normalizePhone($advisor?->whatsapp_owner);
+    }
+
+    /**
+     * Resuelve el modelo Proyecto asociado a una sumisión de contacto si existe.
+     */
+    public function resolveProjectForSubmission(ContactSubmission $submission): ?Proyecto
+    {
+        $fields = is_array($submission->fields) ? $submission->fields : [];
+        $rawProjectInput = $this->fieldValue($fields, ['nombre_proyecto', 'proyecto', 'project_name', 'proyecto_formulario', 'project']);
+
+        return $this->resolveProject($fields, $rawProjectInput);
     }
 
     /**

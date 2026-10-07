@@ -255,12 +255,14 @@ class ContactSubmissionsTable
                 ->state(fn ($record): bool => filled($record->salesforce_case_id))
                 ->boolean()
                 ->trueIcon('heroicon-o-check-circle')
-                ->falseIcon('heroicon-o-x-circle')
+                ->falseIcon(fn ($record): string => filled($record->salesforce_case_error) && str_starts_with((string) $record->salesforce_case_error, 'Omitido') ? 'heroicon-o-minus-circle' : 'heroicon-o-x-circle')
                 ->trueColor('success')
-                ->falseColor('danger')
+                ->falseColor(fn ($record): string => filled($record->salesforce_case_error) && str_starts_with((string) $record->salesforce_case_error, 'Omitido') ? 'warning' : 'danger')
                 ->tooltip(fn ($record): string => filled($record->salesforce_case_id)
                     ? 'Lead ID: '.$record->salesforce_case_id
-                    : (filled($record->salesforce_case_error) ? 'Error: '.$record->salesforce_case_error : 'No sincronizado'))
+                    : (filled($record->salesforce_case_error)
+                        ? (str_starts_with((string) $record->salesforce_case_error, 'Omitido') ? (string) $record->salesforce_case_error : 'Error: '.$record->salesforce_case_error)
+                        : 'No sincronizado'))
                 ->toggleable(),
             TextColumn::make('channel.name')
                 ->label('Canal')
