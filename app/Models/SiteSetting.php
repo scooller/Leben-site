@@ -412,7 +412,11 @@ class SiteSetting extends Model
             'home_hero_type',
             'home_hero_video_desktop_url',
             'home_hero_video_mobile_url',
+            'home_hero_link',
+            'home_hero_link_new_tab',
             'contact_hero_alt',
+            'contact_hero_link',
+            'contact_hero_link_new_tab',
         ];
 
         $filtered = [];
@@ -638,12 +642,20 @@ class SiteSetting extends Model
                     'video_desktop_url' => $extraSettings['home_hero_video_desktop_url'] ?? null,
                     'video_mobile_url' => $extraSettings['home_hero_video_mobile_url'] ?? null,
                     'video_poster_url' => $homeHeroVideoPoster,
+                    'link' => is_string($extraSettings['home_hero_link'] ?? null) && trim((string) $extraSettings['home_hero_link']) !== ''
+                        ? trim((string) $extraSettings['home_hero_link'])
+                        : null,
+                    'link_new_tab' => (bool) ($extraSettings['home_hero_link_new_tab'] ?? false),
                 ],
                 'contact' => [
                     'image' => $contactHeroDesktopImage,
                     'image_desktop' => $contactHeroDesktopImage,
                     'image_mobile' => $contactHeroMobileImage,
                     'alt' => $extraSettings['contact_hero_alt'] ?? 'Contacto',
+                    'link' => is_string($extraSettings['contact_hero_link'] ?? null) && trim((string) $extraSettings['contact_hero_link']) !== ''
+                        ? trim((string) $extraSettings['contact_hero_link'])
+                        : null,
+                    'link_new_tab' => (bool) ($extraSettings['contact_hero_link_new_tab'] ?? false),
                 ],
             ],
             ...($hasValidToken ? [

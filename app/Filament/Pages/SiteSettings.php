@@ -459,6 +459,17 @@ class SiteSettings extends Page implements HasForms
                                             ->label('Poster del video Hero Home')
                                             ->helperText('Imagen usada mientras carga el video o si no puede reproducirse.')
                                             ->visible(fn (Get $get): bool => ($get('extra_settings.home_hero_type') ?? 'video') === 'video'),
+
+                                        TextInput::make('extra_settings.home_hero_link')
+                                            ->label('Enlace opcional del banner')
+                                            ->placeholder('https://... o /p/...')
+                                            ->maxLength(2048)
+                                            ->helperText('Si se define, el banner redirigirá a este enlace al hacer clic.'),
+
+                                        Toggle::make('extra_settings.home_hero_link_new_tab')
+                                            ->label('Abrir enlace en nueva pestaña')
+                                            ->default(false)
+                                            ->visible(fn (Get $get): bool => filled($get('extra_settings.home_hero_link'))),
                                     ])
                                     ->columns(1),
 
@@ -477,6 +488,17 @@ class SiteSettings extends Page implements HasForms
                                             ->label('Texto disclaimer para hero de contacto')
                                             ->placeholder('Ejemplo: "Porcentaje corresponde a la unidad X"')
                                             ->maxLength(255),
+
+                                        TextInput::make('extra_settings.contact_hero_link')
+                                            ->label('Enlace opcional del banner')
+                                            ->placeholder('https://... o /')
+                                            ->maxLength(2048)
+                                            ->helperText('Si se define, el banner redirigirá a este enlace al hacer clic.'),
+
+                                        Toggle::make('extra_settings.contact_hero_link_new_tab')
+                                            ->label('Abrir enlace en nueva pestaña')
+                                            ->default(false)
+                                            ->visible(fn (Get $get): bool => filled($get('extra_settings.contact_hero_link'))),
                                     ])
                                     ->columns(1),
                             ]),

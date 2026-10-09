@@ -4,6 +4,18 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-10-09
+
+### ✨ Feature — Enlaces opcionales para banners en backend y frontend
+
+- **`app/Filament/Pages/SiteSettings.php`**: Incorporación de campos administrables para enlaces opcionales en la pestaña **Banner** para el Hero del Home (`extra_settings.home_hero_link`, `extra_settings.home_hero_link_new_tab`) y el Hero de Contacto (`extra_settings.contact_hero_link`, `extra_settings.contact_hero_link_new_tab`).
+- **`app/Models/SiteSetting.php`**: Exposición de los atributos `link` y `link_new_tab` en el payload público del método `forFrontend()` bajo `hero.home` y `hero.contact`, e inclusión de las claves en `filterSyncableExtraSettings()`.
+- **`frontend/src/pages/Home.jsx`**: Renderizado de capa de enlace accesible (`.hero-banner-link-overlay`) sobre el banner principal cuando se configura un link, con soporte para apertura en nueva pestaña y preservación de parámetros UTM de sesión.
+- **`frontend/src/styles/home.scss`**: Estilos para `.hero-banner-link-overlay` y cursor interactivo en `.video-home.has-link`.
+- **`frontend/src/pages/Contact.jsx`**: Enlace opcional interactivo alrededor del banner/imagen de la página de contacto (`.contact-hero-link`) preservando UTMs de sesión.
+- **`frontend/src/styles/contact.scss`**: Estilos para enlaces interactivos en banner de contacto.
+- **`tests/Feature/SiteSettingFrontendConfigTest.php`**: Cobertura de pruebas para la resolución y serialización de los nuevos campos de enlace de banner.
+
 ## [1.9.74] - 2026-10-07
 
 ### ⚙️ Salesforce — Control de Sincronización Automática para Proyectos Inactivos

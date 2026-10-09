@@ -13,6 +13,7 @@ import { triggerPaymentConversion } from '../utils/conversionTracker';
 import { resolveSeoPolicy } from '../utils/seoPolicy';
 import { removeStructuredData, setStructuredData } from '../utils/structuredData';
 import { appendPreviewTokenToUrl } from '../utils/previewToken';
+import { appendSessionUtmsToExternalUrl } from '../utils/externalLinks';
 import '../styles/home.scss' with { type: 'css' };
 
 const PlantsGrid = lazy(() => import('../components/PlantsGrid'));
@@ -1687,11 +1688,23 @@ function Home({ onNavigate, currentPath }) {
   const homeHeroMobileVideo = homeHero?.video_mobile_url || 'https://viveelsur.ileben.cl/wp-content/uploads/2025/12/Banner-Hero-MobileV2.mp4';
   const homeHeroPoster = homeHero?.video_poster_url || homeHeroDesktopImage || homeHeroMobileImage || undefined;
   const homeHeroDisclaimer = config?.hero?.contact?.alt || '';
+  const homeHeroLink = homeHero?.link || null;
+  const homeHeroLinkNewTab = Boolean(homeHero?.link_new_tab);
+  const trackedHomeHeroLink = homeHeroLink ? appendSessionUtmsToExternalUrl(homeHeroLink) : null;
 
   return (
     <>
       {/* Hero Section */}
-      <div className='video-home wa-position-relative wa-overflow-hidden wa-justify-content-center box-shadow-1'>
+      <div className={`video-home wa-position-relative wa-overflow-hidden wa-justify-content-center box-shadow-1${trackedHomeHeroLink ? ' has-link' : ''}`}>
+        {trackedHomeHeroLink && (
+          <a
+            href={trackedHomeHeroLink}
+            target={homeHeroLinkNewTab ? '_blank' : undefined}
+            rel={homeHeroLinkNewTab ? 'noopener noreferrer' : undefined}
+            className="hero-banner-link-overlay"
+            aria-label={config?.site_name || 'Enlace del banner'}
+          />
+        )}
         {/* <div className="hero-section wa-position-absolute wa-z-index-1">
             <h1>{config?.site_name}</h1>
             <p>{config?.site_description}</p>
