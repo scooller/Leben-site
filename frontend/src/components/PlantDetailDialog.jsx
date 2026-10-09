@@ -1,5 +1,5 @@
 import { trackEvent } from '../utils/tagManager';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { resolveStageAlias } from '../utils/stageAlias';
 import { getStoredUtmParams } from '../utils/utmSession';
 import { appendSessionUtmsToExternalUrl } from '../utils/externalLinks';
@@ -46,12 +46,21 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
     }, [dialogRef, onClose]);
 
     const sanitizePhone = (value) => `${value ?? ''}`.replace(/\D+/g, '');
-    const mobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
-    const ActionButtonsContainer = mobile ? 'div' : 'wa-button-group';
-    const actionButtonsContainerClassName = mobile
-        ? 'wa-stack wa-order-1 wa-order-mobile-0'
-        : 'wa-order-1 wa-order-mobile-0';
-    const actionButtonsContainerStyle = mobile ? { width: '100%', marginTop: '1rem' } : undefined;
+    const [isMobile, setIsMobile] = useState(() => (
+        typeof window !== 'undefined' ? window.matchMedia('(max-width: 768px)').matches : false
+    ));
+
+    useEffect(() => {
+        if (typeof window === 'undefined') {
+            return;
+        }
+
+        const mediaQuery = window.matchMedia('(max-width: 768px)');
+        const handleMediaChange = (event) => setIsMobile(event.matches);
+
+        mediaQuery.addEventListener('change', handleMediaChange);
+        return () => mediaQuery.removeEventListener('change', handleMediaChange);
+    }, []);
 
     const reservaExigidaPeso = plant?.proyecto?.valor_reserva_exigido_defecto_peso ?? null;
     const reservaAsNumber = reservaExigidaPeso !== null && reservaExigidaPeso !== undefined
@@ -244,7 +253,7 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
         <wa-dialog
             ref={dialogRef}
             className="plant-detail-dialog"
-            style={mobile ? { '--width': '100dvw', '--wa-space-2xl': '1rem' } : { '--width': '80vw' }} // --width desktop 80vw, mobile 95vw
+            style={isMobile ? { '--width': '100dvw', '--wa-space-2xl': '1rem' } : { '--width': '80vw' }} // --width desktop 80vw, mobile 95vw
         >
             {plant && (
                 <>
@@ -515,7 +524,7 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
                         </div>
                     </div>
 
-                    <div slot="footer" className="wa-split wa-align-items-end">
+                    <div slot="footer" className="wa-split wa-align-items-end plant-detail-dialog-footer">
                         {(plant.precioSeleccionado || plant.precioFinal || plant.precioBase || plant.precioLista) && (
                             <>
                                 <div className="wa-stack wa-gap-xs price-detail wa-order-0 wa-order-mobile-1">
@@ -538,55 +547,109 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
                                 </div>
                             </>
                         )}
-                        <ActionButtonsContainer className={actionButtonsContainerClassName} style={actionButtonsContainerStyle}>
-                            <wa-button
-                                variant="neutral"
-                                data-dialog="close"
-                                size={mobile ? 'small' : 'large'}
-                                onClick={onClose}
-                            >
-                                <wa-icon name="xmark" slot="start"></wa-icon>
-                                Cerrar
-                            </wa-button>
-                            <wa-button
-                                variant="warning"
-                                size={mobile ? 'small' : 'large'}
-                                href={contactLinkMeta.href}
-                                target={contactLinkMeta.isExternal ? '_blank' : undefined}
-                                rel={contactLinkMeta.isExternal ? 'noopener noreferrer' : undefined}
-                                onClick={handleContactLinkClick}
-                            >
-                                <wa-icon name="envelope" slot="start"></wa-icon>
-                                Asesorate aquí
-                            </wa-button>
-                            {(plant.isPaid || plant.isReserved || plant.isAvailable === false) ? (
+                        {isMobile ? (
+                            <div className="wa-stack wa-gap-xs wa-order-1 wa-order-mobile-0" style={{ width: '100%', marginTop: '1rem' }}>
+                                <div className="plant-detail-dialog-actions-row">
+                                    <wa-button
+                                        variant="neutral"
+                                        data-dialog="close"
+                                        size="small"
+                                        onClick={onClose}
+                                    >
+                                        <wa-icon name="xmark" slot="start"></wa-icon>
+                                        Cerrar
+                                    </wa-button>
+                                    <wa-button
+                                        variant="warning"
+                                        size="small"
+                                        href={contactLinkMeta.href}
+                                        target={contactLinkMeta.isExternal ? '_blank' : undefined}
+                                        rel={contactLinkMeta.isExternal ? 'noopener noreferrer' : undefined}
+                                        onClick={handleContactLinkClick}
+                                    >
+                                        <wa-icon name="envelope" slot="start"></wa-icon>
+                                        Asesorate aquí
+                                    </wa-button>
+                                </div>
+                                {(plant.isPaid || plant.isReserved || plant.isAvailable === false) ? (
+                                    <wa-button
+                                        variant="warning"
+                                        size="small"
+                                        disabled
+                                    >
+                                        <wa-icon name="house-circle-xmark" slot="start"></wa-icon>
+                                        {plant.isPaid
+                                            ? 'Pagada'
+                                            : plant.isReserved
+                                                ? 'Reservada'
+                                                : 'No disponible'
+                                        }
+                                    </wa-button>
+                                ) : (
+                                    <wa-button
+                                        variant="brand"
+                                        size="small"
+                                        disabled={checkoutLoading}
+                                        {...(checkoutLoading && { loading: true })}
+                                        onClick={onCheckout}
+                                    >
+                                        {checkoutLoading ? 'Cargando...' : <>
+                                            <wa-icon name="hand-holding-dollar" slot="start"></wa-icon> Reserva Ahora {formattedReserva}
+                                        </>}
+                                    </wa-button>
+                                )}
+                            </div>
+                        ) : (
+                            <wa-button-group className="wa-order-1 wa-order-mobile-0">
+                                <wa-button
+                                    variant="neutral"
+                                    data-dialog="close"
+                                    size="large"
+                                    onClick={onClose}
+                                >
+                                    <wa-icon name="xmark" slot="start"></wa-icon>
+                                    Cerrar
+                                </wa-button>
                                 <wa-button
                                     variant="warning"
-                                    size={mobile ? 'small' : 'large'}
-                                    disabled
+                                    size="large"
+                                    href={contactLinkMeta.href}
+                                    target={contactLinkMeta.isExternal ? '_blank' : undefined}
+                                    rel={contactLinkMeta.isExternal ? 'noopener noreferrer' : undefined}
+                                    onClick={handleContactLinkClick}
                                 >
-                                    <wa-icon name="house-circle-xmark" slot="start"></wa-icon>
-                                    {plant.isPaid
-                                        ? 'Pagada'
-                                        : plant.isReserved
-                                            ? 'Reservada'
-                                            : 'No disponible'
-                                    }
+                                    <wa-icon name="envelope" slot="start"></wa-icon>
+                                    Asesorate aquí
                                 </wa-button>
-                            ) : (
-                                <wa-button
-                                    variant="brand"
-                                    size={mobile ? 'small' : 'large'}
-                                    disabled={checkoutLoading}
-                                    {...(checkoutLoading && { loading: true })}
-                                    onClick={onCheckout}
-                                >
-                                    {checkoutLoading ? 'Cargando...' : <>
-                                        <wa-icon name="hand-holding-dollar" slot="start"></wa-icon> Reserva Ahora {formattedReserva}
-                                    </>}
-                                </wa-button>
-                            )}
-                        </ActionButtonsContainer>
+                                {(plant.isPaid || plant.isReserved || plant.isAvailable === false) ? (
+                                    <wa-button
+                                        variant="warning"
+                                        size="large"
+                                        disabled
+                                    >
+                                        <wa-icon name="house-circle-xmark" slot="start"></wa-icon>
+                                        {plant.isPaid
+                                            ? 'Pagada'
+                                            : plant.isReserved
+                                                ? 'Reservada'
+                                                : 'No disponible'
+                                        }
+                                    </wa-button>
+                                ) : (
+                                    <wa-button
+                                        variant="brand"
+                                        size="large"
+                                        disabled={checkoutLoading}
+                                        {...(checkoutLoading && { loading: true })}
+                                        onClick={onCheckout}
+                                    >
+                                        {checkoutLoading ? 'Cargando...' : <>
+                                            <wa-icon name="hand-holding-dollar" slot="start"></wa-icon> Reserva Ahora {formattedReserva}
+                                        </>}
+                                    </wa-button>
+                                )}
+                            </wa-button-group>
+                        )}
                     </div>
                 </>
             )}

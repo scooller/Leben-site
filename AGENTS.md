@@ -30,8 +30,13 @@ The application supports:
    - AFTER modifying code: `rtk graphify update .` — always, no excuses.
 4. **RTK prefix** — every terminal command runs as `rtk <command>` when available.
 5. **tgrep for search** — use `tgrep` as the primary CLI search tool for fast codebase searching (classes, functions, strings, configs). Ripgrep-compatible syntax: `tgrep "query"`, `tgrep "query" -g "*.jsx"`.
-6. **Build** — `rtk npm run build:all`, never bare `npm run build`.
-7. **Version on every change** — WHENEVER project files are modified:
+6. **Never assume — verify exhaustively with tools (Zero Assumptions Rule)**:
+   - **Exhaustive symbol lookup**: NEVER rename, delete, or replace a variable, prop, method, or import without first searching ALL references across the file with `tgrep` / grep. Every single reference must be updated or confirmed.
+   - **Lint before build**: For ANY JS/JSX change in frontend, ALWAYS run `rtk npx eslint <modified_files>` (with CWD `frontend`) to detect `no-undef`, broken hooks, and syntax errors BEFORE build. Vite bundles often succeed even with undefined runtime variables; ESLint prevents runtime crashes.
+   - **PHP verification**: For ANY PHP change, ALWAYS run `vendor/bin/pint --dirty --format agent` and test with `rtk php artisan test --compact --filter=<test>`.
+   - **Mandatory diff audit**: ALWAYS run `rtk git diff <modified_file>` before finalizing to verify zero collateral loss of variables, imports, or logic.
+7. **Build** — `rtk npm run build:all`, never bare `npm run build`.
+8. **Version on every change** — WHENEVER project files are modified:
    - Bump `version` in `package.json` (semantic: patch = fix/refactor, minor = feature, major = breaking).
    - Add an entry to `CHANGELOG.md` (Keep a Changelog format) describing the changes.
    - Both must stay in sync (same version in `package.json` and `CHANGELOG.md`).

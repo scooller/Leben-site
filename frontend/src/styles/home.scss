@@ -942,6 +942,17 @@ html.wa-light {
     width: 100%;
   }
 
+  .plant-detail-dialog-actions-row {
+    display: flex;
+    gap: var(--wa-space-xs);
+    width: 100%;
+
+    wa-button {
+      flex: 1 1 0;
+      width: auto;
+    }
+  }
+
   .plant-detail-media {
     min-height: 220px;
   }
@@ -984,8 +995,8 @@ html.wa-light {
   }
 
   .discount-seal {
-    height: 65px;
-    width: 65px;
+    height: 80px;
+    width: 80px;
     right: 0.6rem;
     top: 0.6rem;
   }

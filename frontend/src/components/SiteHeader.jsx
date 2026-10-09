@@ -8,9 +8,9 @@ function SiteHeader({ config, currentPath = '/', onNavigate, onMenuClick }) {
   const isPlantsActive = currentPath === '/plantas' || currentPath.startsWith('/p/') || currentPath === '/f' || currentPath.startsWith('/f/');
   const isCatalogEnabled = Boolean(config?.mostrar_plantas ?? true);
 
-  const goToHome = () => {
-    onNavigate?.(appendPreviewTokenToUrl('/'));
-  };
+  const homeHref = appendPreviewTokenToUrl('/');
+  const plantsHref = appendPreviewTokenToUrl('/plantas');
+  const contactHref = appendPreviewTokenToUrl('/contacto');
 
   const siteUrl = `${config?.site_url || '/'}`.trim() || '/';
   const trackedSiteUrl = appendSessionUtmsToExternalUrl(siteUrl);
@@ -18,7 +18,24 @@ function SiteHeader({ config, currentPath = '/', onNavigate, onMenuClick }) {
     ? (config?.logo_dark || config?.logo)
     : (config?.logo || config?.logo_dark);
 
-  const goToPlants = () => {
+  const closeMobileNav = () => {
+    if (typeof document !== 'undefined') {
+      const page = document.querySelector('wa-page');
+      if (page && typeof page.hideNavigation === 'function') {
+        page.hideNavigation();
+      }
+    }
+  };
+
+  const goToHome = (event) => {
+    event?.preventDefault?.();
+    closeMobileNav();
+    onNavigate?.(homeHref);
+  };
+
+  const goToPlants = (event) => {
+    event?.preventDefault?.();
+    closeMobileNav();
     if (!isCatalogEnabled) {
       return;
     }
@@ -28,12 +45,11 @@ function SiteHeader({ config, currentPath = '/', onNavigate, onMenuClick }) {
       return;
     }
 
-    onNavigate?.(appendPreviewTokenToUrl('/plantas'));
+    onNavigate?.(plantsHref);
   };
 
-  const contactHref = appendPreviewTokenToUrl('/contacto');
-
   const handleContactClick = (source = 'site_header_desktop') => {
+    closeMobileNav();
     trackEvent('wa_link', {
       source,
       action: 'advisor_cta_click',
@@ -57,12 +73,20 @@ function SiteHeader({ config, currentPath = '/', onNavigate, onMenuClick }) {
           <nav className="site-header-nav header-nav wa-cluster wa-gap-2xs" aria-label="Navegación principal">
             {isCatalogEnabled && (
               <>
-                <wa-button appearance={currentPath === '/' ? 'filled-outlined' : 'plain'} onClick={goToHome}>
+                <wa-button
+                  appearance={currentPath === '/' ? 'filled-outlined' : 'plain'}
+                  href={homeHref}
+                  onClick={goToHome}
+                >
                   <wa-icon name="house" slot="start"></wa-icon>
                   Home
                 </wa-button>
 
-                <wa-button appearance={isPlantsActive ? 'filled-outlined' : 'plain'} onClick={goToPlants}>
+                <wa-button
+                  appearance={isPlantsActive ? 'filled-outlined' : 'plain'}
+                  href={plantsHref}
+                  onClick={goToPlants}
+                >
                   <wa-icon name="city" slot="start"></wa-icon>
                   Plantas
                 </wa-button>
@@ -93,17 +117,23 @@ function SiteHeader({ config, currentPath = '/', onNavigate, onMenuClick }) {
 
       <nav slot="navigation" className="site-mobile-nav wa-stack wa-gap-s wa-p-l" aria-label="Navegación móvil">
         <div className="wa-py-s wa-border-bottom">
-          {logoSrc ? (
-            <img src={logoSrc} alt={config?.site_name || 'Logo'} className="site-logo" loading="lazy" decoding="async" />
-          ) : (
-            <span className="site-name">{config?.site_name || 'iLeben'}</span>
-          )}
+          <a
+            href={homeHref}
+            onClick={goToHome}
+            style={{ textDecoration: 'none', color: 'inherit', display: 'inline-block' }}
+          >
+            {logoSrc ? (
+              <img src={logoSrc} alt={config?.site_name || 'Logo'} className="site-logo" loading="lazy" decoding="async" />
+            ) : (
+              <span className="site-name">{config?.site_name || 'iLeben'}</span>
+            )}
+          </a>
         </div>
         <div className="wa-stack wa-gap-xs wa-align-items-stretch">
           <wa-button
             appearance={currentPath === '/' ? 'filled-outlined' : 'plain'}
+            href={homeHref}
             onClick={goToHome}
-            data-drawer="close"
           >
             <wa-icon name="house" slot="start"></wa-icon>
             Home
@@ -111,8 +141,8 @@ function SiteHeader({ config, currentPath = '/', onNavigate, onMenuClick }) {
           {isCatalogEnabled && (
             <wa-button
               appearance={isPlantsActive ? 'filled-outlined' : 'plain'}
+              href={plantsHref}
               onClick={goToPlants}
-              data-drawer="close"
             >
               <wa-icon name="city" slot="start"></wa-icon>
               Plantas
@@ -122,7 +152,6 @@ function SiteHeader({ config, currentPath = '/', onNavigate, onMenuClick }) {
             appearance={currentPath === '/contacto' ? 'filled-outlined' : 'plain'}
             href={contactHref}
             onClick={() => handleContactClick('site_header_mobile')}
-            data-drawer="close"
             variant="danger"
           >
             <wa-icon name="envelope" slot="start"></wa-icon>

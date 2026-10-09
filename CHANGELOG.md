@@ -4,6 +4,19 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.10.1] - 2026-10-09
+
+### 🐛 Fix / 🎨 UI — Modal Plantas Mobile y Menú de Contacto en Mobile
+
+- **`frontend/src/components/PlantDetailDialog.jsx`**:
+  - En viewport móvil (`<= 768px`), organización de los botones secundarios "Cerrar" y "Asesórate aquí" en una misma fila (`.plant-detail-dialog-actions-row`) ocupando el 50% de ancho cada uno, dejando el botón principal de reserva/disponibilidad en ancho completo abajo.
+  - Implementación reactiva de `isMobile` mediante listener de `matchMedia` para responder dinámicamente a cambios de tamaño o rotación.
+- **`frontend/src/styles/home.scss`**:
+  - Estilos responsivos para `.plant-detail-dialog-actions-row` con flexbox y `flex: 1 1 0` por botón.
+- **`frontend/src/components/SiteHeader.jsx`**:
+  - Corrección de navegación móvil desde la página de contacto: eliminación de `data-drawer="close"` que interceptaba el evento nativo `click` con `stopPropagation()` en Web Awesome impidiendo la ejecución de `onClick` en React.
+  - Cierre programático del drawer de navegación (`wa-page.hideNavigation()`) y provisión de URLs completas en `href` para todos los botones de navegación ("Home", "Plantas", "Asesorate aquí") asegurando transiciones SPA y navegación nativa inmediata.
+
 ## [1.10.0] - 2026-10-09
 
 ### ✨ Feature — Enlaces opcionales para banners en backend y frontend
