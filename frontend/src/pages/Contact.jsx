@@ -217,9 +217,12 @@ function Contact({ onNavigate, currentPath }) {
 
   const title = config?.contact_page?.title || 'Contacto';
   const subtitle = config?.contact_page?.subtitle || '';
-  const content = config?.contact_page?.content;
-  const contactHeroDesktopImage = config?.hero?.contact?.image_desktop || config?.hero?.contact?.image || null;
-  const contactHeroMobileImage = config?.hero?.contact?.image_mobile || contactHeroDesktopImage;
+  const contactHero = config?.hero?.contact || {};
+  const contactHeroDesktopImage = contactHero?.image_desktop || contactHero?.image || null;
+  const contactHeroMobileImage = contactHero?.image_mobile || contactHeroDesktopImage;
+  const contactHeroLink = contactHero?.link || null;
+  const contactHeroLinkNewTab = Boolean(contactHero?.link_new_tab);
+  const trackedContactHeroLink = useMemo(() => (contactHeroLink ? appendSessionUtmsToExternalUrl(contactHeroLink) : null), [contactHeroLink]);
   const formFields = useMemo(() => {
     const configuredFields = config?.contact_page?.form_fields;
 
@@ -1112,17 +1115,48 @@ function Contact({ onNavigate, currentPath }) {
       {/* Hero section */}
       <section className="contact-hero banner">
         {contactHeroDesktopImage ? (
-          <picture className="contact-hero-picture">
-            <source media="(max-width: 768px)" srcSet={contactHeroMobileImage || contactHeroDesktopImage} />
-            <img src={contactHeroDesktopImage} alt={config?.hero?.contact?.alt || 'Contacto'} className="contact-hero-image" loading="lazy" decoding="async" />
-          </picture>
+          trackedContactHeroLink ? (
+            <a
+              href={trackedContactHeroLink}
+              target={contactHeroLinkNewTab ? '_blank' : undefined}
+              rel={contactHeroLinkNewTab ? 'noopener noreferrer' : undefined}
+              className="contact-hero-link"
+              aria-label={contactHero?.alt || 'Contacto'}
+            >
+              <picture className="contact-hero-picture">
+                <source media="(max-width: 768px)" srcSet={contactHeroMobileImage || contactHeroDesktopImage} />
+                <img src={contactHeroDesktopImage} alt={contactHero?.alt || 'Contacto'} className="contact-hero-image" loading="lazy" decoding="async" />
+              </picture>
+            </a>
+          ) : (
+            <picture className="contact-hero-picture">
+              <source media="(max-width: 768px)" srcSet={contactHeroMobileImage || contactHeroDesktopImage} />
+              <img src={contactHeroDesktopImage} alt={contactHero?.alt || 'Contacto'} className="contact-hero-image" loading="lazy" decoding="async" />
+            </picture>
+          )
         ) : (
-          <wa-card appearance="filled" className="contact-hero-card">
-            <div className="wa-stack wa-gap-s">
-              <h1>{title}</h1>
-              <p>{subtitle}</p>
-            </div>
-          </wa-card>
+          trackedContactHeroLink ? (
+            <a
+              href={trackedContactHeroLink}
+              target={contactHeroLinkNewTab ? '_blank' : undefined}
+              rel={contactHeroLinkNewTab ? 'noopener noreferrer' : undefined}
+              className="contact-hero-link contact-hero-card-link"
+            >
+              <wa-card appearance="filled" className="contact-hero-card">
+                <div className="wa-stack wa-gap-s">
+                  <h1>{title}</h1>
+                  <p>{subtitle}</p>
+                </div>
+              </wa-card>
+            </a>
+          ) : (
+            <wa-card appearance="filled" className="contact-hero-card">
+              <div className="wa-stack wa-gap-s">
+                <h1>{title}</h1>
+                <p>{subtitle}</p>
+              </div>
+            </wa-card>
+          )
         )}
       </section>
 

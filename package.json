@@ -1,6 +1,6 @@
 {
   "name": "leben-site",
-  "version": "1.9.74",
+  "version": "1.10.0",
   "private": true,
   "type": "module",
   "scripts": {
