@@ -1695,7 +1695,7 @@ function Home({ onNavigate, currentPath }) {
   return (
     <>
       {/* Hero Section */}
-      <div className={`video-home wa-position-relative wa-overflow-hidden wa-justify-content-center box-shadow-1${trackedHomeHeroLink ? ' has-link' : ''}`}>
+      <div className={`video-home wa-position-relative wa-overflow-hidden wa-justify-content-center box-shadow-1${trackedHomeHeroLink ? ' has-link' : ''}${homeHeroType === 'image' ? ' is-image' : ''}`}>
         {trackedHomeHeroLink && (
           <a
             href={trackedHomeHeroLink}
@@ -1710,9 +1710,9 @@ function Home({ onNavigate, currentPath }) {
             <p>{config?.site_description}</p>
         </div> */}
         {homeHeroType === 'image' ? (
-          <picture>
+          <picture className="hero-picture">
             <source media="(max-width: 768px)" srcSet={homeHeroMobileImage || homeHeroDesktopImage} />
-            <img src={homeHeroDesktopImage} alt={config?.site_name || 'Hero'} className="hero-video" decoding="async" fetchPriority="high" />
+            <img src={homeHeroDesktopImage} alt={config?.site_name || 'Hero'} className="hero-image" decoding="async" fetchPriority="high" />
           </picture>
         ) : (
           <>

@@ -4,6 +4,16 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.10.2] - 2026-10-12
+
+### 🐛 Fix / 🎨 UI — Ajuste de altura e imagen 100% en Banner Hero
+- **`frontend/src/pages/Home.jsx`**:
+  - Adición de clase condicional `is-image` a `.video-home` cuando el banner hero es tipo imagen.
+  - Asignación de clases `hero-picture` a `<picture>` y `hero-image` al elemento `<img>` para desacoplar su estilizado de las restricciones de video.
+- **`frontend/src/styles/home.scss`**:
+  - Implementación de reglas responsivas para `.hero-image` (`width: 100%`, `height: auto`, `aspect-ratio: auto`, `display: block`) permitiendo que la altura del contenedor se ajuste de forma natural a las dimensiones reales de la imagen sin distorsión ni márgenes forzados.
+  - Desacoplamiento de `aspect-ratio: 920 / 1580` en vista móvil mediante selector `:not(.is-image)` para afectar exclusivamente al video.
+
 ## [1.10.1] - 2026-10-09
 
 ### 🐛 Fix / 🎨 UI — Modal Plantas Mobile y Menú de Contacto en Mobile

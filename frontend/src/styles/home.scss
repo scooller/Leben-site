@@ -119,6 +119,32 @@ html.wa-light {
     z-index: 0;
   }
 
+  .hero-picture,
+  picture {
+    display: block;
+    width: 100%;
+  }
+
+  .hero-image {
+    width: 100%;
+    height: auto;
+    display: block;
+    aspect-ratio: auto;
+    object-fit: unset;
+    margin: 0;
+  }
+
+  &.is-image {
+    display: block;
+
+    .hero-video {
+      width: 100%;
+      height: auto;
+      aspect-ratio: auto;
+      object-fit: unset;
+    }
+  }
+
   &::after {
     content: "";
     position: absolute;
@@ -862,7 +888,7 @@ html.wa-light {
 
 @media (max-width: 768px) {
   .video-home {
-    .hero-video {
+    &:not(.is-image) .hero-video {
       aspect-ratio: 920 / 1580;
     }
 
