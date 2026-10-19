@@ -94,14 +94,25 @@ class SalesforceCaseMapper
         $email = $submission->email ?: $this->fieldValue($fields, ['email', 'correo']) ?: null;
         $phone = $submission->phone ?: $this->fieldValue($fields, ['phone', 'telefono', 'fono', 'celular', 'whatsapp']);
         $includeDescription = $this->shouldIncludeDescription($settings);
-        $commune = $this->fieldValue($fields, ['comuna', 'commune']);
+        $rawCommune = $this->fieldValue($fields, ['comuna', 'commune', 'district']);
         $incomeRange = $this->fieldValue($fields, ['rango_renta', 'rango_de_renta', 'en_que_rango_se_encuentra_tu_renta_liquida', 'rango', 'renta', 'renta_liquida', 'income_range']);
         $complementIncome = $this->fieldValue($fields, ['complementarenta', 'complementa_renta', 'complementa_renta_liquida', 'codeudor']);
         $incomeValidation = $this->fieldValue($fields, ['validacion_renta', 'validacion_de_renta', 'validacionrenta', 'validaci_n_renta']);
         $apartmentUsage = $this->fieldValue($fields, ['uso_departamento', 'usodepartamento', 'uso_departamento_inversion', 'buscas']);
         $employmentStatus = $this->fieldValue($fields, ['estado_laboral', 'estadolaboral', 'elaboral']);
-        $investmentCommune = $this->fieldValue($fields, ['comuna_inversion', 'comunainversion', 'commune_investment'])
-            ?: $commune;
+        $rawInvestmentCommune = $this->fieldValue($fields, [
+            'comuna_inversion',
+            'comunainversion',
+            'commune_investment',
+            'comuna_interes',
+            'comunainteres',
+            'comuna_preferida',
+            'que_comuna_te_interesa_para_vivir_o_invertir',
+            'que_comuna_te_interesa_para_vivir_o_inv',
+        ]) ?: $rawCommune;
+
+        $commune = Proyecto::resolveSalesforceComuna($rawCommune, $project);
+        $investmentCommune = Proyecto::resolveSalesforceComuna($rawInvestmentCommune, $project) ?: $commune;
         $projectAdvisorPhone = $this->resolveProjectAdvisorPhone($project);
         $normalizedLeadSource = $this->normalizeLeadSource($leadSource, $isCsvImport);
         $ownerId = $this->resolveLeadOwnerId();
@@ -277,8 +288,8 @@ class SalesforceCaseMapper
             'validacion_renta', 'validacion_de_renta', 'validacionrenta' => 'Validaci_n_Renta__c',
             'buscas', 'uso_departamento', 'usodepartamento', 'uso_departamento_inversion' => 'usoDepartamento__c',
             'elaboral', 'estado_laboral', 'estadolaboral' => 'estadoLaboral__c',
-            'comuna_inversion', 'comunainversion', 'commune_investment' => 'comunaInversion__c',
-            'comuna', 'commune' => 'Comuna__c',
+            'comuna_inversion', 'comunainversion', 'commune_investment', 'comuna_interes', 'comunainteres', 'comuna_preferida', 'que_comuna_te_interesa_para_vivir_o_invertir', 'que_comuna_te_interesa_para_vivir_o_inv' => 'comunaInversion__c',
+            'comuna', 'commune', 'district' => 'Comuna__c',
             'mensaje', 'message', 'comentario', 'comentarios', 'comentario_cliente', 'cliente_comentario', 'coment_cli' => 'Comentario_Cliente__c',
             'nota', 'notas' => 'Notas__c',
             'informacion_cotizacion', 'informacion_cotizacion_web', 'quote_information' => 'Informacion_Cotizacion__c',
@@ -549,7 +560,7 @@ class SalesforceCaseMapper
         }
 
         $project = Proyecto::query()
-            ->select(['id', 'salesforce_id', 'name', 'slug', 'is_active'])
+            ->select(['id', 'salesforce_id', 'name', 'slug', 'is_active', 'comuna'])
             ->where('name', $projectName)
             ->first();
 
@@ -558,7 +569,7 @@ class SalesforceCaseMapper
         }
 
         $project = Proyecto::query()
-            ->select(['id', 'salesforce_id', 'name', 'slug', 'is_active'])
+            ->select(['id', 'salesforce_id', 'name', 'slug', 'is_active', 'comuna'])
             ->whereRaw('LOWER(name) = ?', [mb_strtolower($projectName)])
             ->first();
 
@@ -569,7 +580,7 @@ class SalesforceCaseMapper
         $signature = $this->textSignature($projectName);
 
         $project = Proyecto::query()
-            ->select(['id', 'salesforce_id', 'name', 'slug', 'is_active'])
+            ->select(['id', 'salesforce_id', 'name', 'slug', 'is_active', 'comuna'])
             ->whereRaw('LOWER(slug) = ?', [$signature])
             ->first();
 
@@ -577,7 +588,7 @@ class SalesforceCaseMapper
             return $project;
         }
 
-        foreach (Proyecto::query()->select(['id', 'salesforce_id', 'name', 'slug', 'is_active'])->get() as $candidate) {
+        foreach (Proyecto::query()->select(['id', 'salesforce_id', 'name', 'slug', 'is_active', 'comuna'])->get() as $candidate) {
             if ($this->textSignature($candidate->name) === $signature) {
                 return $candidate;
             }
@@ -1057,6 +1068,7 @@ class SalesforceCaseMapper
             'Validaci_n_Renta__c',
             'usoDepartamento__c',
             'estadoLaboral__c',
+            'Comuna__c',
             'comunaInversion__c',
             'Comentario_Cliente__c',
             'Notas__c',

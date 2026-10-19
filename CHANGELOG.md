@@ -4,6 +4,21 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.11.2] - 2026-10-19
+
+### 🐛 Fixed / 🔄 Salesforce — Homologación canónica de comunas desde proyectos Salesforce
+- **`app/Models/Proyecto.php`**:
+  - `salesforceComunas()`: Devuelve la lista unívoca de comunas registradas en los proyectos sincronizados desde Salesforce.
+  - `resolveSalesforceComuna(?string $input, ?Proyecto $project)`: Resuelve y homologa cualquier variante o slug (`la_florida`, `santiago_centro`, `ñuñoa`) al formato oficial en mayúsculas de Salesforce (`LA FLORIDA`, `SANTIAGO CENTRO`), recurriendo a la comuna del proyecto si el valor ingresado es genérico o inválido (`Comunas Genericas`), o devolviendo `null` si no hay coincidencia.
+  - `normalizeComunaSignature(string $value)`: Normalización tolerante de firmas de comunas.
+- **`app/Services/Salesforce/SalesforceCaseMapper.php`**:
+  - Homologación obligatoria de `Comuna__c` y `comunaInversion__c` usando `Proyecto::resolveSalesforceComuna()`.
+  - Exclusión de `Comuna__c` en `normalizeLegacyCustomFieldsInPayload()` para prevenir el reemplazo de espacios por guiones bajos (`Puerto Varas` en vez de `Puerto_Varas`), eliminando el error `INVALID_OR_NULL_FOR_RESTRICTED_PICKLIST` en Salesforce.
+  - Carga explícita de `comuna` en `resolveProjectByName()`.
+  - Expansión de alias para comunas de inversión (`comuna_interes`, `que_comuna_te_interesa_para_vivir_o_invertir`, `comuna_preferida`).
+- **`app/Services/ContactImport/ContactTextHomologationService.php`**: Delegación a `Proyecto::salesforceComunas()` y `Proyecto::resolveSalesforceComuna()` como fuente única de verdad.
+- **`app/Services/ContactImport/ContactCsvRowMapper.php`**: Mapeo directo de columnas de preguntas de comuna Meta/CSV a `fields.comuna_inversion`.
+
 ## [1.11.1] - 2026-10-19
 
 ### 🐛 Fixed / 🎨 UI — Legibilidad y contraste de dropdowns y opciones seleccionadas en front

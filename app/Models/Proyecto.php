@@ -390,4 +390,71 @@ class Proyecto extends Model
                 ->orWhere('tipo', $tipo);
         });
     }
+
+    /**
+     * Lista de comunas únicas de proyectos (origen Salesforce).
+     *
+     * @return array<int, string>
+     */
+    public static function salesforceComunas(): array
+    {
+        return static::query()
+            ->whereNotNull('comuna')
+            ->pluck('comuna')
+            ->map(static fn (mixed $value): string => trim((string) $value))
+            ->filter(static fn (string $value): bool => $value !== '')
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Normaliza la firma de una comuna para comparación tolerante.
+     */
+    public static function normalizeComunaSignature(string $value): string
+    {
+        return Str::of($value)
+            ->ascii()
+            ->lower()
+            ->replaceMatches('/[^a-z0-9]+/', ' ')
+            ->trim()
+            ->toString();
+    }
+
+    /**
+     * Resuelve una comuna contra la lista oficial de comunas de proyectos (Salesforce).
+     * Si no coincide pero hay un proyecto asociado, recurre a la comuna del proyecto.
+     */
+    public static function resolveSalesforceComuna(?string $input, ?self $project = null): ?string
+    {
+        $comunas = static::salesforceComunas();
+
+        if (filled($input)) {
+            $cleanInput = static::normalizeComunaSignature((string) $input);
+
+            foreach ($comunas as $comuna) {
+                if (static::normalizeComunaSignature($comuna) === $cleanInput) {
+                    return $comuna;
+                }
+            }
+        }
+
+        if ($project !== null && filled($project->comuna)) {
+            $cleanProjectComuna = static::normalizeComunaSignature((string) $project->comuna);
+            foreach ($comunas as $comuna) {
+                if (static::normalizeComunaSignature($comuna) === $cleanProjectComuna) {
+                    return $comuna;
+                }
+            }
+
+            return trim((string) $project->comuna);
+        }
+
+        // Si no hay comunas registradas en la base de datos (e.g. tests sin seed), preservar el valor limpio
+        if (empty($comunas) && filled($input)) {
+            return trim((string) $input);
+        }
+
+        return null;
+    }
 }

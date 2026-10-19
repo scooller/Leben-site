@@ -102,7 +102,7 @@ class SalesforceCaseMapperTest extends TestCase
         $this->assertSame('a0J8c00000sdxCXEAY', $payload['ID_Proyecto__c'] ?? null);
         $this->assertSame('Edificio_Indigo', $payload['Informacion_Cotizacion__c'] ?? null);
         $this->assertSame('Edificio_Indigo', $payload['Proyect_ID__c'] ?? null);
-        $this->assertSame('Puerto_Varas', $payload['Comuna__c'] ?? null);
+        $this->assertSame('Puerto Varas', $payload['Comuna__c'] ?? null);
         $this->assertSame('Entre $2.500.000 y $3.500.000', $payload['Rango_de_renta_liquida__c'] ?? null);
         $this->assertSame('no, no puedo complementarla.', $payload['complementaRenta__c'] ?? null);
         $this->assertSame('Aprobada con observaciones', $payload['Validaci_n_Renta__c'] ?? null);
@@ -1664,5 +1664,113 @@ class SalesforceCaseMapperTest extends TestCase
 
         $this->assertSame('admin.ileben.cl', $payload['UTM_Site_P_gina_de_origen__c'] ?? null);
         $this->assertSame('admin.ileben.cl', $payload['Website'] ?? null);
+    }
+
+    public function test_it_resolves_comunas_from_salesforce_projects_list_and_normalizes_slugs(): void
+    {
+        config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');
+        config()->set('services.salesforce.lead_status', 'En Contacto');
+
+        Proyecto::query()->create([
+            'salesforce_id' => 'a0JU1000004szllMAA',
+            'name' => 'Edificio Baum',
+            'slug' => 'edificio-baum',
+            'comuna' => 'LA FLORIDA',
+            'is_active' => true,
+        ]);
+
+        Proyecto::query()->create([
+            'salesforce_id' => 'a0J8c00000sdxCXEAY',
+            'name' => 'Edificio Argomedo',
+            'slug' => 'edificio-argomedo',
+            'comuna' => 'SANTIAGO CENTRO',
+            'is_active' => true,
+        ]);
+
+        $submission = ContactSubmission::query()->create([
+            'name' => 'Carla Olguin',
+            'email' => 'carla@example.com',
+            'phone' => '99212740',
+            'rut' => '17.904.247-9',
+            'fields' => [
+                'name' => 'Carla',
+                'lastname' => 'Olguín',
+                'project_name' => 'Edificio Argomedo',
+                'comuna' => 'santiago_centro',
+                'comuna_inversion' => 'la_florida',
+            ],
+            'submitted_at' => now(),
+        ]);
+
+        $payload = app(SalesforceCaseMapper::class)->mapLead($submission);
+
+        $this->assertSame('SANTIAGO CENTRO', $payload['Comuna__c']);
+        $this->assertSame('LA FLORIDA', $payload['comunaInversion__c']);
+    }
+
+    public function test_it_falls_back_to_project_comuna_when_generic_invalid_comuna_is_provided(): void
+    {
+        config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');
+        config()->set('services.salesforce.lead_status', 'En Contacto');
+
+        Proyecto::query()->create([
+            'salesforce_id' => 'a0JU1000004szllMAA',
+            'name' => 'Edificio Baum',
+            'slug' => 'edificio-baum',
+            'comuna' => 'LA FLORIDA',
+            'is_active' => true,
+        ]);
+
+        $submission = ContactSubmission::query()->create([
+            'name' => 'Jorge Macuada',
+            'email' => 'jorge@example.com',
+            'phone' => '56964337771',
+            'rut' => '20.406.795-3',
+            'fields' => [
+                'name' => 'Jorge',
+                'lastname' => 'Macuada',
+                'project_name' => 'Edificio Baum',
+                'comuna' => 'Comunas Genericas',
+                'comuna_inversion' => 'Comunas Genericas',
+            ],
+            'submitted_at' => now(),
+        ]);
+
+        $payload = app(SalesforceCaseMapper::class)->mapLead($submission);
+
+        $this->assertSame('LA FLORIDA', $payload['Comuna__c']);
+        $this->assertSame('LA FLORIDA', $payload['comunaInversion__c']);
+    }
+
+    public function test_it_sets_comuna_to_null_when_unrecognized_comuna_has_no_project(): void
+    {
+        config()->set('services.salesforce.lead_owner_id', '005U100000CAG4bIAH');
+        config()->set('services.salesforce.lead_status', 'En Contacto');
+
+        Proyecto::query()->create([
+            'salesforce_id' => 'a0JU1000004szllMAA',
+            'name' => 'Edificio Baum',
+            'slug' => 'edificio-baum',
+            'comuna' => 'LA FLORIDA',
+            'is_active' => true,
+        ]);
+
+        $submission = ContactSubmission::query()->create([
+            'name' => 'Generic User',
+            'email' => 'generic@example.com',
+            'phone' => '56912345678',
+            'rut' => '12.345.678-9',
+            'fields' => [
+                'name' => 'Generic User',
+                'comuna' => 'Comunas Genericas',
+                'comuna_inversion' => 'Comunas Genericas',
+            ],
+            'submitted_at' => now(),
+        ]);
+
+        $payload = app(SalesforceCaseMapper::class)->mapLead($submission);
+
+        $this->assertArrayNotHasKey('Comuna__c', $payload);
+        $this->assertArrayNotHasKey('comunaInversion__c', $payload);
     }
 }
