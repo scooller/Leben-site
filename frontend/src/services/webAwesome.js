@@ -104,6 +104,7 @@ class WebAwesomeService {
     '--wa-color-brand-on-loud',
     '--wa-color-text-link',
     '--wa-color-focus',
+    '--wa-form-control-activated-color',
   ];
 
   /**
@@ -252,6 +253,7 @@ class WebAwesomeService {
     htmlElement.style.setProperty('--wa-color-brand-on-quiet', brandColor);
     htmlElement.style.setProperty('--wa-color-text-link', brandColor);
     htmlElement.style.setProperty('--wa-color-focus', brandColor);
+    htmlElement.style.setProperty('--wa-form-control-activated-color', brandColor);
   }
 
   static clearCustomBrandTokenOverrides() {

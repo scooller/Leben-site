@@ -4,6 +4,18 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.11.1] - 2026-10-19
+
+### 🐛 Fixed / 🎨 UI — Legibilidad y contraste de dropdowns y opciones seleccionadas en front
+- **`frontend/src/styles/global.scss`**:
+  - Definición de `--wa-form-control-activated-color: var(--brand-color)` en `:root` para asegurar contraste alto en componentes de formulario de Web Awesome.
+  - Estilizado de `wa-select::part(tag)` con fondo de acento de marca y texto contrastado para opciones multi-select seleccionadas.
+  - Ajuste de `--tag-max-size: 24ch` para evitar truncamiento excesivo de nombres en selectores múltiples.
+  - Corrección de opciones en dropdown (`wa-option:is(:state(current), ...)`): fondo de marca y texto blanco (#ffffff) eliminando el fondo gris con texto claro ilegible.
+  - Distinción visual para opciones seleccionadas (`[aria-selected='true']`) con fondo suave y tipografía semibold.
+- **`frontend/src/services/webAwesome.js`**:
+  - Incorporación de `--wa-form-control-activated-color` a `customBrandTokenProps` y aplicación dinámica en `applyBrandTokensFromPrimaryColor()`.
+
 ## [1.11.0] - 2026-10-19
 
 ### ✨ Feature / 🚀 API — Cyber Feed Canónico para Cyber AI (cyber.cl)

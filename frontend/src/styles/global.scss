@@ -10,6 +10,7 @@
 
 :root {
   --brand-color: #eb0029;
+  --wa-form-control-activated-color: var(--brand-color);
   --wa-color-black: #000000;
   --wa-color-white: #FFFFFF;
   --wa-color-black-rgb: 0, 0, 0;
@@ -341,3 +342,32 @@ wa-card.glass-card,
     background-color: var(--wa-color-surface-default) !important;
   }
 }
+
+// ============================================================
+// DROPDOWNS & OPTIONS (Legibilidad y alto contraste al seleccionar)
+// ============================================================
+wa-select {
+  --tag-max-size: 24ch;
+}
+
+wa-select::part(tag) {
+  background-color: color-mix(in srgb, var(--brand-color, #eb0029) 18%, var(--wa-color-surface-default, #18181b));
+  border: 1px solid color-mix(in srgb, var(--brand-color, #eb0029) 40%, transparent);
+  color: var(--wa-color-text, #ffffff);
+  font-weight: var(--wa-font-weight-medium, 500);
+}
+
+wa-option {
+  --current-text-color: #ffffff;
+}
+
+wa-option:is(:state(current), :state(selected):state(current), [aria-selected='true']:state(current)) {
+  background-color: var(--brand-color, #eb0029) !important;
+  color: #ffffff !important;
+}
+
+wa-option:is(:state(selected), [aria-selected='true']):not(:state(current)) {
+  background-color: color-mix(in srgb, var(--brand-color, #eb0029) 20%, transparent);
+  color: var(--wa-color-text-normal, inherit);
+  font-weight: var(--wa-font-weight-semibold, 600);
+}
