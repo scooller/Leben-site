@@ -61,10 +61,11 @@ class PlantsTable
                     ->boolean()
                     ->color(fn (bool $state): string => $state ? 'warning' : 'gray')
                     ->sortable(),
-                // TextColumn::make('product_code')
-                //     ->label('Código')
-                //     ->searchable()
-                //     ->sortable(),
+                TextColumn::make('sku')
+                    ->label('SKU')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('programa')
                     ->label('Programa')
                     ->searchable()

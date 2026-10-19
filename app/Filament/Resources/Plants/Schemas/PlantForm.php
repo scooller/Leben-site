@@ -45,6 +45,10 @@ class PlantForm
                     ->label('Código de Producto')
                     // ->disabled()
                     ->required(),
+                TextInput::make('sku')
+                    ->label('SKU Cyber / Externo')
+                    ->helperText('Identificador único para Cyber AI. Si está vacío se calcula automáticamente como PROYECTO-UNIDAD.')
+                    ->maxLength(64),
                 TextInput::make('tipo_producto')
                     ->label('Tipo de Planta')
                     ->disabled()

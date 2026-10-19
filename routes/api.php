@@ -155,3 +155,14 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'token.origin'])->group(functio
     Route::get('/payments/{id}', [App\Http\Controllers\Api\PaymentController::class, 'show']);
     Route::post('/payments/{id}/manual-proof', [App\Http\Controllers\Api\PaymentController::class, 'uploadManualProof']);
 });
+
+// Public Product Feed (Canónico genérico + alias de campaña Cyber AI)
+Route::middleware('throttle:60,1')->group(function () {
+    // Feed genérico permanente (Google, Meta, agregadores IA, portales)
+    Route::get('/feed.json', [App\Http\Controllers\Api\CyberFeedController::class, 'index']);
+    Route::get('/feed', [App\Http\Controllers\Api\CyberFeedController::class, 'index']);
+
+    // Alias específico Cyber (para cyber.cl / CCS)
+    Route::get('/cyber/feed.json', [App\Http\Controllers\Api\CyberFeedController::class, 'index']);
+    Route::get('/cyber/feed', [App\Http\Controllers\Api\CyberFeedController::class, 'index']);
+});

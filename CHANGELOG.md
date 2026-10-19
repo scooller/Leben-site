@@ -4,7 +4,32 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
-## [1.10.2] - 2026-10-12
+## [1.11.0] - 2026-10-19
+
+### ✨ Feature / 🚀 API — Cyber Feed Canónico para Cyber AI (cyber.cl)
+- **`database/migrations/2026_10_19_123348_add_sku_to_plants_table.php`**: Adición de columna `sku` (string, nullable, indexed) en tabla `plants` para identificación unívoca ante integraciones y marketplaces externos.
+- **`app/Models/Plant.php`**:
+  - Registro de `'sku'` en `$fillable` y `syncableFields()`.
+  - Incorporación de hook de ciclo de vida `booted()` (`static::saving`) que autogenera y asigna el SKU canónico si viene vacío al crear o importar plantas.
+  - Métodos `resolveSku(bool $ignoreExisting = false)` (con remoción de prefijos redundantes como 'edificio', generando SKUs compactos tipo `BOLD-1001`, `INDI-404`) y `resolveCanonicalId()` (`leben-{$proyecto->slug}-depto-{$unitName}`).
+- **`app/Console/Commands/GeneratePlantSkusCommand.php`**: Nuevo comando Artisan `php artisan plants:generate-sku` para generar y persistir masivamente SKUs compactos en todas las plantas existentes, con soporte para `--actualizar` (alias `--update`/`--force`) para reemplazar SKUs ya existentes, `--dry-run` para simulación y filtro por proyecto `--project`.
+- **`app/Filament/Resources/Plants`**:
+  - `PlantForm.php`: Campo administrable `TextInput::make('sku')` con helper y límite de 64 caracteres.
+  - `PlantsTable.php`: Columna `TextColumn::make('sku')` con búsqueda y toggleable.
+- **`app/Services/CyberFeed/CyberOfferValidator.php`**: Servicio de validación de integridad comercial que verifica disponibilidad de URL pública, imágenes no-placeholder (rechazando `data:image` y `via.placeholder.com`), precios coherentes (`price_uf > 0` y `<= reference_price_uf`), y registra exclusiones detalladas en `storage/logs/cyber_feed_exclusions.log`.
+- **`app/Services/CyberFeed/CyberFeedService.php`**: Motor de agregación, mapeo y filtrado de ofertas Cyber (`unidad_sale = true`):
+  - Precios de oferta calculados dinámicamente con `$plant->resolveFinalPrice()` y precios de lista en UF.
+  - Disponibilidad en tiempo real (`available`, `reserved`, `sold`) según reservas activas y pagos confirmados.
+  - Mapeo de tipologías, dormitorios, baños, superficies y estados de entrega (`entrega_inmediata`, `venta_en_verde`, `venta_en_blanco`, `piloto`).
+- **`app/Http/Controllers/Api/CyberFeedController.php` & `routes/api.php`**:
+  - Endpoints públicos de solo lectura canónicos y permanentes: `GET /api/feed.json` y `GET /api/feed` (para Google, Meta, agregadores IA y portales), junto a los alias específicos de campaña `GET /api/cyber/feed.json` y `GET /api/cyber/feed` para la CCS / cyber.cl.
+  - Caché de 5 minutos (`Cache-Control: public, max-age=300, stale-while-revalidate=60`).
+  - Cabecera `ETag` con soporte condicional `If-None-Match` respondiendo `304 Not Modified`.
+  - Filtros soportados: `?project=slug`, `?commune=slug`, `?availability=available|reserved|sold`, `?updated_since=ISO8601`, `?page=1`, `?per_page=100`.
+- **`app/Console/Commands/GenerateCyberFeedCommand.php` & `routes/console.php`**: Comando `php artisan cyber:generate-feed` para exportación estática a `storage/app/public/cyber/feed.json`, programado cada 15 minutos en el scheduler de Laravel.
+- **`frontend/src/pages/Home.jsx`**: Alineación de `sku` en el schema estructurado JSON-LD (`schema.org/Product` y `RealEstateListing`) utilizando el SKU prioritario de la unidad.
+- **`tests/Feature/CyberFeedApiTest.php`**: Suite completa de pruebas con 11 tests y 89 aserciones cubriendo respuesta 200 genérica y específica, estructura canónica, filtros, estados de disponibilidad, exclusión de unidades inválidas, revalidación condicional 304, autogeneración en creación/importación y comando CLI de SKUs con parámetro `--actualizar`.
+
 
 ### 🐛 Fix / 🎨 UI — Ajuste de altura e imagen 100% en Banner Hero
 - **`frontend/src/pages/Home.jsx`**:

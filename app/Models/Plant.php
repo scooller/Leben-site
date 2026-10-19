@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Str;
 
 class Plant extends Model
 {
@@ -24,6 +25,7 @@ class Plant extends Model
         'asesor_id',
         'contact_link',
         'name',
+        'sku',
         'product_code',
         'tipo_producto',
         'orientacion',
@@ -65,6 +67,18 @@ class Plant extends Model
         'is_active' => 'boolean',
         'last_synced_at' => 'datetime',
     ];
+
+    /**
+     * Boot del modelo
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (self $plant) {
+            if (blank($plant->sku) && filled($plant->name)) {
+                $plant->sku = $plant->resolveSku();
+            }
+        });
+    }
 
     /**
      * Relación con Proyecto
@@ -135,6 +149,7 @@ class Plant extends Model
             'salesforce_product_id',
             'salesforce_proyecto_id',
             'name',
+            'sku',
             'product_code',
             'tipo_producto',
             'orientacion',
@@ -279,5 +294,31 @@ class Plant extends Model
     public function isPaid(): bool
     {
         return $this->completedReservation()->exists() || $this->completedPayment()->exists();
+    }
+
+    public function resolveSku(bool $ignoreExisting = false): string
+    {
+        if (! $ignoreExisting && filled($this->sku)) {
+            return (string) $this->sku;
+        }
+
+        $projectSlug = $this->proyecto?->slug ?: Str::slug((string) ($this->proyecto?->name ?? 'leben'));
+        $cleanProject = preg_replace('/^edificio[-_]?/i', '', $projectSlug);
+        if (blank($cleanProject)) {
+            $cleanProject = $projectSlug;
+        }
+
+        $unitName = trim((string) ($this->name ?? $this->id));
+        $normalizedUnit = Str::slug($unitName);
+
+        return strtoupper($cleanProject.'-'.($normalizedUnit ?: $unitName));
+    }
+
+    public function resolveCanonicalId(): string
+    {
+        $projectSlug = $this->proyecto?->slug ?: Str::slug((string) ($this->proyecto?->name ?? 'leben'));
+        $unitSlug = Str::slug((string) ($this->name ?? $this->id));
+
+        return "leben-{$projectSlug}-depto-{$unitSlug}";
     }
 }

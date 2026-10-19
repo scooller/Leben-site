@@ -655,7 +655,7 @@ function Home({ onNavigate, currentPath }) {
       name: productName,
       url: detailUrl,
       category: selectedPlantDetail.tipoProducto || 'Inmobiliario',
-      sku: `${projectSlug || 'proyecto'}-${slugifySegment(selectedPlantDetail.nombre || selectedPlantDetail.name || '')}`,
+      sku: selectedPlantDetail.sku || `${projectSlug || 'proyecto'}-${slugifySegment(selectedPlantDetail.nombre || selectedPlantDetail.name || '')}`,
       image: selectedPlantDetail.imageUrl || selectedPlantDetail.coverImage || undefined,
       brand: {
         '@type': 'Brand',
@@ -1995,7 +1995,7 @@ function Home({ onNavigate, currentPath }) {
             <div className="plants-toolbar">
               <div className="plants-toolbar-summary">
                 <span className="plants-toolbar-summary-label">Plantas encontradas</span>
-                <strong>{totalPlants || plants.length}</strong>
+                <strong>{totalPlants == 0 ? '-' : (totalPlants || plants.length)}</strong>
               </div>
 
               <div className="plants-toolbar-sort">
