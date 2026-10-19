@@ -37,6 +37,7 @@ class GenerateCyberFeedCommand extends Command
 
         // Construir feed completo para la exportación estática (página 1, hasta 250 o todos)
         $feed = $feedService->buildFeed([
+            'is_cyber' => true,
             'per_page' => 250,
             'page' => 1,
         ]);
@@ -54,6 +55,17 @@ class GenerateCyberFeedCommand extends Command
         }
 
         File::put($outputPath, $jsonContent);
+
+        // Si no se especificó un archivo destino exclusivo, también exportar el feed canónico general
+        if (! $this->option('output')) {
+            $genericOutputPath = storage_path('app/public/feed.json');
+            $genericFeed = $feedService->buildFeed([
+                'is_cyber' => false,
+                'per_page' => 250,
+                'page' => 1,
+            ]);
+            File::put($genericOutputPath, json_encode($genericFeed, $flags));
+        }
 
         $duration = round((microtime(true) - $startTime) * 1000, 2);
         $fileSizeKb = round(strlen($jsonContent) / 1024, 2);

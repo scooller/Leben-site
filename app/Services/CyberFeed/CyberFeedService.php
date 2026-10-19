@@ -23,6 +23,7 @@ class CyberFeedService
      */
     public function buildFeed(array $filters = []): array
     {
+        $isCyber = (bool) ($filters['is_cyber'] ?? true);
         $frontendUrl = rtrim(config('app.frontend_sale_url') ?: env('FRONTEND_SALE_URL', 'https://sale.ileben.cl'), '/');
         $validFrom = config('app.cyber_valid_from') ?: env('CYBER_FEED_VALID_FROM', '2026-10-19T00:00:00-03:00');
         $validUntil = config('app.cyber_valid_until') ?: env('CYBER_FEED_VALID_UNTIL', '2026-10-21T23:59:59-03:00');
@@ -40,7 +41,7 @@ class CyberFeedService
 
         foreach ($paginator->items() as $plant) {
             /** @var Plant $plant */
-            $computed = $this->computePlantAttributes($plant, $frontendUrl);
+            $computed = $this->computePlantAttributes($plant, $frontendUrl, $isCyber);
 
             // Filtro dinámico de availability si se solicitó
             if (! empty($filters['availability']) && $computed['availability'] !== $filters['availability']) {
@@ -56,7 +57,7 @@ class CyberFeedService
                 $latestUpdate = $plant->updated_at;
             }
 
-            $offers[] = [
+            $offer = [
                 'id' => $plant->resolveCanonicalId(),
                 'sku' => $plant->resolveSku(),
                 'title' => $this->resolveTitle($plant),
@@ -75,12 +76,19 @@ class CyberFeedService
                 'availability' => $computed['availability'],
                 'reservation_price_clp' => (int) ($plant->proyecto?->valor_reserva_exigido_defecto_peso ?: 100000),
                 'price_uf' => $computed['price_uf'],
-                'reference_price_uf' => $computed['reference_price_uf'],
-                'discount_percent' => $computed['discount_percent'],
-                'valid_from' => $validFrom,
-                'valid_until' => $validUntil,
-                'updated_at' => $updatedAtIso,
             ];
+
+            // En campañas Cyber/Sale se agregan precios de referencia, porcentajes de descuento y vigencia
+            if ($isCyber) {
+                $offer['reference_price_uf'] = $computed['reference_price_uf'];
+                $offer['discount_percent'] = $computed['discount_percent'];
+                $offer['valid_from'] = $validFrom;
+                $offer['valid_until'] = $validUntil;
+            }
+
+            $offer['updated_at'] = $updatedAtIso;
+
+            $offers[] = $offer;
         }
 
         $storeUpdatedAt = $latestUpdate ? $latestUpdate->toIso8601String() : now()->toIso8601String();
@@ -90,6 +98,7 @@ class CyberFeedService
                 'name' => 'Leben Grupo Inmobiliario',
                 'site' => $frontendUrl.'/',
                 'currency' => 'CLP',
+                'feed_type' => $isCyber ? 'cyber_campaign' : 'canonical_catalog',
                 'updated_at' => $storeUpdatedAt,
             ],
             'meta' => [
@@ -108,6 +117,8 @@ class CyberFeedService
      */
     public function buildQuery(array $filters = []): Builder
     {
+        $isCyber = (bool) ($filters['is_cyber'] ?? true);
+
         $query = Plant::query()
             ->with([
                 'proyecto',
@@ -118,10 +129,14 @@ class CyberFeedService
                 'completedPayment',
             ])
             ->where('is_active', true)
-            ->where('unidad_sale', true)
             ->whereHas('proyecto', function (Builder $q) {
                 $q->where('is_active', true);
             });
+
+        // En Cyber feed solo se publican unidades Sale; en feed canónico general se publican todas las activas
+        if ($isCyber || ! empty($filters['only_sale'])) {
+            $query->where('unidad_sale', true);
+        }
 
         // Filtro por proyecto (slug o id)
         if (! empty($filters['project'])) {
@@ -158,14 +173,20 @@ class CyberFeedService
     /**
      * @return array{price_uf: float, reference_price_uf: float, discount_percent: float, public_url: string, image_url: ?string, delivery_status: string, availability: string}
      */
-    public function computePlantAttributes(Plant $plant, string $frontendUrl): array
+    public function computePlantAttributes(Plant $plant, string $frontendUrl, bool $isCyber = true): array
     {
-        $priceUf = round($plant->resolveFinalPrice(), 2);
         $refPriceUf = round((float) ($plant->precio_lista ?: $plant->precio_base ?: 0), 2);
 
-        $discountPercent = 0.0;
-        if ($refPriceUf > 0 && $priceUf < $refPriceUf) {
-            $discountPercent = round((($refPriceUf - $priceUf) / $refPriceUf) * 100, 2);
+        if ($isCyber) {
+            $priceUf = round($plant->resolveFinalPrice(), 2);
+            $discountPercent = 0.0;
+            if ($refPriceUf > 0 && $priceUf < $refPriceUf) {
+                $discountPercent = round((($refPriceUf - $priceUf) / $refPriceUf) * 100, 2);
+            }
+        } else {
+            // Feed no-Cyber/Sale: estrictamente precio lista, sin descuentos ni precios alternativos
+            $priceUf = $refPriceUf;
+            $discountPercent = 0.0;
         }
 
         $projectSlug = $plant->proyecto?->slug ?: Str::slug((string) ($plant->proyecto?->name ?? ''));

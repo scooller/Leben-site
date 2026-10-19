@@ -341,4 +341,58 @@ class CyberFeedApiTest extends TestCase
 
         $this->assertSame('ESTRELLA-301', $plant->fresh()->sku);
     }
+
+    public function test_generic_feed_shows_strictly_list_price_without_discounts_or_other_prices(): void
+    {
+        $this->createValidCyberPlant([
+            'sku' => 'LIST-ONLY-101',
+            'precio_lista' => 4500,
+            'precio_base' => 3800,
+            'priorizar_descuentos' => true,
+            'descuento_defecto_cotizacion_web' => 15,
+        ]);
+
+        // 1. Cyber feed muestra precio con descuento y precio de lista de referencia
+        $cyberResponse = $this->getJson('/api/cyber/feed.json');
+        $cyberResponse->assertOk();
+        $cyberOffer = $cyberResponse->json('offers.0');
+        $this->assertEquals(3825, $cyberOffer['price_uf']); // 4500 - 15% = 3825
+        $this->assertEquals(4500, $cyberOffer['reference_price_uf']);
+        $this->assertEquals(15, $cyberOffer['discount_percent']);
+        $this->assertArrayHasKey('valid_from', $cyberOffer);
+        $this->assertArrayHasKey('valid_until', $cyberOffer);
+
+        // 2. Feed genérico (/api/feed.json) que NO es Cyber/Sale:
+        // Solo precio lista, sin descuento ni ningún otro precio
+        $genericResponse = $this->getJson('/api/feed.json');
+        $genericResponse->assertOk();
+        $genericOffer = $genericResponse->json('offers.0');
+        $this->assertEquals(4500, $genericOffer['price_uf']); // Estrictamente precio lista
+        $this->assertArrayNotHasKey('reference_price_uf', $genericOffer);
+        $this->assertArrayNotHasKey('discount_percent', $genericOffer);
+        $this->assertArrayNotHasKey('valid_from', $genericOffer);
+        $this->assertArrayNotHasKey('valid_until', $genericOffer);
+    }
+
+    public function test_generic_feed_includes_non_sale_plants_unlike_cyber_feed(): void
+    {
+        // Planta normal activa, pero NO es unidad_sale
+        $this->createValidCyberPlant([
+            'sku' => 'NORMAL-101',
+            'unidad_sale' => false,
+            'precio_lista' => 5000,
+        ]);
+
+        // Cyber feed NO debe incluirla
+        $cyberResponse = $this->getJson('/api/cyber/feed.json');
+        $cyberResponse->assertOk();
+        $this->assertCount(0, $cyberResponse->json('offers'));
+
+        // Feed canónico SI debe incluirla con precio de lista
+        $genericResponse = $this->getJson('/api/feed.json');
+        $genericResponse->assertOk();
+        $this->assertCount(1, $genericResponse->json('offers'));
+        $this->assertSame('NORMAL-101', $genericResponse->json('offers.0.sku'));
+        $this->assertEquals(5000, $genericResponse->json('offers.0.price_uf'));
+    }
 }

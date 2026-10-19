@@ -38,7 +38,7 @@ class CyberOfferValidator
 
         // 3. Precios en UF obligatorios y coherentes
         $priceUf = $computed['price_uf'];
-        $refPriceUf = $computed['reference_price_uf'];
+        $refPriceUf = $computed['reference_price_uf'] ?? $priceUf;
 
         if ($priceUf <= 0) {
             $this->recordExclusion($plantId, $sku, 'PRICE_ZERO_OR_NEGATIVE', "Effective price_uf is {$priceUf}.");

@@ -22,11 +22,13 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
   - Disponibilidad en tiempo real (`available`, `reserved`, `sold`) según reservas activas y pagos confirmados.
   - Mapeo de tipologías, dormitorios, baños, superficies y estados de entrega (`entrega_inmediata`, `venta_en_verde`, `venta_en_blanco`, `piloto`).
 - **`app/Http/Controllers/Api/CyberFeedController.php` & `routes/api.php`**:
-  - Endpoints públicos de solo lectura canónicos y permanentes: `GET /api/feed.json` y `GET /api/feed` (para Google, Meta, agregadores IA y portales), junto a los alias específicos de campaña `GET /api/cyber/feed.json` y `GET /api/cyber/feed` para la CCS / cyber.cl.
-  - Caché de 5 minutos (`Cache-Control: public, max-age=300, stale-while-revalidate=60`).
+  - Diferenciación de feeds:
+    - **Cyber Feed (`/api/cyber/feed.json`)**: Muestra unidades Sale (`unidad_sale = true`), precio final con descuento (`price_uf`), precio de lista referencial (`reference_price_uf`), porcentaje de descuento (`discount_percent`) y vigencia de campaña.
+    - **Product Feed Canónico (`/api/feed.json`)**: Para Google, Meta y agregadores generales. Muestra todas las unidades activas del catálogo exhibiendo estrictamente su **precio de lista** (`price_uf`), suprimiendo completamente descuentos y cualquier precio alternativo.
+  - Caché de 5 minutos diferenciada por tipo de feed (`Cache-Control: public, max-age=300, stale-while-revalidate=60`).
   - Cabecera `ETag` con soporte condicional `If-None-Match` respondiendo `304 Not Modified`.
   - Filtros soportados: `?project=slug`, `?commune=slug`, `?availability=available|reserved|sold`, `?updated_since=ISO8601`, `?page=1`, `?per_page=100`.
-- **`app/Console/Commands/GenerateCyberFeedCommand.php` & `routes/console.php`**: Comando `php artisan cyber:generate-feed` para exportación estática a `storage/app/public/cyber/feed.json`, programado cada 15 minutos en el scheduler de Laravel.
+- **`app/Console/Commands/GenerateCyberFeedCommand.php` & `routes/console.php`**: Comando `php artisan cyber:generate-feed` para exportación estática tanto del Cyber Feed (`storage/app/public/cyber/feed.json`) como del feed canónico de lista (`storage/app/public/feed.json`), programado cada 15 minutos en el scheduler de Laravel.
 - **`frontend/`**:
   - `index.html` & `prerender-routes.mjs`: Incorporación de tags `<link rel="alternate" type="application/json">` en el `<head>` apuntando al Cyber Feed (`https://admin.ileben.cl/api/cyber/feed.json`) y al Product Feed Canónico (`https://admin.ileben.cl/api/feed.json`), propagados en el prerenderizado estático de rutas.
   - `public/.htaccess`: Regla de redirección 302 de `/(cyber/)?feed(.json)?` hacia `https://admin.ileben.cl/api/cyber/feed.json` y cabeceras HTTP `Link: <https://admin.ileben.cl/api/cyber/feed.json>; rel="alternate"; type="application/json"` en la respuesta de `index.html`.

@@ -148,7 +148,10 @@ frontend/
 - ✅ **Auth.md & RFCs**: Directrices de autenticación de agentes en `/auth.md`, `/ .well-known/oauth-authorization-server` (RFC 8414) y `/.well-known/oauth-protected-resource` (RFC 9728).
 - ✅ **MCP Server**: Ficha de servidor en `/.well-known/mcp/server-card.json`.
 - ✅ **Agent Skills**: Directorio `/.well-known/agent-skills/index.json` con skills para agentes autónomos.
-- ✅ **Cyber Feed & Product Feed Público**: Endpoints públicos de solo lectura (`/api/feed.json` y `/api/cyber/feed.json`) para consumo controlado por Cyber AI (cyber.cl), Google y agregadores externos. Entrega precios en UF (con oferta activa), disponibilidad real (`available`, `reserved`, `sold`), URLs canónicas, validación estricta sin imágenes placeholder, caché de 5 min con `ETag` / `304 Not Modified`, y exportación estática programada.
+- ✅ **Cyber Feed & Product Feed Público**: Endpoints públicos de solo lectura (`/api/feed.json` y `/api/cyber/feed.json`) para consumo controlado por Cyber AI (cyber.cl), Google y agregadores externos:
+  - **Feed General (`/api/feed.json`)**: Expone todas las unidades activas del catálogo canónico mostrando **únicamente precio de lista** (`price_uf`), sin descuentos ni precios alternativos.
+  - **Cyber Feed (`/api/cyber/feed.json`)**: Expone unidades de campaña Sale (`unidad_sale = true`) con precios rebajados en UF (`price_uf`), precio de lista de referencia (`reference_price_uf`), porcentaje de descuento (`discount_percent`) y vigencia.
+  - Disponibilidad en tiempo real (`available`, `reserved`, `sold`), URLs canónicas, validación sin placeholders, caché de 5 min con `ETag` / `304 Not Modified`, y exportación estática programada (`/cyber/feed.json` y `/feed.json`).
 - ✅ **LLMs & Sitemap**: Endpoints `/llms.txt`, `/.well-known/llms.txt`, `/sitemap.xml` dinámico y `/robots.txt` con señales para IA.
 
 ---
@@ -270,8 +273,8 @@ Base URL: `/api/v1`
 ### Endpoints Principales
 
 - **Feed Público de Productos y Campañas (Sin autenticación)**:
-  - `GET /api/feed.json` / `GET /api/feed` (Canónico permanente para agregadores, Google y Meta)
-  - `GET /api/cyber/feed.json` / `GET /api/cyber/feed` (Alias oficial para Cyber AI y CCS)
+  - `GET /api/feed.json` / `GET /api/feed`: Canónico permanente para Google, Meta y agregadores IA (exhibe estrictamente **precio de lista**, sin descuentos ni precios secundarios).
+  - `GET /api/cyber/feed.json` / `GET /api/cyber/feed`: Alias de campaña para Cyber AI / CCS (exhibe unidades Sale con precio rebajado, precio de lista referencial y % de descuento).
 - **Descubrimiento OpenAPI**: `GET /api/v1`
 - **Configuración Pública**: `GET /api/v1/site-config` (oculta pasarelas sensibles si no proviene de un origen autorizado)
 - **Formulario de Contacto**: `POST /api/v1/contact-submissions` (con rate limiting)

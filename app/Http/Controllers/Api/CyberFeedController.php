@@ -22,7 +22,10 @@ class CyberFeedController extends Controller
     public function index(Request $request): JsonResponse|Response
     {
         try {
+            $isCyber = $request->is('*cyber*') || $request->boolean('cyber', false) || $request->input('mode') === 'cyber';
+
             $filters = [
+                'is_cyber' => $isCyber,
                 'project' => $request->input('project', $request->input('project_slug')),
                 'commune' => $request->input('commune', $request->input('commune_slug')),
                 'availability' => $request->input('availability'),
@@ -31,7 +34,7 @@ class CyberFeedController extends Controller
                 'per_page' => min(max((int) $request->input('per_page', 100), 1), 250),
             ];
 
-            $cacheKey = 'cyber_feed_data_'.md5(serialize($filters));
+            $cacheKey = ($isCyber ? 'cyber_feed_data_' : 'generic_feed_data_').md5(serialize($filters));
             $cacheTtl = (int) (config('app.cyber_feed_cache_ttl') ?: env('CYBER_FEED_CACHE_TTL', 300));
 
             $feed = Cache::remember($cacheKey, $cacheTtl, function () use ($filters) {
