@@ -59,6 +59,7 @@ app/
 │   ├── Salesforce/         # SalesforceService, SalesforceCaseMapper, OAuth Lifecycle
 │   ├── ProductionSync/     # ProductionSyncService, ProductionSyncProgressTracker
 │   ├── Payment/            # TransbankService, MercadoPagoService, PaymentGatewayManager
+│   ├── CyberFeed/          # CyberFeedService, CyberOfferValidator, agregador para feeds de IA
 │   └── ShortLink/          # Generación y redirección con UTMs
 ├── Jobs/                   # Queue Jobs (SyncPlantsJob, RunProductionSyncJob, CreateSalesforceCaseJob)
 ├── Http/
@@ -113,6 +114,7 @@ frontend/
   - Orden natural numérico en columnas de plantas (`name`: `21, 202, 1001`, `piso`).
   - Ordenación numérica con valores nulos posicionados al final en modo ascendente para precios (`precio_base`, `precio_lista`, `precio_final`) y porcentajes de descuento.
 - ✅ **Gestión de Plantas y Unidades Sale**:
+  - Identificador comercial **SKU** administrable en formulario y tabla, con autogeneración inteligente en el ciclo de vida de la planta al importar o crear.
   - Botón de cabecera para sincronizar desde producción en el catálogo de plantas.
   - Acción masiva `ResetSalePlantsAction` para desmarcar unidades Sale con modal de confirmación.
   - Sincronización de imágenes de portada e interiores vía Curator.
@@ -146,6 +148,7 @@ frontend/
 - ✅ **Auth.md & RFCs**: Directrices de autenticación de agentes en `/auth.md`, `/ .well-known/oauth-authorization-server` (RFC 8414) y `/.well-known/oauth-protected-resource` (RFC 9728).
 - ✅ **MCP Server**: Ficha de servidor en `/.well-known/mcp/server-card.json`.
 - ✅ **Agent Skills**: Directorio `/.well-known/agent-skills/index.json` con skills para agentes autónomos.
+- ✅ **Cyber Feed & Product Feed Público**: Endpoints públicos de solo lectura (`/api/feed.json` y `/api/cyber/feed.json`) para consumo controlado por Cyber AI (cyber.cl), Google y agregadores externos. Entrega precios en UF (con oferta activa), disponibilidad real (`available`, `reserved`, `sold`), URLs canónicas, validación estricta sin imágenes placeholder, caché de 5 min con `ETag` / `304 Not Modified`, y exportación estática programada.
 - ✅ **LLMs & Sitemap**: Endpoints `/llms.txt`, `/.well-known/llms.txt`, `/sitemap.xml` dinámico y `/robots.txt` con señales para IA.
 
 ---
@@ -191,6 +194,22 @@ php artisan salesforce:refresh-token
 php artisan salesforce:test-auth
 ```
 
+### Cyber Feed y Gestión de SKUs
+
+```bash
+# Generar feed JSON estático para CDN o distribución
+php artisan cyber:generate-feed --pretty
+
+# Asignar SKUs compactos a plantas que no tengan uno asignado
+php artisan plants:generate-sku
+
+# Actualizar y reemplazar SKUs existentes en base de datos
+php artisan plants:generate-sku --actualizar
+
+# Simular asignación/actualización de SKUs (dry-run)
+php artisan plants:generate-sku --actualizar --dry-run
+```
+
 ### Scheduler Operativo (Laravel Schedule)
 
 Comandos programados en `routes/console.php`:
@@ -200,6 +219,7 @@ Comandos programados en `routes/console.php`:
 | `reservations:expire` | Cada minuto | Libera reservas de plantas que superaron el tiempo de espera |
 | `SyncPlantsJob` | Cada minuto (sin overlap) | Sincronización de plantas condicional según `SalesforcePlantSyncSchedule` |
 | `salesforce:refresh-token` | Cada 45 min (sin overlap) | Renueva proactivamente el token OAuth antes de expirar |
+| `cyber:generate-feed --pretty` | Cada 15 min (sin overlap) | Regenera el feed estático canónico en `storage/app/public/cyber/feed.json` |
 | `model:prune --model=FrontendPreviewLink` | Diario | Limpia enlaces temporales de previsualización caducados |
 
 #### Operación en Servidor / cPanel (Cron + Queue Worker)
@@ -249,6 +269,9 @@ Base URL: `/api/v1`
 
 ### Endpoints Principales
 
+- **Feed Público de Productos y Campañas (Sin autenticación)**:
+  - `GET /api/feed.json` / `GET /api/feed` (Canónico permanente para agregadores, Google y Meta)
+  - `GET /api/cyber/feed.json` / `GET /api/cyber/feed` (Alias oficial para Cyber AI y CCS)
 - **Descubrimiento OpenAPI**: `GET /api/v1`
 - **Configuración Pública**: `GET /api/v1/site-config` (oculta pasarelas sensibles si no proviene de un origen autorizado)
 - **Formulario de Contacto**: `POST /api/v1/contact-submissions` (con rate limiting)
@@ -337,7 +360,7 @@ composer dev
 - `site_settings` — Configuración global (singleton `ID=1`), opciones visuales y backups OAuth.
 - `curator` — Biblioteca de medios y archivos centralizada.
 - `proyectos` — Proyectos inmobiliarios con etapas homologadas y códigos de comercio.
-- `plants` — Departamentos/plantas con tipologías, imágenes, precios y estado Sale.
+- `plants` — Departamentos/plantas con tipologías, imágenes, precios, SKU comercial y estado Sale.
 - `asesors` — Asesores de venta con avatar, teléfono WhatsApp y QR dinámico.
 - `asesor_proyecto` — Tabla pivote que vincula asesores con múltiples proyectos.
 - `payments` — Historial de transacciones de pago y estados.
@@ -368,6 +391,6 @@ composer dev
 
 Todos los derechos reservados — iLeben © 2026
 
-**Última actualización:** 2026-09-23  
-**Versión:** 1.9.28  
+**Última actualización:** 2026-10-19  
+**Versión:** 1.11.0  
 **[Historial de cambios](CHANGELOG.md)**

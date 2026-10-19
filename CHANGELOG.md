@@ -27,7 +27,11 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
   - Cabecera `ETag` con soporte condicional `If-None-Match` respondiendo `304 Not Modified`.
   - Filtros soportados: `?project=slug`, `?commune=slug`, `?availability=available|reserved|sold`, `?updated_since=ISO8601`, `?page=1`, `?per_page=100`.
 - **`app/Console/Commands/GenerateCyberFeedCommand.php` & `routes/console.php`**: Comando `php artisan cyber:generate-feed` para exportación estática a `storage/app/public/cyber/feed.json`, programado cada 15 minutos en el scheduler de Laravel.
-- **`frontend/src/pages/Home.jsx`**: Alineación de `sku` en el schema estructurado JSON-LD (`schema.org/Product` y `RealEstateListing`) utilizando el SKU prioritario de la unidad.
+- **`frontend/`**:
+  - `index.html` & `prerender-routes.mjs`: Incorporación de tags `<link rel="alternate" type="application/json">` en el `<head>` apuntando al Cyber Feed (`https://admin.ileben.cl/api/cyber/feed.json`) y al Product Feed Canónico (`https://admin.ileben.cl/api/feed.json`), propagados en el prerenderizado estático de rutas.
+  - `public/.htaccess`: Regla de redirección 302 de `/(cyber/)?feed(.json)?` hacia `https://admin.ileben.cl/api/cyber/feed.json` y cabeceras HTTP `Link: <https://admin.ileben.cl/api/cyber/feed.json>; rel="alternate"; type="application/json"` en la respuesta de `index.html`.
+  - `public/llms.txt` & `public/index.md`: Declaración explícita de las URLs del Cyber Feed y Product Feed para crawlers y agentes IA.
+  - `src/pages/Home.jsx`: Alineación de `sku` en el schema estructurado JSON-LD (`schema.org/Product` y `RealEstateListing`) utilizando el SKU prioritario de la unidad.
 - **`tests/Feature/CyberFeedApiTest.php`**: Suite completa de pruebas con 11 tests y 89 aserciones cubriendo respuesta 200 genérica y específica, estructura canónica, filtros, estados de disponibilidad, exclusión de unidades inválidas, revalidación condicional 304, autogeneración en creación/importación y comando CLI de SKUs con parámetro `--actualizar`.
 
 
