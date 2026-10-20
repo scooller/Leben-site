@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Pages\ContactImportProgress;
 use App\Filament\Resources\Asesores\AsesorResource;
 use App\Filament\Resources\ContactSubmissions\ContactSubmissions\ContactSubmissionResource;
 use App\Filament\Resources\Plants\PlantResource;
@@ -78,5 +79,16 @@ class MarketingRoleAccessTest extends TestCase
         $this->assertFalse(AsesorResource::canViewAny());
         $this->assertFalse(ContactSubmissionResource::canCreate());
         $this->assertFalse(ShortLinkResource::canCreate());
+        $this->assertFalse(ContactImportProgress::canAccess());
+    }
+
+    public function test_marketing_can_access_contact_import_progress(): void
+    {
+        [, $marketing] = $this->createUsers();
+
+        $this->actingAs($marketing);
+
+        $this->assertTrue(ContactImportProgress::canAccess());
+        $this->get('/admin/contact-import-progress')->assertSuccessful();
     }
 }

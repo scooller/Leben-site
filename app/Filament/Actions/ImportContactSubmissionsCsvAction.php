@@ -36,6 +36,8 @@ class ImportContactSubmissionsCsvAction
             ->label('Importar CSV')
             ->icon('heroicon-o-arrow-up-tray')
             ->color('info')
+            ->visible(fn (): bool => (auth()->user()?->isAdmin() ?? false) || (auth()->user()?->isMarketing() ?? false))
+            ->authorize(fn (): bool => (auth()->user()?->isAdmin() ?? false) || (auth()->user()?->isMarketing() ?? false))
             ->modalHeading('Importar contactos desde CSV')
             ->modalSubmitActionLabel('Importar')
             ->modalWidth('7xl')

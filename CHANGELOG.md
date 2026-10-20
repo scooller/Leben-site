@@ -4,6 +4,18 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.11.4] - 2026-10-20
+
+### 🔒 Security / 👥 Auth — Permisos de importación de contactos para rol marketing
+- **`app/Filament/Actions/ImportContactSubmissionsCsvAction.php`**:
+  - `visible()` y `authorize()`: Permitir expresamente a usuarios con rol `marketing` (además de `admin`) ver y ejecutar la acción de importación de CSV de contactos.
+- **`app/Filament/Pages/ContactImportProgress.php`**:
+  - `canAccess()`: Conceder acceso a la página y barra de progreso de importación a usuarios con roles `admin` y `marketing`.
+- **`app/Http/Middleware/EnsureMarketingPanelAccess.php`**:
+  - Habilitación de la ruta `filament.admin.pages.contact-import-progress` dentro del middleware de control de acceso para marketing.
+- **`tests/Feature/MarketingRoleAccessTest.php`**:
+  - Test verificando que usuarios con rol `marketing` pueden acceder exitosamente a la página de progreso de importación y que usuarios `cliente` quedan bloqueados.
+
 ## [1.11.3] - 2026-10-20
 
 ### 🐛 Fixed / 📥 Import CSV — Deduplicación y sanitización de campos a asignar

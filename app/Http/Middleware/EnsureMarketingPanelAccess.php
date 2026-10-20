@@ -45,7 +45,10 @@ class EnsureMarketingPanelAccess
             return $this->isLivewireFromAllowedPage();
         }
 
-        if ($routeName === 'filament.admin.pages.dashboard') {
+        if (in_array($routeName, [
+            'filament.admin.pages.dashboard',
+            'filament.admin.pages.contact-import-progress',
+        ], true)) {
             return true;
         }
 
