@@ -64,8 +64,11 @@ class ContactCsvRowMapper
             'audiencia' => 'fields.utm_medium',
             'pieza_grafica' => 'fields.utm_content',
             'rango_de_renta' => 'fields.rango_renta',
+            'rango' => 'fields.rango_renta',
+            'renta' => 'fields.rango_renta',
             'en_que_rango_se_encuentra_tu_renta_liquida' => 'fields.rango_renta',
             'tienes_la_posibilidad_de_complementar_tu_renta' => 'fields.codeudor',
+            'codeudor' => 'fields.codeudor',
         ];
 
         if (array_key_exists($signature, $directMap)) {
@@ -213,6 +216,8 @@ class ContactCsvRowMapper
         }
 
         $rangoAliases = [
+            'rango',
+            'renta',
             'rango_de_renta',
             'en_que_rango_se_encuentra_tu_renta_liquida',
         ];

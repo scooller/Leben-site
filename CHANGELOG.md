@@ -4,6 +4,20 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.11.3] - 2026-10-20
+
+### 🐛 Fixed / 📥 Import CSV — Deduplicación y sanitización de campos a asignar
+- **`app/Filament/Actions/ImportContactSubmissionsCsvAction.php`**:
+  - `targetFieldOptions()`: Filtrado estricto de alias dinámicos redundantes (`rut`, `nombre`, `email`, `telefono`, `rango`, `comentario_cliente`) que duplicaban campos nativos principales y base en el desplegable de mapeo adicional.
+  - Inclusión de `fields.comuna_inversion` en `$baseOptions` para asignar limpiamente la comuna de interés o inversión homologada para Salesforce.
+  - `prefillSuggestedMappings()`: Garantiza unicidad por `target_field` y por `source_column`, omitiendo columnas ya seleccionadas en los campos obligatorios superiores para evitar filas repetidas en el repeater.
+  - `sanitizeMappingsForSelectedChannel()`: Remapeo automático de alias heredados a sus equivalentes canónicos.
+- **`app/Services/ContactImport/ContactCsvRowMapper.php`**:
+  - Incorporación de `rango`, `renta` y `codeudor` en `$directMap` de `suggestTargetField()`.
+  - Normalización de `rango` y `renta` en `canonicalizeFields()` para asegurar persistencia directa en `fields.rango_renta`.
+- **`tests/Unit/Filament/Actions/ImportContactSubmissionsCsvActionTest.php`**:
+  - Cobertura de pruebas unitarias verificando la ausencia de duplicados y alias redundantes en las opciones de destino.
+
 ## [1.11.2] - 2026-10-19
 
 ### 🐛 Fixed / 🔄 Salesforce — Homologación canónica de comunas desde proyectos Salesforce

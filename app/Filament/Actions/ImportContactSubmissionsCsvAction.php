@@ -613,7 +613,7 @@ class ImportContactSubmissionsCsvAction
     /**
      * @return array<string, string>
      */
-    private static function targetFieldOptions(Get $get): array
+    public static function targetFieldOptions(?Get $get = null): array
     {
         $baseOptions = [
             'skip' => 'No importar',
@@ -622,6 +622,7 @@ class ImportContactSubmissionsCsvAction
             'phone' => 'Teléfono (principal)',
             'rut' => 'RUT (principal)',
             'fields.comuna' => 'Campo dinámico: Comuna',
+            'fields.comuna_inversion' => 'Campo dinámico: Comuna de inversión / interés',
             'fields.proyecto' => 'Campo dinámico: Proyecto',
             'fields.mensaje' => 'Campo dinámico: Mensaje',
             'fields.rango_renta' => 'Campo dinámico: Rango renta',
@@ -631,7 +632,9 @@ class ImportContactSubmissionsCsvAction
             'fields.origen_prospecto' => 'Campo dinámico: Origen del prospecto',
         ];
 
-        $selectedChannelId = (int) self::resolveWizardStateValue($get, 'contact_channel_id', 0);
+        $selectedChannelId = $get !== null
+            ? (int) self::resolveWizardStateValue($get, 'contact_channel_id', 0)
+            : 0;
 
         $selectedChannel = $selectedChannelId > 0
             ? ContactChannel::query()
@@ -646,17 +649,53 @@ class ImportContactSubmissionsCsvAction
             $dynamicFieldDefinitions = SiteSetting::current()->contact_form_fields ?? [];
         }
 
-        $dynamicFields = collect($dynamicFieldDefinitions)
-            ->filter(static fn (mixed $field): bool => is_array($field) && filled($field['key'] ?? null))
-            ->mapWithKeys(static function (array $field): array {
-                $key = trim((string) $field['key']);
-                $label = trim((string) ($field['label'] ?? $key));
+        $dynamicKeyAliases = [
+            'nombre' => 'name',
+            'name' => 'name',
+            'email' => 'email',
+            'correo' => 'email',
+            'telefono' => 'phone',
+            'phone' => 'phone',
+            'celular' => 'phone',
+            'fono' => 'phone',
+            'whatsapp' => 'phone',
+            'rut' => 'rut',
+            'comuna' => 'fields.comuna',
+            'comuna_inversion' => 'fields.comuna_inversion',
+            'comuna_interes' => 'fields.comuna_inversion',
+            'proyecto' => 'fields.proyecto',
+            'mensaje' => 'fields.mensaje',
+            'comentario' => 'fields.mensaje',
+            'comentario_cliente' => 'fields.mensaje',
+            'rango' => 'fields.rango_renta',
+            'rango_renta' => 'fields.rango_renta',
+            'rango_de_renta' => 'fields.rango_renta',
+            'codeudor' => 'fields.codeudor',
+            'complementa_renta' => 'fields.codeudor',
+        ];
 
-                return ["fields.{$key}" => "Campo dinámico: {$label}"];
-            })
-            ->all();
+        $dynamicFields = [];
+        foreach ($dynamicFieldDefinitions as $field) {
+            if (! is_array($field) || blank($field['key'] ?? null)) {
+                continue;
+            }
 
-        return collect($baseOptions)->union($dynamicFields)->all();
+            $rawKey = trim((string) $field['key']);
+            $normalizedKey = Str::slug(Str::snake($rawKey), '_');
+
+            if (isset($dynamicKeyAliases[$normalizedKey]) || isset($baseOptions["fields.{$normalizedKey}"])) {
+                continue;
+            }
+
+            $label = trim((string) ($field['label'] ?? $rawKey));
+            $targetKey = "fields.{$normalizedKey}";
+
+            if (! isset($baseOptions[$targetKey])) {
+                $dynamicFields[$targetKey] = "Campo dinámico: {$label}";
+            }
+        }
+
+        return $baseOptions + $dynamicFields;
     }
 
     /**
@@ -899,6 +938,8 @@ class ImportContactSubmissionsCsvAction
                 'fields.mensaje' => 'map_message',
             ];
 
+            $alreadyMappedColumns = [];
+
             foreach ($suggestedMappings as $suggestedMapping) {
                 $target = (string) ($suggestedMapping['target_field'] ?? '');
                 $source = (string) ($suggestedMapping['source_column'] ?? '');
@@ -913,11 +954,15 @@ class ImportContactSubmissionsCsvAction
                     continue;
                 }
 
-                if (filled($get($statePath))) {
+                $currentValue = $get($statePath);
+                if (filled($currentValue)) {
+                    $alreadyMappedColumns[] = (string) $currentValue;
+
                     continue;
                 }
 
                 $set($statePath, $source);
+                $alreadyMappedColumns[] = $source;
             }
 
             $existingCustomMappings = collect((array) ($get('custom_mappings') ?? []));
@@ -929,6 +974,8 @@ class ImportContactSubmissionsCsvAction
             $availableTargets = array_fill_keys(array_keys(self::targetFieldOptions($get)), true);
 
             $extraSuggestedTargets = [
+                'fields.apellido',
+                'fields.comuna_inversion',
                 'fields.rango_renta',
                 'fields.codeudor',
                 'fields.medio_llegada',
@@ -939,6 +986,9 @@ class ImportContactSubmissionsCsvAction
             $customMappings = collect($suggestedMappings)
                 ->filter(static fn (array $mapping): bool => in_array((string) ($mapping['target_field'] ?? ''), $extraSuggestedTargets, true))
                 ->filter(static fn (array $mapping): bool => isset($availableTargets[(string) ($mapping['target_field'] ?? '')]))
+                ->filter(static fn (array $mapping): bool => ! in_array((string) ($mapping['source_column'] ?? ''), $alreadyMappedColumns, true))
+                ->unique(static fn (array $mapping): string => (string) ($mapping['target_field'] ?? ''))
+                ->unique(static fn (array $mapping): string => (string) ($mapping['source_column'] ?? ''))
                 ->map(static fn (array $mapping): array => [
                     'source_column' => (string) ($mapping['source_column'] ?? ''),
                     'target_field' => (string) ($mapping['target_field'] ?? ''),
@@ -958,13 +1008,26 @@ class ImportContactSubmissionsCsvAction
     private static function sanitizeMappingsForSelectedChannel(Get $get, Set $set): void
     {
         try {
+            $aliasMap = [
+                'fields.nombre' => 'name',
+                'fields.email' => 'email',
+                'fields.telefono' => 'phone',
+                'fields.rut' => 'rut',
+                'fields.rango' => 'fields.rango_renta',
+                'fields.comentario_cliente' => 'fields.mensaje',
+            ];
+
             $allowedTargets = array_fill_keys(array_keys(self::targetFieldOptions($get)), true);
             $customMappings = (array) ($get('custom_mappings') ?? []);
 
             $sanitizedCustomMappings = collect($customMappings)
-                ->map(static function (array $mapping) use ($allowedTargets): ?array {
+                ->map(static function (array $mapping) use ($allowedTargets, $aliasMap): ?array {
                     $sourceColumn = trim((string) ($mapping['source_column'] ?? ''));
                     $targetField = trim((string) ($mapping['target_field'] ?? ''));
+
+                    if (isset($aliasMap[$targetField])) {
+                        $targetField = $aliasMap[$targetField];
+                    }
 
                     if ($sourceColumn === '' && $targetField === '') {
                         return null;
