@@ -45,7 +45,7 @@ class MenuResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return (auth()->user()?->isAdmin() ?? false) || (auth()->user()?->isMarketing() ?? false);
+        return false;
     }
 
     public static function canViewAny(): bool
@@ -55,17 +55,17 @@ class MenuResource extends Resource
 
     public static function canCreate(): bool
     {
-        return auth()->user()?->isAdmin() ?? false;
+        return (auth()->user()?->isAdmin() ?? false) || (auth()->user()?->isMarketing() ?? false);
     }
 
     public static function canEdit($record): bool
     {
-        return auth()->user()?->isAdmin() ?? false;
+        return (auth()->user()?->isAdmin() ?? false) || (auth()->user()?->isMarketing() ?? false);
     }
 
     public static function canDelete($record): bool
     {
-        return auth()->user()?->isAdmin() ?? false;
+        return (auth()->user()?->isAdmin() ?? false) || (auth()->user()?->isMarketing() ?? false);
     }
 
     public static function form(Schema $schema): Schema

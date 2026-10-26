@@ -49,6 +49,7 @@ class UserForm
                             ->label('Tipo de Usuario')
                             ->options([
                                 'customer' => 'Cliente',
+                                'broker' => 'Corredor / Broker',
                                 'marketing' => 'Marketing',
                                 'admin' => 'Administrador',
                                 'super_admin' => 'Super Administrador',

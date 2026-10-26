@@ -48,6 +48,7 @@ class EnsureMarketingPanelAccess
         if (in_array($routeName, [
             'filament.admin.pages.dashboard',
             'filament.admin.pages.contact-import-progress',
+            'filament.admin.pages.manage-site-menus',
         ], true)) {
             return true;
         }
@@ -61,6 +62,14 @@ class EnsureMarketingPanelAccess
             'filament.admin.resources.frontend-preview-links.',
         ])) {
             return ! $this->matchesAnySuffix($routeName, ['.create', '.edit']);
+        }
+
+        if ($this->matchesAnyPrefix($routeName, [
+            'filament.admin.resources.testimonials.',
+            'filament.admin.resources.content-pages.pages.',
+            'filament.admin.resources.menus.',
+        ])) {
+            return true;
         }
 
         if (str_starts_with($routeName, 'filament.admin.resources.contact-submissions.contact-submissions.')) {

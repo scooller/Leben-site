@@ -93,9 +93,27 @@ class User extends Authenticatable implements FilamentUser
         return $this->isAdmin() || $this->isSuperAdmin();
     }
 
+    public const TYPE_SUPER_ADMIN = 'super_admin';
+
+    public const TYPE_ADMIN = 'admin';
+
+    public const TYPE_MARKETING = 'marketing';
+
+    public const TYPE_BROKER = 'broker';
+
+    public const TYPE_CUSTOMER = 'customer';
+
     public function isMarketing(): bool
     {
         return $this->hasRole('marketing') || $this->user_type === 'marketing';
+    }
+
+    /**
+     * Verificar si el usuario es corredor / broker
+     */
+    public function isBroker(): bool
+    {
+        return $this->hasRole('broker') || $this->user_type === 'broker';
     }
 
     /**

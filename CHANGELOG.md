@@ -4,6 +4,25 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.13.0] - 2026-10-26
+
+### 🧭 Menús — Gestor Dedicado de Menús (Cabecera y Footer) en Filament
+- **Página Filament `ManageSiteMenus`**: Creado panel dedicado accesible en `Contenido Web > Menús` con pestañas para:
+  - **Menú General (Cabecera / Navbar)**: Repeater interactivo para enlaces principales y dropdown opcional de proyectos con reordenamiento drag-and-drop, creación y eliminación.
+  - **Menú Footer (Pie de Página)**: Gestión independiente de Enlaces Corporativos (`footer_corporate`) y Enlaces Legales (`footer_legal`) con reordenamiento, creación y eliminación.
+  - Botón unificado de guardado, invalidación automática de caché `menus` y claves `menu_location_{location}`.
+- **Ocultamiento de `MenuResource` crudo**: Ocultado del menú lateral para evitar duplicidad, canalizando la administración a través de la interfaz visual unificada.
+
+### 👥 Usuarios & Permisos — Tipo de Usuario Broker y Acceso Marketing
+- **Tipo de Usuario Broker**:
+  - Modelo `User`: Añadida constante `TYPE_BROKER = 'broker'` y método helper `isBroker()`.
+  - `UserForm`: Añadida opción `broker` ("Corredor / Broker") en el selector de tipo de usuario.
+  - `UsersTable`: Añadido badge `info` ("Corredor / Broker") y filtro en tabla por `user_type`.
+- **Permisos de Marketing en Filament**:
+  - `EnsureMarketingPanelAccess`: Habilitado acceso a `testimonials`, `content-pages.pages` y `manage-site-menus`.
+  - `TestimonialResource`: Habilitados permisos de creación, edición y eliminación para rol marketing.
+  - `AdminPanelProvider`: Registrado orden explícito de `navigationGroups()` priorizando `Contenido Web` junto a `Real Estate`.
+
 ## [1.12.2] - 2026-10-26
 
 ### 🎨 UI / 🛠️ Filament — Inputs Mejorados (ColorPicker, RichEditor WYSIWYG y Validación URL) en Ficha Web

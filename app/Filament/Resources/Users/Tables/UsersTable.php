@@ -35,6 +35,7 @@ class UsersTable
                         'super_admin', 'super admin', 'super-admin' => 'danger',
                         'admin' => 'danger',
                         'marketing' => 'warning',
+                        'broker' => 'info',
                         'cliente' => 'success',
                         'customer' => 'success',
                         default => 'gray',
@@ -43,6 +44,7 @@ class UsersTable
                         'super_admin', 'super admin', 'super-admin' => 'Super Administrador',
                         'admin' => 'Administrador',
                         'marketing' => 'Marketing',
+                        'broker' => 'Corredor / Broker',
                         'cliente' => 'Cliente',
                         'customer' => 'Cliente',
                         default => $state,
@@ -84,6 +86,7 @@ class UsersTable
                         'super_admin' => 'Super Administrador',
                         'admin' => 'Administrador',
                         'marketing' => 'Marketing',
+                        'broker' => 'Corredor / Broker',
                         'customer' => 'Cliente',
                     ]),
             ])
