@@ -56,13 +56,17 @@ class SalesforceOAuthController extends Controller
                 data_set($extraSettings, 'salesforce_oauth.connected_by_user_id', auth()->id());
             }
 
-            // Persistir los tokens encriptados de Forrest en la DB para recuperación automática
+            // Persistir los tokens y recursos de Forrest en la DB para recuperación automática
             // ante limpiezas de caché (deploys, restart de Redis, etc.)
             $tokenCacheKey = config('forrest.storage.path', 'forrest_').'token';
             $refreshTokenCacheKey = config('forrest.storage.path', 'forrest_').'refresh_token';
+            $versionCacheKey = config('forrest.storage.path', 'forrest_').'version';
+            $resourcesCacheKey = config('forrest.storage.path', 'forrest_').'resources';
 
             $tokenBackup = \Illuminate\Support\Facades\Cache::get($tokenCacheKey);
             $refreshTokenBackup = \Illuminate\Support\Facades\Cache::get($refreshTokenCacheKey);
+            $versionBackup = \Illuminate\Support\Facades\Cache::get($versionCacheKey);
+            $resourcesBackup = \Illuminate\Support\Facades\Cache::get($resourcesCacheKey);
 
             if ($tokenBackup !== null) {
                 data_set($extraSettings, 'salesforce_oauth.token_cache_backup', $tokenBackup);
@@ -70,6 +74,14 @@ class SalesforceOAuthController extends Controller
 
             if ($refreshTokenBackup !== null) {
                 data_set($extraSettings, 'salesforce_oauth.refresh_token_cache_backup', $refreshTokenBackup);
+            }
+
+            if ($versionBackup !== null) {
+                data_set($extraSettings, 'salesforce_oauth.version_cache_backup', $versionBackup);
+            }
+
+            if ($resourcesBackup !== null) {
+                data_set($extraSettings, 'salesforce_oauth.resources_cache_backup', $resourcesBackup);
             }
 
             $siteSettings->update([

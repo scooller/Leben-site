@@ -76,6 +76,7 @@ class Proyecto extends Model
         'valor_reserva_exigido_min_peso',
         'descuento_defecto_cotizacion_web',
         'descuento_maximo_unidad',
+        'descuento_iva',
         'entrega_inmediata',
         // Transbank Mall
         'transbank_commerce_code',
@@ -92,6 +93,7 @@ class Proyecto extends Model
         'valor_reserva_exigido_min_peso' => 'decimal:2',
         'descuento_defecto_cotizacion_web' => 'decimal:2',
         'descuento_maximo_unidad' => 'decimal:2',
+        'descuento_iva' => 'decimal:2',
         'entrega_inmediata' => 'boolean',
         'is_active' => 'boolean',
         'manual_payment_bank_accounts' => 'array',
@@ -209,7 +211,12 @@ class Proyecto extends Model
             'valor_reserva_exigido_min_peso',
             'descuento_defecto_cotizacion_web',
             'descuento_maximo_unidad',
+            'descuento_iva',
             'entrega_inmediata',
+            'transbank_commerce_code',
+            'manual_payment_instructions',
+            'manual_payment_bank_accounts',
+            'manual_payment_link',
         ];
     }
 
@@ -272,8 +279,8 @@ class Proyecto extends Model
     protected function etapa(): Attribute
     {
         return Attribute::make(
-            get: fn(?string $value): ?string => self::normalizeEtapa($value) ?? $value,
-            set: fn(mixed $value): ?string => self::normalizeEtapa($value) ?? ($this->normalizeRawString($value)),
+            get: fn (?string $value): ?string => self::normalizeEtapa($value) ?? $value,
+            set: fn (mixed $value): ?string => self::normalizeEtapa($value) ?? ($this->normalizeRawString($value)),
         );
     }
 
@@ -298,7 +305,7 @@ class Proyecto extends Model
      */
     protected function imageUrl(): Attribute
     {
-        return Attribute::get(fn(): string => ProjectImageService::getProjectImageUrl($this));
+        return Attribute::get(fn (): string => ProjectImageService::getProjectImageUrl($this));
     }
 
     /**
@@ -382,5 +389,72 @@ class Proyecto extends Model
             $subQuery->whereJsonContains('tipo', $tipo)
                 ->orWhere('tipo', $tipo);
         });
+    }
+
+    /**
+     * Lista de comunas únicas de proyectos (origen Salesforce).
+     *
+     * @return array<int, string>
+     */
+    public static function salesforceComunas(): array
+    {
+        return static::query()
+            ->whereNotNull('comuna')
+            ->pluck('comuna')
+            ->map(static fn (mixed $value): string => trim((string) $value))
+            ->filter(static fn (string $value): bool => $value !== '')
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Normaliza la firma de una comuna para comparación tolerante.
+     */
+    public static function normalizeComunaSignature(string $value): string
+    {
+        return Str::of($value)
+            ->ascii()
+            ->lower()
+            ->replaceMatches('/[^a-z0-9]+/', ' ')
+            ->trim()
+            ->toString();
+    }
+
+    /**
+     * Resuelve una comuna contra la lista oficial de comunas de proyectos (Salesforce).
+     * Si no coincide pero hay un proyecto asociado, recurre a la comuna del proyecto.
+     */
+    public static function resolveSalesforceComuna(?string $input, ?self $project = null): ?string
+    {
+        $comunas = static::salesforceComunas();
+
+        if (filled($input)) {
+            $cleanInput = static::normalizeComunaSignature((string) $input);
+
+            foreach ($comunas as $comuna) {
+                if (static::normalizeComunaSignature($comuna) === $cleanInput) {
+                    return $comuna;
+                }
+            }
+        }
+
+        if ($project !== null && filled($project->comuna)) {
+            $cleanProjectComuna = static::normalizeComunaSignature((string) $project->comuna);
+            foreach ($comunas as $comuna) {
+                if (static::normalizeComunaSignature($comuna) === $cleanProjectComuna) {
+                    return $comuna;
+                }
+            }
+
+            return trim((string) $project->comuna);
+        }
+
+        // Si no hay comunas registradas en la base de datos (e.g. tests sin seed), preservar el valor limpio
+        if (empty($comunas) && filled($input)) {
+            return trim((string) $input);
+        }
+
+        return null;
     }
 }

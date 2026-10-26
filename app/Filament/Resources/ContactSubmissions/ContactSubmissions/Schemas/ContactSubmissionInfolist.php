@@ -47,7 +47,7 @@ class ContactSubmissionInfolist
                             ->copyMessage('ID copiado'),
                         IconEntry::make('salesforce_synced')
                             ->label('Estado sincronización')
-                            ->state(fn($record): bool => filled($record->salesforce_case_id))
+                            ->state(fn ($record): bool => filled($record->salesforce_case_id))
                             ->boolean()
                             ->trueIcon('heroicon-o-check-circle')
                             ->falseIcon('heroicon-o-x-circle')
@@ -55,18 +55,18 @@ class ContactSubmissionInfolist
                             ->falseColor('danger'),
                         TextEntry::make('salesforce_synced_at')
                             ->label('Fecha de sincronización')
-                            ->state(fn($record) => $record->salesforceSyncedAt())
+                            ->state(fn ($record) => $record->salesforceSyncedAt())
                             ->dateTime()
                             ->placeholder('No disponible'),
                         TextEntry::make('salesforce_sync_mode')
                             ->label('Tipo de sincronización')
-                            ->state(fn($record): ?string => $record->salesforceSyncModeLabel())
+                            ->state(fn ($record): ?string => $record->salesforceSyncModeLabel())
                             ->placeholder('No disponible'),
                         TextEntry::make('salesforce_case_error')
                             ->label('Error de sincronización')
                             ->placeholder('Sin errores')
                             ->color('danger')
-                            ->visible(fn($record): bool => filled($record->salesforce_case_error))
+                            ->visible(fn ($record): bool => filled($record->salesforce_case_error))
                             ->columnSpanFull()
                             ->wrap(),
                     ]),
@@ -75,11 +75,10 @@ class ContactSubmissionInfolist
                     ->components([
                         KeyValueEntry::make('fields')
                             ->label('Campos dinámicos')
-                            ->state(fn($record): array => self::formatDynamicFields($record->fields))
+                            ->state(fn ($record): array => self::formatDynamicFields($record->fields))
                             ->placeholder('Sin datos enviados')
                             ->columnSpanFull(),
                     ]),
-
 
             ]);
     }
@@ -94,7 +93,7 @@ class ContactSubmissionInfolist
         }
 
         $configuredFields = collect(self::fieldDefinitions())
-            ->keyBy(fn(array $field): string => (string) $field['key']);
+            ->keyBy(fn (array $field): string => (string) $field['key']);
 
         $lines = [];
 
@@ -116,8 +115,8 @@ class ContactSubmissionInfolist
     private static function fieldDefinitions(): array
     {
         return collect(SiteSetting::current()->contact_form_fields ?? [])
-            ->filter(fn(mixed $field): bool => is_array($field) && filled($field['key'] ?? null))
-            ->mapWithKeys(fn(array $field): array => [((string) $field['key']) => $field])
+            ->filter(fn (mixed $field): bool => is_array($field) && filled($field['key'] ?? null))
+            ->mapWithKeys(fn (array $field): array => [((string) $field['key']) => $field])
             ->union([
                 'comuna' => [
                     'key' => 'comuna',

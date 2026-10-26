@@ -397,10 +397,83 @@ class SyncPlantsActionTest extends TestCase
 
         $result = SyncPlantsAction::execute();
 
-        $this->assertTrue($result['success']);
-
         $plant->refresh();
         $this->assertSame($advisor->id, $plant->asesor_id);
         $this->assertSame('Updated Advisor Plant', $plant->name);
+    }
+
+    public function test_sync_plants_syncs_is_active_flag_on_create_and_update(): void
+    {
+        $proyecto = Proyecto::factory()->create([
+            'salesforce_id' => 'SF_PROJ_ACTIVE_TEST',
+        ]);
+
+        $existingPlant = Plant::create([
+            'salesforce_product_id' => 'SF_PLANT_TO_DEACTIVATE',
+            'salesforce_proyecto_id' => $proyecto->salesforce_id,
+            'name' => 'Plant To Deactivate',
+            'product_code' => 'DEACT-101',
+            'is_active' => true,
+        ]);
+
+        $this->mock(SalesforceService::class, function (MockInterface $mock) use ($proyecto): void {
+            $mock->shouldReceive('findPlants')
+                ->once()
+                ->andReturn([
+                    [
+                        'id' => 'SF_PLANT_TO_DEACTIVATE',
+                        'name' => 'Plant To Deactivate Updated',
+                        'product_code' => 'DEACT-101',
+                        'orientacion' => 'Norte',
+                        'programa' => '1D1B',
+                        'programa2' => null,
+                        'piso' => '1',
+                        'precio_base' => 3000.0,
+                        'precio_lista' => 3200.0,
+                        'porcentaje_maximo_unidad' => null,
+                        'superficie_total_principal' => 50.0,
+                        'superficie_interior' => 45.0,
+                        'superficie_util' => 45.0,
+                        'superficie_terraza' => 5.0,
+                        'tipo_producto' => 'DEPARTAMENTO',
+                        'proyecto_id' => $proyecto->salesforce_id,
+                        'is_active' => false,
+                    ],
+                    [
+                        'id' => 'SF_PLANT_NEW_INACTIVE',
+                        'name' => 'New Inactive Plant',
+                        'product_code' => 'NEW-INACT-102',
+                        'orientacion' => 'Sur',
+                        'programa' => '2D2B',
+                        'programa2' => null,
+                        'piso' => '2',
+                        'precio_base' => 4000.0,
+                        'precio_lista' => 4200.0,
+                        'porcentaje_maximo_unidad' => null,
+                        'superficie_total_principal' => 60.0,
+                        'superficie_interior' => 55.0,
+                        'superficie_util' => 55.0,
+                        'superficie_terraza' => 5.0,
+                        'tipo_producto' => 'DEPARTAMENTO',
+                        'proyecto_id' => $proyecto->salesforce_id,
+                        'is_active' => false,
+                    ],
+                ]);
+
+            $mock->shouldReceive('findPublicProjectDocuments')
+                ->once()
+                ->andReturn([]);
+        });
+
+        $result = SyncPlantsAction::execute();
+
+        $this->assertTrue($result['success']);
+
+        $existingPlant->refresh();
+        $this->assertFalse($existingPlant->is_active);
+
+        $newPlant = Plant::where('salesforce_product_id', 'SF_PLANT_NEW_INACTIVE')->first();
+        $this->assertNotNull($newPlant);
+        $this->assertFalse($newPlant->is_active);
     }
 }

@@ -9,7 +9,11 @@ const FBQ_STANDARD_EVENTS = {
   plant_click: 'ViewContent',
   reserve_click: 'AddToCart',
   checkout_start: 'InitiateCheckout',
+  form_submit: 'Lead',
+  wa_link: 'Contact',
   reservation_success: 'Purchase',
+  payment_success: 'Purchase',
+  purchase: 'Purchase',
 };
 
 const resolveContainerId = (value) => `${value ?? ''}`.trim().toUpperCase();

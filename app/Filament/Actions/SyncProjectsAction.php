@@ -41,6 +41,7 @@ class SyncProjectsAction
         'valor_reserva_exigido_min_peso' => 'Valor reserva exigido minimo (peso)',
         'descuento_defecto_cotizacion_web' => 'Descuento por defecto cotizacion web',
         'descuento_maximo_unidad' => 'Descuento maximo unidad',
+        'descuento_iva' => 'Descuento IVA',
         'entrega_inmediata' => 'Entrega inmediata',
         'tipo' => 'Tipo',
         'salesforce_logo_url' => 'Logo Salesforce',
@@ -130,6 +131,7 @@ class SyncProjectsAction
                     'valor_reserva_exigido_min_peso' => $proyectoData['valor_reserva_exigido_min_peso'],
                     'descuento_defecto_cotizacion_web' => $proyectoData['descuento_defecto_cotizacion_web'] ?? null,
                     'descuento_maximo_unidad' => $proyectoData['descuento_maximo_unidad'] ?? null,
+                    'descuento_iva' => $proyectoData['descuento_iva'] ?? null,
                     'entrega_inmediata' => $proyectoData['entrega_inmediata'],
                 ];
 

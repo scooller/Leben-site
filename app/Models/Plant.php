@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Str;
 
 class Plant extends Model
 {
@@ -24,6 +25,7 @@ class Plant extends Model
         'asesor_id',
         'contact_link',
         'name',
+        'sku',
         'product_code',
         'tipo_producto',
         'orientacion',
@@ -34,6 +36,9 @@ class Plant extends Model
         'precio_lista',
         'porcentaje_maximo_unidad',
         'descuento_defecto_cotizacion_web',
+        'descuento_maximo_unidad',
+        'descuento_iva',
+        'priorizar_descuentos',
         'unidad_sale',
         'superficie_total_principal',
         'superficie_interior',
@@ -51,6 +56,9 @@ class Plant extends Model
         'precio_lista' => 'decimal:2',
         'porcentaje_maximo_unidad' => 'decimal:2',
         'descuento_defecto_cotizacion_web' => 'decimal:2',
+        'descuento_maximo_unidad' => 'decimal:2',
+        'descuento_iva' => 'decimal:2',
+        'priorizar_descuentos' => 'boolean',
         'unidad_sale' => 'boolean',
         'superficie_total_principal' => 'decimal:2',
         'superficie_interior' => 'decimal:2',
@@ -59,6 +67,18 @@ class Plant extends Model
         'is_active' => 'boolean',
         'last_synced_at' => 'datetime',
     ];
+
+    /**
+     * Boot del modelo
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (self $plant) {
+            if (blank($plant->sku) && filled($plant->name)) {
+                $plant->sku = $plant->resolveSku();
+            }
+        });
+    }
 
     /**
      * Relación con Proyecto
@@ -129,6 +149,7 @@ class Plant extends Model
             'salesforce_product_id',
             'salesforce_proyecto_id',
             'name',
+            'sku',
             'product_code',
             'tipo_producto',
             'orientacion',
@@ -139,12 +160,16 @@ class Plant extends Model
             'precio_lista',
             'porcentaje_maximo_unidad',
             'descuento_defecto_cotizacion_web',
+            'descuento_maximo_unidad',
+            'descuento_iva',
+            'priorizar_descuentos',
             'unidad_sale',
             'superficie_total_principal',
             'superficie_interior',
             'superficie_util',
             'superficie_terraza',
             'salesforce_interior_image_url',
+            'contact_link',
             'is_active',
             'last_synced_at',
         ];
@@ -201,19 +226,53 @@ class Plant extends Model
             ->latest('id');
     }
 
-    public function resolveFinalPrice(bool $eventoSaleActivo = false): float
+    public function getEffectiveDescuentoDefectoCotizacionWeb(): float
+    {
+        if ((bool) $this->priorizar_descuentos) {
+            return (float) ($this->descuento_defecto_cotizacion_web ?? 0);
+        }
+
+        return (float) ($this->proyecto?->descuento_defecto_cotizacion_web ?? 0);
+    }
+
+    public function getEffectiveDescuentoMaximoUnidad(): float
+    {
+        if ((bool) $this->priorizar_descuentos) {
+            return (float) ($this->descuento_maximo_unidad ?? 0);
+        }
+
+        return (float) ($this->proyecto?->descuento_maximo_unidad ?? 0);
+    }
+
+    public function getEffectiveDescuentoIva(): float
+    {
+        if ((bool) $this->priorizar_descuentos) {
+            return (float) ($this->descuento_iva ?? 0);
+        }
+
+        return (float) ($this->proyecto?->descuento_iva ?? 0);
+    }
+
+    public function resolveFinalPrice(string|bool|null $percentageSource = null): float
     {
         $precioLista = (float) ($this->precio_lista ?? 0);
         $precioBase = (float) ($this->precio_base ?? 0);
 
-        $projectDiscount = $this->proyecto?->descuento_defecto_cotizacion_web;
+        if ($percentageSource === null) {
+            $extraSettings = SiteSetting::current()->extra_settings;
+            $percentageSource = is_array($extraSettings) ? ($extraSettings['price_percentage_source'] ?? 'web_discount') : 'web_discount';
+        }
 
-        $porcentajeDescuento = $eventoSaleActivo
-            ? (float) ($this->porcentaje_maximo_unidad ?? 0)
-            : (float) ($projectDiscount ?? 0);
+        $isMaxUnit = $percentageSource === 'max_unit' || $percentageSource === true;
+        $porcentajeDescuento = $isMaxUnit
+            ? $this->getEffectiveDescuentoMaximoUnidad()
+            : $this->getEffectiveDescuentoDefectoCotizacionWeb();
 
-        if ($precioLista > 0 && $porcentajeDescuento > 0) {
-            $precioConDescuento = $precioLista - (($precioLista * $porcentajeDescuento) / 100);
+        $descuentoIva = $this->getEffectiveDescuentoIva();
+        $totalDescuento = $porcentajeDescuento + $descuentoIva;
+
+        if ($precioLista > 0 && $totalDescuento > 0) {
+            $precioConDescuento = $precioLista - (($precioLista * $totalDescuento) / 100);
 
             return max(0, $precioConDescuento);
         }
@@ -235,5 +294,31 @@ class Plant extends Model
     public function isPaid(): bool
     {
         return $this->completedReservation()->exists() || $this->completedPayment()->exists();
+    }
+
+    public function resolveSku(bool $ignoreExisting = false): string
+    {
+        if (! $ignoreExisting && filled($this->sku)) {
+            return (string) $this->sku;
+        }
+
+        $projectSlug = $this->proyecto?->slug ?: Str::slug((string) ($this->proyecto?->name ?? 'leben'));
+        $cleanProject = preg_replace('/^edificio[-_]?/i', '', $projectSlug);
+        if (blank($cleanProject)) {
+            $cleanProject = $projectSlug;
+        }
+
+        $unitName = trim((string) ($this->name ?? $this->id));
+        $normalizedUnit = Str::slug($unitName);
+
+        return strtoupper($cleanProject.'-'.($normalizedUnit ?: $unitName));
+    }
+
+    public function resolveCanonicalId(): string
+    {
+        $projectSlug = $this->proyecto?->slug ?: Str::slug((string) ($this->proyecto?->name ?? 'leben'));
+        $unitSlug = Str::slug((string) ($this->name ?? $this->id));
+
+        return "leben-{$projectSlug}-depto-{$unitSlug}";
     }
 }

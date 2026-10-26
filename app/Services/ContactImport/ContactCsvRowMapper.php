@@ -42,6 +42,13 @@ class ContactCsvRowMapper
             'comuna' => 'fields.comuna',
             'commune' => 'fields.comuna',
             'district' => 'fields.comuna',
+            'comuna_inversion' => 'fields.comuna_inversion',
+            'comunainversion' => 'fields.comuna_inversion',
+            'comuna_interes' => 'fields.comuna_inversion',
+            'comunainteres' => 'fields.comuna_inversion',
+            'que_comuna_te_interesa_para_vivir_o_invertir' => 'fields.comuna_inversion',
+            'que_comuna_te_interesa_para_vivir_o_inv' => 'fields.comuna_inversion',
+            'comuna_preferida' => 'fields.comuna_inversion',
             'proyecto' => 'fields.proyecto',
             'project' => 'fields.proyecto',
             'project_name' => 'fields.proyecto',
@@ -57,8 +64,11 @@ class ContactCsvRowMapper
             'audiencia' => 'fields.utm_medium',
             'pieza_grafica' => 'fields.utm_content',
             'rango_de_renta' => 'fields.rango_renta',
+            'rango' => 'fields.rango_renta',
+            'renta' => 'fields.rango_renta',
             'en_que_rango_se_encuentra_tu_renta_liquida' => 'fields.rango_renta',
             'tienes_la_posibilidad_de_complementar_tu_renta' => 'fields.codeudor',
+            'codeudor' => 'fields.codeudor',
         ];
 
         if (array_key_exists($signature, $directMap)) {
@@ -206,6 +216,8 @@ class ContactCsvRowMapper
         }
 
         $rangoAliases = [
+            'rango',
+            'renta',
             'rango_de_renta',
             'en_que_rango_se_encuentra_tu_renta_liquida',
         ];
@@ -357,15 +369,26 @@ class ContactCsvRowMapper
 
     private function normalizeTextValue(string $value): string
     {
-        $normalized = str_replace('_', ' ', $value);
-        $normalized = (string) preg_replace('/\s+/', ' ', $normalized);
+        $clean = mb_check_encoding($value, 'UTF-8')
+            ? $value
+            : mb_convert_encoding($value, 'UTF-8', 'Windows-1252');
+
+        $clean = mb_convert_encoding($clean, 'UTF-8', 'UTF-8');
+        $normalized = str_replace('_', ' ', $clean);
+        $normalized = (string) preg_replace('/\s+/u', ' ', $normalized);
 
         return trim($normalized);
     }
 
     public function headerSignature(string $header): string
     {
-        $signature = Str::of($header)
+        $cleanHeader = mb_check_encoding($header, 'UTF-8')
+            ? $header
+            : mb_convert_encoding($header, 'UTF-8', 'Windows-1252');
+
+        $cleanHeader = mb_convert_encoding($cleanHeader, 'UTF-8', 'UTF-8');
+
+        $signature = Str::of($cleanHeader)
             ->ascii()
             ->lower()
             ->replace(':', ' ')

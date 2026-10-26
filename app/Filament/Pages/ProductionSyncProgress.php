@@ -64,6 +64,13 @@ class ProductionSyncProgress extends Page
             return;
         }
 
+        $processed = (int) ($this->snapshot['processed'] ?? 0);
+        $totalSteps = (int) ($this->snapshot['total_steps'] ?? 0);
+
+        if ($processed > 0 || $totalSteps > 0) {
+            return;
+        }
+
         $startedAt = $this->snapshot['started_at'] ?? null;
         if (blank($startedAt)) {
             return;

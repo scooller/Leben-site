@@ -224,7 +224,16 @@ class PlantController extends Controller
                 }
 
                 if (count($entregaValues) > 0) {
-                    $projectQuery->whereIn('etapa', $entregaValues);
+                    $hasEntregaInmediata = in_array('entrega_inmediata', $entregaValues, true)
+                        || in_array('entrega', $entregaValues, true)
+                        || in_array('Entrega inmediata', $entregaValues, true);
+
+                    $projectQuery->where(function ($eq) use ($entregaValues, $hasEntregaInmediata): void {
+                        $eq->whereIn('etapa', $entregaValues);
+                        if ($hasEntregaInmediata) {
+                            $eq->orWhere('entrega_inmediata', true);
+                        }
+                    });
                 }
             });
         }
@@ -242,15 +251,79 @@ class PlantController extends Controller
         $perPage = (int) $request->input('perPage', $defaultPerPage);
         $perPage = max(1, min($perPage, 100));
 
-        $projectDiscountExpression = '(SELECT p.descuento_defecto_cotizacion_web FROM proyectos p WHERE p.salesforce_id = plants.salesforce_proyecto_id LIMIT 1)';
+        $projectMaxDiscountExpression = '(SELECT p.descuento_maximo_unidad FROM proyectos p WHERE p.salesforce_id = plants.salesforce_proyecto_id LIMIT 1)';
+        $projectDefaultDiscountExpression = '(SELECT p.descuento_defecto_cotizacion_web FROM proyectos p WHERE p.salesforce_id = plants.salesforce_proyecto_id LIMIT 1)';
+        $projectIvaDiscountExpression = '(SELECT p.descuento_iva FROM proyectos p WHERE p.salesforce_id = plants.salesforce_proyecto_id LIMIT 1)';
+        $projectNameExpression = '(SELECT p.name FROM proyectos p WHERE p.salesforce_id = plants.salesforce_proyecto_id LIMIT 1)';
 
-        $orderByDiscountExpression = $eventoSale === true
-            ? 'COALESCE(porcentaje_maximo_unidad, 0)'
-            : "COALESCE({$projectDiscountExpression}, 0)";
+        $extraSettings = SiteSetting::current()->extra_settings;
+        $pricePercentageSource = is_array($extraSettings) ? ($extraSettings['price_percentage_source'] ?? 'web_discount') : 'web_discount';
 
-        $query->orderByRaw(
-            "COALESCE(CASE WHEN {$orderByDiscountExpression} > 0 AND precio_lista > 0 THEN CASE WHEN (precio_lista - ((precio_lista * {$orderByDiscountExpression}) / 100)) < 0 THEN 0 ELSE (precio_lista - ((precio_lista * {$orderByDiscountExpression}) / 100)) END ELSE precio_base END, 999999999999) ASC"
-        )->orderBy('id');
+        $effectiveMaxDiscount = "CASE WHEN plants.priorizar_descuentos = 1 THEN COALESCE(plants.descuento_maximo_unidad, 0) ELSE COALESCE({$projectMaxDiscountExpression}, 0) END";
+        $effectiveDefaultDiscount = "CASE WHEN plants.priorizar_descuentos = 1 THEN COALESCE(plants.descuento_defecto_cotizacion_web, 0) ELSE COALESCE({$projectDefaultDiscountExpression}, 0) END";
+        $effectiveIvaDiscount = "CASE WHEN plants.priorizar_descuentos = 1 THEN COALESCE(plants.descuento_iva, 0) ELSE COALESCE({$projectIvaDiscountExpression}, 0) END";
+
+        $orderByDiscountExpression = $pricePercentageSource === 'max_unit'
+            ? $effectiveMaxDiscount
+            : $effectiveDefaultDiscount;
+
+        $orderByTotalDiscount = "({$orderByDiscountExpression} + {$effectiveIvaDiscount})";
+
+        $finalPriceExpression = "CASE WHEN {$orderByTotalDiscount} > 0 AND precio_lista > 0 THEN CASE WHEN (precio_lista - ((precio_lista * {$orderByTotalDiscount}) / 100)) < 0 THEN 0 ELSE (precio_lista - ((precio_lista * {$orderByTotalDiscount}) / 100)) END ELSE precio_base END";
+
+        $discountTierExpression = "CASE WHEN ({$effectiveIvaDiscount} > 0 AND {$orderByDiscountExpression} > 0) THEN 1 WHEN ({$effectiveIvaDiscount} > 0 AND {$orderByDiscountExpression} <= 0) THEN 2 WHEN ({$orderByDiscountExpression} > 0) THEN 3 ELSE 4 END";
+
+        $defaultOrder = is_array($extraSettings) ? ($extraSettings['plants_default_order'] ?? 'discounts') : 'discounts';
+        $sortBy = (string) $request->input('sort_by', '');
+        $sortDirection = strtolower((string) $request->input('sort_direction', 'asc')) === 'desc' ? 'DESC' : 'ASC';
+
+        if ($sortBy === 'name_project_plant' || $sortBy === 'project') {
+            $query
+                ->orderByRaw("LOWER(COALESCE({$projectNameExpression}, '')) {$sortDirection}")
+                ->orderByRaw("LOWER(COALESCE(name, '')) {$sortDirection}");
+        } elseif ($sortBy === 'plant_name' || $sortBy === 'name') {
+            $query->orderByRaw("LOWER(COALESCE(name, '')) {$sortDirection}");
+        } elseif ($sortBy === 'price_base') {
+            $query->orderByRaw("COALESCE(precio_base, 999999999999) {$sortDirection}");
+        } elseif ($sortBy === 'price_asc' || $sortBy === 'price_final') {
+            $query->orderByRaw("COALESCE({$finalPriceExpression}, 999999999999) ASC");
+        } elseif ($sortBy === 'price_desc') {
+            $query->orderByRaw("COALESCE({$finalPriceExpression}, 0) DESC");
+        } elseif ($sortBy === 'offer_discount' || $sortBy === 'discounts' || $sortBy === 'dctos') {
+            if ($sortDirection === 'DESC') {
+                $query
+                    ->orderByRaw("{$discountTierExpression} ASC")
+                    ->orderByRaw("COALESCE({$orderByTotalDiscount}, 0) DESC")
+                    ->orderByRaw("COALESCE({$finalPriceExpression}, 999999999999) ASC");
+            } else {
+                $query
+                    ->orderByRaw("{$discountTierExpression} DESC")
+                    ->orderByRaw("COALESCE({$orderByTotalDiscount}, 0) ASC")
+                    ->orderByRaw("COALESCE({$finalPriceExpression}, 999999999999) DESC");
+            }
+        } elseif ($sortBy === 'random' || $sortBy === 'al_azar') {
+            $query->inRandomOrder();
+        } else {
+            match ($defaultOrder) {
+                'project' => $query
+                    ->orderByRaw("LOWER(COALESCE({$projectNameExpression}, '')) ASC")
+                    ->orderByRaw("LOWER(COALESCE(name, '')) ASC"),
+                'plant_name', 'name' => $query
+                    ->orderByRaw("LOWER(COALESCE(name, '')) ASC"),
+                'random', 'al_azar' => $query
+                    ->inRandomOrder(),
+                'price_asc' => $query
+                    ->orderByRaw("COALESCE({$finalPriceExpression}, 999999999999) ASC"),
+                'price_desc' => $query
+                    ->orderByRaw("COALESCE({$finalPriceExpression}, 0) DESC"),
+                default => $query
+                    ->orderByRaw("{$discountTierExpression} ASC")
+                    ->orderByRaw("COALESCE({$orderByTotalDiscount}, 0) DESC")
+                    ->orderByRaw("COALESCE({$finalPriceExpression}, 999999999999) ASC"),
+            };
+        }
+
+        $query->orderBy('id');
 
         $plants = $query->paginate($perPage)->through(function (Plant $plant) use ($eventoSale): array {
             return $this->plantPayload($plant, $eventoSale);
@@ -374,7 +447,7 @@ class PlantController extends Controller
             ->whereHas('plantas', function ($plantsQuery) {
                 $plantsQuery->where('is_active', true);
             })
-            ->get(['region', 'comuna', 'etapa']);
+            ->get(['region', 'comuna', 'etapa', 'entrega_inmediata']);
 
         $orientaciones = Plant::query()
             ->where('is_active', true)
@@ -446,8 +519,13 @@ class PlantController extends Controller
             });
 
         $entregas = $projects
-            ->pluck('etapa')
-            ->map(static fn (mixed $etapa): string => trim((string) (Proyecto::etapaLabel($etapa) ?? '')))
+            ->map(static function (Proyecto $project): string {
+                if ($project->entrega_inmediata) {
+                    return 'Entrega inmediata';
+                }
+
+                return trim((string) (Proyecto::etapaLabel($project->etapa) ?? ''));
+            })
             ->filter(static fn (string $etapa): bool => $etapa !== '')
             ->unique()
             ->sort(SORT_NATURAL | SORT_FLAG_CASE)
@@ -505,15 +583,17 @@ class PlantController extends Controller
             'provincia' => $proyecto->provincia,
             'region' => $proyecto->region,
             'pagina_web' => $proyecto->pagina_web,
-            'etapa' => Proyecto::etapaLabel($proyecto->etapa),
+            'etapa' => $proyecto->entrega_inmediata ? 'Entrega inmediata' : Proyecto::etapaLabel($proyecto->etapa),
             'horario_atencion' => $proyecto->horario_atencion,
-            'entrega_inmediata' => $proyecto->entrega_inmediata,
+            'entrega_inmediata' => (bool) $proyecto->entrega_inmediata,
             'is_active' => $proyecto->is_active,
             'image_url' => $proyecto->image_url,
             'salesforce_logo_url' => $proyecto->salesforce_logo_url,
             'valor_reserva_exigido_defecto_peso' => $proyecto->valor_reserva_exigido_defecto_peso,
             'valor_reserva_exigido_min_peso' => $proyecto->valor_reserva_exigido_min_peso,
             'descuento_defecto_cotizacion_web' => (float) ($proyecto->descuento_defecto_cotizacion_web ?? 0),
+            'descuento_maximo_unidad' => (float) ($proyecto->descuento_maximo_unidad ?? 0),
+            'descuento_iva' => (float) ($proyecto->descuento_iva ?? 0),
             'asesores' => $proyecto->asesores
                 ->where('is_active', true)
                 ->values()

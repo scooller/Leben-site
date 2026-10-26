@@ -16,9 +16,15 @@ class RolesAndPermissionsSeeder extends Seeder
     {
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
+        Role::findOrCreate('super_admin', 'web');
         Role::findOrCreate('admin', 'web');
         Role::findOrCreate('marketing', 'web');
         Role::findOrCreate('cliente', 'web');
+
+        User::query()
+            ->whereIn('user_type', ['super_admin', 'super admin'])
+            ->get()
+            ->each(fn (User $user): User => tap($user, fn (User $model): User => $model->syncRoles(['super_admin'])));
 
         User::query()
             ->where('user_type', 'admin')

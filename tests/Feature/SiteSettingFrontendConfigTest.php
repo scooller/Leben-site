@@ -48,6 +48,8 @@ class SiteSettingFrontendConfigTest extends TestCase
 
         SiteSetting::current()->update([
             'brand_color' => '#112233',
+            'show_theme_toggle' => false,
+            'default_color_mode' => 'light',
             'gateway_reservation_timeout_minutes' => 22,
             'evento_sale' => true,
             'mostrar_plantas' => false,
@@ -76,9 +78,13 @@ class SiteSettingFrontendConfigTest extends TestCase
                 'home_hero_video_desktop_url' => 'https://cdn.example.com/home-desktop.mp4',
                 'home_hero_video_mobile_url' => 'https://cdn.example.com/home-mobile.mp4',
                 'home_hero_video_poster_id' => $posterMedia->id,
+                'home_hero_link' => 'https://example.com/promo-home',
+                'home_hero_link_new_tab' => true,
                 'price_source' => 'base',
                 'price_percentage_source' => 'max_unit',
                 'contact_hero_alt' => 'Hero contacto',
+                'contact_hero_link' => '/f/proyectos',
+                'contact_hero_link_new_tab' => false,
                 'catalogo_no_disponible_titulo' => 'Volvemos pronto',
                 'catalogo_no_disponible_mensaje' => 'Estamos actualizando nuestras plantas. Vuelve en breve.',
                 'default_meta_title' => 'iLeben | Departamentos en venta',
@@ -117,6 +123,10 @@ class SiteSettingFrontendConfigTest extends TestCase
 
         $this->assertArrayHasKey('brand_color', $payload);
         $this->assertSame('#112233', $payload['brand_color']);
+        $this->assertArrayHasKey('show_theme_toggle', $payload);
+        $this->assertFalse($payload['show_theme_toggle']);
+        $this->assertArrayHasKey('default_color_mode', $payload);
+        $this->assertSame('light', $payload['default_color_mode']);
         $this->assertArrayHasKey('evento_sale', $payload);
         $this->assertTrue($payload['evento_sale']);
         $this->assertArrayHasKey('mostrar_plantas', $payload);
@@ -179,6 +189,10 @@ class SiteSettingFrontendConfigTest extends TestCase
         $this->assertArrayHasKey('image_desktop', $payload['hero']['contact']);
         $this->assertArrayHasKey('image_mobile', $payload['hero']['contact']);
         $this->assertSame('Hero contacto', $payload['hero']['contact']['alt']);
+        $this->assertSame('https://example.com/promo-home', $payload['hero']['home']['link']);
+        $this->assertTrue($payload['hero']['home']['link_new_tab']);
+        $this->assertSame('/f/proyectos', $payload['hero']['contact']['link']);
+        $this->assertFalse($payload['hero']['contact']['link_new_tab']);
     }
 
     /**

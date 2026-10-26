@@ -42,6 +42,8 @@
         Header set Cache-Control "no-cache, no-store, must-revalidate"
         Header set Pragma "no-cache"
         Header set Expires "0"
+        Header add Link "<https://admin.ileben.cl/api/cyber/feed.json>; rel=\"alternate\"; type=\"application/json\""
+        Header add Link "<https://admin.ileben.cl/api/feed.json>; rel=\"alternate\"; type=\"application/json\""
         Header add Link "</.well-known/api-catalog>; rel=\"api-catalog\""
         Header add Link "</.well-known/ai-catalog.json>; rel=\"ai-catalog\""
         Header add Link "</api/v1>; rel=\"service-desc\"; type=\"application/json\""
@@ -97,6 +99,9 @@
     RewriteCond %{REQUEST_URI} !^/auth\.md$
     RewriteCond %{REQUEST_URI} !\.md$ [NC]
     RewriteRule ^ index.md [L]
+
+    # Redirección de feeds de producto / Cyber AI hacia backend
+    RewriteRule ^(cyber/)?feed(\.json)?$ https://admin.ileben.cl/api/cyber/feed.json [R=302,L]
 
     RewriteRule ^(contacto|pago)/?$ index.html [L]
 

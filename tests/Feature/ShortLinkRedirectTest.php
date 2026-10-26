@@ -30,7 +30,7 @@ class ShortLinkRedirectTest extends TestCase
             'tag_manager_id' => null,
         ]);
 
-        $response = $this->get('/s/' . $shortLink->slug . '?utm_source=google');
+        $response = $this->get('/s/'.$shortLink->slug.'?utm_source=google');
 
         $response->assertRedirect('https://example.com/landing?utm_source=google');
 
@@ -51,7 +51,7 @@ class ShortLinkRedirectTest extends TestCase
             'status' => ShortLinkStatus::ACTIVE,
         ]);
 
-        $response = $this->get('/s/' . $shortLink->slug);
+        $response = $this->get('/s/'.$shortLink->slug);
 
         $response
             ->assertOk()
@@ -67,7 +67,7 @@ class ShortLinkRedirectTest extends TestCase
             'slug' => 'promo03',
         ]);
 
-        $response = $this->get('/s/' . $shortLink->slug);
+        $response = $this->get('/s/'.$shortLink->slug);
 
         $response->assertNotFound();
     }
@@ -78,7 +78,7 @@ class ShortLinkRedirectTest extends TestCase
             'slug' => 'promo04',
         ]);
 
-        $response = $this->get('/s/' . $shortLink->slug);
+        $response = $this->get('/s/'.$shortLink->slug);
 
         $response->assertNotFound();
     }

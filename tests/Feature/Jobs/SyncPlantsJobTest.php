@@ -5,7 +5,6 @@ namespace Tests\Feature\Jobs;
 use App\Jobs\SyncPlantsJob;
 use App\Models\Proyecto;
 use App\Services\Salesforce\SalesforceService;
-use Exception;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Mockery\MockInterface;

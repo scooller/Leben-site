@@ -20,8 +20,8 @@ class ViewShortLink extends ViewRecord
             Action::make('openShortUrl')
                 ->label('Abrir URL corta')
                 ->icon('heroicon-o-link')
-                ->url(fn(): string => $this->getRecord()->shortUrl(), true),
-            ShowQrCodeAction::make(fn(ShortLink $record): string => $record->shortUrl()),
+                ->url(fn (): string => $this->getRecord()->shortUrl(), true),
+            ShowQrCodeAction::make(fn (ShortLink $record): string => $record->shortUrl()),
             EditAction::make(),
             DeleteAction::make()
                 ->label('Eliminar')

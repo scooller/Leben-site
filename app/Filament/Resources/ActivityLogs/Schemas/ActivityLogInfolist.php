@@ -38,7 +38,7 @@ class ActivityLogInfolist
                                             TextEntry::make('event')
                                                 ->badge()
                                                 ->label(__('filament-activity-log::activity.infolist.entry.event'))
-                                                ->formatStateUsing(fn(?string $state): string => ucfirst((string) $state))
+                                                ->formatStateUsing(fn (?string $state): string => ucfirst((string) $state))
                                                 ->colors([
                                                     'success' => 'created',
                                                     'warning' => 'updated',
@@ -56,7 +56,7 @@ class ActivityLogInfolist
                                         Group::make([
                                             TextEntry::make('causer')
                                                 ->label(__('filament-activity-log::activity.infolist.entry.causer'))
-                                                ->getStateUsing(fn($record): string => $record->causer->name ?? 'System')
+                                                ->getStateUsing(fn ($record): string => $record->causer->name ?? 'System')
                                                 ->url(function ($record): ?string {
                                                     $causer = $record->causer;
 
@@ -80,7 +80,7 @@ class ActivityLogInfolist
 
                                             TextEntry::make('subject')
                                                 ->label(__('filament-activity-log::activity.infolist.entry.subject'))
-                                                ->getStateUsing(fn($record): string => \AlizHarb\ActivityLog\Support\ActivityLogTitle::get($record->subject))
+                                                ->getStateUsing(fn ($record): string => \AlizHarb\ActivityLog\Support\ActivityLogTitle::get($record->subject))
                                                 ->url(function ($record): ?string {
                                                     $subject = $record->subject;
 
@@ -127,15 +127,15 @@ class ActivityLogInfolist
                                     ->label(__('filament-activity-log::activity.infolist.entry.attributes'))
                                     ->keyLabel(__('filament-activity-log::activity.infolist.entry.key'))
                                     ->valueLabel(__('filament-activity-log::activity.infolist.entry.value'))
-                                    ->getStateUsing(fn($record): array => self::normalizeKeyValueState(data_get($record, 'properties.attributes')))
-                                    ->visible(fn($record): bool => $record->properties->has('attributes') && config('filament-activity-log.infolist.entries.properties_attributes', true)),
+                                    ->getStateUsing(fn ($record): array => self::normalizeKeyValueState(data_get($record, 'properties.attributes')))
+                                    ->visible(fn ($record): bool => $record->properties->has('attributes') && config('filament-activity-log.infolist.entries.properties_attributes', true)),
 
                                 KeyValueEntry::make('properties.old')
                                     ->label(__('filament-activity-log::activity.infolist.entry.old'))
                                     ->keyLabel(__('filament-activity-log::activity.infolist.entry.key'))
                                     ->valueLabel(__('filament-activity-log::activity.infolist.entry.value'))
-                                    ->getStateUsing(fn($record): array => self::normalizeKeyValueState(data_get($record, 'properties.old')))
-                                    ->visible(fn($record): bool => $record->properties->has('old') && config('filament-activity-log.infolist.entries.properties_old', true)),
+                                    ->getStateUsing(fn ($record): array => self::normalizeKeyValueState(data_get($record, 'properties.old')))
+                                    ->visible(fn ($record): bool => $record->properties->has('old') && config('filament-activity-log.infolist.entries.properties_old', true)),
                             ]),
 
                         Tab::make('Raw Data')
@@ -145,7 +145,7 @@ class ActivityLogInfolist
                             ->schema([
                                 CodeEntry::make('properties')
                                     ->label(__('filament-activity-log::activity.infolist.entry.properties'))
-                                    ->formatStateUsing(fn($state): string => self::normalizeRawPropertiesState($state))
+                                    ->formatStateUsing(fn ($state): string => self::normalizeRawPropertiesState($state))
                                     ->columnSpanFull()
                                     ->visible(config('filament-activity-log.infolist.entries.properties_raw', true)),
                             ]),

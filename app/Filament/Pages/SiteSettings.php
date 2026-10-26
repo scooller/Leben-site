@@ -8,6 +8,7 @@ use App\Filament\Actions\SyncProjectsAction;
 use App\Models\ContactChannel;
 use App\Models\Proyecto;
 use App\Models\SiteSetting;
+use App\Services\Salesforce\SalesforceCaseMapper;
 use Awcodes\Curator\Components\Forms\CuratorPicker;
 use Awcodes\Curator\Components\Forms\RichEditor\AttachCuratorMediaPlugin;
 use BackedEnum;
@@ -24,28 +25,30 @@ use Filament\Forms\Components\Toggle;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
+use Filament\Pages\Concerns\HasUnsavedDataChangesAlert;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Exceptions\Halt;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\HtmlString;
-use Omniphx\Forrest\Providers\Laravel\Facades\Forrest;
 use Throwable;
 use UnitEnum;
 
 class SiteSettings extends Page implements HasForms
 {
+    use HasUnsavedDataChangesAlert;
     use InteractsWithForms;
 
     /**
      * @return array<string, string>
      */
-    protected static function projectOptions(): array
+    public static function projectOptions(): array
     {
         return Proyecto::query()
             ->orderBy('is_active', 'desc')
@@ -70,6 +73,140 @@ class SiteSettings extends Page implements HasForms
                 return [$name => $label];
             })
             ->toArray();
+    }
+
+    /**
+     * @return array<int, \Filament\Schemas\Components\Component>
+     */
+    public static function getContactFormFieldsSchema(): array
+    {
+        return [
+            TextInput::make('label')
+                ->label('Etiqueta')
+                ->required()
+                ->maxLength(100)
+                ->live(onBlur: true)
+                ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                    if (filled($state) && ! filled($get('key'))) {
+                        $suggestedKey = SalesforceCaseMapper::normalizeInternalKey($state);
+                        $set('key', $suggestedKey);
+
+                        if (! filled($get('salesforce_field')) && filled($suggestedKey)) {
+                            $set('salesforce_field', SalesforceCaseMapper::defaultPayloadFieldForKey($suggestedKey));
+                        }
+                    }
+                }),
+
+            TextInput::make('key')
+                ->label('Clave interna')
+                ->required()
+                ->maxLength(50)
+                ->distinct()
+                ->validationMessages([
+                    'distinct' => 'Esta clave interna ya está en uso por otro campo. Usa una clave única.',
+                ])
+                ->live(onBlur: true)
+                ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                    if (! filled($get('salesforce_field'))) {
+                        $set('salesforce_field', SalesforceCaseMapper::defaultPayloadFieldForKey($state));
+                    }
+                })
+                ->helperText('Ej: name, rut, email, reason, message'),
+
+            TextInput::make('icon')
+                ->label('Ícono')
+                ->maxLength(100)
+                ->placeholder('Ej: envelope, phone, map-location')
+                ->helperText('Nombre del ícono de Web Awesome que se mostrará en el campo.'),
+
+            Select::make('type')
+                ->label('Tipo')
+                ->options([
+                    'text' => 'Texto',
+                    'email' => 'Email',
+                    'tel' => 'Teléfono',
+                    'number' => 'Número',
+                    'textarea' => 'Área de texto',
+                    'rut' => 'RUT',
+                    'select' => 'Selector',
+                ])
+                ->required()
+                ->default('text')
+                ->live(),
+
+            Select::make('salesforce_field')
+                ->label('Campo en Payload Salesforce')
+                ->placeholder('Sin mapeo directo / Automático')
+                ->options(SalesforceCaseMapper::getSelectablePayloadFields())
+                ->disableOptionsWhenSelectedInSiblingRepeaterItems()
+                ->searchable()
+                ->nullable()
+                ->live()
+                ->default(fn (Get $get): ?string => SalesforceCaseMapper::defaultPayloadFieldForKey($get('key')))
+                ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                    if (filled($state) && ! filled($get('key'))) {
+                        $suggestedKey = SalesforceCaseMapper::defaultKeyForPayloadField($state);
+                        if (filled($suggestedKey)) {
+                            $set('key', $suggestedKey);
+                        }
+                    }
+                })
+                ->afterStateHydrated(function (Select $component, $state, Get $get) {
+                    if (! filled($state) && filled($get('key'))) {
+                        $component->state(SalesforceCaseMapper::defaultPayloadFieldForKey($get('key')));
+                    }
+                })
+                ->dehydrateStateUsing(fn ($state, Get $get) => filled($state) ? $state : SalesforceCaseMapper::defaultPayloadFieldForKey($get('key')))
+                ->formatStateUsing(fn ($state, Get $get): ?string => $state ?: SalesforceCaseMapper::defaultPayloadFieldForKey($get('key')))
+                ->helperText('Campo asociado del payload que se enviará a Salesforce Lead.'),
+
+            Select::make('projects')
+                ->label('Mostrar para proyecto')
+                ->options(self::projectOptions())
+                ->multiple()
+                ->searchable()
+                ->preload()
+                ->visible(fn (Get $get): bool => $get('type') !== 'select')
+                ->helperText('Opcional. Si seleccionas proyectos, este campo solo se mostrará cuando el proyecto seleccionado pertenezca a alguno de ellos.'),
+
+            TextInput::make('placeholder')
+                ->label('Placeholder')
+                ->maxLength(255),
+
+            Repeater::make('options')
+                ->label('Opciones del selector')
+                ->schema([
+                    TextInput::make('label')
+                        ->label('Etiqueta')
+                        ->required()
+                        ->maxLength(100),
+
+                    TextInput::make('value')
+                        ->label('Valor')
+                        ->required()
+                        ->maxLength(100),
+
+                    Select::make('projects')
+                        ->label('Mostrar para proyecto')
+                        ->options(self::projectOptions())
+                        ->multiple()
+                        ->searchable()
+                        ->preload()
+                        ->columnSpanFull()
+                        ->helperText('Opcional. Si seleccionas proyectos, esta opción solo se usará para esos proyectos.'),
+                ])
+                ->visible(fn (Get $get): bool => $get('type') === 'select')
+                ->defaultItems(0)
+                ->reorderable()
+                ->collapsible()
+                ->columns(2)
+                ->columnSpanFull()
+                ->helperText('Estas opciones estarán disponibles en el frontend cuando el tipo sea Selector.'),
+
+            Toggle::make('required')
+                ->label('Obligatorio')
+                ->default(false),
+        ];
     }
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCog6Tooth;
@@ -110,7 +247,16 @@ class SiteSettings extends Page implements HasForms
             }
         }
 
+        if (data_get($data, 'extra_settings.plants_default_order') === null) {
+            data_set($data, 'extra_settings.plants_default_order', 'discounts');
+        }
+
+        if (data_get($data, 'extra_settings.salesforce_sync_inactive_projects') === null) {
+            data_set($data, 'extra_settings.salesforce_sync_inactive_projects', true);
+        }
+
         $this->form->fill($data);
+        $this->rememberData();
 
         if (\Illuminate\Support\Facades\Cache::pull('salesforce_oauth_just_connected')) {
             Notification::make()
@@ -180,6 +326,20 @@ class SiteSettings extends Page implements HasForms
                                             ->default(12)
                                             ->required()
                                             ->helperText('Define cuántas plantas se muestran por página por defecto en el catálogo (si no se envía perPage en la API).'),
+
+                                        Select::make('extra_settings.plants_default_order')
+                                            ->label('Orden predeterminado de plantas')
+                                            ->options([
+                                                'discounts' => 'Descuentos (IVA + Dcto, Solo IVA, otros)',
+                                                'project' => 'Proyecto y nombre de planta',
+                                                'plant_name' => 'Nombre de planta',
+                                                'random' => 'Al azar / Aleatorio',
+                                                'price_asc' => 'Menor precio',
+                                                'price_desc' => 'Mayor precio',
+                                            ])
+                                            ->default('discounts')
+                                            ->required()
+                                            ->helperText('Define el orden inicial del catálogo de plantas en el frontend cuando no hay un orden seleccionado por el usuario.'),
 
                                         TextInput::make('extra_settings.catalogo_no_disponible_titulo')
                                             ->label('Título cuando no se muestran plantas')
@@ -299,6 +459,17 @@ class SiteSettings extends Page implements HasForms
                                             ->label('Poster del video Hero Home')
                                             ->helperText('Imagen usada mientras carga el video o si no puede reproducirse.')
                                             ->visible(fn (Get $get): bool => ($get('extra_settings.home_hero_type') ?? 'video') === 'video'),
+
+                                        TextInput::make('extra_settings.home_hero_link')
+                                            ->label('Enlace opcional del banner')
+                                            ->placeholder('https://... o /p/...')
+                                            ->maxLength(2048)
+                                            ->helperText('Si se define, el banner redirigirá a este enlace al hacer clic.'),
+
+                                        Toggle::make('extra_settings.home_hero_link_new_tab')
+                                            ->label('Abrir enlace en nueva pestaña')
+                                            ->default(false)
+                                            ->visible(fn (Get $get): bool => filled($get('extra_settings.home_hero_link'))),
                                     ])
                                     ->columns(1),
 
@@ -317,6 +488,17 @@ class SiteSettings extends Page implements HasForms
                                             ->label('Texto disclaimer para hero de contacto')
                                             ->placeholder('Ejemplo: "Porcentaje corresponde a la unidad X"')
                                             ->maxLength(255),
+
+                                        TextInput::make('extra_settings.contact_hero_link')
+                                            ->label('Enlace opcional del banner')
+                                            ->placeholder('https://... o /')
+                                            ->maxLength(2048)
+                                            ->helperText('Si se define, el banner redirigirá a este enlace al hacer clic.'),
+
+                                        Toggle::make('extra_settings.contact_hero_link_new_tab')
+                                            ->label('Abrir enlace en nueva pestaña')
+                                            ->default(false)
+                                            ->visible(fn (Get $get): bool => filled($get('extra_settings.contact_hero_link'))),
                                     ])
                                     ->columns(1),
                             ]),
@@ -355,35 +537,45 @@ class SiteSettings extends Page implements HasForms
                                         Select::make('webawesome_theme')
                                             ->label('Tema Web Awesome')
                                             ->options([
-                                                'default' => 'Default',
-                                                'awesome' => 'Awesome',
-                                                'shoelace' => 'Shoelace',
-                                                'active' => 'Active',
-                                                'brutalist' => 'Brutalist',
-                                                'glossy' => 'Glossy',
-                                                'matter' => 'Matter',
-                                                'mellow' => 'Mellow',
-                                                'playful' => 'Playful',
-                                                'premium' => 'Premium',
-                                                'tailspin' => 'Tailspin',
+                                                'Temas Gratuitos (Core)' => [
+                                                    'default' => 'Default (Estándar Web Awesome)',
+                                                    'awesome' => 'Awesome (Moderno y distintivo)',
+                                                    'shoelace' => 'Shoelace (Clásico y neutral)',
+                                                ],
+                                                'Temas Pro' => [
+                                                    'active' => 'Active (Dinámico y deportivo)',
+                                                    'brutalist' => 'Brutalist (Alto contraste y bordes marcados)',
+                                                    'glossy' => 'Glossy (Reflejos y estética glassmorphism)',
+                                                    'matter' => 'Matter (Inspirado en Material Design)',
+                                                    'mellow' => 'Mellow (Cálido y redondeado)',
+                                                    'playful' => 'Playful (Lúdico y amigable)',
+                                                    'premium' => 'Premium (Elegante y refinado)',
+                                                    'tailspin' => 'Tailspin (Inspirado en Tailwind)',
+                                                ],
                                             ])
-                                            ->helperText('Define el estilo base y colores del sitio')
+                                            ->helperText('Define el estilo base, bordes, sombras y tipografía del sitio')
+                                            ->searchable()
                                             ->required(),
 
                                         Select::make('webawesome_palette')
                                             ->label('Paleta de Colores')
                                             ->options([
-                                                'default' => 'Default',
-                                                'bright' => 'Bright',
-                                                'shoelace' => 'Shoelace',
-                                                'rudimentary' => 'Rudimentary (Pro)',
-                                                'elegant' => 'Elegant (Pro)',
-                                                'mild' => 'Mild (Pro)',
-                                                'natural' => 'Natural (Pro)',
-                                                'anodized' => 'Anodized (Pro)',
-                                                'vogue' => 'Vogue (Pro)',
+                                                'Paletas Gratuitas (Core)' => [
+                                                    'default' => 'Default (Equilibrada estándar)',
+                                                    'bright' => 'Bright (Vibrante y saturada)',
+                                                    'shoelace' => 'Shoelace (Clásica neutral)',
+                                                ],
+                                                'Paletas Pro' => [
+                                                    'rudimentary' => 'Rudimentary (Tonos primarios y directos)',
+                                                    'elegant' => 'Elegant (Tonos sobrios y refinados)',
+                                                    'mild' => 'Mild (Tonos suaves y desaturados)',
+                                                    'natural' => 'Natural (Tonos orgánicos y tierra)',
+                                                    'anodized' => 'Anodized (Metálico e industrial)',
+                                                    'vogue' => 'Vogue (Alta costura y contraste editorial)',
+                                                ],
                                             ])
-                                            ->helperText('Define los tonos y matices específicos de los colores')
+                                            ->helperText('Define los tonos y matices específicos de los colores de la interfaz')
+                                            ->searchable()
                                             ->required(),
 
                                         // agregar color principal de la marca para aplicar a botones, enlaces y elementos destacados
@@ -392,6 +584,22 @@ class SiteSettings extends Page implements HasForms
                                             ->default('#eb0029')
                                             ->required()
                                             ->helperText('Color principal de tu marca, aplicado a botones, enlaces y elementos destacados'),
+
+                                        Select::make('default_color_mode')
+                                            ->label('Modo de Color por Defecto')
+                                            ->options([
+                                                'system' => 'Sistema (detecta preferencia del dispositivo)',
+                                                'dark' => 'Oscuro',
+                                                'light' => 'Claro',
+                                            ])
+                                            ->default('system')
+                                            ->required()
+                                            ->helperText('Determina el modo visual inicial cuando el visitante no ha seleccionado una preferencia'),
+
+                                        Toggle::make('show_theme_toggle')
+                                            ->label('Mostrar Switch Modo Oscuro/Claro')
+                                            ->default(true)
+                                            ->helperText('Muestra u oculta el botón flotante de cambio de modo en todas las páginas del frontend'),
                                     ])
                                     ->columns(2),
 
@@ -550,7 +758,7 @@ class SiteSettings extends Page implements HasForms
                                         Placeholder::make('serp_snippet_preview')
                                             ->hiddenLabel()
                                             ->content(fn (Get $get): \Illuminate\Contracts\View\View => view('filament.components.serp-snippet-preview', [
-                                                'title' => $get('extra_settings.default_meta_title') ?: ($get('site_name') ? $get('site_name') . ' | Departamentos y Proyectos en Venta' : ''),
+                                                'title' => $get('extra_settings.default_meta_title') ?: ($get('site_name') ? $get('site_name').' | Departamentos y Proyectos en Venta' : ''),
                                                 'description' => $get('extra_settings.default_og_description') ?: ($get('site_description') ?: ''),
                                                 'siteUrl' => $get('site_url') ?: 'https://sale.ileben.cl',
                                                 'siteName' => $get('site_name') ?: 'iLeben',
@@ -681,7 +889,7 @@ class SiteSettings extends Page implements HasForms
                                             ->label('Imagen Open Graph')
                                             ->helperText('Selecciona una imagen desde Curator para compartir en redes sociales (ideal: 1200x630px).'),
                                     ])
-                                    ->columns(1),
+                                    ->columns(2),
 
                                 Section::make('Evento Sale — SEO')
                                     ->description('Campos de SEO estructurado para Google durante eventos Cyber/Sale. Se activan automáticamente cuando "Evento Sale" está habilitado.')
@@ -713,7 +921,7 @@ class SiteSettings extends Page implements HasForms
                                             ->label('Imagen OG del evento (opcional)')
                                             ->helperText('Si se selecciona, reemplaza la imagen Open Graph estándar durante el evento (ideal: 1200x630px). Deja vacío para usar la imagen OG general.'),
                                     ])
-                                    ->columns(1),
+                                    ->columns(2),
                             ]),
 
                         Tabs\Tab::make('QR')
@@ -839,9 +1047,10 @@ class SiteSettings extends Page implements HasForms
 
                                         Textarea::make('contact_address')
                                             ->label('Dirección')
-                                            ->rows(3),
+                                            ->rows(3)
+                                            ->columnSpanFull(),
                                     ])
-                                    ->columns(1),
+                                    ->columns(2),
 
                                 Section::make('Página de Contacto')
                                     ->description('Contenido administrable para la vista de contacto en el frontend')
@@ -882,89 +1091,14 @@ class SiteSettings extends Page implements HasForms
 
                                         Repeater::make('contact_form_fields')
                                             ->label('Campos del formulario de contacto')
-                                            ->schema([
-                                                TextInput::make('key')
-                                                    ->label('Clave interna')
-                                                    ->required()
-                                                    ->maxLength(50)
-                                                    ->helperText('Ej: name, rut, email, reason, message'),
-
-                                                TextInput::make('label')
-                                                    ->label('Etiqueta')
-                                                    ->required()
-                                                    ->maxLength(100),
-
-                                                TextInput::make('icon')
-                                                    ->label('Ícono')
-                                                    ->maxLength(100)
-                                                    ->placeholder('Ej: envelope, phone, map-location')
-                                                    ->helperText('Nombre del ícono de Web Awesome que se mostrará en el campo.'),
-
-                                                Select::make('type')
-                                                    ->label('Tipo')
-                                                    ->options([
-                                                        'text' => 'Texto',
-                                                        'email' => 'Email',
-                                                        'tel' => 'Teléfono',
-                                                        'number' => 'Número',
-                                                        'textarea' => 'Área de texto',
-                                                        'rut' => 'RUT',
-                                                        'select' => 'Selector',
-                                                    ])
-                                                    ->required()
-                                                    ->default('text')
-                                                    ->live(),
-
-                                                Select::make('projects')
-                                                    ->label('Mostrar para proyecto')
-                                                    ->options(self::projectOptions())
-                                                    ->multiple()
-                                                    ->searchable()
-                                                    ->preload()
-                                                    ->visible(fn (Get $get): bool => $get('type') !== 'select')
-                                                    ->helperText('Opcional. Si seleccionas proyectos, este campo solo se mostrará cuando el proyecto seleccionado pertenezca a alguno de ellos.'),
-
-                                                TextInput::make('placeholder')
-                                                    ->label('Placeholder')
-                                                    ->maxLength(255),
-
-                                                Repeater::make('options')
-                                                    ->label('Opciones del selector')
-                                                    ->schema([
-                                                        TextInput::make('label')
-                                                            ->label('Etiqueta')
-                                                            ->required()
-                                                            ->maxLength(100),
-
-                                                        TextInput::make('value')
-                                                            ->label('Valor')
-                                                            ->required()
-                                                            ->maxLength(100),
-
-                                                        Select::make('projects')
-                                                            ->label('Mostrar para proyecto')
-                                                            ->options(self::projectOptions())
-                                                            ->multiple()
-                                                            ->searchable()
-                                                            ->preload()
-                                                            ->columnSpanFull()
-                                                            ->helperText('Opcional. Si seleccionas proyectos, esta opción solo se usará para esos proyectos.'),
-                                                    ])
-                                                    ->visible(fn (Get $get): bool => $get('type') === 'select')
-                                                    ->defaultItems(0)
-                                                    ->reorderable()
-                                                    ->collapsible()
-                                                    ->columns(2)
-                                                    ->columnSpanFull()
-                                                    ->helperText('Estas opciones estarán disponibles en el frontend cuando el tipo sea Selector.'),
-
-                                                Toggle::make('required')
-                                                    ->label('Obligatorio')
-                                                    ->default(false),
-                                            ])
+                                            ->schema(self::getContactFormFieldsSchema())
                                             ->defaultItems(0)
                                             ->reorderable()
                                             ->collapsible()
+                                            ->itemLabel(fn (array $state): ?string => filled($state['label'] ?? null)
+                                                ? ($state['label'].' ('.($state['key'] ?? '').(($sf = ($state['salesforce_field'] ?? SalesforceCaseMapper::defaultPayloadFieldForKey($state['key'] ?? null))) ? ' → '.$sf : '').')')
+                                                : null
+                                            )
                                             ->columns(2)
                                             ->helperText('Puedes definir cuántos campos deseas mostrar y validar en el formulario, incluyendo RUT y selectores.'),
                                     ])
@@ -1046,13 +1180,13 @@ class SiteSettings extends Page implements HasForms
                                         Textarea::make('extra_settings.post_contact_script')
                                             ->label('Script Post-Contacto')
                                             ->rows(6)
-                                            ->placeholder('<script>' . "\n" . '  if (typeof fbq === "function") {' . "\n" . '    fbq("track", "Lead", { name: "{name}", email: "{email}" });' . "\n" . '  }' . "\n" . '</script>')
+                                            ->placeholder('<script>'."\n".'  if (typeof fbq === "function") {'."\n".'    fbq("track", "Lead", { name: "{name}", email: "{email}" });'."\n".'  }'."\n".'</script>')
                                             ->helperText('Se dispara inmediatamente tras enviar con éxito el formulario de contacto. Tokens disponibles: {form_id}, {channel}, {name}, {email}, {phone}, {rut}, {project_id}.'),
 
                                         Textarea::make('extra_settings.post_payment_script')
                                             ->label('Script Post-Pago / Reserva')
                                             ->rows(6)
-                                            ->placeholder('<script>' . "\n" . '  if (typeof fbq === "function") {' . "\n" . '    fbq("track", "Purchase", { value: {amount}, currency: "CLP" });' . "\n" . '  }' . "\n" . '</script>')
+                                            ->placeholder('<script>'."\n".'  if (typeof fbq === "function") {'."\n".'    fbq("track", "Purchase", { value: {amount}, currency: "CLP" });'."\n".'  }'."\n".'</script>')
                                             ->helperText('Se dispara tras iniciar un checkout, enviar comprobante o confirmar el pago con éxito. Tokens disponibles: {payment_id}, {order_id}, {amount}, {gateway}, {unit_id}, {project_id}, {customer_email}, {customer_name}, {customer_phone}, {customer_rut}.'),
                                     ])
                                     ->columns(1),
@@ -1105,7 +1239,7 @@ class SiteSettings extends Page implements HasForms
                                             ->default(15)
                                             ->required(),
                                     ])
-                                    ->columns(1),
+                                    ->columns(2),
 
                                 Section::make('Fuente de precio del frontend')
                                     ->description('Define qué precio se mostrará como valor principal en el catálogo. El precio lista siempre se mantiene como referencia fija.')
@@ -1113,10 +1247,11 @@ class SiteSettings extends Page implements HasForms
                                         Select::make('extra_settings.price_source')
                                             ->label('Precio principal')
                                             ->options([
+                                                'lista' => 'Precio lista',
                                                 'final' => 'Precio final',
                                                 'base' => 'Precio base',
                                             ])
-                                            ->default('final')
+                                            ->default('lista')
                                             ->required()
                                             ->helperText('El precio lista se mostrará siempre como referencia, independientemente del valor elegido aquí.'),
 
@@ -1143,51 +1278,70 @@ class SiteSettings extends Page implements HasForms
                                             ->label('Incluir todos los campos en Description')
                                             ->helperText('Si está activo, el campo Description del Lead incluirá el detalle completo de los campos enviados. Si está desactivado, no se enviará Description.')
                                             ->default(true),
-                                    ])
-                                    ->columns(1),
 
-                                Section::make('Proyectos')
-                                    ->description('Selecciona los campos de proyectos que no se deben actualizar al sincronizar desde Salesforce.')
-                                    ->schema([
-                                        Select::make('extra_settings.salesforce_sync_projects_excluded_fields')
-                                            ->label('Campos excluidos de sincronizacion (Proyectos)')
-                                            ->helperText('Estos campos se mantienen con su valor local al actualizar proyectos existentes.')
-                                            ->options(SyncProjectsAction::getUpdatableFieldOptions())
-                                            ->multiple()
-                                            ->searchable()
-                                            ->preload()
-                                            ->default([]),
-                                    ])
-                                    ->columns(1),
+                                        Toggle::make('extra_settings.salesforce_sync_inactive_projects')
+                                            ->label('Sincronizar automáticamente proyectos inactivos en Salesforce')
+                                            ->helperText('Si está desactivado, los contactos recibidos para proyectos inactivos se guardarán localmente pero no se enviarán automáticamente a Salesforce (podrán sincronizarse manualmente desde la tabla de contactos).')
+                                            ->default(true)
+                                            ->live(),
 
-                                Section::make('Plantas')
-                                    ->description('Selecciona los campos de plantas que no se deben actualizar al sincronizar desde Salesforce.')
-                                    ->schema([
-                                        Select::make('extra_settings.salesforce_sync_plants_excluded_fields')
-                                            ->label('Campos excluidos de sincronizacion (Plantas)')
-                                            ->helperText('Estos campos se mantienen con su valor local al actualizar plantas existentes.')
-                                            ->options(SyncPlantsAction::getUpdatableFieldOptions())
-                                            ->multiple()
-                                            ->searchable()
-                                            ->preload()
-                                            ->default([]),
-                                    ])
-                                    ->columns(1),
+                                        Placeholder::make('inactive_projects_notice')
+                                            ->label('Aviso de proyectos no activos')
+                                            ->content(function (Get $get): HtmlString {
+                                                $syncInactive = (bool) ($get('extra_settings.salesforce_sync_inactive_projects') ?? true);
+                                                $inactiveProjects = Proyecto::query()
+                                                    ->where('is_active', false)
+                                                    ->orderBy('name')
+                                                    ->get(['name', 'comuna']);
 
-                                Section::make('Descuento expuesto en API')
-                                    ->description('Define desde qué entidad se toma el porcentaje de descuento para la API pública.')
-                                    ->schema([
-                                        Select::make('extra_settings.salesforce_discount_source')
-                                            ->label('Fuente de descuento para API')
-                                            ->helperText('Project: usa descuento del proyecto. Plant: usa porcentaje de la planta. Si el origen elegido no tiene valor, se usa el otro como fallback.')
-                                            ->options([
-                                                'project' => 'Proyecto',
-                                                'plant' => 'Planta',
-                                            ])
-                                            ->default('project')
-                                            ->searchable(),
-                                    ])
-                                    ->columns(1),
+                                                if ($inactiveProjects->isEmpty()) {
+                                                    return new HtmlString(
+                                                        '<div style="padding:0.75rem 1rem;border-radius:0.5rem;background-color:rgba(107,114,128,0.08);border:1px solid rgba(107,114,128,0.2);font-size:0.875rem;">'
+                                                        .'<span>ℹ️ No hay proyectos inactivos registrados actualmente en el sistema. Todos los proyectos están activos.</span>'
+                                                        .'</div>'
+                                                    );
+                                                }
+
+                                                $items = $inactiveProjects->map(function (Proyecto $proyecto): string {
+                                                    $name = e((string) $proyecto->name);
+                                                    $comuna = filled($proyecto->comuna) ? ' <span style="opacity:0.75;">('.e((string) $proyecto->comuna).')</span>' : '';
+
+                                                    return '<li style="margin-left:1.25rem;list-style-type:disc;">'.$name.$comuna.'</li>';
+                                                })->implode('');
+
+                                                $count = $inactiveProjects->count();
+                                                $plural = $count === 1 ? 'proyecto inactivo' : 'proyectos inactivos';
+
+                                                if (! $syncInactive) {
+                                                    $bannerColor = '#f59e0b';
+                                                    $bgColor = 'rgba(245, 158, 11, 0.1)';
+                                                    $borderColor = 'rgba(245, 158, 11, 0.3)';
+                                                    $icon = '⚠️';
+                                                    $description = 'Sincronización automática <strong>DESACTIVADA</strong>. Los contactos que ingresen para los siguientes proyectos <strong>NO se enviarán automáticamente a Salesforce</strong>:';
+                                                } else {
+                                                    $bannerColor = '#3b82f6';
+                                                    $bgColor = 'rgba(59, 130, 246, 0.08)';
+                                                    $borderColor = 'rgba(59, 130, 246, 0.25)';
+                                                    $icon = 'ℹ️';
+                                                    $description = 'Sincronización automática <strong>ACTIVA</strong>. Los contactos recibidos para los siguientes proyectos <strong>sí se sincronizarán automáticamente con Salesforce</strong>:';
+                                                }
+
+                                                $html = <<<HTML
+                                                <div style="padding:0.85rem 1rem;border-radius:0.5rem;background-color:{$bgColor};border:1px solid {$borderColor};font-size:0.875rem;line-height:1.45;">
+                                                    <div style="display:flex;align-items:center;gap:0.5rem;font-weight:600;margin-bottom:0.35rem;color:{$bannerColor};">
+                                                        <span>{$icon}</span>
+                                                        <span>Se detectaron {$count} {$plural}</span>
+                                                    </div>
+                                                    <p style="margin-bottom:0.5rem;">{$description}</p>
+                                                    <ul style="margin:0;padding-left:0.5rem;">
+                                                        {$items}
+                                                    </ul>
+                                                </div>
+                                                HTML;
+
+                                                return new HtmlString($html);
+                                            }),
+                                    ]),
 
                                 Section::make('Sincronización Automática de Plantas')
                                     ->description('Configura cada cuánto se sincronizan automáticamente las plantas y qué tipos se incluirán.')
@@ -1214,8 +1368,33 @@ class SiteSettings extends Page implements HasForms
                                             ->searchable()
                                             ->default(['ESTACIONAMIENTO', 'DEPARTAMENTO', 'BODEGA', 'LOCAL'])
                                             ->required(),
-                                    ])
-                                    ->columns(1),
+                                    ]),
+
+                                Section::make('Proyectos')
+                                    ->description('Selecciona los campos de proyectos que no se deben actualizar al sincronizar desde Salesforce.')
+                                    ->schema([
+                                        Select::make('extra_settings.salesforce_sync_projects_excluded_fields')
+                                            ->label('Campos excluidos de sincronizacion (Proyectos)')
+                                            ->helperText('Estos campos se mantienen con su valor local al actualizar proyectos existentes.')
+                                            ->options(SyncProjectsAction::getUpdatableFieldOptions())
+                                            ->multiple()
+                                            ->searchable()
+                                            ->preload()
+                                            ->default([]),
+                                    ]),
+
+                                Section::make('Plantas')
+                                    ->description('Selecciona los campos de plantas que no se deben actualizar al sincronizar desde Salesforce.')
+                                    ->schema([
+                                        Select::make('extra_settings.salesforce_sync_plants_excluded_fields')
+                                            ->label('Campos excluidos de sincronizacion (Plantas)')
+                                            ->helperText('Estos campos se mantienen con su valor local al actualizar plantas existentes.')
+                                            ->options(SyncPlantsAction::getUpdatableFieldOptions())
+                                            ->multiple()
+                                            ->searchable()
+                                            ->preload()
+                                            ->default([]),
+                                    ]),
 
                                 Section::make('Conexión OAuth')
                                     ->description('Conecta con Salesforce para autorizar la integración.')
@@ -1250,8 +1429,9 @@ class SiteSettings extends Page implements HasForms
                                                 return new HtmlString($html);
                                             }),
                                     ])
-                                    ->columns(1),
-                            ]),
+                                    ->columnSpanFull(),
+                            ])
+                            ->columns(2),
 
                         Tabs\Tab::make('Mantenimiento')
                             ->icon('heroicon-o-wrench-screwdriver')
@@ -1391,7 +1571,15 @@ class SiteSettings extends Page implements HasForms
         try {
             $data = $this->form->getState();
 
-            SiteSetting::current()->update($data);
+            $settings = SiteSetting::current();
+            $existingExtra = is_array($settings->extra_settings) ? $settings->extra_settings : [];
+            if (isset($data['extra_settings']) && is_array($data['extra_settings'])) {
+                $data['extra_settings'] = array_merge($existingExtra, $data['extra_settings']);
+            }
+
+            $settings->update($data);
+            $this->rememberData();
+            $this->dispatch('site-settings-saved');
 
             Notification::make()
                 ->success()
@@ -1401,5 +1589,10 @@ class SiteSettings extends Page implements HasForms
         } catch (Halt $exception) {
             return;
         }
+    }
+
+    protected function hasUnsavedDataChangesAlert(): bool
+    {
+        return false;
     }
 }

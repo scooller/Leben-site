@@ -71,4 +71,42 @@ class SalesforceServicePlantTypesFilterTest extends TestCase
 
         $this->assertSame([], $plants);
     }
+
+    public function test_it_queries_and_maps_is_active_from_salesforce(): void
+    {
+        Forrest::shouldReceive('query')
+            ->once()
+            ->withArgs(function (string $soql): bool {
+                return str_contains($soql, 'SELECT ')
+                    && str_contains($soql, 'IsActive')
+                    && ! str_contains($soql, 'IsActive = true')
+                    && str_contains($soql, "Estado__c = 'Disponible'");
+            })
+            ->andReturn([
+                'records' => [
+                    [
+                        'Id' => 'SF_PLANT_ACTIVE',
+                        'Name' => 'Depto 101',
+                        'ProductCode' => 'D101',
+                        'Tipo_Producto__c' => 'DEPARTAMENTO',
+                        'Proyecto__c' => 'SF_PROJ_1',
+                        'IsActive' => true,
+                    ],
+                    [
+                        'Id' => 'SF_PLANT_INACTIVE',
+                        'Name' => 'Depto 102',
+                        'ProductCode' => 'D102',
+                        'Tipo_Producto__c' => 'DEPARTAMENTO',
+                        'Proyecto__c' => 'SF_PROJ_1',
+                        'IsActive' => false,
+                    ],
+                ],
+            ]);
+
+        $plants = app(SalesforceService::class)->findPlants(0, ['SF_PROJ_1']);
+
+        $this->assertCount(2, $plants);
+        $this->assertTrue($plants[0]['is_active']);
+        $this->assertFalse($plants[1]['is_active']);
+    }
 }

@@ -34,9 +34,10 @@ trait EnrichesPlantPayload
         $payload['is_available'] = $plant->activeReservation === null
             && $plant->completedReservation === null
             && $plant->completedPayment === null;
-        $payload['descuento_defecto_cotizacion_web'] = (float) ($plant->descuento_defecto_cotizacion_web
-            ?? $plant->proyecto?->descuento_defecto_cotizacion_web
-            ?? 0);
+        $payload['priorizar_descuentos'] = (bool) ($plant->priorizar_descuentos ?? false);
+        $payload['descuento_defecto_cotizacion_web'] = $plant->getEffectiveDescuentoDefectoCotizacionWeb();
+        $payload['descuento_maximo_unidad'] = $plant->getEffectiveDescuentoMaximoUnidad();
+        $payload['descuento_iva'] = $plant->getEffectiveDescuentoIva();
         $payload['precio_final'] = $this->resolveApiFinalPrice($plant, $apiDiscountPercentage);
 
         return $payload;
@@ -53,9 +54,10 @@ trait EnrichesPlantPayload
         $payload['interior_image_url'] = $plant->interiorImageMedia?->url ?: $plant->salesforce_interior_image_url;
         $payload['imageUrl'] = $this->resolveImageUrl($plant);
         $payload['detailImageUrl'] = $this->resolveDetailImageUrl($plant);
-        $payload['descuento_defecto_cotizacion_web'] = (float) ($plant->descuento_defecto_cotizacion_web
-            ?? $plant->proyecto?->descuento_defecto_cotizacion_web
-            ?? 0);
+        $payload['priorizar_descuentos'] = (bool) ($plant->priorizar_descuentos ?? false);
+        $payload['descuento_defecto_cotizacion_web'] = $plant->getEffectiveDescuentoDefectoCotizacionWeb();
+        $payload['descuento_maximo_unidad'] = $plant->getEffectiveDescuentoMaximoUnidad();
+        $payload['descuento_iva'] = $plant->getEffectiveDescuentoIva();
         $payload['asesores'] = $this->resolvePlantAdvisors($plant, $defaultAdvisorAvatarUrl ?? $this->getDefaultAdvisorAvatarUrl());
         $payload['is_paid'] = $plant->completedReservation !== null || $plant->completedPayment !== null;
         $payload['is_available'] = $plant->activeReservation === null
@@ -66,13 +68,20 @@ trait EnrichesPlantPayload
         return $payload;
     }
 
-    private function resolveApiDiscountPercentage(Plant $plant, ?bool $eventoSale): float
+    private function resolveApiDiscountPercentage(Plant $plant, ?bool $eventoSale = null, ?string $percentageSource = null): float
     {
-        $projectDiscount = $plant->proyecto?->descuento_defecto_cotizacion_web;
+        if ($percentageSource === null) {
+            $extraSettings = SiteSetting::current()->extra_settings;
+            $percentageSource = is_array($extraSettings) ? ($extraSettings['price_percentage_source'] ?? 'web_discount') : 'web_discount';
+        }
 
-        return $eventoSale
-            ? (float) ($plant->porcentaje_maximo_unidad ?? 0)
-            : (float) ($projectDiscount ?? 0);
+        $baseDiscount = $percentageSource === 'max_unit'
+            ? $plant->getEffectiveDescuentoMaximoUnidad()
+            : $plant->getEffectiveDescuentoDefectoCotizacionWeb();
+
+        $descuentoIva = $plant->getEffectiveDescuentoIva();
+
+        return (float) ($baseDiscount + $descuentoIva);
     }
 
     private function resolveApiFinalPrice(Plant $plant, float $discountPercentage): float

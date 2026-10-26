@@ -75,8 +75,8 @@ class FrontendPreviewLink extends Model
         }
 
         $allowedIps = collect(preg_split('/[\s,]+/', (string) $this->allowed_ip) ?: [])
-            ->map(static fn(string $ip): string => trim($ip))
-            ->filter(static fn(string $ip): bool => $ip !== '')
+            ->map(static fn (string $ip): string => trim($ip))
+            ->filter(static fn (string $ip): bool => $ip !== '')
             ->values();
 
         foreach ($allowedIps as $allowedIp) {
@@ -99,7 +99,7 @@ class FrontendPreviewLink extends Model
         $previewPath = $previewPath === '' ? '/' : $previewPath;
 
         if (! str_starts_with($previewPath, '/')) {
-            $previewPath = '/' . $previewPath;
+            $previewPath = '/'.$previewPath;
         }
 
         return $previewPath;
@@ -111,6 +111,6 @@ class FrontendPreviewLink extends Model
         $previewPath = $this->normalizedPreviewPath();
         $separator = str_contains($previewPath, '?') ? '&' : '?';
 
-        return $baseUrl . $previewPath . $separator . 'preview_token=' . $this->token;
+        return $baseUrl.$previewPath.$separator.'preview_token='.$this->token;
     }
 }

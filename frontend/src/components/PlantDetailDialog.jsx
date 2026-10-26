@@ -1,8 +1,9 @@
 import { trackEvent } from '../utils/tagManager';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { resolveStageAlias } from '../utils/stageAlias';
 import { getStoredUtmParams } from '../utils/utmSession';
 import { appendSessionUtmsToExternalUrl } from '../utils/externalLinks';
+import { appendPreviewTokenToUrl } from '../utils/previewToken';
 
 function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = null, dialogRef, checkoutLoading, onCheckout, onClose }) {
     const closeNotifiedRef = useRef(false);
@@ -45,12 +46,21 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
     }, [dialogRef, onClose]);
 
     const sanitizePhone = (value) => `${value ?? ''}`.replace(/\D+/g, '');
-    const mobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
-    const ActionButtonsContainer = mobile ? 'div' : 'wa-button-group';
-    const actionButtonsContainerClassName = mobile
-        ? 'wa-stack wa-order-1 wa-order-mobile-0'
-        : 'wa-order-1 wa-order-mobile-0';
-    const actionButtonsContainerStyle = mobile ? { width: '100%', marginTop: '1rem' } : undefined;
+    const [isMobile, setIsMobile] = useState(() => (
+        typeof window !== 'undefined' ? window.matchMedia('(max-width: 768px)').matches : false
+    ));
+
+    useEffect(() => {
+        if (typeof window === 'undefined') {
+            return;
+        }
+
+        const mediaQuery = window.matchMedia('(max-width: 768px)');
+        const handleMediaChange = (event) => setIsMobile(event.matches);
+
+        mediaQuery.addEventListener('change', handleMediaChange);
+        return () => mediaQuery.removeEventListener('change', handleMediaChange);
+    }, []);
 
     const reservaExigidaPeso = plant?.proyecto?.valor_reserva_exigido_defecto_peso ?? null;
     const reservaAsNumber = reservaExigidaPeso !== null && reservaExigidaPeso !== undefined
@@ -152,7 +162,7 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
         const slide = isSvg
             ? {
                 type: 'html',
-                html: `<img src="${imageUrl.replace(/"/g, '&quot;')}" alt="Planta ${plant?.nombre || ''}" style="display:block;width:min(92vw,1400px);height:auto;max-height:90vh;object-fit:contain;margin:0 auto;" />`,
+                html: `<img src="${imageUrl.replace(/"/g, '&quot;')}" alt="Planta ${plant?.nombre || ''}" style="display:block;width:min(92vw,1400px);height:auto;max-height:90vh;object-fit:contain;margin:0 auto;" loading="lazy" decoding="async" />`,
                 caption: `Planta ${plant?.nombre || ''}`,
             }
             : {
@@ -198,16 +208,17 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
         try {
             const parsedTarget = new URL(resolveContactTarget(), window.location.origin);
             const isExternal = parsedTarget.origin !== window.location.origin;
+            const internalPath = `${parsedTarget.pathname}${parsedTarget.search}${parsedTarget.hash}` || fallbackPath;
 
             return {
                 href: isExternal
                     ? appendSessionUtmsToExternalUrl(parsedTarget.href)
-                    : `${parsedTarget.pathname}${parsedTarget.search}${parsedTarget.hash}` || fallbackPath,
+                    : appendPreviewTokenToUrl(internalPath),
                 isExternal,
             };
         } catch {
             return {
-                href: fallbackPath,
+                href: appendPreviewTokenToUrl(fallbackPath),
                 isExternal: false,
             };
         }
@@ -230,11 +241,19 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
         }
     };
 
+    const unitDiscount = parseFloat((Number(plant?.porcentajeAplicado ?? plant?.discountPercentage) || 0).toFixed(2));
+    const ivaDiscount = parseFloat((Number(plant?.descuentoIva ?? plant?.descuento_iva) || 0).toFixed(2));
+    const hasIva = ivaDiscount > 0;
+    const totalDiscountRaw = hasIva ? (unitDiscount + ivaDiscount) : unitDiscount;
+    const totalDiscount = parseFloat(totalDiscountRaw.toFixed(2));
+    const displayTotalDiscount = totalDiscountRaw.toFixed(1);
+    const shouldShowDiscountSeal = totalDiscountRaw > 0;
+
     return (
         <wa-dialog
             ref={dialogRef}
             className="plant-detail-dialog"
-            style={mobile ? { '--width': '100dvw', '--wa-space-2xl': '1rem' } : { '--width': '80vw' }} // --width desktop 80vw, mobile 95vw
+            style={isMobile ? { '--width': '100dvw', '--wa-space-2xl': '1rem' } : { '--width': '80vw' }} // --width desktop 80vw, mobile 95vw
         >
             {plant && (
                 <>
@@ -257,6 +276,8 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
                                         src={plant.projectLogoUrl}
                                         alt={`Logo de ${plant.proyectoNombre || 'proyecto'}`}
                                         className="project-logo-image"
+                                        loading="lazy"
+                                        decoding="async"
                                     />
                                 </wa-badge>
                             )}
@@ -271,17 +292,25 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
                                         src={saleLogoUrl}
                                         alt="Logo Sale"
                                         className="sale-logo-image"
-                                    />
+                                        loading="lazy"
+                                        decoding="async" />
                                 </wa-badge>
                             )}
-                            {plant.discountPercentage > 0 && (
+                            {shouldShowDiscountSeal && (
                                 <wa-animation name="flash" duration={5000} iterations={Infinity}>
-                                    <div className="discount-seal" aria-label={`Descuento ${plant.discountPercentage}%`}>
-                                        <span className="discount-seal-value">{plant.discountPercentage}</span>
-                                        <span className="discount-seal-label">
-                                            <span className='simbol'>%</span>
-                                            descto.
-                                        </span>
+                                    <div className={`discount-seal-container${hasIva ? ' has-iva' : ''}`}>
+                                        <div id={`discount-seal-detail-${plant.id}`} className="discount-seal" aria-label={`Descuento ${displayTotalDiscount}%`}>
+                                            <span className="discount-seal-value">{displayTotalDiscount}</span>
+                                            <span className="discount-seal-label">
+                                                <span className='simbol'>%</span>
+                                                descto.
+                                            </span>
+                                        </div>
+                                        {hasIva && (
+                                            <wa-tooltip for={`discount-seal-detail-${plant.id}`}>
+                                                Dcto IVA {ivaDiscount}% + Dcto. Sale {unitDiscount}%
+                                            </wa-tooltip>
+                                        )}
                                     </div>
                                 </wa-animation>
                             )}
@@ -302,10 +331,10 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
                                                 <span>{plant.proyectoComuna}</span>
                                             </div>
                                         )}
-                                        {plant.proyectoEtapa && (
+                                        {(plant.proyectoEtapa || plant.proyectoEntregaInmediata) && (
                                             <div className="wa-split wa-align-items-center">
                                                 <strong>Etapa</strong>
-                                                <wa-badge variant="success">{resolveStageAlias(plant.proyectoEtapa, plant.proyectoSlug)}</wa-badge>
+                                                <wa-badge variant="neutral">{resolveStageAlias(plant.proyectoEtapa, plant.proyectoSlug, plant.proyectoEntregaInmediata)}</wa-badge>
                                             </div>
                                         )}
                                         {plant.proyectoDescripcion && (
@@ -327,7 +356,7 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
                                         {plant.programa && (
                                             <div className="wa-split wa-align-items-center">
                                                 <strong>Programa</strong>
-                                                <wa-badge variant="brand">{plant.programa}</wa-badge>
+                                                <wa-badge variant="neutral">{plant.programa}</wa-badge>
                                             </div>
                                         )}
                                         {plant.orientacion && (
@@ -342,11 +371,31 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
                                                 <wa-tag variant="neutral">{plant.piso}</wa-tag>
                                             </div>
                                         )}
-                                        {/* Precio de reserva */}
+                                        {hasIva && (
+                                            <div className="wa-split wa-align-items-center">
+                                                <strong>Dcto. IVA</strong>
+                                                <wa-badge variant="warning">{ivaDiscount}%</wa-badge>
+                                            </div>
+                                        )}
+                                        {unitDiscount > 0 && (
+                                            <div className="wa-split wa-align-items-center">
+                                                <strong>Dcto. Unidad</strong>
+                                                <wa-badge variant="warning">{unitDiscount}%</wa-badge>
+                                            </div>
+                                        )}
+                                        {/* Separador encima de Dcto Total y Precio Reserva */}
+                                        <wa-divider style={{ gridColumn: '1 / -1' }}></wa-divider>
 
+                                        {(hasIva || unitDiscount > 0) && totalDiscount > 0 && (
+                                            <div className="wa-split wa-align-items-center">
+                                                <strong>Dcto. Total</strong>
+                                                <wa-badge variant="brand">{totalDiscount}%</wa-badge>
+                                            </div>
+                                        )}
+                                        {/* Precio de reserva */}
                                         <div className="wa-split wa-align-items-center">
                                             <strong>Precio de Reserva</strong>
-                                            <wa-tag variant="success">{formattedReserva}</wa-tag>
+                                            <wa-tag variant="neutral">{formattedReserva}</wa-tag>
                                         </div>
                                     </div>
                                 </wa-details>
@@ -422,7 +471,10 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
                                                         <article key={advisor.id} className="advisor-contact-card">
                                                             <div className="wa-cluster wa-gap-s wa-align-items-center advisor-contact-header">
                                                                 {manualAvatarUrl ? (
-                                                                    <img src={manualAvatarUrl} alt={advisorName} className="advisor-avatar" />
+                                                                    <img src={manualAvatarUrl} alt={advisorName}
+                                                                        className="advisor-avatar"
+                                                                        loading="lazy"
+                                                                        decoding="async" />
                                                                 ) : (
                                                                     <span className="advisor-avatar-fallback" aria-hidden="true">
                                                                         <wa-icon name="user-tie"></wa-icon>
@@ -472,7 +524,7 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
                         </div>
                     </div>
 
-                    <div slot="footer" className="wa-split wa-align-items-end">
+                    <div slot="footer" className="wa-split wa-align-items-end plant-detail-dialog-footer">
                         {(plant.precioSeleccionado || plant.precioFinal || plant.precioBase || plant.precioLista) && (
                             <>
                                 <div className="wa-stack wa-gap-xs price-detail wa-order-0 wa-order-mobile-1">
@@ -495,55 +547,109 @@ function PlantDetailDialog({ plant, isSaleEventActive = false, saleLogoUrl = nul
                                 </div>
                             </>
                         )}
-                        <ActionButtonsContainer className={actionButtonsContainerClassName} style={actionButtonsContainerStyle}>
-                            <wa-button
-                                variant="neutral"
-                                data-dialog="close"
-                                size={mobile ? 'small' : 'large'}
-                                onClick={onClose}
-                            >
-                                <wa-icon name="xmark" slot="start"></wa-icon>
-                                Cerrar
-                            </wa-button>
-                            <wa-button
-                                variant="success"
-                                size={mobile ? 'small' : 'large'}
-                                href={contactLinkMeta.href}
-                                target={contactLinkMeta.isExternal ? '_blank' : undefined}
-                                rel={contactLinkMeta.isExternal ? 'noopener noreferrer' : undefined}
-                                onClick={handleContactLinkClick}
-                            >
-                                <wa-icon name="envelope" slot="start"></wa-icon>
-                                Asesorate aquí
-                            </wa-button>
-                            {(plant.isPaid || plant.isReserved || plant.isAvailable === false) ? (
+                        {isMobile ? (
+                            <div className="wa-stack wa-gap-xs wa-order-1 wa-order-mobile-0" style={{ width: '100%', marginTop: '1rem' }}>
+                                <div className="plant-detail-dialog-actions-row">
+                                    <wa-button
+                                        variant="neutral"
+                                        data-dialog="close"
+                                        size="small"
+                                        onClick={onClose}
+                                    >
+                                        <wa-icon name="xmark" slot="start"></wa-icon>
+                                        Cerrar
+                                    </wa-button>
+                                    <wa-button
+                                        variant="warning"
+                                        size="small"
+                                        href={contactLinkMeta.href}
+                                        target={contactLinkMeta.isExternal ? '_blank' : undefined}
+                                        rel={contactLinkMeta.isExternal ? 'noopener noreferrer' : undefined}
+                                        onClick={handleContactLinkClick}
+                                    >
+                                        <wa-icon name="envelope" slot="start"></wa-icon>
+                                        Asesorate aquí
+                                    </wa-button>
+                                </div>
+                                {(plant.isPaid || plant.isReserved || plant.isAvailable === false) ? (
+                                    <wa-button
+                                        variant="warning"
+                                        size="small"
+                                        disabled
+                                    >
+                                        <wa-icon name="house-circle-xmark" slot="start"></wa-icon>
+                                        {plant.isPaid
+                                            ? 'Pagada'
+                                            : plant.isReserved
+                                                ? 'Reservada'
+                                                : 'No disponible'
+                                        }
+                                    </wa-button>
+                                ) : (
+                                    <wa-button
+                                        variant="brand"
+                                        size="small"
+                                        disabled={checkoutLoading}
+                                        {...(checkoutLoading && { loading: true })}
+                                        onClick={onCheckout}
+                                    >
+                                        {checkoutLoading ? 'Cargando...' : <>
+                                            <wa-icon name="hand-holding-dollar" slot="start"></wa-icon> Reserva Ahora {formattedReserva}
+                                        </>}
+                                    </wa-button>
+                                )}
+                            </div>
+                        ) : (
+                            <wa-button-group className="wa-order-1 wa-order-mobile-0">
+                                <wa-button
+                                    variant="neutral"
+                                    data-dialog="close"
+                                    size="large"
+                                    onClick={onClose}
+                                >
+                                    <wa-icon name="xmark" slot="start"></wa-icon>
+                                    Cerrar
+                                </wa-button>
                                 <wa-button
                                     variant="warning"
-                                    size={mobile ? 'small' : 'large'}
-                                    disabled
+                                    size="large"
+                                    href={contactLinkMeta.href}
+                                    target={contactLinkMeta.isExternal ? '_blank' : undefined}
+                                    rel={contactLinkMeta.isExternal ? 'noopener noreferrer' : undefined}
+                                    onClick={handleContactLinkClick}
                                 >
-                                    <wa-icon name="house-circle-xmark" slot="start"></wa-icon>
-                                    {plant.isPaid
-                                        ? 'Pagada'
-                                        : plant.isReserved
-                                            ? 'Reservada'
-                                            : 'No disponible'
-                                    }
+                                    <wa-icon name="envelope" slot="start"></wa-icon>
+                                    Asesorate aquí
                                 </wa-button>
-                            ) : (
-                                <wa-button
-                                    variant="brand"
-                                    size={mobile ? 'small' : 'large'}
-                                    disabled={checkoutLoading}
-                                    {...(checkoutLoading && { loading: true })}
-                                    onClick={onCheckout}
-                                >
-                                    {checkoutLoading ? 'Cargando...' : <>
-                                        <wa-icon name="hand-holding-dollar" slot="start"></wa-icon> Reserva Ahora {formattedReserva}
-                                    </>}
-                                </wa-button>
-                            )}
-                        </ActionButtonsContainer>
+                                {(plant.isPaid || plant.isReserved || plant.isAvailable === false) ? (
+                                    <wa-button
+                                        variant="warning"
+                                        size="large"
+                                        disabled
+                                    >
+                                        <wa-icon name="house-circle-xmark" slot="start"></wa-icon>
+                                        {plant.isPaid
+                                            ? 'Pagada'
+                                            : plant.isReserved
+                                                ? 'Reservada'
+                                                : 'No disponible'
+                                        }
+                                    </wa-button>
+                                ) : (
+                                    <wa-button
+                                        variant="brand"
+                                        size="large"
+                                        disabled={checkoutLoading}
+                                        {...(checkoutLoading && { loading: true })}
+                                        onClick={onCheckout}
+                                    >
+                                        {checkoutLoading ? 'Cargando...' : <>
+                                            <wa-icon name="hand-holding-dollar" slot="start"></wa-icon> Reserva Ahora {formattedReserva}
+                                        </>}
+                                    </wa-button>
+                                )}
+                            </wa-button-group>
+                        )}
                     </div>
                 </>
             )}

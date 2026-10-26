@@ -37,6 +37,41 @@
                 @endif
             </div>
 
+            @if (!empty($this->snapshot['failed_rows']))
+                <div style="padding: 1rem; border: 1px solid rgba(239, 68, 68, 0.35); background: rgba(239, 68, 68, 0.05); border-radius: .75rem; display:grid; gap:.5rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <strong style="color: #fca5a5;">Filas con errores ({{ count((array) $this->snapshot['failed_rows']) }})</strong>
+                        <span style="font-size: .8rem; opacity: .75;">Se aislaron los errores para no abortar el resto del archivo</span>
+                    </div>
+                    <div style="overflow-x: auto; max-height: 260px;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: .84rem;">
+                            <thead>
+                                <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.15); text-align: left;">
+                                    <th style="padding: 6px 8px; width: 60px;">Fila</th>
+                                    <th style="padding: 6px 8px;">Motivo del error</th>
+                                    <th style="padding: 6px 8px;">Datos de la fila</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ((array) $this->snapshot['failed_rows'] as $failedRow)
+                                    <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.07);">
+                                        <td style="padding: 6px 8px; font-weight: bold; color: #f87171;">#{{ $failedRow['row'] ?? '-' }}</td>
+                                        <td style="padding: 6px 8px; color: #fca5a5;">{{ $failedRow['reason'] ?? 'Error desconocido' }}</td>
+                                        <td style="padding: 6px 8px; font-family: monospace; font-size: .78rem; opacity: .85; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                            @if (!empty($failedRow['data']))
+                                                {{ json_encode($failedRow['data'], JSON_UNESCAPED_UNICODE) }}
+                                            @else
+                                                -
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            @endif
+
             <div style="padding: 1rem; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: .75rem; display:grid; gap:.5rem;">
                 <strong>Log en vivo</strong>
                 <pre style="margin:0; max-height: 380px; overflow:auto; white-space: pre-wrap; font-size:.84rem; line-height:1.35;">{{ implode("\n", (array) ($this->snapshot['logs'] ?? [])) }}</pre>

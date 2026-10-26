@@ -19,7 +19,7 @@ class ContactSubmissionController extends Controller
     {
         $channel = $request->resolvedChannel();
         $fields = $request->validated('fields', []);
-        $fields = $this->enrichMarketingFields($request, $fields);
+        $fields = $this->enrichMarketingFields($request, $fields, $channel);
         $fields = $this->enrichProjectSalesforceId($fields);
 
         $name = $this->fieldValue($fields, ['name', 'nombre']);
@@ -76,26 +76,130 @@ class ContactSubmissionController extends Controller
      * @param  array<string, mixed>  $fields
      * @return array<string, mixed>
      */
-    private function enrichMarketingFields(StoreContactSubmissionRequest $request, array $fields): array
+    private function enrichMarketingFields(StoreContactSubmissionRequest $request, array $fields, ?\App\Models\ContactChannel $channel = null): array
     {
+        $settings = SiteSetting::current();
+
+        // Solo sobreescribir utm_campaign si proviene del front, el evento Sale está activo
+        // y el canal actual está seleccionado en sale_utm_campaign_channels.
+        // Peticiones provenientes de API externa o canales no seleccionados preservan su campaña original.
+        if ($settings->evento_sale && $this->isFrontendRequest($request, $channel) && $settings->isChannelEligibleForSaleUtmCampaign($channel)) {
+            $extraSettings = is_array($settings->extra_settings) ? $settings->extra_settings : [];
+            $saleCampaign = trim((string) ($extraSettings['sale_utm_campaign'] ?? ''))
+                ?: trim((string) ($extraSettings['sale_event_name'] ?? ''))
+                ?: trim((string) ($extraSettings['utm_campaign_default'] ?? ''));
+
+            if ($saleCampaign !== '') {
+                $utmSource = $this->fieldValue($fields, ['utm_source', 'fuente', 'medio_de_llegada', 'medio_llegada', 'origen_del_prospecto', 'origen_prospecto']);
+                $currentCampaign = $this->fieldValue($fields, ['utm_campaign', 'campana', 'nombre_de_la_campana']);
+                $isDefaultOrMissing = $currentCampaign === null || trim($currentCampaign) === '' || in_array(strtolower(trim($currentCampaign)), ['auto-tagging', 'campaign'], true);
+
+                if (($utmSource !== null && strtolower(trim($utmSource)) === 'brevo') || $isDefaultOrMissing) {
+                    $fields['utm_campaign'] = $saleCampaign;
+                }
+            }
+        }
+
         $utmSite = trim((string) ($fields['utm_site'] ?? ''));
 
         if ($utmSite !== '') {
             return $fields;
         }
 
-        $requestSourceSite = $this->resolveRequestSourceSite($request);
+        $requestSourceSite = $this->resolveRequestSourceSite($request, $channel);
 
-        if ($requestSourceSite === null) {
-            return $fields;
+        if ($requestSourceSite !== null) {
+            $fields['utm_site'] = $requestSourceSite;
         }
-
-        $fields['utm_site'] = $requestSourceSite;
 
         return $fields;
     }
 
-    private function resolveRequestSourceSite(StoreContactSubmissionRequest $request): ?string
+    private function isFrontendRequest(StoreContactSubmissionRequest $request, ?\App\Models\ContactChannel $channel = null): bool
+    {
+        if ($request->headers->has('X-Contact-Channel')) {
+            return false;
+        }
+
+        $origin = $request->headers->get('Origin');
+        $referer = $request->headers->get('Referer');
+
+        if (blank($origin) && blank($referer)) {
+            return false;
+        }
+
+        $requestHosts = [];
+        foreach ([$origin, $referer] as $headerValue) {
+            if (filled($headerValue)) {
+                $host = parse_url((string) $headerValue, PHP_URL_HOST);
+                if (filled($host)) {
+                    $requestHosts[] = strtolower((string) $host);
+                }
+            }
+        }
+
+        if (empty($requestHosts)) {
+            return false;
+        }
+
+        $allowedHosts = $this->resolveAllowedFrontendHosts($channel);
+
+        foreach ($requestHosts as $host) {
+            if (in_array($host, $allowedHosts, true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function resolveAllowedFrontendHosts(?\App\Models\ContactChannel $channel = null): array
+    {
+        $hosts = [];
+
+        $settings = SiteSetting::current();
+        if (filled($settings->site_url)) {
+            $host = parse_url((string) $settings->site_url, PHP_URL_HOST);
+            if (filled($host)) {
+                $hosts[] = strtolower((string) $host);
+            }
+        }
+
+        $frontendUrl = config('app.frontend_url');
+        if (filled($frontendUrl)) {
+            $host = parse_url((string) $frontendUrl, PHP_URL_HOST);
+            if (filled($host)) {
+                $hosts[] = strtolower((string) $host);
+            }
+        }
+
+        $appUrl = config('app.url');
+        if (filled($appUrl)) {
+            $host = parse_url((string) $appUrl, PHP_URL_HOST);
+            if (filled($host)) {
+                $hosts[] = strtolower((string) $host);
+            }
+        }
+
+        if ($channel !== null && is_array($channel->domain_patterns)) {
+            foreach ($channel->domain_patterns as $pattern) {
+                $clean = strtolower(trim((string) $pattern));
+                if ($clean !== '') {
+                    $hosts[] = $clean;
+                }
+            }
+        }
+
+        $hosts[] = 'localhost';
+        $hosts[] = '127.0.0.1';
+
+        return array_values(array_unique($hosts));
+    }
+
+    private function resolveRequestSourceSite(StoreContactSubmissionRequest $request, ?\App\Models\ContactChannel $channel = null): ?string
     {
         $candidates = [
             (string) $request->headers->get('Origin', ''),
@@ -119,9 +223,31 @@ class ContactSubmissionController extends Controller
             return $normalized;
         }
 
+        if ($channel !== null) {
+            foreach ((array) ($channel->domain_patterns ?? []) as $pattern) {
+                $normalized = strtolower(trim((string) $pattern));
+                $normalized = str_replace(['*.', '*'], '', $normalized);
+                $normalized = ltrim($normalized, '.');
+
+                if ($normalized !== '') {
+                    return $normalized;
+                }
+            }
+        }
+
+        $extraSettings = is_array(SiteSetting::current()->extra_settings) ? SiteSetting::current()->extra_settings : [];
+        $utmSiteDefault = trim((string) ($extraSettings['utm_site_default'] ?? ''));
+        if ($utmSiteDefault !== '') {
+            return $utmSiteDefault;
+        }
+
         $host = trim((string) $request->getHost());
 
-        return $host !== '' ? strtolower($host) : null;
+        if ($host !== '' && ! in_array(strtolower($host), ['localhost', '127.0.0.1'], true)) {
+            return strtolower($host);
+        }
+
+        return 'admin.ileben.cl';
     }
 
     /**

@@ -27,456 +27,524 @@ use Illuminate\Support\Str;
 
 class ContactSubmissionsTable
 {
-	public static function configure(Table $table): Table
-	{
-		return $table
-			->modifyQueryUsing(fn(Builder $query): Builder => $query->with(['channel:id,name,slug_badge_color']))
-			->columns(self::columns())
-			->defaultSort('submitted_at', 'desc')
-			->searchable()
-			->searchPlaceholder('Buscar por RUT o email...')
-			->filters([
-				SelectFilter::make('contact_channel_id')
-					->label('Canal')
-					->options(
-						fn(): array => ContactChannel::query()
-							->where('is_active', true)
-							->orderBy('name')
-							->pluck('name', 'id')
-							->all()
-					)
-					->placeholder('Todos los canales')
-					->searchable(),
-				SelectFilter::make('salesforce_sync_status')
-					->label('Salesforce')
-					->options([
-						'synced' => 'Sincronizado',
-						'not_synced' => 'No sincronizado',
-					])
-					->placeholder('Todos')
-					->query(function (Builder $query, array $data): Builder {
-						return match ($data['value'] ?? null) {
-							'synced' => $query->whereNotNull('salesforce_case_id'),
-							'not_synced' => $query->whereNull('salesforce_case_id'),
-							default => $query,
-						};
-					}),
-			])
-			->recordActions([
-				ViewAction::make(),
-				EditAction::make(),
-				DeleteAction::make()
-					->modalHeading('¿Eliminar contacto?')
-					->modalDescription('Esta acción es irreversible. Se eliminará permanentemente el envío del contacto y no podrá recuperarse.')
-					->modalSubmitActionLabel('Sí, eliminar')
-					->modalIcon('heroicon-o-exclamation-triangle')
-					->color('danger'),
-			])
-			->toolbarActions([
-				ExportAction::make()
-					->label('Exportar Contactos')
-					->icon('heroicon-o-document-arrow-up')
-					->exporter(ContactSubmissionExporter::class),
-				BulkActionGroup::make([
-					BulkAction::make('syncSelectedToSalesforce')
-						->label('Sincronizar con Salesforce')
-						->icon('heroicon-o-arrow-path')
-						->color('warning')
-						->requiresConfirmation()
-						->modalHeading('¿Sincronizar contactos seleccionados con Salesforce?')
-						->modalDescription('Se intentará crear o actualizar el Lead en Salesforce para cada contacto seleccionado. Los errores previos serán limpiados antes del reintento.')
-						->modalSubmitActionLabel('Sí, sincronizar')
-						->action(function (Collection $records): void {
-							$leadEnabled = (bool) config('services.salesforce.lead_enabled', config('services.salesforce.case_enabled', false));
+    public static function configure(Table $table): Table
+    {
+        return $table
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['channel:id,name,slug_badge_color']))
+            ->columns(self::columns())
+            ->defaultSort('submitted_at', 'desc')
+            ->searchable()
+            ->searchPlaceholder('Buscar por RUT o email...')
+            ->searchUsing(function (Builder $query, string $search): void {
+                self::applySearchQuery($query, $search);
+            })
+            ->filters([
+                SelectFilter::make('contact_channel_id')
+                    ->label('Canal')
+                    ->options(
+                        fn (): array => ContactChannel::query()
+                            ->where('is_active', true)
+                            ->orderBy('name')
+                            ->pluck('name', 'id')
+                            ->all()
+                    )
+                    ->placeholder('Todos los canales')
+                    ->searchable(),
+                SelectFilter::make('salesforce_sync_status')
+                    ->label('Salesforce')
+                    ->options([
+                        'synced' => 'Sincronizado',
+                        'not_synced' => 'No sincronizado',
+                    ])
+                    ->placeholder('Todos')
+                    ->query(function (Builder $query, array $data): Builder {
+                        return match ($data['value'] ?? null) {
+                            'synced' => $query->whereNotNull('salesforce_case_id'),
+                            'not_synced' => $query->whereNull('salesforce_case_id'),
+                            default => $query,
+                        };
+                    }),
+            ])
+            ->recordActions([
+                ViewAction::make(),
+                EditAction::make(),
+                DeleteAction::make()
+                    ->modalHeading('¿Eliminar contacto?')
+                    ->modalDescription('Esta acción es irreversible. Se eliminará permanentemente el envío del contacto y no podrá recuperarse.')
+                    ->modalSubmitActionLabel('Sí, eliminar')
+                    ->modalIcon('heroicon-o-exclamation-triangle')
+                    ->color('danger'),
+            ])
+            ->toolbarActions([
+                ExportAction::make()
+                    ->label('Exportar Contactos')
+                    ->icon('heroicon-o-document-arrow-up')
+                    ->exporter(ContactSubmissionExporter::class),
+                BulkActionGroup::make([
+                    BulkAction::make('syncSelectedToSalesforce')
+                        ->label('Sincronizar con Salesforce')
+                        ->icon('heroicon-o-arrow-path')
+                        ->color('warning')
+                        ->requiresConfirmation()
+                        ->modalHeading('¿Sincronizar contactos seleccionados con Salesforce?')
+                        ->modalDescription('Se intentará crear o actualizar el Lead en Salesforce para cada contacto seleccionado. Los errores previos serán limpiados antes del reintento.')
+                        ->modalSubmitActionLabel('Sí, sincronizar')
+                        ->action(function (Collection $records): void {
+                            $leadEnabled = (bool) config('services.salesforce.lead_enabled', config('services.salesforce.case_enabled', false));
 
-							if (! $leadEnabled) {
-								Notification::make()
-									->title('Salesforce deshabilitado')
-									->body('La sincronización con Salesforce está deshabilitada en la configuración.')
-									->warning()
-									->send();
+                            if (! $leadEnabled) {
+                                Notification::make()
+                                    ->title('Salesforce deshabilitado')
+                                    ->body('La sincronización con Salesforce está deshabilitada en la configuración.')
+                                    ->warning()
+                                    ->send();
 
-								return;
-							}
+                                return;
+                            }
 
-							$synced = 0;
-							$failed = 0;
+                            $synced = 0;
+                            $failed = 0;
 
-							$records->each(function (ContactSubmission $record) use (&$synced, &$failed): void {
-								$record->update(['salesforce_case_error' => null]);
-								CreateSalesforceCaseJob::dispatchSync($record, 'manual');
-								$record->refresh();
+                            $records->each(function (ContactSubmission $record) use (&$synced, &$failed): void {
+                                $record->update(['salesforce_case_error' => null]);
+                                CreateSalesforceCaseJob::dispatchSync($record, 'manual');
+                                $record->refresh();
 
-								if (filled($record->salesforce_case_id)) {
-									$synced++;
-								} else {
-									$failed++;
-								}
-							});
+                                if (filled($record->salesforce_case_id)) {
+                                    $synced++;
+                                } else {
+                                    $failed++;
+                                }
+                            });
 
-							if ($failed === 0) {
-								Notification::make()
-									->title('Sincronización completada')
-									->body("Se sincronizaron {$synced} contacto(s) con Salesforce.")
-									->success()
-									->send();
-							} else {
-								Notification::make()
-									->title('Sincronización parcial')
-									->body("Sincronizados: {$synced}. Con error: {$failed}.")
-									->warning()
-									->send();
-							}
-						}),
-					DeleteBulkAction::make()
-						->modalHeading('¿Eliminar contactos seleccionados?')
-						->modalDescription('Esta acción es irreversible. Se eliminarán permanentemente todos los envíos seleccionados y no podrán recuperarse.')
-						->modalSubmitActionLabel('Sí, eliminar todos')
-						->modalIcon('heroicon-o-exclamation-triangle'),
-				]),
-			]);
-	}
+                            if ($failed === 0) {
+                                Notification::make()
+                                    ->title('Sincronización completada')
+                                    ->body("Se sincronizaron {$synced} contacto(s) con Salesforce.")
+                                    ->success()
+                                    ->send();
+                            } else {
+                                Notification::make()
+                                    ->title('Sincronización parcial')
+                                    ->body("Sincronizados: {$synced}. Con error: {$failed}.")
+                                    ->warning()
+                                    ->send();
+                            }
+                        }),
+                    DeleteBulkAction::make()
+                        ->modalHeading('¿Eliminar contactos seleccionados?')
+                        ->modalDescription('Esta acción es irreversible. Se eliminarán permanentemente todos los envíos seleccionados y no podrán recuperarse.')
+                        ->modalSubmitActionLabel('Sí, eliminar todos')
+                        ->modalIcon('heroicon-o-exclamation-triangle'),
+                ]),
+            ]);
+    }
 
-	/**
-	 * @return array<int, TextColumn>
-	 */
-	private static function columns(): array
-	{
-		// Labels de columnas fijas para evitar duplicados
-		$fixedLabels = [
-			'rango de renta',
-			// Agrega aquí otros labels fijos si agregas más columnas robustas
-		];
+    /**
+     * @return array<int, TextColumn>
+     */
+    private static function columns(): array
+    {
+        // Labels de columnas fijas para evitar duplicados
+        $fixedLabels = [
+            'rango de renta',
+            // Agrega aquí otros labels fijos si agregas más columnas robustas
+        ];
 
-		$dynamicColumns = collect(self::fieldDefinitions())
-			->filter(function (array $field) use ($fixedLabels) {
-				$key = (string) $field['key'];
-				$label = filled($field['label'] ?? null)
-					? (string) $field['label']
-					: Str::headline($key);
+        $dynamicColumns = collect(self::fieldDefinitions())
+            ->filter(function (array $field) use ($fixedLabels) {
+                $key = (string) $field['key'];
+                $label = filled($field['label'] ?? null)
+                    ? (string) $field['label']
+                    : Str::headline($key);
 
-				// Omitir cualquier campo cuyo label (case-insensitive) ya esté en las columnas fijas
-				return ! in_array(Str::lower($label), $fixedLabels, true);
-			})
-			->map(function (array $field): TextColumn {
-				$key = (string) $field['key'];
-				$label = filled($field['label'] ?? null)
-					? (string) $field['label']
-					: Str::headline($key);
+                // Omitir cualquier campo cuyo label (case-insensitive) ya esté en las columnas fijas
+                return ! in_array(Str::lower($label), $fixedLabels, true);
+            })
+            ->map(function (array $field): TextColumn {
+                $key = (string) $field['key'];
+                $label = filled($field['label'] ?? null)
+                    ? (string) $field['label']
+                    : Str::headline($key);
 
-				$column = TextColumn::make("fields.{$key}")
-					->label($label)
-					->state(fn($record): string => self::formatDynamicValue(self::resolveDynamicFieldValue($record->fields, $key), $field))
-					->placeholder('-')
-					->wrap()
-					->limit(60)
-					->sortable()
-					->toggleable();
+                $column = TextColumn::make("fields.{$key}")
+                    ->label($label)
+                    ->state(fn ($record): string => self::formatDynamicValue(self::resolveDynamicFieldValue($record->fields, $key, $record), $field))
+                    ->placeholder('-')
+                    ->wrap()
+                    ->limit(60)
+                    ->sortable()
+                    ->toggleable();
 
-				return $column;
-			})
-			->values()
-			->all();
+                return $column;
+            })
+            ->values()
+            ->all();
 
-		// Columna robusta para Rango de renta (siempre visible)
-		$rangoRentaColumn = TextColumn::make('rango_renta')
-			->label('Rango de renta')
-			->state(function ($record) {
-				$fields = $record->fields ?? [];
-				$aliases = [
-					'rango_renta',
-					'rango de renta',
-					'rango_de_renta',
-					'en_que_rango_se_encuentra_tu_renta_liquida',
-					'income_range',
-					'renta_liquida',
-					'renta',
-					'rango',
-					'renta_aprox',
-					'renta_aproximada',
-				];
-				foreach ($aliases as $alias) {
-					foreach ($fields as $key => $value) {
-						if (stripos($key, $alias) !== false && ! empty($value)) {
-							return $value;
-						}
-					}
-				}
-				// fallback: buscar por normalización
-				foreach ($fields as $key => $value) {
-					$normalized = Str::of($key)
-						->ascii()
-						->lower()
-						->replaceMatches('/[^a-z0-9]+/', '_')
-						->trim('_')
-						->toString();
-					if (in_array($normalized, $aliases) && ! empty($value)) {
-						return $value;
-					}
-				}
+        // Columna robusta para Rango de renta (siempre visible)
+        $rangoRentaColumn = TextColumn::make('rango_renta')
+            ->label('Rango de renta')
+            ->state(function ($record) {
+                $fields = $record->fields ?? [];
+                $aliases = [
+                    'rango_renta',
+                    'rango de renta',
+                    'rango_de_renta',
+                    'en_que_rango_se_encuentra_tu_renta_liquida',
+                    'income_range',
+                    'renta_liquida',
+                    'renta',
+                    'rango',
+                    'renta_aprox',
+                    'renta_aproximada',
+                ];
+                foreach ($aliases as $alias) {
+                    foreach ($fields as $key => $value) {
+                        if (stripos($key, $alias) !== false && ! empty($value)) {
+                            return $value;
+                        }
+                    }
+                }
+                // fallback: buscar por normalización
+                foreach ($fields as $key => $value) {
+                    $normalized = Str::of($key)
+                        ->ascii()
+                        ->lower()
+                        ->replaceMatches('/[^a-z0-9]+/', '_')
+                        ->trim('_')
+                        ->toString();
+                    if (in_array($normalized, $aliases) && ! empty($value)) {
+                        return $value;
+                    }
+                }
 
-				return '-';
-			})
-			->placeholder('-')
-			->wrap()
-			->limit(60)
-			->sortable()
-			->toggleable();
+                return '-';
+            })
+            ->placeholder('-')
+            ->wrap()
+            ->limit(60)
+            ->sortable()
+            ->toggleable();
 
-		if ($dynamicColumns === []) {
-			$dynamicColumns = [
-				TextColumn::make('fields_summary')
-					->label('Campos')
-					->state(fn($record): string => self::summarizeDynamicFields($record->fields))
-					->placeholder('-')
-					->wrap()
-					->toggleable(),
-			];
-		}
+        if ($dynamicColumns === []) {
+            $dynamicColumns = [
+                TextColumn::make('fields_summary')
+                    ->label('Campos')
+                    ->state(fn ($record): string => self::summarizeDynamicFields($record->fields))
+                    ->placeholder('-')
+                    ->wrap()
+                    ->toggleable(),
+            ];
+        }
 
-		return [
-			TextColumn::make('id')
-				->label('#')
-				->sortable()
-				->toggleable(isToggledHiddenByDefault: true),
-			// sincronizado con salesforce
-			TextColumn::make('salesforce_synced_at')
-				->label('Sincronizado con Salesforce')
-				->state(fn($record) => $record->salesforceSyncedAt())
-				->dateTime()
-				->placeholder('No disponible')
-				->sortable()
-				->toggleable(isToggledHiddenByDefault: true),
-			IconColumn::make('salesforce_synced')
-				->label('Salesforce')
-				->state(fn($record): bool => filled($record->salesforce_case_id))
-				->boolean()
-				->trueIcon('heroicon-o-check-circle')
-				->falseIcon('heroicon-o-x-circle')
-				->trueColor('success')
-				->falseColor('danger')
-				->tooltip(fn($record): string => filled($record->salesforce_case_id)
-					? 'Lead ID: ' . $record->salesforce_case_id
-					: (filled($record->salesforce_case_error) ? 'Error: ' . $record->salesforce_case_error : 'No sincronizado'))
-				->toggleable(),
-			TextColumn::make('channel.name')
-				->label('Canal')
-				->placeholder('Sin canal')
-				->badge()
-				->color(fn($record): array => self::resolveBadgeColor($record->channel?->slug_badge_color))
-				->sortable()
-				->toggleable(),
-			// TextColumn::make('rut')
-			//     ->label('RUT')
-			//     ->placeholder('-')
-			//     ->searchable()
-			//     ->toggleable(isToggledHiddenByDefault: true),
-			$rangoRentaColumn,
-			...$dynamicColumns,
-			TextColumn::make('submitted_at')
-				->label('Enviado')
-				->dateTime()
-				->sortable(),
-		];
-	}
+        return [
+            TextColumn::make('id')
+                ->label('#')
+                ->sortable()
+                ->toggleable(isToggledHiddenByDefault: true),
+            // sincronizado con salesforce
+            TextColumn::make('salesforce_synced_at')
+                ->label('Sincronizado con Salesforce')
+                ->state(fn ($record) => $record->salesforceSyncedAt())
+                ->dateTime()
+                ->placeholder('No disponible')
+                ->sortable()
+                ->toggleable(isToggledHiddenByDefault: true),
+            IconColumn::make('salesforce_synced')
+                ->label('Salesforce')
+                ->state(fn ($record): bool => filled($record->salesforce_case_id))
+                ->boolean()
+                ->trueIcon('heroicon-o-check-circle')
+                ->falseIcon(fn ($record): string => filled($record->salesforce_case_error) && str_starts_with((string) $record->salesforce_case_error, 'Omitido') ? 'heroicon-o-minus-circle' : 'heroicon-o-x-circle')
+                ->trueColor('success')
+                ->falseColor(fn ($record): string => filled($record->salesforce_case_error) && str_starts_with((string) $record->salesforce_case_error, 'Omitido') ? 'warning' : 'danger')
+                ->tooltip(fn ($record): string => filled($record->salesforce_case_id)
+                    ? 'Lead ID: '.$record->salesforce_case_id
+                    : (filled($record->salesforce_case_error)
+                        ? (str_starts_with((string) $record->salesforce_case_error, 'Omitido') ? (string) $record->salesforce_case_error : 'Error: '.$record->salesforce_case_error)
+                        : 'No sincronizado'))
+                ->toggleable(),
+            TextColumn::make('channel.name')
+                ->label('Canal')
+                ->placeholder('Sin canal')
+                ->badge()
+                ->color(fn ($record): array => self::resolveBadgeColor($record->channel?->slug_badge_color))
+                ->sortable()
+                ->toggleable(),
+            // TextColumn::make('rut')
+            //     ->label('RUT')
+            //     ->placeholder('-')
+            //     ->searchable()
+            //     ->toggleable(isToggledHiddenByDefault: true),
+            $rangoRentaColumn,
+            ...$dynamicColumns,
+            TextColumn::make('submitted_at')
+                ->label('Enviado')
+                ->dateTime()
+                ->sortable(),
+        ];
+    }
 
-	private static function summarizeDynamicFields(mixed $fields): string
-	{
-		if (! is_array($fields) || $fields === []) {
-			return '-';
-		}
+    private static function summarizeDynamicFields(mixed $fields): string
+    {
+        if (! is_array($fields) || $fields === []) {
+            return '-';
+        }
 
-		$items = [];
+        $items = [];
 
-		foreach ($fields as $key => $value) {
-			$items[] = sprintf('%s: %s', Str::headline((string) $key), self::formatDynamicValue($value, []));
-		}
+        foreach ($fields as $key => $value) {
+            $items[] = sprintf('%s: %s', Str::headline((string) $key), self::formatDynamicValue($value, []));
+        }
 
-		return implode(' | ', $items);
-	}
+        return implode(' | ', $items);
+    }
 
-	private static function resolveDynamicFieldValue(mixed $fields, string $fieldKey): mixed
-	{
-		if (! is_array($fields) || $fields === []) {
-			return null;
-		}
+    public static function applySearchQuery(Builder $query, string $search): Builder
+    {
+        $search = trim($search);
 
-		$normalizedFieldMap = [];
+        if ($search === '') {
+            return $query;
+        }
 
-		foreach ($fields as $key => $value) {
-			$normalizedKey = Str::of((string) $key)
-				->ascii()
-				->lower()
-				->replaceMatches('/[^a-z0-9]+/', '_')
-				->trim('_')
-				->toString();
+        $cleanedRut = (string) preg_replace('/[^0-9kK]/', '', $search);
 
-			if ($normalizedKey === '' || array_key_exists($normalizedKey, $normalizedFieldMap)) {
-				continue;
-			}
+        return $query->where(function (Builder $q) use ($search, $cleanedRut): void {
+            $q->where('email', 'like', "%{$search}%")
+                ->orWhere('rut', 'like', "%{$search}%")
+                ->orWhere('name', 'like', "%{$search}%")
+                ->orWhere('phone', 'like', "%{$search}%");
 
-			$normalizedFieldMap[$normalizedKey] = $value;
-		}
+            if ($cleanedRut !== '' && strlen($cleanedRut) >= 2) {
+                $q->orWhereRaw("REPLACE(REPLACE(REPLACE(COALESCE(rut, ''), '.', ''), '-', ''), ' ', '') LIKE ?", ["%{$cleanedRut}%"]);
+            }
 
-		foreach (self::fieldLookupKeys($fieldKey) as $lookupKey) {
-			if (! array_key_exists($lookupKey, $fields)) {
-				$normalizedLookupKey = Str::of($lookupKey)
-					->ascii()
-					->lower()
-					->replaceMatches('/[^a-z0-9]+/', '_')
-					->trim('_')
-					->toString();
+            $q->orWhere('fields', 'like', "%{$search}%");
 
-				if ($normalizedLookupKey === '' || ! array_key_exists($normalizedLookupKey, $normalizedFieldMap)) {
-					continue;
-				}
+            if ($cleanedRut !== '' && strlen($cleanedRut) >= 2) {
+                $q->orWhere('fields', 'like', "%{$cleanedRut}%");
 
-				$value = $normalizedFieldMap[$normalizedLookupKey];
+                $len = strlen($cleanedRut);
+                if ($len >= 7 && $len <= 9) {
+                    $body = substr($cleanedRut, 0, -1);
+                    $dv = substr($cleanedRut, -1);
 
-				if (is_string($value) && trim($value) === '') {
-					continue;
-				}
+                    if (ctype_digit($body)) {
+                        $withDotsUpper = number_format((int) $body, 0, '', '.').'-'.strtoupper($dv);
+                        $withDotsLower = number_format((int) $body, 0, '', '.').'-'.strtolower($dv);
+                        $withDashUpper = $body.'-'.strtoupper($dv);
+                        $withDashLower = $body.'-'.strtolower($dv);
 
-				return $value;
-			}
+                        $q->orWhere('fields', 'like', "%{$withDotsUpper}%")
+                            ->orWhere('fields', 'like', "%{$withDotsLower}%")
+                            ->orWhere('fields', 'like', "%{$withDashUpper}%")
+                            ->orWhere('fields', 'like', "%{$withDashLower}%");
+                    }
+                }
+            }
+        });
+    }
 
-			$value = $fields[$lookupKey];
+    private static function resolveDynamicFieldValue(mixed $fields, string $fieldKey, ?ContactSubmission $record = null): mixed
+    {
+        if ($record !== null) {
+            $normalizedKey = Str::of($fieldKey)->ascii()->lower()->replaceMatches('/[^a-z0-9]+/', '_')->trim('_')->toString();
 
-			if (is_string($value) && trim($value) === '') {
-				continue;
-			}
+            if ($normalizedKey === 'rut' && filled($record->rut)) {
+                return $record->rut;
+            }
+            if (in_array($normalizedKey, ['email', 'e_mail', 'correo'], true) && filled($record->email)) {
+                return $record->email;
+            }
+            if (in_array($normalizedKey, ['name', 'nombre'], true) && filled($record->name)) {
+                return $record->name;
+            }
+            if (in_array($normalizedKey, ['phone', 'telefono', 'celular', 'fono', 'whatsapp'], true) && filled($record->phone)) {
+                return $record->phone;
+            }
+        }
 
-			return $value;
-		}
+        if (! is_array($fields) || $fields === []) {
+            return null;
+        }
 
-		return null;
-	}
+        $normalizedFieldMap = [];
 
-	/**
-	 * @return array<int, string>
-	 */
-	private static function fieldLookupKeys(string $fieldKey): array
-	{
-		$normalized = Str::of($fieldKey)
-			->ascii()
-			->lower()
-			->replaceMatches('/[^a-z0-9]+/', '_')
-			->trim('_')
-			->toString();
+        foreach ($fields as $key => $value) {
+            $normalizedKey = Str::of((string) $key)
+                ->ascii()
+                ->lower()
+                ->replaceMatches('/[^a-z0-9]+/', '_')
+                ->trim('_')
+                ->toString();
 
-		$aliases = [
-			$fieldKey,
-			$normalized,
-		];
+            if ($normalizedKey === '' || array_key_exists($normalizedKey, $normalizedFieldMap)) {
+                continue;
+            }
 
-		$byAlias = [
-			'rango_renta' => [
-				'rango_de_renta',
-				'en_que_rango_se_encuentra_tu_renta_liquida',
-				'income_range',
-				'renta_liquida',
-			],
-			'rango_de_renta' => [
-				'rango_renta',
-				'en_que_rango_se_encuentra_tu_renta_liquida',
-				'income_range',
-				'renta_liquida',
-			],
-			'income_range' => [
-				'rango_renta',
-				'rango_de_renta',
-				'en_que_rango_se_encuentra_tu_renta_liquida',
-			],
-			'codeudor' => [
-				'tienes_la_posibilidad_de_complementar_tu_renta',
-			],
-			'origen_prospecto' => [
-				'origen_del_prospecto',
-			],
-			'origen_del_prospecto' => [
-				'origen_prospecto',
-			],
-		];
+            $normalizedFieldMap[$normalizedKey] = $value;
+        }
 
-		foreach ($byAlias[$normalized] ?? [] as $alias) {
-			$aliases[] = $alias;
-		}
+        foreach (self::fieldLookupKeys($fieldKey) as $lookupKey) {
+            if (! array_key_exists($lookupKey, $fields)) {
+                $normalizedLookupKey = Str::of($lookupKey)
+                    ->ascii()
+                    ->lower()
+                    ->replaceMatches('/[^a-z0-9]+/', '_')
+                    ->trim('_')
+                    ->toString();
 
-		return array_values(array_unique(array_filter($aliases, static fn(string $key): bool => $key !== '')));
-	}
+                if ($normalizedLookupKey === '' || ! array_key_exists($normalizedLookupKey, $normalizedFieldMap)) {
+                    continue;
+                }
 
-	/**
-	 * @return array<int, array<string, mixed>>
-	 */
-	private static function fieldDefinitions(): array
-	{
-		return collect(SiteSetting::current()->contact_form_fields ?? [])
-			->filter(fn(mixed $field): bool => is_array($field) && filled($field['key'] ?? null))
-			->mapWithKeys(fn(array $field): array => [((string) $field['key']) => $field])
-			->union([
-				'comuna' => [
-					'key' => 'comuna',
-					'label' => 'Comuna',
-					'type' => 'text',
-				],
-				'proyecto' => [
-					'key' => 'proyecto',
-					'label' => 'Proyecto',
-					'type' => 'text',
-				],
-			])
-			->values()
-			->all();
-	}
+                $value = $normalizedFieldMap[$normalizedLookupKey];
 
-	/**
-	 * @param  array<string, mixed>  $definition
-	 */
-	private static function formatDynamicValue(mixed $value, array $definition): string
-	{
-		if (($definition['type'] ?? null) === 'select' && is_scalar($value)) {
-			foreach (($definition['options'] ?? []) as $option) {
-				if (! is_array($option)) {
-					continue;
-				}
+                if (is_string($value) && trim($value) === '') {
+                    continue;
+                }
 
-				if ((string) ($option['value'] ?? '') === (string) $value) {
-					return (string) ($option['label'] ?? $value);
-				}
-			}
-		}
+                return $value;
+            }
 
-		if ($value === null) {
-			return '-';
-		}
+            $value = $fields[$lookupKey];
 
-		if (is_bool($value)) {
-			return $value ? 'Sí' : 'No';
-		}
+            if (is_string($value) && trim($value) === '') {
+                continue;
+            }
 
-		if (is_scalar($value)) {
-			$stringValue = trim((string) $value);
+            return $value;
+        }
 
-			return $stringValue === '' ? '-' : $stringValue;
-		}
+        return null;
+    }
 
-		$encoded = Js::encode($value);
+    /**
+     * @return array<int, string>
+     */
+    private static function fieldLookupKeys(string $fieldKey): array
+    {
+        $normalized = Str::of($fieldKey)
+            ->ascii()
+            ->lower()
+            ->replaceMatches('/[^a-z0-9]+/', '_')
+            ->trim('_')
+            ->toString();
 
-		return is_string($encoded) ? $encoded : '[valor no serializable]';
-	}
+        $aliases = [
+            $fieldKey,
+            $normalized,
+        ];
 
-	/**
-	 * @return array<string, string>
-	 */
-	private static function resolveBadgeColor(?string $color): array
-	{
-		return match (strtolower(trim((string) $color))) {
-			'success', 'green', 'emerald' => Color::Emerald,
-			'warning', 'yellow', 'amber' => Color::Amber,
-			'danger', 'red', 'rose' => Color::Red,
-			'info', 'blue', 'sky' => Color::Blue,
-			'primary' => Color::Indigo,
-			default => Color::Gray,
-		};
-	}
+        $byAlias = [
+            'rango_renta' => [
+                'rango_de_renta',
+                'en_que_rango_se_encuentra_tu_renta_liquida',
+                'income_range',
+                'renta_liquida',
+            ],
+            'rango_de_renta' => [
+                'rango_renta',
+                'en_que_rango_se_encuentra_tu_renta_liquida',
+                'income_range',
+                'renta_liquida',
+            ],
+            'income_range' => [
+                'rango_renta',
+                'rango_de_renta',
+                'en_que_rango_se_encuentra_tu_renta_liquida',
+            ],
+            'codeudor' => [
+                'tienes_la_posibilidad_de_complementar_tu_renta',
+            ],
+            'origen_prospecto' => [
+                'origen_del_prospecto',
+            ],
+            'origen_del_prospecto' => [
+                'origen_prospecto',
+            ],
+        ];
+
+        foreach ($byAlias[$normalized] ?? [] as $alias) {
+            $aliases[] = $alias;
+        }
+
+        return array_values(array_unique(array_filter($aliases, static fn (string $key): bool => $key !== '')));
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private static function fieldDefinitions(): array
+    {
+        return collect(SiteSetting::current()->contact_form_fields ?? [])
+            ->filter(fn (mixed $field): bool => is_array($field) && filled($field['key'] ?? null))
+            ->mapWithKeys(fn (array $field): array => [((string) $field['key']) => $field])
+            ->union([
+                'comuna' => [
+                    'key' => 'comuna',
+                    'label' => 'Comuna',
+                    'type' => 'text',
+                ],
+                'proyecto' => [
+                    'key' => 'proyecto',
+                    'label' => 'Proyecto',
+                    'type' => 'text',
+                ],
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $definition
+     */
+    private static function formatDynamicValue(mixed $value, array $definition): string
+    {
+        if (($definition['type'] ?? null) === 'select' && is_scalar($value)) {
+            foreach (($definition['options'] ?? []) as $option) {
+                if (! is_array($option)) {
+                    continue;
+                }
+
+                if ((string) ($option['value'] ?? '') === (string) $value) {
+                    return (string) ($option['label'] ?? $value);
+                }
+            }
+        }
+
+        if ($value === null) {
+            return '-';
+        }
+
+        if (is_bool($value)) {
+            return $value ? 'Sí' : 'No';
+        }
+
+        if (is_scalar($value)) {
+            $stringValue = trim((string) $value);
+
+            return $stringValue === '' ? '-' : $stringValue;
+        }
+
+        $encoded = Js::encode($value);
+
+        return is_string($encoded) ? $encoded : '[valor no serializable]';
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private static function resolveBadgeColor(?string $color): array
+    {
+        return match (strtolower(trim((string) $color))) {
+            'success', 'green', 'emerald' => Color::Emerald,
+            'warning', 'yellow', 'amber' => Color::Amber,
+            'danger', 'red', 'rose' => Color::Red,
+            'info', 'blue', 'sky' => Color::Blue,
+            'primary' => Color::Indigo,
+            default => Color::Gray,
+        };
+    }
 }

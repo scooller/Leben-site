@@ -200,4 +200,31 @@ class ContactCsvRowMapperTest extends TestCase
         $this->assertSame('Perez Soto', $mapped['fields']['apellido']);
         $this->assertArrayNotHasKey('apellidos', $mapped['fields']);
     }
+
+    public function test_suggest_target_field_maps_rango_and_codeudor_cleanly(): void
+    {
+        $mapper = app(ContactCsvRowMapper::class);
+
+        $this->assertSame('fields.rango_renta', $mapper->suggestTargetField('rango'));
+        $this->assertSame('fields.rango_renta', $mapper->suggestTargetField('renta'));
+        $this->assertSame('fields.codeudor', $mapper->suggestTargetField('codeudor'));
+    }
+
+    public function test_map_row_canonicalizes_rango_alias_to_rango_renta(): void
+    {
+        $mapper = app(ContactCsvRowMapper::class);
+
+        $row = [
+            'rango' => 'Entre $1.800.000 a $2.500.000',
+        ];
+
+        $mappings = [
+            ['source_column' => 'rango', 'target_field' => 'fields.rango_renta'],
+        ];
+
+        $mapped = $mapper->mapRow($row, $mappings, false);
+
+        $this->assertSame('Entre $1.800.000 a $2.500.000', $mapped['fields']['rango_renta']);
+        $this->assertArrayNotHasKey('rango', $mapped['fields']);
+    }
 }

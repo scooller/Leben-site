@@ -28,6 +28,7 @@ class ProyectoTest extends TestCase
         $this->assertContains('descripcion', $fillable);
         $this->assertContains('direccion', $fillable);
         $this->assertContains('email', $fillable);
+        $this->assertContains('descuento_iva', $fillable);
     }
 
     public function test_proyecto_casts_dates_correctly(): void
@@ -43,9 +44,12 @@ class ProyectoTest extends TestCase
     {
         $proyecto = Proyecto::factory()->create([
             'valor_reserva_exigido_defecto_peso' => '150000.50',
+            'descuento_iva' => '19.00',
         ]);
 
         $this->assertIsString($proyecto->valor_reserva_exigido_defecto_peso);
+        $this->assertIsString($proyecto->descuento_iva);
+        $this->assertSame('19.00', $proyecto->descuento_iva);
     }
 
     public function test_proyecto_has_many_plantas(): void

@@ -12,6 +12,8 @@ import { trackEvent, trackPageView } from '../utils/tagManager';
 import { triggerPaymentConversion } from '../utils/conversionTracker';
 import { resolveSeoPolicy } from '../utils/seoPolicy';
 import { removeStructuredData, setStructuredData } from '../utils/structuredData';
+import { appendPreviewTokenToUrl } from '../utils/previewToken';
+import { appendSessionUtmsToExternalUrl } from '../utils/externalLinks';
 import '../styles/home.scss' with { type: 'css' };
 
 const PlantsGrid = lazy(() => import('../components/PlantsGrid'));
@@ -20,6 +22,25 @@ const PaymentGatewayDialog = lazy(() => import('../components/PaymentGatewayDial
 const PLANT_DETAIL_BASE_PATH = '/p';
 const FILTER_BASE_PATH = '/f';
 const PLANT_TYPE_FILTER_OPTIONS = ['DEPARTAMENTO', 'ESTACIONAMIENTO', 'BODEGA', 'LOCAL'];
+const plantNameCollator = new Intl.Collator('es-CL', { numeric: true, sensitivity: 'base' });
+
+const SORT_OPTIONS = {
+  NAME_ASC: 'name-asc',
+  NAME_DESC: 'name-desc',
+  PRICE_ASC: 'price-asc',
+  PRICE_DESC: 'price-desc',
+  OFFER_ASC: 'offer-asc',
+  OFFER_DESC: 'offer-desc',
+};
+
+const SORT_TO_API = {
+  [SORT_OPTIONS.NAME_ASC]: { sortBy: 'name_project_plant', sortDirection: 'asc' },
+  [SORT_OPTIONS.NAME_DESC]: { sortBy: 'name_project_plant', sortDirection: 'desc' },
+  [SORT_OPTIONS.PRICE_ASC]: { sortBy: 'price_base', sortDirection: 'asc' },
+  [SORT_OPTIONS.PRICE_DESC]: { sortBy: 'price_base', sortDirection: 'desc' },
+  [SORT_OPTIONS.OFFER_ASC]: { sortBy: 'offer_discount', sortDirection: 'asc' },
+  [SORT_OPTIONS.OFFER_DESC]: { sortBy: 'offer_discount', sortDirection: 'desc' },
+};
 
 const slugifySegment = (value) => (
   `${value ?? ''}`
@@ -137,9 +158,10 @@ const formatSeoPrice = (amount) => {
  * Usa Web Awesome components de forma nativa con íconos integrados
  */
 function Home({ onNavigate, currentPath }) {
-  const { config, loading: configLoading, colorMode, toggleColorMode } = useSiteConfig();
+  const { config, loading: configLoading } = useSiteConfig();
   const isSaleEventActive = Boolean(config?.evento_sale);
-  const priceSource = config?.payment_gateways?.price_source === 'base' ? 'base' : 'final';
+  const priceSource = (config?.price_source || config?.payment_gateways?.price_source) === 'base' ? 'base' : 'final';
+  const pricePercentageSource = (config?.price_percentage_source || config?.payment_gateways?.price_percentage_source) === 'max_unit' ? 'max_unit' : 'web_discount';
   const showPlants = Boolean(config?.mostrar_plantas ?? false);
   // Optimistic: while config is loading assume catalog is visible so all data fetches
   // fire immediately in parallel with the site-config request instead of waiting for it.
@@ -201,6 +223,7 @@ function Home({ onNavigate, currentPath }) {
   const [selectedRegion, setSelectedRegion] = useState('');
   const [selectedPrecioMin, setSelectedPrecioMin] = useState('');
   const [selectedPrecioMax, setSelectedPrecioMax] = useState('');
+  const [selectedSort, setSelectedSort] = useState(null);
 
   // Estados temporales para filtros (antes de aplicar)
   const [tempProyecto, setTempProyecto] = useState([]);
@@ -268,6 +291,100 @@ function Home({ onNavigate, currentPath }) {
 
     return `${value}`;
   };
+
+  const handleSortClick = useCallback((option) => {
+    setSelectedSort((current) => (current === option ? null : option));
+    setPage(1);
+  }, []);
+
+  const sortedPlants = useMemo(() => {
+    if (!selectedSort) {
+      return plants;
+    }
+
+    const getPriceValue = (plant) => Number(plant.precioSeleccionado || plant.precioFinal || plant.precioBase || plant.precioLista || 0);
+    const getOfferValue = (plant) => {
+      const percentage = Number(plant.totalDiscountPercentage ?? plant.discountPercentage) || 0;
+      const savings = Math.max(0, (Number(plant.precioLista) || 0) - getPriceValue(plant));
+
+      return { percentage, savings };
+    };
+
+    const getOfferTier = (plant) => {
+      const hasIva = Boolean(plant.hasIvaDiscount || Number(plant.descuentoIva || plant.descuento_iva) > 0);
+      const hasBase = Number(plant.discountPercentage || plant.porcentajeAplicado || plant.descuentoDefectoCotizacionWeb || plant.descuentoMaximoUnidad) > 0;
+
+      if (hasIva && hasBase) {
+        return 1;
+      }
+      if (hasIva) {
+        return 2;
+      }
+      if (hasBase) {
+        return 3;
+      }
+      return 4;
+    };
+
+    const sorted = [...plants].sort((leftPlant, rightPlant) => {
+      switch (selectedSort) {
+        case SORT_OPTIONS.NAME_ASC:
+          return plantNameCollator.compare(leftPlant.nombre || leftPlant.name || '', rightPlant.nombre || rightPlant.name || '');
+        case SORT_OPTIONS.NAME_DESC:
+          return plantNameCollator.compare(rightPlant.nombre || rightPlant.name || '', leftPlant.nombre || leftPlant.name || '');
+        case SORT_OPTIONS.PRICE_ASC:
+          return getPriceValue(leftPlant) - getPriceValue(rightPlant);
+        case SORT_OPTIONS.PRICE_DESC:
+          return getPriceValue(rightPlant) - getPriceValue(leftPlant);
+        case SORT_OPTIONS.OFFER_ASC: {
+          const leftTier = getOfferTier(leftPlant);
+          const rightTier = getOfferTier(rightPlant);
+
+          if (leftTier !== rightTier) {
+            return rightTier - leftTier;
+          }
+
+          const leftOffer = getOfferValue(leftPlant);
+          const rightOffer = getOfferValue(rightPlant);
+
+          if (leftOffer.percentage !== rightOffer.percentage) {
+            return leftOffer.percentage - rightOffer.percentage;
+          }
+
+          if (leftOffer.savings !== rightOffer.savings) {
+            return leftOffer.savings - rightOffer.savings;
+          }
+
+          return getPriceValue(rightPlant) - getPriceValue(leftPlant);
+        }
+        case SORT_OPTIONS.OFFER_DESC: {
+          const leftTier = getOfferTier(leftPlant);
+          const rightTier = getOfferTier(rightPlant);
+
+          if (leftTier !== rightTier) {
+            return leftTier - rightTier;
+          }
+
+          const leftOffer = getOfferValue(leftPlant);
+          const rightOffer = getOfferValue(rightPlant);
+
+          if (leftOffer.percentage !== rightOffer.percentage) {
+            return rightOffer.percentage - leftOffer.percentage;
+          }
+
+          if (leftOffer.savings !== rightOffer.savings) {
+            return rightOffer.savings - leftOffer.savings;
+          }
+
+          return getPriceValue(leftPlant) - getPriceValue(rightPlant);
+        }
+        default:
+          return 0;
+      }
+    });
+
+    return sorted;
+  }, [plants, selectedSort]);
 
   const filteredComunaOptions = useMemo(() => comunaOptions, [comunaOptions]);
 
@@ -538,7 +655,7 @@ function Home({ onNavigate, currentPath }) {
       name: productName,
       url: detailUrl,
       category: selectedPlantDetail.tipoProducto || 'Inmobiliario',
-      sku: `${projectSlug || 'proyecto'}-${slugifySegment(selectedPlantDetail.nombre || selectedPlantDetail.name || '')}`,
+      sku: selectedPlantDetail.sku || `${projectSlug || 'proyecto'}-${slugifySegment(selectedPlantDetail.nombre || selectedPlantDetail.name || '')}`,
       image: selectedPlantDetail.imageUrl || selectedPlantDetail.coverImage || undefined,
       brand: {
         '@type': 'Brand',
@@ -614,31 +731,39 @@ function Home({ onNavigate, currentPath }) {
     }
 
     event.preventDefault();
-    onNavigate?.(href);
+    onNavigate?.(appendPreviewTokenToUrl(href));
   }, [onNavigate]);
 
   const mapPlant = useCallback((plant) => {
     const precioBase = Number(plant.precio_base) || 0;
     const precioLista = Number(plant.precio_lista) || 0;
-    const porcentajeMaximoUnidad = Number(plant.porcentaje_maximo_unidad) || 0;
-    const descuentoDefectoCotizacionWeb = Number(plant.proyecto?.descuento_defecto_cotizacion_web) || 0;
-    const porcentajeAplicado = isSaleEventActive ? porcentajeMaximoUnidad : descuentoDefectoCotizacionWeb;
-    const precioCalculadoPorPorcentaje = porcentajeAplicado > 0 && precioLista > 0
-      ? Math.max(0, precioLista - ((precioLista * porcentajeAplicado) / 100))
+    const descuentoMaximoUnidad = Number(plant.descuento_maximo_unidad ?? plant.proyecto?.descuento_maximo_unidad) || 0;
+    const descuentoDefectoCotizacionWeb = Number(plant.descuento_defecto_cotizacion_web ?? plant.proyecto?.descuento_defecto_cotizacion_web) || 0;
+    const descuentoIva = Number(plant.descuento_iva ?? plant.proyecto?.descuento_iva) || 0;
+    const porcentajeAplicado = pricePercentageSource === 'max_unit'
+      ? descuentoMaximoUnidad
+      : descuentoDefectoCotizacionWeb;
+    const unitDiscountPercentage = porcentajeAplicado > 0 ? porcentajeAplicado : 0;
+    const discountPercentage = unitDiscountPercentage;
+    const hasIvaDiscount = descuentoIva > 0;
+    const totalDiscountPercentage = hasIvaDiscount
+      ? Number((discountPercentage + descuentoIva).toFixed(2))
+      : Number(discountPercentage.toFixed(2));
+
+    const activeDiscount = totalDiscountPercentage > 0 ? totalDiscountPercentage : 0;
+    const precioCalculadoPorPorcentaje = activeDiscount > 0 && precioLista > 0
+      ? Math.max(0, precioLista - ((precioLista * activeDiscount) / 100))
       : 0;
     const precioFinalApi = Number(plant.precio_final) || 0;
-    const precioFinal = precioFinalApi > 0
-      ? precioFinalApi
-      : (precioCalculadoPorPorcentaje > 0 ? precioCalculadoPorPorcentaje : precioBase);
-    const precioSeleccionado = priceSource === 'base'
-      ? precioBase
-      : (precioFinal > 0 ? precioFinal : precioBase);
-    const precioSeleccionadoEtiqueta = priceSource === 'base' || (priceSource !== 'base' && precioFinal <= 0)
-      ? 'Precio Base: '
-      : 'Precio Final: ';
-    const discountPercentage = precioLista > 0 && precioSeleccionado > 0 && precioSeleccionado < precioLista
-      ? Math.max(0, Math.round(Math.abs(((precioLista - precioSeleccionado) / precioLista) * 100)))
-      : 0;
+    const precioFinal = precioCalculadoPorPorcentaje > 0
+      ? precioCalculadoPorPorcentaje
+      : (precioFinalApi > 0 ? precioFinalApi : precioBase);
+    const precioSeleccionado = activeDiscount > 0
+      ? precioFinal
+      : (priceSource === 'base' ? precioBase : (precioFinal > 0 ? precioFinal : precioBase));
+    const precioSeleccionadoEtiqueta = activeDiscount > 0 || (priceSource !== 'base' && precioFinal < precioLista)
+      ? (isSaleEventActive ? 'Precio Sale: ' : 'Precio Final: ')
+      : 'Precio Base: ';
 
     const advisorsSource = Array.isArray(plant.asesores) && plant.asesores.length > 0
       ? plant.asesores
@@ -656,9 +781,16 @@ function Home({ onNavigate, currentPath }) {
       precioFinal,
       precioSeleccionado,
       precioSeleccionadoEtiqueta,
-      porcentajeMaximoUnidad,
+      porcentajeAplicado,
+      descuentoMaximoUnidad,
+      porcentajeMaximoUnidad: descuentoMaximoUnidad,
       descuentoDefectoCotizacionWeb,
+      descuentoIva,
+      descuento_iva: descuentoIva,
+      hasIvaDiscount,
       discountPercentage,
+      totalDiscountPercentage,
+      unidadSale: Boolean(plant.unidad_sale),
       reservaExigidaPeso: Number(plant.proyecto?.valor_reserva_exigido_defecto_peso) || 0,
       proyectoNombre: plant.proyecto?.name,
       proyectoSlug: plant.proyecto?.slug || slugifySegment(plant.proyecto?.name),
@@ -666,7 +798,10 @@ function Home({ onNavigate, currentPath }) {
       proyectoDireccion: plant.proyecto?.direccion,
       proyectoComuna: plant.proyecto?.comuna,
       proyectoRegion: plant.proyecto?.region,
-      proyectoEtapa: plant.proyecto?.etapa,
+      proyectoEntregaInmediata: Boolean(plant.proyecto?.entrega_inmediata ?? plant.entrega_inmediata),
+      proyectoEtapa: Boolean(plant.proyecto?.entrega_inmediata ?? plant.entrega_inmediata)
+        ? 'Entrega inmediata'
+        : plant.proyecto?.etapa,
       superficieUtil: Number(plant.superficie_util) || 0,
       superficieTotal: Number(plant.superficie_total_principal) || 0,
       asesores: advisorsSource.map((asesor) => ({
@@ -685,7 +820,7 @@ function Home({ onNavigate, currentPath }) {
       isReserved: !!plant.active_reservation,
       tipoProducto: `${plant.tipo_producto ?? ''}`.trim().toUpperCase(),
     };
-  }, [isSaleEventActive, priceSource]);
+  }, [isSaleEventActive, priceSource, pricePercentageSource]);
 
   useEffect(() => {
     if (!canRenderPlantsCatalog) {
@@ -776,6 +911,11 @@ function Home({ onNavigate, currentPath }) {
         // available: true,
       };
 
+      if (selectedSort && SORT_TO_API[selectedSort]) {
+        filters.sort_by = SORT_TO_API[selectedSort].sortBy;
+        filters.sort_direction = SORT_TO_API[selectedSort].sortDirection;
+      }
+
       if (routeFilters.legacySlug) {
         filters.catalog_slug = routeFilters.legacySlug;
       }
@@ -858,7 +998,7 @@ function Home({ onNavigate, currentPath }) {
 
       const mappedPlants = (data.data || []).map((plant) => mapPlant(plant));
       const visiblePlants = isSaleEventActive
-        ? mappedPlants.filter((plant) => Number(plant.porcentajeMaximoUnidad) > 0)
+        ? mappedPlants.filter((plant) => Boolean(plant.unidadSale) || Number(plant.porcentajeMaximoUnidad || plant.discountPercentage || plant.porcentajeAplicado) > 0)
         : mappedPlants;
 
       setPlants(visiblePlants);
@@ -900,6 +1040,7 @@ function Home({ onNavigate, currentPath }) {
     selectedRegion,
     selectedPrecioMin,
     selectedPrecioMax,
+    selectedSort,
     isSaleEventActive,
     canRenderPlantsCatalog,
     mapPlant,
@@ -942,10 +1083,11 @@ function Home({ onNavigate, currentPath }) {
           ? normalizeBrowserUrl(window.history.state?.previousUrl || '/')
           : currentUrl;
 
-        window.history.pushState({ plantDetail: true, previousUrl }, '', nextPath);
+        const targetUrl = appendPreviewTokenToUrl(nextPath);
+        window.history.pushState({ plantDetail: true, previousUrl }, '', targetUrl);
 
         trackPageView({
-          path: nextPath,
+          path: targetUrl,
           title: `${config?.site_name || 'iLeben'} | Planta ${plant.nombre || plant.name || ''}`,
         });
       }
@@ -965,9 +1107,10 @@ function Home({ onNavigate, currentPath }) {
     setSelectedPlantDetail(null);
     setRoutePlantLoading(false);
 
-    const targetUrl = parsePlantDetailPath(window.location.pathname)
+    const rawTargetUrl = parsePlantDetailPath(window.location.pathname)
       ? normalizeBrowserUrl(window.history.state?.previousUrl || '/plantas')
       : normalizeBrowserUrl(window.location.pathname || '/');
+    const targetUrl = appendPreviewTokenToUrl(rawTargetUrl);
 
     window.history.replaceState({}, '', targetUrl);
     window.dispatchEvent(new PopStateEvent('popstate'));
@@ -1432,108 +1575,108 @@ function Home({ onNavigate, currentPath }) {
   if (configLoading) {
     return (
       <div className="home-container">
-          <div className="loading-skeletons wa-stack wa-gap-l">
-            <wa-card appearance="filled">
-              <div className="wa-stack wa-gap-s" style={{ padding: '1.5rem' }}>
-                <wa-skeleton effect="pulse" style={{ height: '28px', width: '35%', margin: '0 auto' }}></wa-skeleton>
-                <wa-skeleton effect="pulse" style={{ height: '18px', width: '60%', margin: '0 auto' }}></wa-skeleton>
-              </div>
-            </wa-card>
-
-            <div className="wa-stack wa-gap-xs">
-              <wa-skeleton effect="pulse" style={{ height: '26px', width: '220px' }}></wa-skeleton>
-              <wa-skeleton effect="pulse" style={{ height: '16px', width: '320px' }}></wa-skeleton>
+        <div className="loading-skeletons wa-stack wa-gap-l">
+          <wa-card appearance="filled">
+            <div className="wa-stack wa-gap-s" style={{ padding: '1.5rem' }}>
+              <wa-skeleton effect="pulse" style={{ height: '28px', width: '35%', margin: '0 auto' }}></wa-skeleton>
+              <wa-skeleton effect="pulse" style={{ height: '18px', width: '60%', margin: '0 auto' }}></wa-skeleton>
             </div>
+          </wa-card>
 
-            <wa-card appearance="outlined">
-              <div className="wa-stack wa-gap-m" style={{ padding: '1rem' }}>
-                <wa-skeleton effect="pulse" style={{ height: '18px', width: '140px' }}></wa-skeleton>
-                <div className="wa-cluster wa-gap-s">
-                  <wa-skeleton effect="pulse" style={{ height: '42px', width: '220px' }}></wa-skeleton>
-                  <wa-skeleton effect="pulse" style={{ height: '42px', width: '160px' }}></wa-skeleton>
-                  <wa-skeleton effect="pulse" style={{ height: '42px', width: '140px' }}></wa-skeleton>
-                  <wa-skeleton effect="pulse" style={{ height: '42px', width: '150px' }}></wa-skeleton>
-                  <wa-skeleton effect="pulse" style={{ height: '42px', width: '150px' }}></wa-skeleton>
-                </div>
-                <div className="wa-cluster wa-gap-s">
-                  <wa-skeleton effect="pulse" style={{ height: '34px', width: '150px' }}></wa-skeleton>
-                  <wa-skeleton effect="pulse" style={{ height: '34px', width: '150px' }}></wa-skeleton>
-                </div>
+          <div className="wa-stack wa-gap-xs">
+            <wa-skeleton effect="pulse" style={{ height: '26px', width: '220px' }}></wa-skeleton>
+            <wa-skeleton effect="pulse" style={{ height: '16px', width: '320px' }}></wa-skeleton>
+          </div>
+
+          <wa-card appearance="outlined">
+            <div className="wa-stack wa-gap-m" style={{ padding: '1rem' }}>
+              <wa-skeleton effect="pulse" style={{ height: '18px', width: '140px' }}></wa-skeleton>
+              <div className="wa-cluster wa-gap-s">
+                <wa-skeleton effect="pulse" style={{ height: '42px', width: '220px' }}></wa-skeleton>
+                <wa-skeleton effect="pulse" style={{ height: '42px', width: '160px' }}></wa-skeleton>
+                <wa-skeleton effect="pulse" style={{ height: '42px', width: '140px' }}></wa-skeleton>
+                <wa-skeleton effect="pulse" style={{ height: '42px', width: '150px' }}></wa-skeleton>
+                <wa-skeleton effect="pulse" style={{ height: '42px', width: '150px' }}></wa-skeleton>
               </div>
-            </wa-card>
-
-            <div className="plants-grid wa-grid">
-              {[...Array(6)].map((_, i) => (
-                <wa-card key={i} className="skeleton-card" appearance="filled">
-                  <wa-skeleton slot="media" effect="pulse" style={{ height: '220px' }}></wa-skeleton>
-
-                  <div slot="header" className="wa-stack wa-gap-xs" style={{ width: '100%' }}>
-                    <wa-skeleton effect="pulse" style={{ height: '18px', width: '65%' }}></wa-skeleton>
-                    <wa-skeleton effect="pulse" style={{ height: '18px', width: '45%' }}></wa-skeleton>
-                  </div>
-
-                  <div slot="header-actions">
-                    <wa-skeleton effect="pulse" style={{ height: '24px', width: '70px' }}></wa-skeleton>
-                  </div>
-
-                  <div className="wa-split wa-align-items-center">
-                    <wa-skeleton effect="pulse" style={{ height: '16px', width: '35%' }}></wa-skeleton>
-                    <div className="wa-cluster wa-gap-xs">
-                      <wa-skeleton effect="pulse" style={{ height: '24px', width: '65px' }}></wa-skeleton>
-                      <wa-skeleton effect="pulse" style={{ height: '24px', width: '65px' }}></wa-skeleton>
-                    </div>
-                  </div>
-
-                  <div slot="footer" className="wa-stack wa-gap-xs">
-                    <wa-skeleton effect="pulse" style={{ height: '14px', width: '48%' }}></wa-skeleton>
-                    <wa-skeleton effect="pulse" style={{ height: '28px', width: '38%' }}></wa-skeleton>
-                  </div>
-
-                  <div slot="footer-actions">
-                    <wa-button-group label="Skeleton actions">
-                      <wa-button size="s" disabled>
-                        <wa-skeleton effect="pulse" style={{ height: '14px', width: '72px' }}></wa-skeleton>
-                      </wa-button>
-                      <wa-button size="s" variant="brand" disabled>
-                        <wa-skeleton effect="pulse" style={{ height: '14px', width: '56px' }}></wa-skeleton>
-                      </wa-button>
-                    </wa-button-group>
-                  </div>
-                </wa-card>
-              ))}
+              <div className="wa-cluster wa-gap-s">
+                <wa-skeleton effect="pulse" style={{ height: '34px', width: '150px' }}></wa-skeleton>
+                <wa-skeleton effect="pulse" style={{ height: '34px', width: '150px' }}></wa-skeleton>
+              </div>
             </div>
+          </wa-card>
+
+          <div className="plants-grid wa-grid">
+            {[...Array(6)].map((_, i) => (
+              <wa-card key={i} className="skeleton-card" appearance="filled">
+                <wa-skeleton slot="media" effect="pulse" style={{ height: '220px' }}></wa-skeleton>
+
+                <div slot="header" className="wa-stack wa-gap-xs" style={{ width: '100%' }}>
+                  <wa-skeleton effect="pulse" style={{ height: '18px', width: '65%' }}></wa-skeleton>
+                  <wa-skeleton effect="pulse" style={{ height: '18px', width: '45%' }}></wa-skeleton>
+                </div>
+
+                <div slot="header-actions">
+                  <wa-skeleton effect="pulse" style={{ height: '24px', width: '70px' }}></wa-skeleton>
+                </div>
+
+                <div className="wa-split wa-align-items-center">
+                  <wa-skeleton effect="pulse" style={{ height: '16px', width: '35%' }}></wa-skeleton>
+                  <div className="wa-cluster wa-gap-xs">
+                    <wa-skeleton effect="pulse" style={{ height: '24px', width: '65px' }}></wa-skeleton>
+                    <wa-skeleton effect="pulse" style={{ height: '24px', width: '65px' }}></wa-skeleton>
+                  </div>
+                </div>
+
+                <div slot="footer" className="wa-stack wa-gap-xs">
+                  <wa-skeleton effect="pulse" style={{ height: '14px', width: '48%' }}></wa-skeleton>
+                  <wa-skeleton effect="pulse" style={{ height: '28px', width: '38%' }}></wa-skeleton>
+                </div>
+
+                <div slot="footer-actions">
+                  <wa-button-group label="Skeleton actions">
+                    <wa-button size="s" disabled>
+                      <wa-skeleton effect="pulse" style={{ height: '14px', width: '72px' }}></wa-skeleton>
+                    </wa-button>
+                    <wa-button size="s" variant="brand" disabled>
+                      <wa-skeleton effect="pulse" style={{ height: '14px', width: '56px' }}></wa-skeleton>
+                    </wa-button>
+                  </wa-button-group>
+                </div>
+              </wa-card>
+            ))}
           </div>
         </div>
+      </div>
     );
   }
 
   if (error) {
     return (
       <div className="home-container">
-          <wa-card>
-            <div slot="header">
-              <h2>{error.title || 'Error'}</h2>
+        <wa-card>
+          <div slot="header">
+            <h2>{error.title || 'Error'}</h2>
+          </div>
+          <wa-callout variant="danger">
+            <wa-icon slot="icon" name="circle-exclamation"></wa-icon>
+            <strong>No se pudieron cargar las plantas</strong>
+            <div style={{ marginTop: '8px' }}>
+              {error.userMessage || error.message}
             </div>
-            <wa-callout variant="danger">
-              <wa-icon slot="icon" name="circle-exclamation"></wa-icon>
-              <strong>No se pudieron cargar las plantas</strong>
-              <div style={{ marginTop: '8px' }}>
-                {error.userMessage || error.message}
-              </div>
-            </wa-callout>
-            <div style={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
-              <wa-button onClick={() => loadPlants()} variant="brand">
-                <wa-icon slot="start" name="arrow-rotate-right" animation="spin"></wa-icon>
-                Reintentar
+          </wa-callout>
+          <div style={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
+            <wa-button onClick={() => loadPlants()} variant="brand">
+              <wa-icon slot="start" name="arrow-rotate-right" animation="spin"></wa-icon>
+              Reintentar
+            </wa-button>
+            {error.canRetry && (
+              <wa-button onClick={() => window.location.reload()}>
+                Recargar página
               </wa-button>
-              {error.canRetry && (
-                <wa-button onClick={() => window.location.reload()}>
-                  Recargar página
-                </wa-button>
-              )}
-            </div>
-          </wa-card>
-        </div>
+            )}
+          </div>
+        </wa-card>
+      </div>
     );
   }
 
@@ -1545,19 +1688,31 @@ function Home({ onNavigate, currentPath }) {
   const homeHeroMobileVideo = homeHero?.video_mobile_url || 'https://viveelsur.ileben.cl/wp-content/uploads/2025/12/Banner-Hero-MobileV2.mp4';
   const homeHeroPoster = homeHero?.video_poster_url || homeHeroDesktopImage || homeHeroMobileImage || undefined;
   const homeHeroDisclaimer = config?.hero?.contact?.alt || '';
+  const homeHeroLink = homeHero?.link || null;
+  const homeHeroLinkNewTab = Boolean(homeHero?.link_new_tab);
+  const trackedHomeHeroLink = homeHeroLink ? appendSessionUtmsToExternalUrl(homeHeroLink) : null;
 
   return (
     <>
       {/* Hero Section */}
-      <div className='video-home wa-position-relative wa-overflow-hidden wa-justify-content-center box-shadow-1'>
+      <div className={`video-home wa-position-relative wa-overflow-hidden wa-justify-content-center box-shadow-1${trackedHomeHeroLink ? ' has-link' : ''}${homeHeroType === 'image' ? ' is-image' : ''}`}>
+        {trackedHomeHeroLink && (
+          <a
+            href={trackedHomeHeroLink}
+            target={homeHeroLinkNewTab ? '_blank' : undefined}
+            rel={homeHeroLinkNewTab ? 'noopener noreferrer' : undefined}
+            className="hero-banner-link-overlay"
+            aria-label={config?.site_name || 'Enlace del banner'}
+          />
+        )}
         {/* <div className="hero-section wa-position-absolute wa-z-index-1">
             <h1>{config?.site_name}</h1>
             <p>{config?.site_description}</p>
         </div> */}
         {homeHeroType === 'image' ? (
-          <picture>
+          <picture className="hero-picture">
             <source media="(max-width: 768px)" srcSet={homeHeroMobileImage || homeHeroDesktopImage} />
-            <img src={homeHeroDesktopImage} alt={config?.site_name || 'Hero'} className="hero-video" decoding="async" fetchPriority="high" />
+            <img src={homeHeroDesktopImage} alt={config?.site_name || 'Hero'} className="hero-image" decoding="async" fetchPriority="high" />
           </picture>
         ) : (
           <>
@@ -1616,7 +1771,7 @@ function Home({ onNavigate, currentPath }) {
             {breadcrumbItems.map((item, index) => (
               <li key={`${item.label}-${index}`}>
                 {item.href && !item.current ? (
-                  <a href={item.href} onClick={(event) => handleInternalNavigationLink(event, item.href)}>{item.label}</a>
+                  <a href={appendPreviewTokenToUrl(item.href)} onClick={(event) => handleInternalNavigationLink(event, item.href)}>{item.label}</a>
                 ) : (
                   <span aria-current={item.current ? 'page' : undefined}>{item.label}</span>
                 )}
@@ -1633,8 +1788,9 @@ function Home({ onNavigate, currentPath }) {
                 <wa-icon name="filter-circle-dollar"></wa-icon> Filtros
               </span>
               <wa-card
-                appearance="filled"
-                style={{ '--spacing': 'var(--wa-space-xs)', backgroundColor: 'var(--wa-color-surface-lowered)' }}
+                appearance="plain"
+                className="filters-card"
+                style={{ '--spacing': 'var(--wa-space-xs)', backgroundColor: 'transparent' }}
               >
                 <div className="wa-grid wa-gap-m filters-inputs" style={{ '--min-column-size': '14rem' }}>
                   <wa-select
@@ -1836,10 +1992,89 @@ function Home({ onNavigate, currentPath }) {
               </wa-card>
             </wa-details>
 
+            <div className="plants-toolbar">
+              <div className="plants-toolbar-summary">
+                <span className="plants-toolbar-summary-label">Plantas encontradas</span>
+                <strong>{totalPlants == 0 ? '-' : (totalPlants || plants.length)}</strong>
+              </div>
+
+              <div className="plants-toolbar-sort">
+                <span className="plants-toolbar-sort-label">Ordenar por</span>
+
+                <div className="plants-toolbar-groups">
+                  <div className="plants-sort-group">
+                    <span className="plants-sort-group-title">Nombre</span>
+                    <wa-button-group label="Ordenar por nombre">
+                      <wa-button
+                        size="s"
+                        appearance={selectedSort === SORT_OPTIONS.NAME_ASC ? 'accent' : 'outlined'}
+                        variant={selectedSort === SORT_OPTIONS.NAME_ASC ? 'brand' : 'neutral'}
+                        onClick={() => handleSortClick(SORT_OPTIONS.NAME_ASC)}
+                      >
+                        ASC
+                      </wa-button>
+                      <wa-button
+                        size="s"
+                        appearance={selectedSort === SORT_OPTIONS.NAME_DESC ? 'accent' : 'outlined'}
+                        variant={selectedSort === SORT_OPTIONS.NAME_DESC ? 'brand' : 'neutral'}
+                        onClick={() => handleSortClick(SORT_OPTIONS.NAME_DESC)}
+                      >
+                        DESC
+                      </wa-button>
+                    </wa-button-group>
+                  </div>
+
+                  <div className="plants-sort-group">
+                    <span className="plants-sort-group-title">Precio</span>
+                    <wa-button-group label="Ordenar por precio">
+                      <wa-button
+                        size="s"
+                        appearance={selectedSort === SORT_OPTIONS.PRICE_ASC ? 'accent' : 'outlined'}
+                        variant={selectedSort === SORT_OPTIONS.PRICE_ASC ? 'brand' : 'neutral'}
+                        onClick={() => handleSortClick(SORT_OPTIONS.PRICE_ASC)}
+                      >
+                        ASC
+                      </wa-button>
+                      <wa-button
+                        size="s"
+                        appearance={selectedSort === SORT_OPTIONS.PRICE_DESC ? 'accent' : 'outlined'}
+                        variant={selectedSort === SORT_OPTIONS.PRICE_DESC ? 'brand' : 'neutral'}
+                        onClick={() => handleSortClick(SORT_OPTIONS.PRICE_DESC)}
+                      >
+                        DESC
+                      </wa-button>
+                    </wa-button-group>
+                  </div>
+
+                  <div className="plants-sort-group">
+                    <span className="plants-sort-group-title">Mejor oferta</span>
+                    <wa-button-group label="Ordenar por mejor oferta">
+                      <wa-button
+                        size="s"
+                        appearance={selectedSort === SORT_OPTIONS.OFFER_ASC ? 'accent' : 'outlined'}
+                        variant={selectedSort === SORT_OPTIONS.OFFER_ASC ? 'brand' : 'neutral'}
+                        onClick={() => handleSortClick(SORT_OPTIONS.OFFER_ASC)}
+                      >
+                        ASC
+                      </wa-button>
+                      <wa-button
+                        size="s"
+                        appearance={selectedSort === SORT_OPTIONS.OFFER_DESC ? 'accent' : 'outlined'}
+                        variant={selectedSort === SORT_OPTIONS.OFFER_DESC ? 'brand' : 'neutral'}
+                        onClick={() => handleSortClick(SORT_OPTIONS.OFFER_DESC)}
+                      >
+                        DESC
+                      </wa-button>
+                    </wa-button-group>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Plantas Grid */}
             <Suspense fallback={null}>
               <PlantsGrid
-                plants={plants}
+                plants={sortedPlants}
                 isSaleEventActive={isSaleEventActive}
                 saleLogoUrl={config?.logo_sale || null}
                 loading={loading}
@@ -1924,18 +2159,6 @@ function Home({ onNavigate, currentPath }) {
         </wa-dialog>
       )}
 
-      <wa-button
-        variant="neutral"
-        appearance="filled"
-        onClick={toggleColorMode}
-        className="theme-floating-toggle box-shadow-2"
-        id="theme-toggle-button"
-      >
-        <wa-icon name={colorMode === 'dark' ? 'sun' : 'cloud-moon'} label={colorMode === 'dark' ? 'Modo claro' : 'Modo oscuro'}></wa-icon>
-      </wa-button>
-      <wa-tooltip for="theme-toggle-button" placement="top">
-        Cambiar a {colorMode === 'dark' ? 'modo claro' : 'modo oscuro'}
-      </wa-tooltip>
     </>
   );
 }

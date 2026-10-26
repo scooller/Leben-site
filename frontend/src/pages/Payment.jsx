@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSiteConfig } from '../contexts/SiteConfigContext';
 import { paymentsService } from '../services/payments';
 import { triggerPaymentConversion } from '../utils/conversionTracker';
+import { trackEvent } from '../utils/tagManager';
 import '../styles/payment.scss' with { type: 'css' };
 
 const RESULT_TEXT = {
@@ -113,6 +114,21 @@ function Payment({ onNavigate, currentPath }) {
 
         if (!conversionFiredRef.current && (response?.status === 'approved' || queryParams.result === 'ok')) {
           conversionFiredRef.current = true;
+
+          const paymentAmount = Number(response?.amount || 0);
+          const transactionId = response?.buy_order || response?.gateway_tx_id || response?.id || queryParams.paymentId || '';
+
+          trackEvent('purchase', {
+            transaction_id: transactionId,
+            value: paymentAmount,
+            currency: 'CLP',
+            payment_id: response?.id || queryParams.paymentId || '',
+            order_id: transactionId,
+            gateway: response?.gateway || queryParams.gateway || '',
+            unit_id: response?.plant_id || response?.unit_id || '',
+            project_id: response?.project_id || '',
+          });
+
           triggerPaymentConversion(config?.conversion_scripts, {
             payment_id: response?.id || queryParams.paymentId || '',
             order_id: response?.buy_order || response?.gateway_tx_id || '',

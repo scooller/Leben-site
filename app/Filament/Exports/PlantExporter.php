@@ -37,6 +37,14 @@ class PlantExporter extends Exporter
                 ->label('Precio Lista'),
             ExportColumn::make('porcentaje_maximo_unidad')
                 ->label('Porcentaje Máximo de Unidad'),
+            ExportColumn::make('priorizar_descuentos')
+                ->label('Priorizar Descuentos'),
+            ExportColumn::make('descuento_defecto_cotizacion_web')
+                ->label('Descuento Web'),
+            ExportColumn::make('descuento_maximo_unidad')
+                ->label('Descuento Máximo Unidad'),
+            ExportColumn::make('descuento_iva')
+                ->label('Descuento IVA'),
             ExportColumn::make('superficie_total_principal')
                 ->label('Sup. Total Principal'),
             ExportColumn::make('superficie_interior')

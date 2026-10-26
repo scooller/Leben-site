@@ -363,7 +363,7 @@ class FinMailSpanishEmailTemplatesSeeder extends Seeder
             'mensaje' => 'Mensaje enviado desde el formulario',
             'site_name' => 'Nombre del sitio configurado',
             'site_url' => 'URL del sitio configurado',
-            default => 'Valor disponible para el token ' . $token,
+            default => 'Valor disponible para el token '.$token,
         };
     }
 

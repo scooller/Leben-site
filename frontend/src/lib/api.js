@@ -1,17 +1,10 @@
 import axios from 'axios';
 import { APP_HTTP_ERROR_EVENT, normalizeHttpError } from '../utils/errorHandler';
+import { getActivePreviewToken } from '../utils/previewToken';
 
 const defaultAuthToken = import.meta.env.VITE_API_AUTH_TOKEN?.trim();
 
-const resolvePreviewToken = () => {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-
-  const token = new URLSearchParams(window.location.search).get('preview_token');
-
-  return token ? token.trim() : null;
-};
+const resolvePreviewToken = () => getActivePreviewToken();
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,

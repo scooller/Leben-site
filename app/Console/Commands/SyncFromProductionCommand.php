@@ -12,7 +12,9 @@ class SyncFromProductionCommand extends Command
     protected $signature = 'production:sync
                             {--base-url= : URL base de producción (ej: https://admin.ileben.cl)}
                             {--token= : Token Bearer Sanctum}
-                            {--authorized-url= : URL autorizada para el token (ej: http://127.0.0.1:8000/admin)}';
+                            {--authorized-url= : URL autorizada para el token (ej: http://127.0.0.1:8000/admin)}
+                            {--entities=* : Módulos a sincronizar: site_settings, projects, advisors, plants}
+                            {--mode=update : Modo de sincronización: update, overwrite, skip}';
 
     protected $description = 'Descarga e importa la configuración, proyectos y plantas desde producción';
 
@@ -21,6 +23,9 @@ class SyncFromProductionCommand extends Command
         $baseUrl = $this->option('base-url') ?: config('services.production_sync.base_url');
         $token = $this->option('token') ?: config('services.production_sync.token');
         $authorizedUrl = $this->option('authorized-url') ?: config('services.production_sync.authorized_url');
+        $rawEntities = (array) $this->option('entities');
+        $entities = $rawEntities !== [] ? $rawEntities : ['site_settings', 'projects', 'advisors', 'plants'];
+        $mode = (string) ($this->option('mode') ?: 'update');
 
         if (blank($baseUrl) || blank($token)) {
             $this->error('Falta configurar PRODUCTION_SYNC_BASE_URL o PRODUCTION_SYNC_TOKEN (en .env o por opciones --base-url / --token).');
@@ -44,11 +49,14 @@ class SyncFromProductionCommand extends Command
         $this->info("Datos recibidos: {$projectsCount} proyectos, {$advisorsCount} asesores, {$plantsCount} plantas.");
 
         $syncId = (string) Str::uuid();
-        $totalSteps = 1 + $projectsCount + $advisorsCount + $plantsCount;
-        $tracker->initialize($syncId, $totalSteps, $baseUrl);
+        $totalSteps = (in_array('site_settings', $entities, true) ? 1 : 0)
+            + (in_array('projects', $entities, true) ? $projectsCount : 0)
+            + (in_array('advisors', $entities, true) ? $advisorsCount : 0)
+            + (in_array('plants', $entities, true) ? $plantsCount : 0);
+        $tracker->initialize($syncId, max(1, $totalSteps), $baseUrl);
 
-        $this->info('Iniciando sincronización local...');
-        $result = $service->syncSnapshot($syncId, $snapshot, $tracker);
+        $this->info("Iniciando sincronización local (modo: {$mode})...");
+        $result = $service->syncSnapshot($syncId, $snapshot, $tracker, $entities, $mode);
         $tracker->markCompleted($syncId);
 
         $this->newLine();

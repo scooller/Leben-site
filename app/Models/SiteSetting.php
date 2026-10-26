@@ -33,6 +33,8 @@ class SiteSetting extends Model
         'icon_id',
         'webawesome_theme',
         'webawesome_palette',
+        'show_theme_toggle',
+        'default_color_mode',
         'brand_color',
         'semantic_brand_color',
         'semantic_neutral_color',
@@ -89,6 +91,7 @@ class SiteSetting extends Model
         'maintenance_use_html' => 'boolean',
         'evento_sale' => 'boolean',
         'mostrar_plantas' => 'boolean',
+        'show_theme_toggle' => 'boolean',
         'plants_per_page' => 'integer',
         'gateway_transbank_enabled' => 'boolean',
         'gateway_mercadopago_enabled' => 'boolean',
@@ -181,6 +184,7 @@ class SiteSetting extends Model
                         'key' => 'name',
                         'label' => 'Nombre',
                         'type' => 'text',
+                        'salesforce_field' => 'FirstName',
                         'placeholder' => 'Ingresa tu nombre completo',
                         'required' => true,
                     ],
@@ -188,6 +192,7 @@ class SiteSetting extends Model
                         'key' => 'rut',
                         'label' => 'RUT',
                         'type' => 'rut',
+                        'salesforce_field' => 'RUT__c',
                         'placeholder' => '12.345.678-5',
                         'required' => false,
                     ],
@@ -195,6 +200,7 @@ class SiteSetting extends Model
                         'key' => 'email',
                         'label' => 'Email',
                         'type' => 'email',
+                        'salesforce_field' => 'Email',
                         'placeholder' => 'correo@dominio.cl',
                         'required' => true,
                     ],
@@ -202,6 +208,7 @@ class SiteSetting extends Model
                         'key' => 'phone',
                         'label' => 'Teléfono',
                         'type' => 'tel',
+                        'salesforce_field' => 'Phone',
                         'placeholder' => '+56 9 1234 5678',
                         'required' => false,
                     ],
@@ -209,6 +216,7 @@ class SiteSetting extends Model
                         'key' => 'message',
                         'label' => 'Mensaje',
                         'type' => 'textarea',
+                        'salesforce_field' => 'Comentario_Cliente__c',
                         'placeholder' => 'Escribe tu consulta...',
                         'required' => true,
                     ],
@@ -298,27 +306,35 @@ class SiteSetting extends Model
     public static function syncableFields(): array
     {
         return [
+            // Información Básica
             'site_name',
             'site_description',
+            'site_url',
             'evento_sale',
             'mostrar_plantas',
             'plants_per_page',
             'footer_menu',
             'footer_legal_text',
+            // Branding & Colores & Tipografía
             'webawesome_theme',
             'webawesome_palette',
+            'show_theme_toggle',
+            'default_color_mode',
+            'icon_family',
             'brand_color',
             'semantic_brand_color',
             'semantic_neutral_color',
             'semantic_success_color',
             'semantic_warning_color',
             'semantic_danger_color',
-            'icon_family',
             'font_family_body',
             'font_family_heading',
             'google_fonts_stylesheet',
+            // SEO
             'meta_keywords',
             'meta_author',
+            'tag_manager_id',
+            // Contacto
             'contact_email',
             'contact_phone',
             'contact_address',
@@ -326,12 +342,19 @@ class SiteSetting extends Model
             'contact_page_subtitle',
             'contact_page_content',
             'contact_form_fields',
+            'contact_notification_email',
+            // Redes Sociales
+            'facebook_url',
+            'instagram_url',
+            'twitter_url',
+            'linkedin_url',
+            'youtube_url',
+            // Personalización
             'custom_css',
+            'custom_js',
             'header_scripts',
             'footer_scripts',
-            'maintenance_mode',
-            'maintenance_use_html',
-            'maintenance_message',
+            // Pasarelas de Pago
             'gateway_transbank_enabled',
             'gateway_mercadopago_enabled',
             'gateway_manual_enabled',
@@ -340,9 +363,6 @@ class SiteSetting extends Model
             'gateway_transbank_config',
             'gateway_mercadopago_config',
             'gateway_manual_config',
-            'dashboard_widget_order',
-            'salesforce_sync_interval_minutes',
-            'salesforce_sync_plant_types',
         ];
     }
 
@@ -360,32 +380,64 @@ class SiteSetting extends Model
      * @param  array<string, mixed>  $extraSettings
      * @return array<string, mixed>
      */
-    private function filterSyncableExtraSettings(array $extraSettings): array
+    public static function filterSyncableExtraSettings(array $extraSettings): array
     {
+        $allowedDirectKeys = [
+            'catalogo_no_disponible_titulo',
+            'catalogo_no_disponible_mensaje',
+            'default_meta_title',
+            'default_og_title',
+            'default_og_description',
+            'twitter_site',
+            'robots_default',
+            'site_locale',
+            'utm_source_default',
+            'utm_medium_default',
+            'utm_campaign_default',
+            'utm_term_default',
+            'utm_content_default',
+            'utm_site_default',
+            'sale_utm_campaign',
+            'sale_utm_campaign_channels',
+            'sale_event_name',
+            'sale_event_description',
+            'sale_event_start_date',
+            'sale_event_end_date',
+            'conversion_scripts_enabled',
+            'conversion_scripts_debug',
+            'post_contact_script',
+            'post_payment_script',
+            'price_source',
+            'price_percentage_source',
+            'home_hero_type',
+            'home_hero_video_desktop_url',
+            'home_hero_video_mobile_url',
+            'home_hero_link',
+            'home_hero_link_new_tab',
+            'contact_hero_alt',
+            'contact_hero_link',
+            'contact_hero_link_new_tab',
+        ];
+
         $filtered = [];
 
         foreach ($extraSettings as $key => $value) {
-            $normalizedKey = strtolower((string) $key);
+            $keyStr = (string) $key;
+            $normalizedKey = strtolower($keyStr);
 
-            if ($normalizedKey === 'salesforce_oauth') {
+            if ($normalizedKey === 'salesforce_oauth' || str_starts_with($normalizedKey, 'salesforce_sync') || str_ends_with($normalizedKey, '_id')) {
                 continue;
             }
 
-            if (str_contains($normalizedKey, 'url') || str_ends_with($normalizedKey, '_id')) {
-                continue;
-            }
-
-            if (is_array($value)) {
-                $nested = $this->filterSyncableExtraSettings($value);
-
-                if ($nested !== []) {
-                    $filtered[$key] = $nested;
-                }
+            if ($normalizedKey === 'qr' && is_array($value)) {
+                $filtered['qr'] = $value;
 
                 continue;
             }
 
-            $filtered[$key] = $value;
+            if (in_array($keyStr, $allowedDirectKeys, true)) {
+                $filtered[$keyStr] = $value;
+            }
         }
 
         return $filtered;
@@ -443,6 +495,12 @@ class SiteSetting extends Model
             'footer_menu' => is_array($settings->footer_menu) ? $settings->footer_menu : [],
             'footer_legal_text' => $settings->footer_legal_text,
             'evento_sale' => (bool) $settings->evento_sale,
+            'price_source' => in_array($priceSource, ['final', 'base'], true)
+                ? $priceSource
+                : 'final',
+            'price_percentage_source' => in_array($pricePercentageSource, ['max_unit', 'web_discount'], true)
+                ? $pricePercentageSource
+                : 'web_discount',
             'mostrar_plantas' => $mostrarPlantas,
             'catalogo_no_disponible_titulo' => $extraSettings['catalogo_no_disponible_titulo'] ?? 'Próximamente',
             'catalogo_no_disponible_mensaje' => $extraSettings['catalogo_no_disponible_mensaje'] ?? 'El catálogo de plantas no está disponible por el momento.',
@@ -453,6 +511,8 @@ class SiteSetting extends Model
             'icon' => $settings->iconMedia?->url ?? null,
             'webawesome_theme' => $settings->webawesome_theme ?? 'mellow',
             'webawesome_palette' => $settings->webawesome_palette ?? 'natural',
+            'show_theme_toggle' => (bool) ($settings->show_theme_toggle ?? true),
+            'default_color_mode' => $settings->default_color_mode ?? 'system',
             'brand_color' => $settings->brand_color ?? '#eb0029',
             'semantic_brand_color' => $settings->semantic_brand_color ?? 'blue',
             'semantic_neutral_color' => $settings->semantic_neutral_color ?? 'gray',
@@ -522,20 +582,20 @@ class SiteSetting extends Model
                     : ($ogImageFromCurator ?? ($settings->og_image ? url($settings->og_image) : null)),
                 // sale_event: null when evento_sale is off; object with all fields when on
                 'sale_event' => $settings->evento_sale ? [
-                    'name'        => is_string($extraSettings['sale_event_name'] ?? null)
+                    'name' => is_string($extraSettings['sale_event_name'] ?? null)
                         ? trim((string) $extraSettings['sale_event_name'])
                         : null,
-                    'utm_campaign'=> $saleUtmCampaign,
+                    'utm_campaign' => $saleUtmCampaign,
                     'description' => is_string($extraSettings['sale_event_description'] ?? null)
                         ? trim((string) $extraSettings['sale_event_description'])
                         : null,
-                    'start_date'  => is_string($extraSettings['sale_event_start_date'] ?? null)
+                    'start_date' => is_string($extraSettings['sale_event_start_date'] ?? null)
                         ? trim((string) $extraSettings['sale_event_start_date'])
                         : null,
-                    'end_date'    => is_string($extraSettings['sale_event_end_date'] ?? null)
+                    'end_date' => is_string($extraSettings['sale_event_end_date'] ?? null)
                         ? trim((string) $extraSettings['sale_event_end_date'])
                         : null,
-                    'og_image'    => $saleOgImageFromCurator,
+                    'og_image' => $saleOgImageFromCurator,
                 ] : null,
             ],
             'contact' => [
@@ -570,6 +630,7 @@ class SiteSetting extends Model
                     : null,
             ],
             'plants_per_page' => (int) ($settings->plants_per_page ?? 12),
+            'plants_default_order' => $extraSettings['plants_default_order'] ?? 'discounts',
             'maintenance_mode' => $settings->maintenance_mode && ! $isPreviewAuthorized,
             'maintenance_message' => $settings->maintenance_message,
             'hero' => [
@@ -581,12 +642,20 @@ class SiteSetting extends Model
                     'video_desktop_url' => $extraSettings['home_hero_video_desktop_url'] ?? null,
                     'video_mobile_url' => $extraSettings['home_hero_video_mobile_url'] ?? null,
                     'video_poster_url' => $homeHeroVideoPoster,
+                    'link' => is_string($extraSettings['home_hero_link'] ?? null) && trim((string) $extraSettings['home_hero_link']) !== ''
+                        ? trim((string) $extraSettings['home_hero_link'])
+                        : null,
+                    'link_new_tab' => (bool) ($extraSettings['home_hero_link_new_tab'] ?? false),
                 ],
                 'contact' => [
                     'image' => $contactHeroDesktopImage,
                     'image_desktop' => $contactHeroDesktopImage,
                     'image_mobile' => $contactHeroMobileImage,
                     'alt' => $extraSettings['contact_hero_alt'] ?? 'Contacto',
+                    'link' => is_string($extraSettings['contact_hero_link'] ?? null) && trim((string) $extraSettings['contact_hero_link']) !== ''
+                        ? trim((string) $extraSettings['contact_hero_link'])
+                        : null,
+                    'link_new_tab' => (bool) ($extraSettings['contact_hero_link_new_tab'] ?? false),
                 ],
             ],
             ...($hasValidToken ? [
@@ -613,5 +682,35 @@ class SiteSetting extends Model
                 ],
             ] : []),
         ];
+    }
+
+    public function isChannelEligibleForSaleUtmCampaign(?ContactChannel $channel): bool
+    {
+        if ($channel === null || ! (bool) $this->evento_sale) {
+            return false;
+        }
+
+        $extraSettings = is_array($this->extra_settings) ? $this->extra_settings : [];
+
+        $hasExplicitSetting = array_key_exists('sale_utm_campaign_channels', $extraSettings);
+        $configuredChannels = $hasExplicitSetting
+            ? (array) $extraSettings['sale_utm_campaign_channels']
+            : array_values(array_filter([(string) ContactChannel::getDefault()?->id]));
+
+        if (empty($configuredChannels)) {
+            return false;
+        }
+
+        $allowedIdentifiers = array_map('strval', $configuredChannels);
+
+        return in_array((string) $channel->id, $allowedIdentifiers, true)
+            || in_array((string) $channel->slug, $allowedIdentifiers, true);
+    }
+
+    public function shouldSyncInactiveProjectsToSalesforce(): bool
+    {
+        $extraSettings = is_array($this->extra_settings) ? $this->extra_settings : [];
+
+        return (bool) ($extraSettings['salesforce_sync_inactive_projects'] ?? true);
     }
 }

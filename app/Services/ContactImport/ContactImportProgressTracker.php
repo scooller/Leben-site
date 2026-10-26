@@ -27,6 +27,7 @@ class ContactImportProgressTracker
         }
 
         Cache::put($this->logsKey($importId), [], self::TTL_SECONDS);
+        Cache::put($this->failedRowsKey($importId), [], self::TTL_SECONDS);
     }
 
     public function increment(string $importId, string $counter, int $by = 1): void
@@ -41,10 +42,30 @@ class ContactImportProgressTracker
         Cache::put($key, (int) Cache::get($key, 0), self::TTL_SECONDS);
     }
 
+    public function recordFailedRow(string $importId, int $rowNumber, string $reason, array $rowData = []): void
+    {
+        $key = $this->failedRowsKey($importId);
+        $failedRows = (array) Cache::get($key, []);
+
+        $failedRows[] = [
+            'row' => $rowNumber,
+            'reason' => $this->sanitizeUtf8($reason),
+            'data' => array_map(fn ($v): string => $this->sanitizeUtf8((string) $v), $rowData),
+            'timestamp' => now()->format('H:i:s'),
+        ];
+
+        if (count($failedRows) > 100) {
+            $failedRows = array_slice($failedRows, -100);
+        }
+
+        Cache::put($key, $failedRows, self::TTL_SECONDS);
+    }
+
     public function addLog(string $importId, string $message): void
     {
+        $cleanMessage = $this->sanitizeUtf8($message);
         $logs = (array) Cache::get($this->logsKey($importId), []);
-        $logs[] = '[' . now()->format('H:i:s') . '] ' . $message;
+        $logs[] = '['.now()->format('H:i:s').'] '.$cleanMessage;
 
         if (count($logs) > 200) {
             $logs = array_slice($logs, -200);
@@ -64,13 +85,14 @@ class ContactImportProgressTracker
 
     public function markFailed(string $importId, string $error): void
     {
+        $cleanError = $this->sanitizeUtf8($error);
         $meta = (array) Cache::get($this->metaKey($importId), []);
         $meta['status'] = 'failed';
-        $meta['error'] = $error;
+        $meta['error'] = $cleanError;
         $meta['finished_at'] = now()->toDateTimeString();
 
         Cache::put($this->metaKey($importId), $meta, self::TTL_SECONDS);
-        $this->addLog($importId, 'Error fatal: ' . $error);
+        $this->addLog($importId, 'Error fatal: '.$cleanError);
     }
 
     /**
@@ -107,6 +129,9 @@ class ContactImportProgressTracker
             ? min(100, (int) floor(($processed / $totalRows) * 100))
             : 0;
 
+        $rawLogs = (array) Cache::get($this->logsKey($importId), []);
+        $cleanLogs = array_map(fn ($log): string => $this->sanitizeUtf8((string) $log), $rawLogs);
+
         return [
             'status' => (string) ($meta['status'] ?? 'running'),
             'total_rows' => $totalRows,
@@ -117,14 +142,24 @@ class ContactImportProgressTracker
             'synced' => (int) Cache::get($this->counterKey($importId, 'synced'), 0),
             'sync_failed' => (int) Cache::get($this->counterKey($importId, 'sync_failed'), 0),
             'progress_percent' => $progressPercent,
-            'logs' => (array) Cache::get($this->logsKey($importId), []),
-            'channel_name' => (string) ($meta['channel_name'] ?? '-'),
+            'logs' => $cleanLogs,
+            'failed_rows' => (array) Cache::get($this->failedRowsKey($importId), []),
+            'channel_name' => $this->sanitizeUtf8((string) ($meta['channel_name'] ?? '-')),
             'sync_to_salesforce' => (bool) ($meta['sync_to_salesforce'] ?? false),
             'dry_run' => (bool) ($meta['dry_run'] ?? false),
             'started_at' => $meta['started_at'] ?? null,
             'finished_at' => $meta['finished_at'] ?? null,
-            'error' => $meta['error'] ?? null,
+            'error' => filled($meta['error'] ?? null) ? $this->sanitizeUtf8((string) $meta['error']) : null,
         ];
+    }
+
+    private function sanitizeUtf8(string $value): string
+    {
+        if (! mb_check_encoding($value, 'UTF-8')) {
+            $value = mb_convert_encoding($value, 'UTF-8', 'Windows-1252');
+        }
+
+        return mb_convert_encoding($value, 'UTF-8', 'UTF-8');
     }
 
     private function metaKey(string $importId): string
@@ -140,5 +175,10 @@ class ContactImportProgressTracker
     private function logsKey(string $importId): string
     {
         return "contact_import:{$importId}:logs";
+    }
+
+    private function failedRowsKey(string $importId): string
+    {
+        return "contact_import:{$importId}:failed_rows";
     }
 }

@@ -12,8 +12,10 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Icon;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
@@ -29,11 +31,13 @@ class ProyectoForm
                         TextInput::make('name')
                             ->label('Nombre del Proyecto')
                             ->disabled()
+                            ->dehydrated(false)
                             ->required(),
 
                         TextInput::make('salesforce_id')
                             ->label('Salesforce Product ID')
                             ->disabled()
+                            ->dehydrated(false)
                             ->suffixAction(
                                 Action::make('openSalesforceProject')
                                     ->label('Ver en Salesforce')
@@ -48,10 +52,12 @@ class ProyectoForm
                         Textarea::make('descripcion')
                             ->label('Descripción')
                             ->disabled()
+                            ->dehydrated(false)
                             ->rows(3),
 
                         Select::make('tipo')
                             ->label('Tipo de Proyecto')
+                            ->beforeLabel(Icon::make(Heroicon::BuildingOffice))
                             ->multiple()
                             ->options([
                                 'best' => 'Best',
@@ -65,36 +71,43 @@ class ProyectoForm
 
                         TextInput::make('direccion')
                             ->label('Dirección')
-                            ->disabled(),
+                            ->disabled()
+                            ->dehydrated(false),
 
                         TextInput::make('comuna')
                             ->label('Comuna')
-                            ->disabled(),
+                            ->maxLength(255),
 
                         TextInput::make('provincia')
                             ->label('Provincia')
-                            ->disabled(),
+                            ->disabled()
+                            ->dehydrated(false),
 
                         TextInput::make('region')
                             ->label('Región')
-                            ->disabled(),
+                            ->disabled()
+                            ->dehydrated(false),
 
                         TextInput::make('razon_social')
                             ->label('Razón Social')
-                            ->disabled(),
+                            ->disabled()
+                            ->dehydrated(false),
 
                         TextInput::make('rut')
                             ->label('RUT')
-                            ->disabled(),
+                            ->disabled()
+                            ->dehydrated(false),
 
                         TextInput::make('email')
                             ->label('Email')
                             ->email()
-                            ->disabled(),
+                            ->disabled()
+                            ->dehydrated(false),
 
                         TextInput::make('telefono')
                             ->label('Teléfono')
-                            ->disabled(),
+                            ->disabled()
+                            ->dehydrated(false),
 
                         TextInput::make('pagina_web')
                             ->label('Página Web')
@@ -115,11 +128,13 @@ class ProyectoForm
 
                         DatePicker::make('fecha_inicio_ventas')
                             ->label('Fecha Inicio Ventas')
-                            ->disabled(),
+                            ->disabled()
+                            ->dehydrated(false),
 
                         TextInput::make('fecha_entrega')
                             ->label('Fecha de Entrega')
-                            ->disabled(),
+                            ->disabled()
+                            ->dehydrated(false),
 
                         Select::make('etapa')
                             ->options(Proyecto::etapaOptions())
@@ -129,14 +144,17 @@ class ProyectoForm
 
                         TextInput::make('horario_atencion')
                             ->label('Horario de Atención')
-                            ->disabled(),
+                            ->disabled()
+                            ->dehydrated(false),
 
                         Toggle::make('is_active')
                             ->label('Activo')
+                            ->helperText('Si el proyecto no está activo, no se mostrará en la página web')
                             ->required(),
 
                         Select::make('asesores')
                             ->label('Asesores')
+                            ->beforeLabel(Icon::make(Heroicon::UserGroup))
                             ->relationship(
                                 name: 'asesores',
                                 titleAttribute: 'email',
@@ -170,6 +188,7 @@ class ProyectoForm
                                 TextInput::make('salesforce_portada_url')
                                     ->label('Portada (Salesforce)')
                                     ->disabled()
+                                    ->dehydrated(false)
                                     ->url()
                                     ->suffixAction(
                                         Action::make('openSalesforcePortada')
@@ -182,6 +201,7 @@ class ProyectoForm
                                 TextInput::make('salesforce_logo_url')
                                     ->label('Logo (Salesforce)')
                                     ->disabled()
+                                    ->dehydrated(false)
                                     ->url()
                                     ->suffixAction(
                                         Action::make('openSalesforceLogo')
@@ -206,6 +226,7 @@ class ProyectoForm
                     ->schema([
                         Select::make('transbank_commerce_code')
                             ->label('Código de Comercio Transbank Mall')
+                            ->beforeLabel(Icon::make(Heroicon::DocumentCurrencyDollar))
                             ->helperText('Código único de comercio para Transbank en este proyecto')
                             ->options(function () {
                                 $codes = config('payments.gateways.transbank.commerce_codes', []);
@@ -234,7 +255,10 @@ class ProyectoForm
                                 return $options;
                             })
                             ->searchable()
-                            ->nullable(),
+                            ->nullable()
+                            ->validationMessages([
+                                'in' => 'El código de comercio seleccionado no es válido o no está configurado en Transbank.',
+                            ]),
 
                         Section::make('Pago Manual por Proyecto')
                             ->description('Configura los datos de depósito y/o link de pago para este proyecto')
@@ -278,42 +302,66 @@ class ProyectoForm
                             ])
                             ->columns(1),
 
-                        Section::make('Reserva Exigida')
+                        Section::make('Descuentos y valores')
+                            ->description('Solo administradores y super administradores pueden modificar los valores de reserva y descuentos.')
                             ->schema([
                                 TextInput::make('valor_reserva_exigido_defecto_peso')
                                     ->label('Valor Defecto ($)')
+                                    ->beforeLabel(Icon::make(Heroicon::CurrencyDollar))
                                     ->numeric()
-                                    ->prefix('$'),
+                                    ->prefix('$')
+                                    ->disabled(fn (): bool => ! (auth()->user()?->canManageFinancialValues() ?? false)),
 
                                 TextInput::make('valor_reserva_exigido_min_peso')
                                     ->label('Valor Mínimo ($)')
+                                    ->beforeLabel(Icon::make(Heroicon::CurrencyDollar))
                                     ->numeric()
-                                    ->disabled()
-                                    ->prefix('$'),
+                                    ->prefix('$')
+                                    ->disabled(fn (): bool => ! (auth()->user()?->canManageFinancialValues() ?? false)),
 
                                 TextInput::make('descuento_defecto_cotizacion_web')
-                                    ->label('Descuento por Defecto Cotización Web (%)')
+                                    ->label('Defecto Cotización Web (%)')
+                                    ->beforeLabel(Icon::make(Heroicon::PercentBadge))
                                     ->numeric()
-                                    ->disabled()
-                                    ->suffix('%'),
+                                    ->step(0.01)
+                                    ->minValue(0)
+                                    ->maxValue(100)
+                                    ->prefix('Dcto.')
+                                    ->suffix('%')
+                                    ->disabled(fn (): bool => ! (auth()->user()?->canManageFinancialValues() ?? false)),
 
                                 TextInput::make('descuento_maximo_unidad')
-                                    ->label('Descuento Máximo Unidad (%)')
+                                    ->label('Máximo Unidad (%)')
+                                    ->beforeLabel(Icon::make(Heroicon::PercentBadge))
+                                    ->belowContent([
+                                        'Se aplica cuando Sale este Activo',
+                                        Icon::make(Heroicon::InformationCircle),
+                                    ])
                                     ->numeric()
-                                    ->disabled()
-                                    ->dehydrated(false)
-                                    ->afterStateHydrated(function (TextInput $component, ?Proyecto $record): void {
-                                        $component->state(
-                                            $record?->descuento_maximo_unidad
-                                            ?? $record?->plantas()->max('porcentaje_maximo_unidad')
-                                        );
-                                    })
-                                    ->suffix('%'),
+                                    ->step(0.01)
+                                    ->minValue(0)
+                                    ->maxValue(100)
+                                    ->prefix('Dcto.')
+                                    ->suffix('%')
+                                    ->disabled(fn (): bool => ! (auth()->user()?->canManageFinancialValues() ?? false)),
+
+                                TextInput::make('descuento_iva')
+                                    ->label('Dcto. IVA')
+                                    ->beforeLabel(Icon::make(Heroicon::PercentBadge))
+                                    ->numeric()
+                                    ->step(0.01)
+                                    ->minValue(0)
+                                    ->maxValue(100)
+                                    ->default(0)
+                                    ->prefix('Dcto.')
+                                    ->suffix('%')
+                                    ->disabled(fn (): bool => ! (auth()->user()?->canManageFinancialValues() ?? false)),
                             ])
                             ->columns(2),
 
                         Toggle::make('entrega_inmediata')
-                            ->label('Entrega Inmediata'),
+                            ->label('Entrega Inmediata')
+                            ->helperText('Si el proyecto se entrega de forma inmediata, se mostrará en la página web con fecha de entrega inmediata'),
                     ]),
             ]);
     }

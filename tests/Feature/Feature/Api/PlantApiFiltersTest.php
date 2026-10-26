@@ -360,6 +360,7 @@ class PlantApiFiltersTest extends TestCase
             'comuna' => 'Santiago',
             'region' => 'Metropolitana',
             'etapa' => 'entrega',
+            'entrega_inmediata' => false,
             'is_active' => true,
         ]);
 
@@ -367,6 +368,7 @@ class PlantApiFiltersTest extends TestCase
             'comuna' => 'Providencia',
             'region' => 'Metropolitana',
             'etapa' => 'obra_gruesa',
+            'entrega_inmediata' => false,
             'is_active' => true,
         ]);
 
@@ -903,13 +905,13 @@ class PlantApiFiltersTest extends TestCase
         $project = Proyecto::factory()->create([
             'is_active' => true,
             'descuento_defecto_cotizacion_web' => 40,
+            'descuento_maximo_unidad' => 10,
         ]);
 
         $this->createPlant($project->salesforce_id, true, [
             'name' => 'HIGH',
             'precio_base' => 50,
             'precio_lista' => 250,
-            'porcentaje_maximo_unidad' => 10,
             'unidad_sale' => true,
         ]);
 
@@ -917,7 +919,6 @@ class PlantApiFiltersTest extends TestCase
             'name' => 'LOW',
             'precio_base' => 100,
             'precio_lista' => 100,
-            'porcentaje_maximo_unidad' => 20,
             'unidad_sale' => true,
         ]);
 
@@ -925,7 +926,6 @@ class PlantApiFiltersTest extends TestCase
             'name' => 'MID',
             'precio_base' => 150,
             'precio_lista' => 150,
-            'porcentaje_maximo_unidad' => 10,
             'unidad_sale' => true,
         ]);
 
@@ -935,30 +935,46 @@ class PlantApiFiltersTest extends TestCase
         $this->assertSame(['LOW', 'MID', 'HIGH'], collect($response->json('data'))->pluck('name')->all());
     }
 
-    public function test_it_returns_precio_final_field_based_on_evento_sale_state(): void
+    public function test_it_returns_precio_final_field_based_on_price_percentage_source(): void
     {
         $project = Proyecto::factory()->create([
             'is_active' => true,
             'descuento_defecto_cotizacion_web' => 25,
+            'descuento_maximo_unidad' => 10,
         ]);
 
         $plant = $this->createPlant($project->salesforce_id, true, [
             'precio_base' => 100,
             'precio_lista' => 200,
-            'porcentaje_maximo_unidad' => 10,
             'unidad_sale' => true,
         ]);
 
-        $withoutSaleResponse = $this->getJson('/api/v1/plantas/'.$plant->id);
-        $withoutSaleResponse->assertOk();
-        $withoutSaleResponse->assertJsonPath('precio_final', 150);
+        // Default / web_discount source -> 200 - 25% = 150 (regardless of evento_sale)
+        $defaultResponse = $this->getJson('/api/v1/plantas/'.$plant->id);
+        $defaultResponse->assertOk();
+        $defaultResponse->assertJsonPath('precio_final', 150);
 
         $withSaleResponse = $this->getJson('/api/v1/plantas/'.$plant->id.'?evento_sale=1');
         $withSaleResponse->assertOk();
-        $withSaleResponse->assertJsonPath('precio_final', 180);
+        $withSaleResponse->assertJsonPath('precio_final', 150);
+
+        // When configured as max_unit -> 200 - 10% = 180 (regardless of evento_sale)
+        \App\Models\SiteSetting::current()->update([
+            'extra_settings' => [
+                'price_percentage_source' => 'max_unit',
+            ],
+        ]);
+
+        $maxUnitResponse = $this->getJson('/api/v1/plantas/'.$plant->id);
+        $maxUnitResponse->assertOk();
+        $maxUnitResponse->assertJsonPath('precio_final', 180);
+
+        $maxUnitWithSaleResponse = $this->getJson('/api/v1/plantas/'.$plant->id.'?evento_sale=1');
+        $maxUnitWithSaleResponse->assertOk();
+        $maxUnitWithSaleResponse->assertJsonPath('precio_final', 180);
     }
 
-    public function test_it_uses_plant_max_unit_discount_for_api_price_when_evento_sale(): void
+    public function test_it_uses_configured_discount_source_independent_of_evento_sale(): void
     {
         $project = Proyecto::factory()->create([
             'is_active' => true,
@@ -969,18 +985,16 @@ class PlantApiFiltersTest extends TestCase
         $plant = $this->createPlant($project->salesforce_id, true, [
             'precio_base' => 100,
             'precio_lista' => 200,
-            'porcentaje_maximo_unidad' => 10,
             'unidad_sale' => true,
         ]);
 
-        // evento_sale=1 → uses porcentaje_maximo_unidad (10%): 200 - 10% = 180
+        // Default web_discount (5%): 200 - 5% = 190, both with and without evento_sale
         $response = $this->getJson('/api/v1/plantas/'.$plant->id.'?evento_sale=1');
-
         $response->assertOk();
-        $response->assertJsonPath('precio_final', 180);
+        $response->assertJsonPath('precio_final', 190);
         $response->assertJsonPath('proyecto.descuento_defecto_cotizacion_web', 5);
+        $response->assertJsonPath('proyecto.descuento_maximo_unidad', 30);
 
-        // evento_sale=0 → uses descuento_defecto_cotizacion_web (5%): 200 - 5% = 190
         $responseNormal = $this->getJson('/api/v1/plantas/'.$plant->id);
         $responseNormal->assertOk();
         $responseNormal->assertJsonPath('precio_final', 190);
@@ -1125,5 +1139,86 @@ class PlantApiFiltersTest extends TestCase
 
         $this->assertContains($salePlant->id, $saleOnlyPlantIds);
         $this->assertNotContains($nonSalePlant->id, $saleOnlyPlantIds);
+    }
+
+    public function test_it_orders_plants_by_tiered_discounts_iva_plus_discount_then_solo_iva_then_others(): void
+    {
+        $project = Proyecto::factory()->create([
+            'is_active' => true,
+            'descuento_defecto_cotizacion_web' => 0,
+            'descuento_iva' => 0,
+        ]);
+
+        // Tier 4: No discount
+        $this->createPlant($project->salesforce_id, true, [
+            'name' => 'NO_DISCOUNT',
+            'priorizar_descuentos' => true,
+            'descuento_iva' => 0,
+            'descuento_defecto_cotizacion_web' => 0,
+            'precio_base' => 1000,
+            'precio_lista' => 1000,
+        ]);
+
+        // Tier 3: Solo comercial (15% total)
+        $this->createPlant($project->salesforce_id, true, [
+            'name' => 'SOLO_DISCOUNT',
+            'priorizar_descuentos' => true,
+            'descuento_iva' => 0,
+            'descuento_defecto_cotizacion_web' => 15,
+            'precio_base' => 1000,
+            'precio_lista' => 1000,
+        ]);
+
+        // Tier 2: Solo IVA (5% total)
+        $this->createPlant($project->salesforce_id, true, [
+            'name' => 'SOLO_IVA',
+            'priorizar_descuentos' => true,
+            'descuento_iva' => 5,
+            'descuento_defecto_cotizacion_web' => 0,
+            'precio_base' => 1000,
+            'precio_lista' => 1000,
+        ]);
+
+        // Tier 1: Dcto IVA + Dcto Comercial (5% IVA + 10% dcto = 15% total)
+        $this->createPlant($project->salesforce_id, true, [
+            'name' => 'IVA_AND_DISCOUNT',
+            'priorizar_descuentos' => true,
+            'descuento_iva' => 5,
+            'descuento_defecto_cotizacion_web' => 10,
+            'precio_base' => 1000,
+            'precio_lista' => 1000,
+        ]);
+
+        $response = $this->getJson('/api/v1/plantas?project_slug='.$project->slug.'&perPage=50');
+
+        $response->assertOk();
+        $this->assertSame(
+            ['IVA_AND_DISCOUNT', 'SOLO_IVA', 'SOLO_DISCOUNT', 'NO_DISCOUNT'],
+            collect($response->json('data'))->pluck('name')->all()
+        );
+    }
+
+    public function test_it_respects_plants_default_order_from_site_settings(): void
+    {
+        $settings = SiteSetting::current();
+        $extra = is_array($settings->extra_settings) ? $settings->extra_settings : [];
+        $extra['plants_default_order'] = 'plant_name';
+        $settings->update(['extra_settings' => $extra]);
+
+        $project = Proyecto::factory()->create([
+            'is_active' => true,
+        ]);
+
+        $this->createPlant($project->salesforce_id, true, ['name' => 'ZETA']);
+        $this->createPlant($project->salesforce_id, true, ['name' => 'ALFA']);
+        $this->createPlant($project->salesforce_id, true, ['name' => 'BETA']);
+
+        $response = $this->getJson('/api/v1/plantas?project_slug='.$project->slug.'&perPage=50');
+
+        $response->assertOk();
+        $this->assertSame(
+            ['ALFA', 'BETA', 'ZETA'],
+            collect($response->json('data'))->pluck('name')->all()
+        );
     }
 }

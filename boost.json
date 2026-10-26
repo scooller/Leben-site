@@ -1,13 +1,9 @@
 {
     "agents": [
-        "copilot"
+        "gemini"
     ],
-    "packages": [
-        "filament/filament",
-        "spatie/laravel-permission"
-    ],
-    "skills": [
-        "tailwindcss-development",
-        "laravel-permission-development"
-    ]
+    "cloud": false,
+    "mcp": true,
+    "nightwatch": false,
+    "sail": false
 }

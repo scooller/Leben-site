@@ -55,7 +55,7 @@ class EraseAllProjectsAction
         } catch (Throwable $throwable) {
             return [
                 'success' => false,
-                'message' => 'Error al borrar proyectos: ' . $throwable->getMessage(),
+                'message' => 'Error al borrar proyectos: '.$throwable->getMessage(),
                 'count' => 0,
             ];
         }

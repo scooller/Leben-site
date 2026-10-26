@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Filament\Resources\ProyectoResource;
 use App\Filament\Resources\Proyectos\Schemas\ProyectoForm;
+use App\Filament\Resources\Proyectos\Tables\ProyectosTable;
 use App\Models\Proyecto;
 use App\Models\User;
 use Filament\Actions\Action;
@@ -26,7 +27,7 @@ class ProyectoResourceTest extends TestCase
     {
         parent::setUp();
 
-        $this->user = User::factory()->create();
+        $this->user = User::factory()->create(['user_type' => 'admin']);
         $this->actingAs($this->user);
     }
 
@@ -128,6 +129,57 @@ class ProyectoResourceTest extends TestCase
         ] as $field) {
             $this->assertArrayNotHasKey($field, $components);
         }
+    }
+
+    public function test_proyecto_form_configures_discount_fields_correctly(): void
+    {
+        $schema = ProyectoForm::configure(Schema::make($this->makeSchemaHost()));
+        $components = $schema->getFlatComponents(withActions: false, withHidden: true, withAbsoluteKeys: true);
+
+        $this->assertArrayHasKey('descuento_iva', $components);
+        $this->assertArrayHasKey('descuento_defecto_cotizacion_web', $components);
+        $this->assertArrayHasKey('descuento_maximo_unidad', $components);
+
+        $ivaComponent = $components['descuento_iva'];
+        $this->assertSame('Dcto. IVA', $ivaComponent->getLabel());
+        $this->assertSame('%', $ivaComponent->getSuffixLabel());
+        $this->assertFalse($ivaComponent->isDisabled());
+        $this->assertSame(0, $ivaComponent->getDefaultState());
+
+        $defectoComponent = $components['descuento_defecto_cotizacion_web'];
+        $this->assertFalse($defectoComponent->isDisabled());
+
+        $maximoComponent = $components['descuento_maximo_unidad'];
+        $this->assertFalse($maximoComponent->isDisabled());
+        $this->assertTrue($maximoComponent->isDehydrated());
+    }
+
+    public function test_proyecto_form_comuna_is_editable(): void
+    {
+        $schema = ProyectoForm::configure(Schema::make($this->makeSchemaHost()));
+        $components = $schema->getFlatComponents(withActions: false, withHidden: true, withAbsoluteKeys: true);
+
+        $this->assertArrayHasKey('comuna', $components);
+        $comunaComponent = $components['comuna'];
+        $this->assertSame('Comuna', $comunaComponent->getLabel());
+        $this->assertFalse($comunaComponent->isDisabled());
+    }
+
+    public function test_proyectos_table_has_comuna_filter(): void
+    {
+        Proyecto::factory()->create(['comuna' => 'Las Condes']);
+        Proyecto::factory()->create(['comuna' => 'Providencia']);
+
+        $filters = ProyectosTable::getFilters();
+        $comunaFilter = collect($filters)->first(fn ($filter) => $filter->getName() === 'comuna');
+
+        $this->assertNotNull($comunaFilter);
+        $this->assertSame('Comuna', $comunaFilter->getLabel());
+        $this->assertTrue($comunaFilter->isMultiple());
+
+        $options = $comunaFilter->getOptions();
+        $this->assertArrayHasKey('Las Condes', $options);
+        $this->assertArrayHasKey('Providencia', $options);
     }
 
     private function makeSchemaHost(): HasSchemas

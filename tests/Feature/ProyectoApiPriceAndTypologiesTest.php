@@ -16,7 +16,7 @@ class ProyectoApiPriceAndTypologiesTest extends TestCase
     {
         $user = User::factory()->create();
 
-        return ['Authorization' => 'Bearer ' . $user->createToken('test', ['*'])->plainTextToken];
+        return ['Authorization' => 'Bearer '.$user->createToken('test', ['*'])->plainTextToken];
     }
 
     public function test_listado_includes_precio_desde_and_tipologias_by_default(): void

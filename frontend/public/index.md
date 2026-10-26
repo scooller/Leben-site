@@ -12,6 +12,8 @@
 - **iLeben Departamentos** (Santiago, Región Metropolitana)
 
 ## Recursos para Agentes y Desarrolladores
+- **Cyber Feed (Cyber AI / cyber.cl)**: `https://admin.ileben.cl/api/cyber/feed.json` (JSON)
+- **Product Feed Canónico**: `https://admin.ileben.cl/api/feed.json` (JSON)
 - **Catálogo de Recursos IA (ARD)**: `https://sale.ileben.cl/.well-known/ai-catalog.json` (Agentic Resource Discovery)
 - **Tarjeta Servidor MCP**: `https://sale.ileben.cl/.well-known/mcp/server-card.json` (SEP-1649)
 - **Índice de Habilidades de Agentes**: `https://sale.ileben.cl/.well-known/agent-skills/index.json` (RFC v0.2.0)

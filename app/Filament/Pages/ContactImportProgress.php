@@ -23,6 +23,11 @@ class ContactImportProgress extends Page
 
     protected string $view = 'filament.pages.contact-import-progress';
 
+    public static function canAccess(): bool
+    {
+        return (auth()->user()?->isAdmin() ?? false) || (auth()->user()?->isMarketing() ?? false);
+    }
+
     public ?string $importId = null;
 
     /**

@@ -29,6 +29,9 @@ class PlantTest extends TestCase
             'precio_lista',
             'porcentaje_maximo_unidad',
             'descuento_defecto_cotizacion_web',
+            'descuento_maximo_unidad',
+            'descuento_iva',
+            'priorizar_descuentos',
             'unidad_sale',
             'superficie_total_principal',
             'superficie_interior',
@@ -51,6 +54,9 @@ class PlantTest extends TestCase
         $plant = Plant::factory()->create([
             'precio_base' => '5000.50',
             'porcentaje_maximo_unidad' => '12.50',
+            'descuento_maximo_unidad' => '10.00',
+            'descuento_iva' => '5.00',
+            'priorizar_descuentos' => 1,
             'unidad_sale' => 1,
             'superficie_total_principal' => '75.25',
             'is_active' => 1,
@@ -58,10 +64,59 @@ class PlantTest extends TestCase
 
         $this->assertIsString($plant->precio_base);
         $this->assertIsString($plant->porcentaje_maximo_unidad);
+        $this->assertIsString($plant->descuento_maximo_unidad);
+        $this->assertIsString($plant->descuento_iva);
+        $this->assertIsBool($plant->priorizar_descuentos);
         $this->assertIsBool($plant->unidad_sale);
         $this->assertIsString($plant->superficie_total_principal);
         $this->assertIsBool($plant->is_active);
         $this->assertInstanceOf(\Illuminate\Support\Carbon::class, $plant->last_synced_at);
+    }
+
+    public function test_resolve_final_price_uses_project_discounts_by_default(): void
+    {
+        $proyecto = Proyecto::factory()->create([
+            'descuento_defecto_cotizacion_web' => 10,
+            'descuento_maximo_unidad' => 20,
+            'descuento_iva' => 0,
+        ]);
+
+        $plant = Plant::factory()->create([
+            'salesforce_proyecto_id' => $proyecto->salesforce_id,
+            'precio_lista' => 1000,
+            'precio_base' => 1000,
+            'priorizar_descuentos' => false,
+            'descuento_defecto_cotizacion_web' => 5,
+        ]);
+
+        // Default source is web_discount: 10% from project
+        $this->assertEquals(900.0, $plant->resolveFinalPrice('web_discount'));
+        // max_unit: 20% from project
+        $this->assertEquals(800.0, $plant->resolveFinalPrice('max_unit'));
+    }
+
+    public function test_resolve_final_price_uses_plant_discounts_when_prioritized(): void
+    {
+        $proyecto = Proyecto::factory()->create([
+            'descuento_defecto_cotizacion_web' => 10,
+            'descuento_maximo_unidad' => 20,
+            'descuento_iva' => 2,
+        ]);
+
+        $plant = Plant::factory()->create([
+            'salesforce_proyecto_id' => $proyecto->salesforce_id,
+            'precio_lista' => 1000,
+            'precio_base' => 1000,
+            'priorizar_descuentos' => true,
+            'descuento_defecto_cotizacion_web' => 30,
+            'descuento_maximo_unidad' => 40,
+            'descuento_iva' => 5,
+        ]);
+
+        // When prioritized, web_discount + iva = 30 + 5 = 35% -> price 650
+        $this->assertEquals(650.0, $plant->resolveFinalPrice('web_discount'));
+        // max_unit + iva = 40 + 5 = 45% -> price 550
+        $this->assertEquals(550.0, $plant->resolveFinalPrice('max_unit'));
     }
 
     public function test_plant_belongs_to_proyecto(): void
@@ -85,10 +140,11 @@ class PlantTest extends TestCase
         ]);
     }
 
-    public function test_it_resolves_final_price_using_default_discount_when_sale_event_is_inactive(): void
+    public function test_it_resolves_final_price_using_default_discount_when_source_is_web_discount(): void
     {
         $proyecto = Proyecto::factory()->create([
             'descuento_defecto_cotizacion_web' => 25,
+            'descuento_maximo_unidad' => 10,
         ]);
 
         $plant = Plant::factory()->create([
@@ -98,22 +154,22 @@ class PlantTest extends TestCase
             'porcentaje_maximo_unidad' => 5,
         ]);
 
-        $this->assertSame(150.0, $plant->resolveFinalPrice(false));
+        $this->assertSame(150.0, $plant->resolveFinalPrice('web_discount'));
     }
 
-    public function test_it_resolves_final_price_using_porcentaje_maximo_when_sale_event_is_active(): void
+    public function test_it_resolves_final_price_using_porcentaje_maximo_when_source_is_max_unit(): void
     {
         $proyecto = Proyecto::factory()->create([
             'descuento_defecto_cotizacion_web' => 25,
+            'descuento_maximo_unidad' => 10,
         ]);
 
         $plant = Plant::factory()->create([
             'salesforce_proyecto_id' => $proyecto->salesforce_id,
             'precio_base' => 100,
             'precio_lista' => 200,
-            'porcentaje_maximo_unidad' => 10,
         ]);
 
-        $this->assertSame(180.0, $plant->resolveFinalPrice(true));
+        $this->assertSame(180.0, $plant->resolveFinalPrice('max_unit'));
     }
 }

@@ -103,7 +103,7 @@ html.wa-light {
   position: relative;
 
   .hero-video {
-    aspect-ratio: 3.36 / 1;
+    aspect-ratio: 5 / 2;
     width: 100%;
     display: block;
     object-fit: cover;
@@ -115,8 +115,34 @@ html.wa-light {
     inset: 0;
     width: 100%;
     height: 100%;
-    object-fit: contain;
+    object-fit: cover;
     z-index: 0;
+  }
+
+  .hero-picture,
+  picture {
+    display: block;
+    width: 100%;
+  }
+
+  .hero-image {
+    width: 100%;
+    height: auto;
+    display: block;
+    aspect-ratio: auto;
+    object-fit: unset;
+    margin: 0;
+  }
+
+  &.is-image {
+    display: block;
+
+    .hero-video {
+      width: 100%;
+      height: auto;
+      aspect-ratio: auto;
+      object-fit: unset;
+    }
   }
 
   &::after {
@@ -128,13 +154,25 @@ html.wa-light {
     height: 100%;
   }
 
+  &.has-link {
+    cursor: pointer;
+  }
+
+  .hero-banner-link-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    cursor: pointer;
+    display: block;
+  }
+
   .hero-disclaimer {
     position: absolute;
     left: 1rem;
     bottom: 1rem;
     backdrop-filter: blur(10px);
     box-shadow: 0 10px 24px rgba(var(--wa-color-black-rgb), 0.18);
-    z-index: 1;
+    z-index: 3;
 
     sup {
       margin-right: 0.2rem;
@@ -164,6 +202,61 @@ html.wa-light {
   }
 }
 
+/* ============================================================
+   FILTROS CON ESTILO GLASS (idéntico al navbar)
+   ============================================================ */
+.filters-details {
+  border-radius: var(--wa-border-radius-l);
+  margin-bottom: var(--wa-space-m);
+
+  &::part(base) {
+    backdrop-filter: blur(4px);
+    background: color-mix(in srgb, var(--wa-color-surface-default) 50%, transparent) !important;
+    border: 1px solid color-mix(in srgb, var(--wa-color-surface-border) 95%, transparent);
+    border-radius: var(--wa-border-radius-l);
+    box-shadow: 0 10px 30px rgba(var(--wa-color-black-rgb), 0.06);
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+  }
+
+  &::part(header) {
+    background: transparent;
+    padding: var(--wa-space-s) var(--wa-space-m);
+    font-weight: var(--wa-font-weight-semibold);
+  }
+
+  &::part(summary) {
+    color: var(--wa-color-text);
+  }
+
+  &::part(content) {
+    background: transparent;
+    padding: 0 var(--wa-space-m) var(--wa-space-m);
+  }
+
+  .filters-card {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+}
+
+.wa-dark .filters-details {
+  &::part(base) {
+    background: color-mix(in srgb, var(--wa-color-surface-default) 50%, transparent) !important;
+    border-color: color-mix(in srgb, var(--wa-color-surface-border) 95%, transparent);
+  }
+}
+
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .filters-details::part(base) {
+    background-color: var(--wa-color-surface-raised) !important;
+  }
+}
+
+/* ============================================================
+   TOOLBAR DE PLANTAS (ORDENAMIENTO - DE DEV CON ESTILO GLASS)
+   ============================================================ */
 .plants-toolbar {
   display: flex;
   align-items: flex-start;
@@ -172,12 +265,22 @@ html.wa-light {
   flex-wrap: wrap;
   margin-bottom: 1.5rem;
   padding: 1rem 1.25rem;
-  border: 1px solid rgba(var(--wa-color-neutral-fill-normal-rgb), 0.2);
+  backdrop-filter: blur(2px);
+  background: color-mix(in srgb, var(--wa-color-surface-default) 90%, transparent);
+  border: 1px solid color-mix(in srgb, var(--wa-color-surface-border) 95%, transparent);
   border-radius: var(--wa-border-radius-l);
-  background:
-    linear-gradient(135deg, rgba(var(--wa-color-brand-fill-loud-rgb), 0.08), transparent 42%),
-    rgba(var(--wa-color-surface-raised-rgb), 0.92);
   box-shadow: 0 18px 40px rgba(var(--wa-color-black-rgb), 0.08);
+}
+
+.wa-dark .plants-toolbar {
+  background: color-mix(in srgb, var(--wa-color-surface-default) 50%, transparent);
+  border-color: color-mix(in srgb, var(--wa-color-surface-border) 80%, transparent);
+}
+
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .plants-toolbar {
+    background-color: var(--wa-color-surface-raised) !important;
+  }
 }
 
 .plants-toolbar-summary {
@@ -247,52 +350,6 @@ html.wa-light {
   }
 }
 
-/* Plant Card 3D Perspective Tilt */
-.plant-card-tilt {
-  position: relative;
-  transition: transform 0.5s ease-out;
-  --plant-card-shimmer-core: rgba(var(--wa-color-white-rgb), 0.16);
-  --plant-card-shimmer-mid: rgba(var(--wa-color-white-rgb), 0.06);
-
-  &--active:hover {
-    transform: perspective(800px) rotateX(var(--x-rotation, 0deg)) rotateY(var(--y-rotation, 0deg)) scale(1.02);
-  }
-}
-
-html.wa-light {
-  .plant-card-tilt {
-    --plant-card-shimmer-core: rgba(var(--wa-color-black-rgb), 0.1);
-    --plant-card-shimmer-mid: rgba(var(--wa-color-black-rgb), 0.03);
-  }
-}
-
-html.wa-dark {
-  .plant-card-tilt {
-    --plant-card-shimmer-core: rgba(var(--wa-color-white-rgb), 0.2);
-    --plant-card-shimmer-mid: rgba(var(--wa-color-white-rgb), 0.08);
-  }
-}
-
-.plant-card-shimmer {
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(
-    at var(--x, 50%) var(--y, 50%),
-    var(--plant-card-shimmer-core) 18%,
-    var(--plant-card-shimmer-mid) 42%,
-    transparent 80%
-  );
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  z-index: 2;
-  border-radius: var(--wa-border-radius-l, 8px);
-
-  .plant-card-tilt--active:hover & {
-    opacity: 1;
-  }
-}
-
 /* Plants Grid */
 .plants-grid {
   --min-column-size: 50ch;
@@ -307,7 +364,6 @@ html.wa-dark {
     }
 
     cursor: pointer;
-	height: 100%;
 
     .plant-price-wrapper {
       width: 40%;
@@ -394,6 +450,75 @@ html.wa-dark {
   }
 }
 
+.discount-seal-container {
+  align-items: center;
+  display: inline-flex;
+  flex-direction: column;
+  position: absolute;
+  right: 0.75rem;
+  top: 0.75rem;
+  z-index: 2;
+
+  &.has-iva {
+    top: 0.45rem;
+  }
+
+  .discount-seal {
+    position: relative;
+    right: auto;
+    top: auto;
+  }
+}
+
+.discount-sub-seals {
+  align-items: center;
+  display: flex;
+  flex-direction: row;
+  gap: 0.25rem;
+  justify-content: space-between;
+  margin-bottom: -0.45rem;
+  width: 100%;
+  z-index: 3;
+}
+
+.discount-sub-seal {
+  align-items: center;
+  border-radius: 999px;
+  border: 1.5px solid #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.28);
+  color: #ffffff;
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  line-height: 1;
+  min-width: 2.15rem;
+  padding: 0.15rem 0.35rem;
+  text-align: center;
+
+  &--iva {
+    background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+  }
+
+  &--unit {
+    background: linear-gradient(135deg, #ef4444 0%, #991b1b 100%);
+  }
+
+  .discount-sub-seal-val {
+    font-size: 0.62rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+
+  .discount-sub-seal-lbl {
+    font-size: 0.38rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    margin-top: 1px;
+    opacity: 0.95;
+    text-transform: uppercase;
+  }
+}
+
 .discount-seal {
   align-items: center;
   background: radial-gradient(circle at 30% 30%, #ff5a5a 0%, #e3002a 55%, #b30021 100%);
@@ -403,8 +528,8 @@ html.wa-dark {
   color: #ffffff;
   display: inline-flex;
   flex-direction: row;
-  width: 4.55rem;
-  height: 4.55rem;
+  width: 5.55rem;
+  height: 5.55rem;
   justify-content: center;
   line-height: 1;
   padding: 0.25rem;
@@ -416,9 +541,10 @@ html.wa-dark {
   z-index: 2;
 
   .discount-seal-value {
-    font-size: 1.6rem;
+    font-size: 1.45rem;
     font-weight: 800;
-    letter-spacing: 0.02em;
+    letter-spacing: -0.02em;
+    white-space: nowrap;
   }
 
   .discount-seal-label {
@@ -498,6 +624,7 @@ html.wa-dark {
 .plant-detail-media>a {
   display: block;
   height: 100%;
+  background-color: var(--wa-color-white);
 }
 
 // Dialogo de plantas
@@ -552,8 +679,9 @@ html.wa-dark {
   display: block;
   height: 100%;
   max-height: none;
-  object-fit: cover;
+  object-fit: contain;
   width: 100%;
+  aspect-ratio: 32 / 15;
 }
 
 .advisor-contact-list {
@@ -631,13 +759,6 @@ html.wa-dark {
   transform: translateY(-1px);
 }
 
-.theme-floating-toggle {
-  bottom: clamp(0.75rem, 2vw, 1.5rem);
-  left: clamp(0.75rem, 2vw, 1.5rem);
-  position: fixed;
-  z-index: 40;
-  border-radius: var(--wa-border-radius-circle);
-}
 
 .route-plant-loading-dialog::part(panel) {
   max-width: min(90vw, 26rem);
@@ -767,8 +888,8 @@ html.wa-dark {
 
 @media (max-width: 768px) {
   .video-home {
-    .hero-video {
-      aspect-ratio: 0.94 / 1;
+    &:not(.is-image) .hero-video {
+      aspect-ratio: 920 / 1580;
     }
 
     .hero-disclaimer {
@@ -847,6 +968,17 @@ html.wa-dark {
     width: 100%;
   }
 
+  .plant-detail-dialog-actions-row {
+    display: flex;
+    gap: var(--wa-space-xs);
+    width: 100%;
+
+    wa-button {
+      flex: 1 1 0;
+      width: auto;
+    }
+  }
+
   .plant-detail-media {
     min-height: 220px;
   }
@@ -856,9 +988,41 @@ html.wa-dark {
     max-height: 100dvh;
   }
 
+  .discount-seal-container {
+    right: 0.6rem;
+    top: 0.6rem;
+
+    &.has-iva {
+      top: 0.35rem;
+    }
+
+    .discount-seal {
+      right: auto;
+      top: auto;
+    }
+  }
+
+  .discount-sub-seals {
+    gap: 0.2rem;
+    margin-bottom: -0.35rem;
+  }
+
+  .discount-sub-seal {
+    min-width: 1.75rem;
+    padding: 0.1rem 0.22rem;
+
+    .discount-sub-seal-val {
+      font-size: 0.5rem;
+    }
+
+    .discount-sub-seal-lbl {
+      font-size: 0.32rem;
+    }
+  }
+
   .discount-seal {
-    height: 65px;
-    width: 65px;
+    height: 80px;
+    width: 80px;
     right: 0.6rem;
     top: 0.6rem;
   }

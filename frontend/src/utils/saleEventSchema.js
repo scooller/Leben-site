@@ -63,3 +63,35 @@ export const buildSaleEventSchema = (siteUrl, saleEvent, siteName) => {
     eventAttendanceMode: 'https://schema.org/OnlineEventAttendanceMode',
   };
 };
+
+/**
+ * Checks if the Sale event is currently active based on config and start/end dates.
+ * @param {object} config - site configuration object
+ * @param {Date} [now] - reference date (defaults to current local date)
+ * @returns {boolean}
+ */
+export const isSaleEventActiveByDate = (config, now = new Date()) => {
+  if (!config?.evento_sale) {
+    return false;
+  }
+
+  const saleEvent = config?.seo?.sale_event;
+
+  if (!saleEvent?.start_date) {
+    return true;
+  }
+
+  const startDate = new Date(`${saleEvent.start_date}T00:00:00`);
+  if (!Number.isNaN(startDate.getTime()) && now < startDate) {
+    return false;
+  }
+
+  if (saleEvent.end_date) {
+    const endDate = new Date(`${saleEvent.end_date}T23:59:59`);
+    if (!Number.isNaN(endDate.getTime()) && now > endDate) {
+      return false;
+    }
+  }
+
+  return true;
+};

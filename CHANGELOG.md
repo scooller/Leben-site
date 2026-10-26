@@ -4,12 +4,671 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
-### Fixed
-- Actualizadas reglas de `.gitignore` para ignorar `frontend/.agents/` y `frontend/graphify-out/`.
-- Re-indexada la caché de Git para dejar de rastrear archivos temporales e ignorados (`AGENTS.md`, `.tmp`).
+## [1.11.4] - 2026-10-20
+
+### 🔒 Security / 👥 Auth — Permisos de importación de contactos para rol marketing
+- **`app/Filament/Actions/ImportContactSubmissionsCsvAction.php`**:
+  - `visible()` y `authorize()`: Permitir expresamente a usuarios con rol `marketing` (además de `admin`) ver y ejecutar la acción de importación de CSV de contactos.
+- **`app/Filament/Pages/ContactImportProgress.php`**:
+  - `canAccess()`: Conceder acceso a la página y barra de progreso de importación a usuarios con roles `admin` y `marketing`.
+- **`app/Http/Middleware/EnsureMarketingPanelAccess.php`**:
+  - Habilitación de la ruta `filament.admin.pages.contact-import-progress` dentro del middleware de control de acceso para marketing.
+- **`tests/Feature/MarketingRoleAccessTest.php`**:
+  - Test verificando que usuarios con rol `marketing` pueden acceder exitosamente a la página de progreso de importación y que usuarios `cliente` quedan bloqueados.
+
+## [1.11.3] - 2026-10-20
+
+### 🐛 Fixed / 📥 Import CSV — Deduplicación y sanitización de campos a asignar
+- **`app/Filament/Actions/ImportContactSubmissionsCsvAction.php`**:
+  - `targetFieldOptions()`: Filtrado estricto de alias dinámicos redundantes (`rut`, `nombre`, `email`, `telefono`, `rango`, `comentario_cliente`) que duplicaban campos nativos principales y base en el desplegable de mapeo adicional.
+  - Inclusión de `fields.comuna_inversion` en `$baseOptions` para asignar limpiamente la comuna de interés o inversión homologada para Salesforce.
+  - `prefillSuggestedMappings()`: Garantiza unicidad por `target_field` y por `source_column`, omitiendo columnas ya seleccionadas en los campos obligatorios superiores para evitar filas repetidas en el repeater.
+  - `sanitizeMappingsForSelectedChannel()`: Remapeo automático de alias heredados a sus equivalentes canónicos.
+- **`app/Services/ContactImport/ContactCsvRowMapper.php`**:
+  - Incorporación de `rango`, `renta` y `codeudor` en `$directMap` de `suggestTargetField()`.
+  - Normalización de `rango` y `renta` en `canonicalizeFields()` para asegurar persistencia directa en `fields.rango_renta`.
+- **`tests/Unit/Filament/Actions/ImportContactSubmissionsCsvActionTest.php`**:
+  - Cobertura de pruebas unitarias verificando la ausencia de duplicados y alias redundantes en las opciones de destino.
+
+## [1.11.2] - 2026-10-19
+
+### 🐛 Fixed / 🔄 Salesforce — Homologación canónica de comunas desde proyectos Salesforce
+- **`app/Models/Proyecto.php`**:
+  - `salesforceComunas()`: Devuelve la lista unívoca de comunas registradas en los proyectos sincronizados desde Salesforce.
+  - `resolveSalesforceComuna(?string $input, ?Proyecto $project)`: Resuelve y homologa cualquier variante o slug (`la_florida`, `santiago_centro`, `ñuñoa`) al formato oficial en mayúsculas de Salesforce (`LA FLORIDA`, `SANTIAGO CENTRO`), recurriendo a la comuna del proyecto si el valor ingresado es genérico o inválido (`Comunas Genericas`), o devolviendo `null` si no hay coincidencia.
+  - `normalizeComunaSignature(string $value)`: Normalización tolerante de firmas de comunas.
+- **`app/Services/Salesforce/SalesforceCaseMapper.php`**:
+  - Homologación obligatoria de `Comuna__c` y `comunaInversion__c` usando `Proyecto::resolveSalesforceComuna()`.
+  - Exclusión de `Comuna__c` en `normalizeLegacyCustomFieldsInPayload()` para prevenir el reemplazo de espacios por guiones bajos (`Puerto Varas` en vez de `Puerto_Varas`), eliminando el error `INVALID_OR_NULL_FOR_RESTRICTED_PICKLIST` en Salesforce.
+  - Carga explícita de `comuna` en `resolveProjectByName()`.
+  - Expansión de alias para comunas de inversión (`comuna_interes`, `que_comuna_te_interesa_para_vivir_o_invertir`, `comuna_preferida`).
+- **`app/Services/ContactImport/ContactTextHomologationService.php`**: Delegación a `Proyecto::salesforceComunas()` y `Proyecto::resolveSalesforceComuna()` como fuente única de verdad.
+- **`app/Services/ContactImport/ContactCsvRowMapper.php`**: Mapeo directo de columnas de preguntas de comuna Meta/CSV a `fields.comuna_inversion`.
+
+## [1.11.1] - 2026-10-19
+
+### 🐛 Fixed / 🎨 UI — Legibilidad y contraste de dropdowns y opciones seleccionadas en front
+- **`frontend/src/styles/global.scss`**:
+  - Definición de `--wa-form-control-activated-color: var(--brand-color)` en `:root` para asegurar contraste alto en componentes de formulario de Web Awesome.
+  - Estilizado de `wa-select::part(tag)` con fondo de acento de marca y texto contrastado para opciones multi-select seleccionadas.
+  - Ajuste de `--tag-max-size: 24ch` para evitar truncamiento excesivo de nombres en selectores múltiples.
+  - Corrección de opciones en dropdown (`wa-option:is(:state(current), ...)`): fondo de marca y texto blanco (#ffffff) eliminando el fondo gris con texto claro ilegible.
+  - Distinción visual para opciones seleccionadas (`[aria-selected='true']`) con fondo suave y tipografía semibold.
+- **`frontend/src/services/webAwesome.js`**:
+  - Incorporación de `--wa-form-control-activated-color` a `customBrandTokenProps` y aplicación dinámica en `applyBrandTokensFromPrimaryColor()`.
+
+## [1.11.0] - 2026-10-19
+
+### ✨ Feature / 🚀 API — Cyber Feed Canónico para Cyber AI (cyber.cl)
+- **`database/migrations/2026_10_19_123348_add_sku_to_plants_table.php`**: Adición de columna `sku` (string, nullable, indexed) en tabla `plants` para identificación unívoca ante integraciones y marketplaces externos.
+- **`app/Models/Plant.php`**:
+  - Registro de `'sku'` en `$fillable` y `syncableFields()`.
+  - Incorporación de hook de ciclo de vida `booted()` (`static::saving`) que autogenera y asigna el SKU canónico si viene vacío al crear o importar plantas.
+  - Métodos `resolveSku(bool $ignoreExisting = false)` (con remoción de prefijos redundantes como 'edificio', generando SKUs compactos tipo `BOLD-1001`, `INDI-404`) y `resolveCanonicalId()` (`leben-{$proyecto->slug}-depto-{$unitName}`).
+- **`app/Console/Commands/GeneratePlantSkusCommand.php`**: Nuevo comando Artisan `php artisan plants:generate-sku` para generar y persistir masivamente SKUs compactos en todas las plantas existentes, con soporte para `--actualizar` (alias `--update`/`--force`) para reemplazar SKUs ya existentes, `--dry-run` para simulación y filtro por proyecto `--project`.
+- **`app/Filament/Resources/Plants`**:
+  - `PlantForm.php`: Campo administrable `TextInput::make('sku')` con helper y límite de 64 caracteres.
+  - `PlantsTable.php`: Columna `TextColumn::make('sku')` con búsqueda y toggleable.
+- **`app/Services/CyberFeed/CyberOfferValidator.php`**: Servicio de validación de integridad comercial que verifica disponibilidad de URL pública, imágenes no-placeholder (rechazando `data:image` y `via.placeholder.com`), precios coherentes (`price_uf > 0` y `<= reference_price_uf`), y registra exclusiones detalladas en `storage/logs/cyber_feed_exclusions.log`.
+- **`app/Services/CyberFeed/CyberFeedService.php`**: Motor de agregación, mapeo y filtrado de ofertas Cyber (`unidad_sale = true`):
+  - Precios de oferta calculados dinámicamente con `$plant->resolveFinalPrice()` y precios de lista en UF.
+  - Disponibilidad en tiempo real (`available`, `reserved`, `sold`) según reservas activas y pagos confirmados.
+  - Mapeo de tipologías, dormitorios, baños, superficies y estados de entrega (`entrega_inmediata`, `venta_en_verde`, `venta_en_blanco`, `piloto`).
+- **`app/Http/Controllers/Api/CyberFeedController.php` & `routes/api.php`**:
+  - Diferenciación de feeds:
+    - **Cyber Feed (`/api/cyber/feed.json`)**: Muestra unidades Sale (`unidad_sale = true`), precio final con descuento (`price_uf`), precio de lista referencial (`reference_price_uf`), porcentaje de descuento (`discount_percent`) y vigencia de campaña.
+    - **Product Feed Canónico (`/api/feed.json`)**: Para Google, Meta y agregadores generales. Muestra todas las unidades activas del catálogo exhibiendo estrictamente su **precio de lista** (`price_uf`), suprimiendo completamente descuentos y cualquier precio alternativo.
+  - Caché de 5 minutos diferenciada por tipo de feed (`Cache-Control: public, max-age=300, stale-while-revalidate=60`).
+  - Cabecera `ETag` con soporte condicional `If-None-Match` respondiendo `304 Not Modified`.
+  - Filtros soportados: `?project=slug`, `?commune=slug`, `?availability=available|reserved|sold`, `?updated_since=ISO8601`, `?page=1`, `?per_page=100`.
+- **`app/Console/Commands/GenerateCyberFeedCommand.php` & `routes/console.php`**: Comando `php artisan cyber:generate-feed` para exportación estática tanto del Cyber Feed (`storage/app/public/cyber/feed.json`) como del feed canónico de lista (`storage/app/public/feed.json`), programado cada 15 minutos en el scheduler de Laravel.
+- **`frontend/`**:
+  - `index.html` & `prerender-routes.mjs`: Incorporación de tags `<link rel="alternate" type="application/json">` en el `<head>` apuntando al Cyber Feed (`https://admin.ileben.cl/api/cyber/feed.json`) y al Product Feed Canónico (`https://admin.ileben.cl/api/feed.json`), propagados en el prerenderizado estático de rutas.
+  - `public/.htaccess`: Regla de redirección 302 de `/(cyber/)?feed(.json)?` hacia `https://admin.ileben.cl/api/cyber/feed.json` y cabeceras HTTP `Link: <https://admin.ileben.cl/api/cyber/feed.json>; rel="alternate"; type="application/json"` en la respuesta de `index.html`.
+  - `public/llms.txt` & `public/index.md`: Declaración explícita de las URLs del Cyber Feed y Product Feed para crawlers y agentes IA.
+  - `src/pages/Home.jsx`: Alineación de `sku` en el schema estructurado JSON-LD (`schema.org/Product` y `RealEstateListing`) utilizando el SKU prioritario de la unidad.
+- **`tests/Feature/CyberFeedApiTest.php`**: Suite completa de pruebas con 11 tests y 89 aserciones cubriendo respuesta 200 genérica y específica, estructura canónica, filtros, estados de disponibilidad, exclusión de unidades inválidas, revalidación condicional 304, autogeneración en creación/importación y comando CLI de SKUs con parámetro `--actualizar`.
 
 
-## [1.9.27] - 2026-09-23
+### 🐛 Fix / 🎨 UI — Ajuste de altura e imagen 100% en Banner Hero
+- **`frontend/src/pages/Home.jsx`**:
+  - Adición de clase condicional `is-image` a `.video-home` cuando el banner hero es tipo imagen.
+  - Asignación de clases `hero-picture` a `<picture>` y `hero-image` al elemento `<img>` para desacoplar su estilizado de las restricciones de video.
+- **`frontend/src/styles/home.scss`**:
+  - Implementación de reglas responsivas para `.hero-image` (`width: 100%`, `height: auto`, `aspect-ratio: auto`, `display: block`) permitiendo que la altura del contenedor se ajuste de forma natural a las dimensiones reales de la imagen sin distorsión ni márgenes forzados.
+  - Desacoplamiento de `aspect-ratio: 920 / 1580` en vista móvil mediante selector `:not(.is-image)` para afectar exclusivamente al video.
+
+## [1.10.1] - 2026-10-09
+
+### 🐛 Fix / 🎨 UI — Modal Plantas Mobile y Menú de Contacto en Mobile
+
+- **`frontend/src/components/PlantDetailDialog.jsx`**:
+  - En viewport móvil (`<= 768px`), organización de los botones secundarios "Cerrar" y "Asesórate aquí" en una misma fila (`.plant-detail-dialog-actions-row`) ocupando el 50% de ancho cada uno, dejando el botón principal de reserva/disponibilidad en ancho completo abajo.
+  - Implementación reactiva de `isMobile` mediante listener de `matchMedia` para responder dinámicamente a cambios de tamaño o rotación.
+- **`frontend/src/styles/home.scss`**:
+  - Estilos responsivos para `.plant-detail-dialog-actions-row` con flexbox y `flex: 1 1 0` por botón.
+- **`frontend/src/components/SiteHeader.jsx`**:
+  - Corrección de navegación móvil desde la página de contacto: eliminación de `data-drawer="close"` que interceptaba el evento nativo `click` con `stopPropagation()` en Web Awesome impidiendo la ejecución de `onClick` en React.
+  - Cierre programático del drawer de navegación (`wa-page.hideNavigation()`) y provisión de URLs completas en `href` para todos los botones de navegación ("Home", "Plantas", "Asesorate aquí") asegurando transiciones SPA y navegación nativa inmediata.
+
+## [1.10.0] - 2026-10-09
+
+### ✨ Feature — Enlaces opcionales para banners en backend y frontend
+
+- **`app/Filament/Pages/SiteSettings.php`**: Incorporación de campos administrables para enlaces opcionales en la pestaña **Banner** para el Hero del Home (`extra_settings.home_hero_link`, `extra_settings.home_hero_link_new_tab`) y el Hero de Contacto (`extra_settings.contact_hero_link`, `extra_settings.contact_hero_link_new_tab`).
+- **`app/Models/SiteSetting.php`**: Exposición de los atributos `link` y `link_new_tab` en el payload público del método `forFrontend()` bajo `hero.home` y `hero.contact`, e inclusión de las claves en `filterSyncableExtraSettings()`.
+- **`frontend/src/pages/Home.jsx`**: Renderizado de capa de enlace accesible (`.hero-banner-link-overlay`) sobre el banner principal cuando se configura un link, con soporte para apertura en nueva pestaña y preservación de parámetros UTM de sesión.
+- **`frontend/src/styles/home.scss`**: Estilos para `.hero-banner-link-overlay` y cursor interactivo en `.video-home.has-link`.
+- **`frontend/src/pages/Contact.jsx`**: Enlace opcional interactivo alrededor del banner/imagen de la página de contacto (`.contact-hero-link`) preservando UTMs de sesión.
+- **`frontend/src/styles/contact.scss`**: Estilos para enlaces interactivos en banner de contacto.
+- **`tests/Feature/SiteSettingFrontendConfigTest.php`**: Cobertura de pruebas para la resolución y serialización de los nuevos campos de enlace de banner.
+
+## [1.9.74] - 2026-10-07
+
+### ⚙️ Salesforce — Control de Sincronización Automática para Proyectos Inactivos
+
+- **`app/Filament/Pages/SiteSettings.php`**:
+  - Agregado switch `extra_settings.salesforce_sync_inactive_projects` en la pestaña **Salesforce**, sección **Leads** (activo por defecto con `default(true)` e inicialización en `mount()`).
+  - Permite configurar globalmente si los contactos de proyectos inactivos deben sincronizarse automáticamente con Salesforce o solo guardarse localmente.
+  - Implementado aviso visual dinámico (`Placeholder` reactivo en tiempo real con `Get $get`) que lista los proyectos actualmente inactivos (o confirma si todos están activos) y explica el efecto inmediato según el estado del switch.
+- **`app/Models/SiteSetting.php`**:
+  - Implementado helper `shouldSyncInactiveProjectsToSalesforce(): bool` (retorna `true` por defecto).
+- **`app/Services/Salesforce/SalesforceCaseMapper.php`**:
+  - Implementado `resolveProjectForSubmission(ContactSubmission $submission): ?Proyecto` para reutilizar de manera limpia la resolución de proyectos.
+  - Incluida la columna `is_active` en las consultas de selección de `resolveProjectByName()` para asegurar la detección correcta del estado del proyecto.
+- **`app/Jobs/CreateSalesforceCaseJob.php`**:
+  - Evaluada la bandera `shouldSyncInactiveProjectsToSalesforce()` cuando `$syncTrigger === 'automatic'`.
+  - Si el proyecto está inactivo y el switch está apagado: se omite el envío a Salesforce, se registra en `FlowLogMatrix` (`salesforce.job.inactive_project_skipped`), y se marca `salesforce_case_error = 'Omitido: Proyecto inactivo (sincronización automática desactivada).'`.
+  - Las sincronizaciones manuales desde Filament (`$syncTrigger === 'manual'`) siguen permitidas aunque el proyecto esté inactivo.
+- **`app/Filament/Resources/ContactSubmissions/ContactSubmissions/Tables/ContactSubmissionsTable.php`**:
+  - Adaptada la columna `IconColumn` de Salesforce para mostrar ícono de advertencia (`heroicon-o-minus-circle` en color `warning`) y tooltip descriptivo cuando la sincronización fue omitida.
+- **`tests/Feature/SalesforceSyncInactiveProjectsTest.php`**:
+  - Pruebas automatizadas que verifican la omisión de sincronización automática cuando el switch está apagado, la ejecución normal cuando está encendido (por defecto), el envío normal en proyectos activos, y el funcionamiento de la sincronización manual sin bloqueos.
+
+### 🎯 Marketing & API — Preservación Estricta de UTM Campaign en API y Canales No Seleccionados
+
+- **`app/Http/Controllers/Api/ContactSubmissionController.php`**:
+  - `enrichMarketingFields()` ahora verifica que la solicitud provenga del frontend (`isFrontendRequest()`) y que el canal esté explícitamente seleccionado en `extra_settings.sale_utm_campaign_channels` (`SiteSetting::isChannelEligibleForSaleUtmCampaign()`) antes de enriquecer o alterar `utm_campaign`.
+  - Solicitudes que ingresan por la API directa (`POST /api/v1/contact-submissions`) o desde canales no seleccionados preservan intactos sus parámetros `utm_campaign`, sin sobreescrituras indebidas hacia la campaña de Sale en base de datos.
+  - Implementado `isFrontendRequest()` y `resolveAllowedFrontendHosts()` para validar origen y referer contra dominios autorizados del sitio.
+- **`app/Models/SiteSetting.php`**:
+  - Implementado método helper `isChannelEligibleForSaleUtmCampaign(?ContactChannel $channel): bool` para centralizar la verificación de elegibilidad de sobreescritura de campaña Sale según `extra_settings.sale_utm_campaign_channels`.
+- **`app/Services/Salesforce/SalesforceCaseMapper.php`**:
+  - `shouldOverrideCampaignForSale()` ahora valida la elegibilidad del canal a través de `SiteSetting::isChannelEligibleForSaleUtmCampaign()`.
+  - `resolveUtmCampaign()` no cae en `sale_utm_campaign` como fallback cuando el canal no es elegible, respetando los valores por defecto generales o preservando la campaña enviada.
+- **`tests/Feature/ContactSubmissionApiTest.php`**:
+  - Pruebas automatizadas validando: no sobreescritura cuando la petición viene por API, no sobreescritura en canales no seleccionados desde el front, y sobreescritura correcta cuando la petición es del front en un canal elegible con evento Sale activo. Total: 11 tests pasando.
+
+## [1.9.72] - 2026-10-06
+
+### 🔄 Salesforce OAuth — Auto-recuperación de Recursos y Versión en Caché y DB
+
+- **`app/Services/Salesforce/SalesforceService.php`**:
+  - Implementado `ensureResourcesLoaded()`: restaura `version` y `resources` desde DB backup (`SiteSetting.extra_settings`) hacia el caché de Forrest cuando se limpian o expiran, o los consulta directamente a Salesforce (`Forrest::versions()` y `Forrest::resources()`).
+  - `tryAutoReconnect()`: restaura `version` y `resources` del backup de DB antes de llamar a `Forrest::refresh()`, invoca `ensureResourcesLoaded()` y actualiza el backup completo.
+  - `updateTokenBackup()`: persiste `version_cache_backup` y `resources_cache_backup` junto con tokens de acceso y refresh rotados en `SiteSetting.extra_settings`.
+  - `proactiveRefresh()`: llama preventivamente a `ensureResourcesLoaded()` para asegurar disponibilidad de recursos tras refresh de token.
+  - `executeWithTokenProtection()`: invoca preventivamente `ensureResourcesLoaded()` y captura `MissingResourceException` para recargar recursos de Forrest y reintentar la operación automáticamente sin requerir reconexión manual.
+  - `getCreatableLeadFields()`: envuelto `Forrest::describe('Lead')` con `executeWithTokenProtection()` para garantizar disponibilidad continua.
+- **`app/Http/Controllers/SalesforceOAuthController.php`**:
+  - En `callback()`, almacena inmediatamente `version_cache_backup` y `resources_cache_backup` en `SiteSetting.extra_settings` al completar la conexión OAuth inicial.
+- **`tests/Feature/SalesforceProactiveRefreshTest.php` & `SalesforceOAuthControllerTest.php`**:
+  - Tests unitarios y de integración para la persistencia y auto-recuperación transparente ante pérdida de claves de recursos y versión en caché.
+
+## [1.9.71] - 2026-10-05
+
+### 🚀 Frontend & API — Priorización estricta de "Entrega inmediata" como etapa
+
+- **`frontend/src/utils/stageAlias.js`**:
+  - `resolveStageAlias()` ahora recibe el flag opcional `entregaInmediata` y prioriza inmediatamente devolver `"Entrega inmediata"` antes de cualquier resolución por slug de proyecto o mapa de etapas.
+  - Se añade retorno inmediato de `"Entrega inmediata"` cuando la clave canónica normalizada es `"entrega_inmediata"`.
+- **`frontend/src/pages/Home.jsx`**:
+  - Al procesar el listado de plantas, se mapea `proyectoEntregaInmediata` y se fuerza `proyectoEtapa` a `"Entrega inmediata"` si el proyecto tiene el flag `entrega_inmediata` activo.
+- **`frontend/src/components/PlantsGrid.jsx` & `frontend/src/components/PlantDetailDialog.jsx`**:
+  - Insignia de etapa visible tanto si existe `proyectoEtapa` como si `proyectoEntregaInmediata` es verdadero, pasando dicho flag a `resolveStageAlias()`.
+- **`app/Http/Controllers/Api/PlantController.php` & `ProyectoController.php`**:
+  - En respuestas públicas de plantas (`formatPlantResponse`) y proyectos (`index` y `show`), el campo `etapa` retorna `"Entrega inmediata"` siempre que `entrega_inmediata` sea verdadero, omitiendo la etapa interna seleccionada.
+  - En `locationFilters`, las opciones de entrega incluyen `"Entrega inmediata"` cuando hay proyectos activos con entrega inmediata.
+  - En el filtro de catálogo de plantas, la búsqueda por entrega incluye proyectos con `entrega_inmediata = true` cuando se filtra por entrega inmediata.
+- **`tests/Feature/Api/ProyectoEntregaInmediataEtapaTest.php`**:
+  - Pruebas automatizadas validando la resolución prioritaria de `"Entrega inmediata"` en endpoints de proyectos, plantas y filtros de ubicación.
+
+## [1.9.70] - 2026-10-05
+
+### 🔐 Seguridad y Permisos — Edición de Valores y Descuentos reservada a Admin y Super Admin
+
+- **`app/Models/User.php`**:
+  - Implementado `isSuperAdmin()` para reconocer roles (`super_admin`, `super admin`, `super-admin`) y `user_type`.
+  - Actualizado `isAdmin()` para incluir automáticamente `isSuperAdmin()`.
+  - Implementado `canManageFinancialValues()` como helper de autorización para valores financieros y descuentos.
+- **`app/Filament/Resources/Proyectos/Schemas/ProyectoForm.php`**:
+  - Los campos de la sección "Descuentos y valores" (`valor_reserva_exigido_defecto_peso`, `valor_reserva_exigido_min_peso`, `descuento_defecto_cotizacion_web`, `descuento_maximo_unidad`, `descuento_iva`) ahora son editables exclusivamente por administradores y super administradores.
+  - Se eliminó el bloqueo hardcodeado de `valor_reserva_exigido_min_peso` permitiendo su edición para admin/super admin, quedando deshabilitado para el resto de usuarios.
+- **`app/Filament/Resources/Plants/Schemas/PlantForm.php`**:
+  - `precio_base`, `precio_lista`, `priorizar_descuentos`, `descuento_defecto_cotizacion_web`, `descuento_maximo_unidad` y `descuento_iva` ahora son editables exclusivamente por administradores y super administradores.
+  - Se removió el bloqueo estático `disabled()->dehydrated(false)` de `precio_lista`, permitiendo su edición y guardado por admin/super admin, manteniéndose deshabilitado para otros perfiles.
+- **`app/Filament/Resources/Users/`**:
+  - Se agregó `super_admin` (`Super Administrador`) como opción en `UserForm` y visualización con filtros en `UsersTable`.
+  - Actualizado `RolesAndPermissionsSeeder` para registrar el rol `super_admin`.
+- **`tests/Feature/FinancialValuesAndDiscountsAuthorizationTest.php`**:
+  - Suite de pruebas completa verificando permisos de edición en formularios de Proyecto y Planta para admin y super admin, así como bloqueo en modo deshabilitado para usuarios sin privilegios administrativos.
+
+## [1.9.69] - 2026-10-05
+
+### 🌐 Salesforce & API — Fallback robusto para utm_site y Website (web de origen / admin.ileben.cl)
+
+- **`app/Services/Salesforce/SalesforceCaseMapper.php`**:
+  - Implementado `resolveUtmSite()` y normalizador `cleanHostOrDomain()`.
+  - Asegura que `UTM_Site_P_gina_de_origen__c` y `Website` siempre se envíen en el payload de Salesforce Lead con la jerarquía de fallback solicitada:
+    1. Valor explícito de `utm_site` en el formulario/datos.
+    2. Web de origen del contacto: dominio del canal asociado (`domain_patterns`), campos web/referrer (`website`, `site`, `referrer`, etc.) o `utm_site_default`.
+    3. En su defecto: `admin.ileben.cl` (URL del backend/administración).
+- **`app/Http/Controllers/Api/ContactSubmissionController.php`**:
+  - `enrichMarketingFields()` y `resolveRequestSourceSite()` ahora consideran el canal resuelto (`ContactChannel`) y aplican el fallback ordenado para almacenar siempre `utm_site` en `contact_submissions.fields`.
+- **`tests/Unit/Salesforce/SalesforceCaseMapperTest.php`**:
+  - Tests unitarios verificando: preservación de `utm_site` explícito, fallback a dominio del canal, fallback a `referrer`/web y fallback final a `admin.ileben.cl`.
+
+### 🪵 Logging & Fix — Visibilidad de error en títulos de Log Viewer y eliminación de Genero__c forzado
+
+- **`app/Services/Salesforce/SalesforceService.php`**:
+  - `extractSalesforceExceptionDetails()` calcula `salesforce_error_summary` (`[errorCode] message`).
+  - Los mensajes principales de `Log::error()` en `createLead()` y `updateLead()` ahora incluyen el resumen visible directamente en el título (`Salesforce: Error creando Lead no recuperable - [FIELD_CUSTOM_VALIDATION_EXCEPTION: X Flujo: ...]`), permitiendo identificar inmediatamente la falla desde la lista del Log Viewer sin tener que inspeccionar el JSON de contexto.
+- **`app/Jobs/CreateSalesforceCaseJob.php`**:
+  - `FlowLogMatrix::write('salesforce.job.lead_error', ...)` ahora incluye el resumen detallado en el título principal del log.
+- **`app/Services/Salesforce/SalesforceCaseMapper.php`**:
+  - Se eliminan los valores hardcodeados `'GenderIdentity' => 'OTRO'` y `'Genero__c' => 'OTRO'`. Ahora solo se envían si vienen expresamente presentes en los datos del formulario, evitando el fallo de validación de flujos de Salesforce cuando actualiza cuentas preexistentes (`INVALID_FIELD_FOR_INSERT_UPDATE: Account: bad field names on insert/update call: Genero__pc`).
+
+## [1.9.67] - 2026-10-05
+
+### ⚡ Artisan — Comando de auditoría y sincronización de claves internas en canales de contacto
+
+- **`app/Console/Commands/SyncContactFormFieldsKeysCommand.php`**:
+  - Nuevo comando `php artisan contact:sync-form-fields-keys` para revisar y corregir automáticamente la `key` (clave interna) de los `form_fields` configurados en cada canal de contacto (`ContactChannel`) y opcionalmente global (`SiteSetting`).
+  - Utiliza `SalesforceCaseMapper::defaultKeyForPayloadField()` y `SalesforceCaseMapper::normalizeInternalKey()` para deducir la clave canónica correcta según el campo de Salesforce asignado o etiqueta del campo.
+  - Previene colisiones de claves internas duplicadas dentro del mismo formulario generando sufijos ordenados (`campo_2`, etc.).
+  - Soporta modo `--dry-run` para previsualizar diferencias en formato tabla sin alterar la base de datos y flag `--include-global` para revisar también `SiteSetting::current()->contact_form_fields`.
+- **`tests/Feature/SyncContactFormFieldsKeysCommandTest.php`**:
+  - Tests unitarios cubriendo detección, dry-run, reparación en base de datos y prevención de duplicados.
+
+## [1.9.66] - 2026-10-05
+
+### 🪵 Logging & Resilience — Extracción de errores array REST de Salesforce y fallback ante Lead convertido
+
+- **`app/Services/Salesforce/SalesforceService.php`**:
+  - `extractSalesforceExceptionDetails()` ahora procesa el formato de error nativo en array de Salesforce REST API (`[{"message": "...", "errorCode": "...", "fields": [...]}]`), extrayendo `salesforce_error_code`, `salesforce_error_message` y `salesforce_error_fields`.
+  - Soporte de rebobinado de stream (`rewind()`) y extracción alternativa mediante regex para capturar respuestas JSON embebidas en excepciones de clientes HTTP (Guzzle).
+- **`app/Jobs/CreateSalesforceCaseJob.php`**:
+  - Soporte para error `CANNOT_UPDATE_CONVERTED_LEAD` ("cannot reference converted lead"): cuando un Lead ya fue convertido en Salesforce a Cuenta/Contacto/Oportunidad, el job detecta este bloqueo y realiza fallback automático creando un nuevo Lead en lugar de dejar el contacto trabado en error permanente.
+  - Registro enriquecido en `FlowLogMatrix` y campo `salesforce_case_error` detallando `errorCode: message (campos: ...)`.
+- **`tests/Feature/ContactSubmissionSalesforceUpdateSyncTest.php`**:
+  - Tests unitarios cubriendo fallback automático ante `CANNOT_UPDATE_CONVERTED_LEAD` y formato de detalle de error parseado desde array JSON de Salesforce.
+
+## [1.9.64] - 2026-10-05
+
+### ✨ Feat — Auto-completado de clave interna y slug con validación anti-duplicados
+
+- **`app/Services/Salesforce/SalesforceCaseMapper.php`**:
+  - Implementación de `normalizeInternalKey(?string $label)` para generar claves internas limpias en formato `snake_case` a partir de etiquetas de usuario.
+  - Implementación de `defaultKeyForPayloadField(?string $salesforceField)` para resolver automáticamente la clave interna correspondiente a partir del campo seleccionado de Salesforce.
+- **`app/Filament/Pages/SiteSettings.php`**:
+  - Auto-prellenado reactivo de la **Clave interna (`key`)** al escribir la **Etiqueta (`label`)** en `getContactFormFieldsSchema()`, deduciendo inmediatamente el campo en el payload de Salesforce vía `SalesforceCaseMapper`.
+  - Auto-prellenado inverso de la clave interna al seleccionar un campo de Salesforce si la clave está vacía.
+  - Añadida validación `->distinct()` en la clave interna dentro del Repeater para impedir claves duplicadas entre campos del formulario.
+- **`app/Filament/Resources/ContactChannels/Schemas/ContactChannelForm.php`**:
+  - Auto-prellenado reactivo del **Slug** a partir del **Nombre visible** del canal al estar vacío.
+- **`tests/Unit/Salesforce/SalesforceCaseMapperTest.php`**: Pruebas unitarias para `normalizeInternalKey` y `defaultKeyForPayloadField`.
+
+## [1.9.63] - 2026-10-05
+
+### 🐛 Fix — Búsqueda por RUT y email en tabla de contactos (`ContactSubmissionsTable`)
+
+- **`app/Filament/Resources/ContactSubmissions/ContactSubmissions/Tables/ContactSubmissionsTable.php`**:
+  - Implementación de `searchUsing()` y `applySearchQuery()` para búsqueda en tiempo real en la tabla de Filament.
+  - Búsqueda normalizada por RUT capaz de coincidir sin importar si el usuario o la base de datos usan puntos o guión (`12.345.678-5`, `12345678-5`, `123456785` o parciales como `12345678`).
+  - Búsqueda por email en columna directa y dentro del JSON `fields`.
+  - Búsqueda ampliada a `name`, `phone` y variantes formateadas de RUT en campos JSON.
+  - Fallback en `resolveDynamicFieldValue()` hacia atributos directos del modelo (`rut`, `email`, `name`, `phone`).
+- **`tests/Feature/ContactSubmissionsSearchTest.php`**: 8 pruebas unitarias y de integración Livewire validando coincidencia exacta, parcial, con/sin formato, campos JSON y búsqueda en la tabla Filament.
+
+## [1.9.62] - 2026-10-05
+
+### ✨ Feat — Actualización de Leads en Salesforce y habilitación de edición en Filament
+
+- **`app/Filament/Resources/ContactSubmissions/ContactSubmissions/ContactSubmissionResource.php`**: Se remueve la restricción que impedía editar un contacto una vez sincronizado con Salesforce (`salesforce_case_id` no nulo sin errores), permitiendo la edición continua a administradores y usuarios de marketing.
+- **`app/Services/Salesforce/SalesforceService.php`**: Se implementa el método `updateLead(string $leadId, array $payload)` utilizando `Forrest::sobjects("Lead/{$leadId}", ['method' => 'patch', ...])` con sanitización de campos y reintentos ante campos inaccesibles.
+- **`app/Jobs/CreateSalesforceCaseJob.php`**: Ahora verifica si el envío ya cuenta con `salesforce_case_id`; en caso afirmativo invoca `updateLead()`. Si el registro fue eliminado en Salesforce (error 404 / entity is deleted), realiza fallback a `createLead()`.
+- **`app/Filament/Actions/ResyncSalesforceLeadAction.php`**: El diálogo modal y la notificación de éxito son ahora dinámicos, distinguiendo si se actualizará un Lead existente o se creará uno nuevo.
+- **`app/Filament/Resources/ContactSubmissions/ContactSubmissions/Pages/EditContactSubmission.php`**: Se añade el hook `afterSave()` para sincronizar automáticamente los cambios hacia Salesforce en segundo plano cuando el contacto ya cuenta con ID de Lead.
+- **`tests/Feature/ContactSubmissionSalesforceUpdateSyncTest.php`**: Tests automatizados para verificar actualización con `updateLead`, creación con `createLead`, fallback ante 404 y permisos de edición.
+
+## [1.9.61] - 2026-10-04
+
+### 📦 Dependencies — Actualización de Web Awesome Pro a v3.14.0
+
+- **`frontend/package.json`**: Actualización de `@web.awesome.me/webawesome-pro` a `^3.14.0`.
+
+## [1.9.60] - 2026-10-04
+
+### 🐛 Fix — Migración de propiedad deprecada `size="small"` en `wa-button`
+
+- **`frontend/src/pages/Home.jsx`**: Se actualiza el atributo `size="small"` a `size="s"` en los botones de ordenamiento de la barra de herramientas de plantas (`Nombre`, `Precio`, `Mejor oferta`), eliminando la advertencia de obsolescencia de Web Awesome (`[wa-button] size="small" is deprecated. Use size="s" instead`).
+
+## [1.9.59] - 2026-10-02
+
+### 🐛 Fix — Preservación de decimales exactos en descuentos (detalle y tooltip)
+
+- **`frontend/src/components/PlantDetailDialog.jsx`**: Se revierte el redondeo forzado en los badges de detalle ("Dcto. IVA", "Dcto. Unidad" y "Dcto. Total") y tooltip, mostrando los valores decimales exactos (ej. `17.98%`) en lugar de redondear a `18%`.
+- **`frontend/src/components/PlantsGrid.jsx`**: El tooltip del sello de descuento ahora muestra los valores exactos de IVA y unidad sin redondear a 1 decimal.
+- **`frontend/src/pages/Home.jsx`**: `totalDiscountPercentage` conserva precisión de 2 decimales para evitar cálculo distorsionado de precios y descuentos activos.
+
+
+## [1.9.58] - 2026-10-02
+
+### 🐛 Fix — Inconsistencia en formato de descuentos (tooltip vs. detalle)
+
+- **`frontend/src/components/PlantDetailDialog.jsx`**: Los badges de "Dcto. IVA" y "Dcto. Unidad" en la sección de detalles ahora usan `ivaDiscountFormatted`/`unitDiscountFormatted` (`.toFixed(1)`) igual que el tooltip del sello, eliminando la inconsistencia donde el tooltip mostraba `18.0%` y los badges mostraban `17.98%` para el mismo valor.
+
+## [1.9.57] - 2026-10-02
+
+### 🐛 Fix — Campos excluidos de sincronización se preservan en sync desde producción
+
+- **`app/Services/ProductionSync/ProductionSyncService.php`**: En modo `overwrite` del `syncSiteSettings`, se preservan ahora **todas las claves `salesforce_sync_*`** del `extra_settings` local (además de `salesforce_oauth` que ya se preservaba). Esto incluye `salesforce_sync_plants_excluded_fields`, `salesforce_sync_projects_excluded_fields`, y cualquier otra clave futura con ese prefijo. Sin este fix, al sincronizar en modo overwrite desde producción, los campos excluidos configurados localmente se borraban porque `filterSyncableExtraSettings` los excluye correctamente del payload (son config de entorno), pero el overwrite reemplazaba todo.
+- **`tests/Feature/Feature/ProductionSync/SyncSiteSettingsExcludedFieldsTest.php`**: 4 tests nuevos que verifican la preservación en modo `update` y `overwrite`, con y sin `salesforce_oauth`.
+
+## [1.9.56] - 2026-10-02
+
+### 🏷️ Jerarquía de Orden por Descuentos y Orden Predeterminado en SiteSettings
+
+- **Jerarquía de Descuentos en Frontend y API (`frontend/src/pages/Home.jsx`, `app/Http/Controllers/Api/PlantController.php`)**:
+  - Implementado orden prioritario de plantas según descuentos: primero unidades con Descuento IVA + Descuento Comercial (`dcto iva + dcto`), luego unidades con solo Descuento IVA (`solo dcto iva`), y finalmente las demás unidades (con descuento comercial solo o sin descuento).
+  - Dentro de cada nivel de prioridad se ordenan de forma descendente por descuento total y ascendente por precio final.
+  - Sincronizado en el cliente (`getOfferTier` en `Home.jsx`) para el orden interactivo por "Mejor oferta".
+- **Configuración de Orden Inicial en Panel Administrativo (`app/Filament/Pages/SiteSettings.php`, `app/Models/SiteSetting.php`)**:
+  - Incorporado selector `extra_settings.plants_default_order` en Información Básica para elegir el orden inicial predeterminado: Descuentos (`discounts`), Proyecto (`project`), Nombre de planta (`plant_name`), Al azar (`random`), Menor precio (`price_asc`) o Mayor precio (`price_desc`).
+  - Expuesto el parámetro `plants_default_order` en la respuesta de configuración para frontend (`SiteSetting::forFrontend`).
+
+## [1.9.55] - 2026-10-01
+
+### 🔗 Persistencia de Preview Token en Enlaces y Navegación del Frontend
+
+- **Utilidad `previewToken` (`frontend/src/utils/previewToken.js`)**:
+  - Creada utilidad centralizada para obtener (`getActivePreviewToken`), anexar (`appendPreviewTokenToUrl`) y sincronizar en barra de direcciones (`syncPreviewTokenToCurrentUrl`) el token de preview (`preview_token`).
+  - Almacena el token en `sessionStorage` (`ileben_preview_token`) para conservarlo incluso ante recargas o enlaces directos, e impide la fuga de tokens hacia dominios externos de terceros.
+- **Servicios y Clientes API (`frontend/src/lib/api.js`, `frontend/src/services/siteConfig.js`)**:
+  - Actualizados para resolver el token de preview activo desde la utilidad unificada en vez de consultar únicamente `window.location.search`.
+- **Navegación e Interfaz (`frontend/src/App.jsx`, `frontend/src/pages/Home.jsx`, `frontend/src/components/SiteHeader.jsx`, `frontend/src/components/SiteFooter.jsx`, `frontend/src/components/PlantDetailDialog.jsx`)**:
+  - `navigate` en `App.jsx` preserva automáticamente el token activo en cada cambio de ruta con `history.pushState` y re-sincroniza la URL actual tras eventos `popstate`.
+  - Enlaces de cabecera (`SiteHeader`) y pie de página (`SiteFooter`) conservan el token en navegación interna y botones de asesoría.
+  - Apertura y cierre del modal de detalle de planta (`Home.jsx: openPlantDetail`, `handleClosePlantDetail`) mantienen el parámetro `preview_token` en `window.history.pushState` y `replaceState`.
+  - Migas de pan (breadcrumbs) y enlaces de contacto interno en modal de detalle (`PlantDetailDialog`) anexan el token para evitar perder el modo preview durante testing.
+
+## [1.9.54] - 2026-10-01
+
+### 🎨 Filtros con Estilo Glass y Toolbar de Ordenamiento de DEV
+
+- **Estilo Glass en Filtros (`frontend/src/styles/home.scss`, `frontend/src/pages/Home.jsx`)**:
+  - Aplicado estilo glass idéntico al navbar (`.site-header`) en `.filters-details::part(base)` con `backdrop-filter: blur(8px)`, superficie con color-mix al 90%, borde sutil y transición suave.
+  - La tarjeta interna `.filters-card` se configuró en `appearance="plain"` con fondo transparente para que el efecto glass del acordeón luzca limpio y consistente tanto en modo claro como oscuro.
+- **Toolbar de Ordenamiento (`frontend/src/pages/Home.jsx`, `frontend/src/styles/home.scss`, `app/Http/Controllers/Api/PlantController.php`)**:
+  - Incorporado componente `.plants-toolbar` portado desde branch `dev` con soporte de ordenamiento interactivo (Nombre ASC/DESC, Precio ASC/DESC y Mejor Oferta ASC/DESC).
+  - Implementado ordenamiento tanto en servidor (`sort_by` y `sort_direction` en API) como en cliente con `totalDiscountPercentage` y `Intl.Collator('es-CL')`, asegurando que unidades con mayores descuentos conjuntos aparezcan en la primera página y no queden relegadas por la paginación.
+  - El toolbar adopta la misma estética glassmorphism del navbar para mantener cohesión visual.
+
+## [1.9.53] - 2026-10-01
+
+### 🏷️ Redirección de Contacto a Home Filtrado durante Evento Sale
+
+- **Validación de Fechas de Evento Sale (`frontend/src/utils/saleEventSchema.js`)**:
+  - Incorporada función `isSaleEventActiveByDate(config)` para determinar si el evento Sale está activo verificando la bandera `evento_sale` y el rango temporal configurado (`sale_event_start_date` y `sale_event_end_date`).
+- **Formulario de Contacto (`frontend/src/pages/Contact.jsx`)**:
+  - Al completar exitosamente el formulario durante un evento Sale activo, se genera automáticamente la URL filtrada con el proyecto y/o comuna seleccionados (`/f/proyectos/{slug}/comunas/{slug}`).
+  - Se muestra mensaje de confirmación y tras 1.8 segundos se redirige al usuario hacia el catálogo filtrado con `onNavigate`.
+  - Agregado `slugifySegment` para estandarizar los slugs de navegación.
+  - Implementada limpieza de temporizador en desmontaje de componente mediante `redirectTimeoutRef`.
+
+## [1.9.52] - 2026-09-25
+
+### 📱 Ajuste de Aspect Ratio de Video Hero en Mobile a 920x1580
+
+- **Estilos del Home (`frontend/src/styles/home.scss`)**:
+  - Actualizado `aspect-ratio` en `.video-home .hero-video` para pantallas móviles (`max-width: 768px`) a `920 / 1580` (46:79) para evitar recortes con el video vertical.
+
+## [1.9.51] - 2026-09-25
+
+### 🎬 Ajuste de Aspect Ratio de Video Hero a 1920x768
+
+- **Estilos del Home (`frontend/src/styles/home.scss`)**:
+  - Actualizado `aspect-ratio` en `.video-home .hero-video` a `1920 / 768` (2.5:1) para coincidir exactamente con las dimensiones del video y prevenir recorte superior e inferior.
+  - Ajustado `.hero-video-poster` con `object-fit: cover` para una transición limpia con el reproductor de video.
+
+## [1.9.50] - 2026-09-25
+
+### 🔄 Sincronización de Estado Activo/Inactivo en Plantas desde Salesforce
+
+- **Servicio Salesforce (`app/Services/Salesforce/SalesforceService.php`)**:
+  - Removido el filtro fijo `IsActive = true` en la consulta SOQL a `Product2` para permitir traer tanto unidades activas como inactivas (`IsActive = true/false`).
+  - Agregado campo `IsActive` en la selección SOQL y mapeo booleano `is_active`.
+- **Acción de Sincronización (`app/Filament/Actions/SyncPlantsAction.php`)**:
+  - Mapeado el campo `is_active` en la creación y actualización de registros locales respetando el valor devuelto por Salesforce.
+  - Agregado `is_active` a las opciones configurables de campos actualizables (`UPDATABLE_PLANT_FIELD_OPTIONS`).
+- **Pruebas (`tests/`)**:
+  - Agregadas pruebas unitarias y de integración para verificar la sincronización y persistencia de `is_active` (`true`/`false`).
+
+## [1.9.49] - 2026-09-24
+
+### 📦 Registro del Componente Checkbox de Web Awesome
+
+- **Inicialización de Web Awesome (`frontend/src/services/webAwesome.js`)**:
+  - Importados explícitamente los componentes `checkbox.js` y `checkbox-group.js` de `@web.awesome.me/webawesome-pro`.
+- **Formulario de Contacto (`frontend/src/pages/Contact.jsx`)**:
+  - Habilitado listener `onwa-change` para el componente web `<wa-checkbox>`.
+
+### 📋 Checkbox de Bases Legales Obligatorio en Formulario de Contacto
+
+- **Formulario de Contacto (`frontend/src/pages/Contact.jsx`)**:
+  - Incorporada casilla `<wa-checkbox>` para confirmar "He leído las bases legales" antes de enviar el formulario.
+  - Validación en cliente para deshabilitar botón y exigir marcado antes de despachar mensaje.
+
+### 💄 Unificación de Fila para Dcto Total y Precio de Reserva
+
+- **Modal de Detalle (`frontend/src/components/PlantDetailDialog.jsx`)**:
+  - Incorporado un único separador `<wa-divider>` que abarca todo el ancho encima de `Dcto. Total` y `Precio de Reserva`, permitiendo que ambos elementos se ubiquen en la misma fila del grid.
+
+### 🏷️ Soporte y Ordenamiento con Descuento IVA en Filament y API
+
+- **Tabla de Plantas en Filament (`app/Filament/Resources/Plants/Tables/PlantsTable.php`)**:
+  - Incorporada columna `% Dcto. IVA` (badge morado, ordenable).
+  - Actualizado el ordenamiento de `precio_final` para incluir la suma de `descuento_iva` en `$orderByTotalDiscount`.
+- **API de Plantas y Proyectos (`app/Http/Controllers/Api/PlantController.php`, `app/Http/Controllers/Api/ProyectoController.php`)**:
+  - Actualizada la ordenación por precio calculado en `PlantController` para considerar `descuento_iva`.
+  - Añadido `descuento_iva` a campos por defecto y saneamiento numérico en `ProyectoController`.
+
+### 🏷️ Desglose de Descuentos en Modal de Planta y Aplicación de Descuento Total al Precio
+
+- **Modal de Detalle (`frontend/src/components/PlantDetailDialog.jsx`)**:
+  - Incorporados badges de desglose en el `wa-grid` de detalles: `Dcto. IVA` (brand), `Dcto. Unidad` (danger) y `Dcto. Total` (warning).
+- **Cálculo de Precios y Descuento Total (`frontend/src/pages/Home.jsx`, `app/Http/Controllers/Api/Concerns/EnrichesPlantPayload.php`, `app/Models/Plant.php`)**:
+  - El precio final y precio seleccionado aplican el porcentaje de descuento total (`descuentoUnidad + descuentoIva`) sobre `precio_lista`.
+  - En la API backend, `resolveApiDiscountPercentage` y `resolveFinalPrice` suman `descuento_iva` al porcentaje comercial de la unidad.
+
+## [1.9.44] - 2026-09-24
+
+### 🏷️ Eliminación de Fallback de Porcentaje por Comparación de Precios
+
+- **Frontend (`frontend/src/pages/Home.jsx`)**:
+  - Eliminado el cálculo residual de porcentaje a partir de diferencias entre `precio_lista` y `precio_base`/`precio_final`.
+  - El porcentaje de descuento de la unidad utiliza estrictamente `porcentajeAplicado` (`descuento_maximo_unidad` o `descuento_defecto_cotizacion_web`), con fallback estricto en `0`.
+- **API Backend (`app/Http/Controllers/Api/Concerns/EnrichesPlantPayload.php`, `app/Models/Plant.php`)**:
+  - Confirmado que los métodos de resolución de porcentaje leen exclusivamente la configuración del proyecto y tienen fallback en `0.0`.
+
+## [1.9.43] - 2026-09-24
+
+### 🏷️ Corrección de Cálculo del Descuento de Unidad en Frontend
+
+- **Mapeo de Plantas (`frontend/src/pages/Home.jsx`, `frontend/src/components/PlantsGrid.jsx`, `frontend/src/components/PlantDetailDialog.jsx`)**:
+  - Corregido el origen del descuento de unidad para leer directamente `porcentajeAplicado` (`descuento_maximo_unidad` o `descuento_defecto_cotizacion_web` configurado en el proyecto) en lugar de deducir un porcentaje residual a partir de `precio_base` fijo.
+  - Ahora el sello de descuento de unidad y el sello consolidado reflejan fielmente el porcentaje comercial activo del proyecto (6% u 8%).
+
+## [1.9.42] - 2026-09-24
+
+### 🌐 Mensajes de Validación en Español y Regla `in` de Código de Comercio Transbank
+
+- **Formulario de Proyecto (`app/Filament/Resources/Proyectos/Schemas/ProyectoForm.php`)**:
+  - Incorporado mensaje personalizado explícito `validationMessages(['in' => 'El código de comercio seleccionado no es válido o no está configurado en Transbank.'])` en el selector `transbank_commerce_code`.
+- **Localización (`lang/es/validation.php`)**:
+  - Creado archivo de traducción de validación en español con todas las reglas nativas de Laravel, eliminando el error genérico `validation.in` por mensajes descriptivos en español.
+
+## [1.9.41] - 2026-09-24
+
+### 🏷️ Desglose Visual de Descuento IVA y Descuento de Unidad en Frontend
+
+- **Componentes y Vistas (`frontend/src/components/PlantsGrid.jsx`, `frontend/src/components/PlantDetailDialog.jsx`, `frontend/src/pages/Home.jsx`)**:
+  - Enriquecido `mapPlant` con `descuentoIva`, `hasIvaDiscount` y cálculo consolidado `totalDiscountPercentage`.
+  - Cuando el descuento IVA está activo (`descuentoIva > 0`):
+    - Se añaden 2 sellos superiores: a la izquierda el descuento de IVA (`IVA X%`) y a la derecha el descuento de la unidad (`Unidad Y%`).
+    - El sello principal `discount-seal` muestra la suma consolidada de ambos descuentos (`X + Y% descto.`).
+  - Cuando el descuento IVA está inactivo (`descuentoIva <= 0`):
+    - Muestra únicamente el sello estándar con el porcentaje de descuento de la unidad.
+- **Estilos SCSS (`frontend/src/styles/home.scss`)**:
+  - Agregadas clases `.discount-seal-container`, `.discount-sub-seals` y `.discount-sub-seal` con variantes temáticas (`--iva` y `--unit`) y soporte responsive completo.
+- **Backend API (`app/Http/Controllers/Api/Concerns/EnrichesPlantPayload.php`)**:
+  - Incorporado campo `descuento_iva` en `buildPlantPayload` y `buildCompactPlantPayload`.
+
+## [1.9.40] - 2026-09-24
+
+### 📦 Instalación de Skills Web Awesome Pro (`webawesome` y `webawesome-design`)
+
+- **Skills de Agentes (`.agents/skills/webawesome/`, `.agents/skills/webawesome-design/`)**:
+  - Instalados los skills oficiales de Web Awesome Pro v3.13.0 desde el paquete `@web.awesome.me/webawesome-pro`.
+  - `webawesome`: Referencia completa de componentes, props, slots, eventos y utilidades.
+  - `webawesome-design`: Guía de diseño de interfaces, layout (`<wa-page>`), tokens de diseño (`--wa-*`), temas y paletas.
+
+## [1.9.39] - 2026-09-24
+
+### ℹ️ Mensaje de Información de Proyectos Inactivos y Filtro de Estado en Panel Filament
+
+- **Tabla de Proyectos (`app/Filament/Resources/Proyectos/Tables/ProyectosTable.php`)**:
+  - Incorporada descripción dinámica (`Table::description()`) que advierte visualmente si existen proyectos inactivos, listando sus nombres específicos e indicando que sus plantas asociadas no se muestran en el catálogo público ni en la API.
+  - Añadido `TernaryFilter` para filtrar proyectos por estado (`Todos`, `Solo activos`, `Solo inactivos`).
+
+## [1.9.38] - 2026-09-24
+
+### 🏷️ Corrección de Visibilidad de Plantas durante Eventos Sale en Frontend
+
+- **Mapeo de Propiedades y Filtro de Visibilidad (`frontend/src/pages/Home.jsx`)**:
+  - Incorporadas propiedades `porcentajeMaximoUnidad` y `unidadSale` en el transformador `mapPlant`.
+  - Corregido el predicado de `visiblePlants` en eventos sale para preservar unidades marcadas con `unidad_sale` o con porcentajes de descuento válidos (`descuentoMaximoUnidad`, `discountPercentage`, `porcentajeAplicado`), evitando el vaciado erróneo del catálogo cuando `evento_sale` está activo.
+
+## [1.9.37] - 2026-09-24
+
+### 🔀 Estrategias de Sincronización desde Producción: Actualizar, Sobrescribir o Saltar
+
+- **Estrategias de Resolución de Conflictos (`app/Services/ProductionSync/ProductionSyncService.php`)**:
+  - Implementado parámetro `$mode` con tres estrategias seleccionables para la sincronización de `SiteSetting`, `Proyecto`, `Asesor` y `Plant`:
+    - `update` (por defecto): Actualiza campos locales combinando cambios y crea registros nuevos. En `SiteSetting` fusiona recursivamente `extra_settings`.
+    - `overwrite`: Reemplaza la totalidad de atributos locales por los datos de producción y crea nuevos registros (respetando credenciales OAuth locales).
+    - `skip`: Conserva intactos todos los registros locales existentes que coincidan por ID de Salesforce / Singleton y solo inserta registros que no existan localmente.
+- **Interfaz Filament y Selector de Modo (`app/Filament/Actions/SyncFromProductionAction.php`, `app/Jobs/RunProductionSyncJob.php`)**:
+  - Agregado campo `Radio::make('mode')` en el modal de sincronización con descripciones claras de cada comportamiento.
+  - El job de fondo y síncrono `RunProductionSyncJob` propaga la opción elegida al servicio y al registro de logs/progreso en tiempo real.
+- **Comando Artisan CLI (`app/Console/Commands/SyncFromProductionCommand.php`)**:
+  - Incorporada opción `--mode=update|overwrite|skip` en `php artisan production:sync`.
+- **Pruebas Automatizadas (`tests/Unit/Services/ProductionSyncServiceTest.php`)**:
+  - Añadidas pruebas unitarias que verifican la integridad de datos bajo el modo `skip`, confirmando el aislamiento de registros locales preexistentes y la creación exclusiva de nuevos registros.
+
+## [1.9.36] - 2026-09-24
+
+### 🔄 Sincronización Selectiva desde Producción, Soporte Total de Descuentos/Pagos y Unidad Sale
+
+- **Selección de Entidades en Filament y CLI (`app/Filament/Actions/SyncFromProductionAction.php`, `app/Jobs/RunProductionSyncJob.php`, `app/Console/Commands/SyncFromProductionCommand.php`)**:
+  - Incorporado selector `CheckboxList` en el modal de sincronización permitiendo elegir qué módulos sincronizar: Configuración del sitio, Proyectos, Asesores y Plantas (todos seleccionados por defecto).
+  - El job `RunProductionSyncJob` y el comando `production:sync --entities=*` procesan exclusivamente los módulos seleccionados y adaptan el cálculo del progreso.
+- **Configuración Restringida de Sitio (`app/Models/SiteSetting.php`, `app/Services/ProductionSync/ProductionSyncService.php`)**:
+  - `syncableFields()` y `filterSyncableExtraSettings()` limitan la sincronización de configuración estrictamente a las secciones autorizadas (Información Básica, Branding, Colores, Tipografía, SEO, QR, Contacto, Redes Sociales, Personalización y Pasarelas de Pago), protegiendo credenciales OAuth locales (`salesforce_oauth`) y configuraciones de daemons/mantenimiento.
+- **Plantas y Proyectos Completos (`app/Models/Proyecto.php`, `app/Models/Plant.php`)**:
+  - Proyectos sincroniza descuentos comerciales (`descuento_defecto_cotizacion_web`, `descuento_maximo_unidad`, `descuento_iva`), código de comercio Transbank (`transbank_commerce_code`) y datos de pago manual (`manual_payment_*`).
+  - Plantas garantiza la persistencia e importación explícita de `unidad_sale` y `contact_link`.
+- **Pruebas Automatizadas (`tests/Unit/Services/ProductionSyncServiceTest.php`, `tests/Feature/Api/ProductionSyncExportApiTest.php`)**:
+  - Cobertura de sincronización selectiva, integridad de `unidad_sale`, importación de descuentos y protección de configuración local.
+
+## [1.9.35] - 2026-09-24
+
+### 🔑 Revelación Segura de Clave de Tokens API con Reautenticación de Contraseña
+
+- **Base de Datos y Modelo (`database/migrations/...`, `app/Models/PersonalAccessToken.php`)**:
+  - Agregada columna `encrypted_token` en `personal_access_tokens` con cifrado simétrico AES-256 nativo mediante el cast `'encrypted'`.
+  - Configurado `Sanctum::usePersonalAccessTokenModel(PersonalAccessToken::class)` en `AppServiceProvider`.
+- **Panel Filament (`app/Filament/Resources/ApiTokens/`)**:
+  - `ListApiTokens`: Persiste el `plainTextToken` cifrado en `encrypted_token` al momento de su creación.
+  - `ApiTokensTable`: Incorporada acción de registro `Ver Key` (`viewKey`) con modal de confirmación que valida la contraseña del administrador actual (`currentPassword()`) antes de revelar la clave en texto plano.
+  - Manejo amigable para tokens heredados/legacy generados previamente sin respaldo cifrado.
+- **Pruebas Automatizadas (`tests/Feature/ApiTokenManagementTest.php`)**:
+  - Creada suite de pruebas unitarias/feature cubriendo creación con respaldo cifrado, bloqueo ante contraseña incorrecta, revelación exitosa con contraseña válida y notificación de advertencia para tokens antiguos.
+
+## [1.9.34] - 2026-09-24
+
+### ⏱️ Prevención de Falso Timeout en Sincronización desde Producción
+
+- **Panel Filament (`app/Filament/Pages/ProductionSyncProgress.php`)**:
+  - En `checkTimeout()`, se detiene la validación de timeout por tiempo total si la importación ya inició (`processed > 0` o `total_steps > 0`), permitiendo importar grandes volúmenes de datos sin interrupción indebida.
+- **Pruebas Automatizadas (`tests/Feature/Filament/ProductionSyncProgressTimeoutTest.php`)**:
+  - Actualizados tests para validar que no ocurre timeout una vez comenzada la importación, manteniendo detección de timeout solo cuando el proceso encolado nunca arranca y excede el límite.
+
+## [1.9.33] - 2026-09-23
+
+### 🏷️ Desacople de Descuentos respecto a Evento Sale y Alineación con Pasarelas de Pago
+
+- **Configuración de Sitio (`app/Models/SiteSetting.php`)**:
+  - `forFrontend()` expone `price_source` y `price_percentage_source` en la raíz del payload público (`/api/v1/site-config`), asegurando disponibilidad directa para el frontend sin requerir token bearer.
+- **Backend y API (`app/Models/Plant.php`, `EnrichesPlantPayload.php`, `PlantController.php`)**:
+  - `Plant::resolveFinalPrice()` y `EnrichesPlantPayload::resolveApiDiscountPercentage()` resuelven el porcentaje de descuento exclusivamente a partir de la configuración `extra_settings.price_percentage_source` (`max_unit` -> `descuento_maximo_unidad`, `web_discount` -> `descuento_defecto_cotizacion_web`), independientemente de si `evento_sale` está activo o inactivo.
+  - En `PlantController::index()`, el ordenamiento SQL (`orderByDiscountExpression`) ordena utilizando la fuente configurada en `price_percentage_source` en lugar del booleano `evento_sale`.
+- **Frontend React (`frontend/src/pages/Home.jsx`)**:
+  - `mapPlant` calcula el porcentaje de descuento aplicando la fuente definida en `config.price_percentage_source`.
+  - `evento_sale` cumple su rol visual: conmuta la etiqueta de precio a `"Precio Sale: "` cuando está activo y `"Precio Final: "` cuando está inactivo (o `"Precio Base: "` si `price_source === 'base'`).
+- **Pruebas Automatizadas**:
+  - Actualizadas pruebas en `PlantTest.php` y `PlantApiFiltersTest.php` verificando la independencia del cálculo del precio final respecto a `evento_sale`.
+
+## [1.9.32] - 2026-09-23
+
+### 🔒 SiteSettings: Preservación de Claves no Expuestas en extra_settings
+
+- **Panel Filament (`app/Filament/Pages/SiteSettings.php`)**:
+  - En `save()`, incorporada fusión `array_merge` entre las configuraciones existentes de `extra_settings` y los datos del formulario, previniendo la sobreescritura accidental de metadatos o tokens no expuestos en componentes (ej. `salesforce_oauth`).
+
+## [1.9.31] - 2026-09-23
+
+### ⚙️ SiteSettings: Eliminación de Configuración 'Descuento expuesto en API'
+
+- **Panel Filament (`app/Filament/Pages/SiteSettings.php`)**:
+  - Eliminada la sección `'Descuento expuesto en API'` (`extra_settings.salesforce_discount_source`), dado que los descuentos quedaron centralizados de forma unificada a nivel de proyecto (Sale ON: `descuento_maximo_unidad`, Sale OFF: `descuento_defecto_cotizacion_web`).
+- **Pruebas (`tests/Feature/SiteSettingsSalesforceSyncConfigTest.php`)**:
+  - Removido test `test_it_persists_salesforce_discount_source_in_extra_settings` correspondiente al ajuste deprecado.
+
+## [1.9.30] - 2026-09-23
+
+### 🏢 Desacople de Descuentos de Planta y Centralización en Proyecto
+
+- **Lógica de Descuentos (Sale On / Sale Off)**:
+  - Centralizado el cálculo de descuento exclusivamente a nivel de proyecto:
+    - **Sale ON** (`evento_sale = true`): Aplica `proyecto.descuento_maximo_unidad`. Si es 0 o nulo, no se aplica descuento (0%).
+    - **Sale OFF** (`evento_sale = false`): Aplica `proyecto.descuento_defecto_cotizacion_web`. Si es 0 o nulo, no se aplica descuento (0%).
+  - Desacoplado por completo `porcentaje_maximo_unidad` de la planta en el cálculo de precios.
+- **Frontend React (`frontend/src/pages/Home.jsx`)**:
+  - `mapPlant` calcula `porcentajeAplicado` leyendo `plant.proyecto?.descuento_maximo_unidad` durante Sale y `plant.proyecto?.descuento_defecto_cotizacion_web` fuera de Sale.
+- **Backend API (`app/Http/Controllers/Api/Concerns/EnrichesPlantPayload.php`, `app/Http/Controllers/Api/PlantController.php`)**:
+  - `resolveApiDiscountPercentage` y `resolveFinalPrice` en modelo `Plant` leen exclusivamente los descuentos de `proyecto`.
+  - `projectPayload` incluye `descuento_maximo_unidad`, `descuento_defecto_cotizacion_web` y `descuento_iva`.
+  - Ordenamiento SQL por precio con descuento (`orderByDiscountExpression`) consulta `descuento_maximo_unidad` de la tabla `proyectos` durante Sale.
+- **Panel Filament (`PlantForm.php`, `PlantsTable.php`, `ProyectoForm.php`, `ProyectosTable.php`)**:
+  - Agregado tooltip en `PlantsTable` en `% Máx. Unidad` y `% Desc. Web` avisando que los porcentajes vienen configurados desde el proyecto.
+  - Configurado valor por defecto en `0` para `descuento_iva` (`Dcto. IVA`) tanto en el formulario de proyecto como a nivel de base de datos.
+  - Eliminado input `porcentaje_maximo_unidad` del formulario de Plantas.
+  - Reemplazada columna en tabla de plantas para reflejar `proyecto.descuento_maximo_unidad`.
+  - Eliminado el fallback que precargaba `$record->plantas()->max('porcentaje_maximo_unidad')` en `descuento_maximo_unidad` del proyecto, quedando 100% manual e independiente.
+- **Pruebas y Build**:
+  - Suite de pruebas unitarias y de integración actualizada pasando al 100% (63 tests verificados). Compilación de activos finalizada con éxito.
+
+## [1.9.29] - 2026-09-23
+
+### 🏷️ Proyectos: Descuento IVA y Habilitación de Descuentos en Reserva Exigida
+
+- **Panel Filament (`app/Filament/Resources/Proyectos/Schemas/ProyectoForm.php`)**:
+  - Incorporado campo `descuento_iva` (`Dcto. IVA`) en la card *Reserva Exigida*, numérico con 2 decimales (`step(0.01)`) y sufijo `%`.
+  - Habilitados los campos de descuento de la card: `descuento_defecto_cotizacion_web` y `descuento_maximo_unidad` quedan editables (`disabled` removido) y `dehydrated(false)` retirado para permitir persistencia manual.
+- **Tabla de Proyectos (`app/Filament/Resources/Proyectos/Tables/ProyectosTable.php`)**:
+  - Añadida columna `descuento_iva` con badge color morado (`purple`) y formato porcentual con 2 decimales, configurable como toggleable.
+- **Base de Datos y Modelo (`app/Models/Proyecto.php`, `database/migrations/2026_09_23_180000_add_descuento_iva_to_proyectos_table.php`)**:
+  - Creada migración agregando columna `descuento_iva` (`decimal(8,2)`, nullable) a la tabla `proyectos`.
+  - Registrado `descuento_iva` en `$fillable`, `$casts` (`decimal:2`) y `syncableFields()`.
+- **API y Sincronización (`app/Http/Controllers/Api/ProyectoController.php`, `app/Filament/Actions/SyncProjectsAction.php`)**:
+  - Añadido `descuento_iva` a `$allowedFields` en `ProyectoController`.
+  - Registrado en campos actualizables y sincronizables de `SyncProjectsAction`.
+- **Pruebas Automatizadas (`tests/Unit/Models/ProyectoTest.php`, `tests/Feature/ProyectoResourceTest.php`)**:
+  - Incorporadas aserciones de fillable, casteo decimal y configuración de componentes en el formulario de Filament.
+
+## [1.9.28] - 2026-09-23
+
+### 📖 Actualización Integral de Documentación (*.md)
+
+- **Documentación General (`README.md`)**:
+  - Actualizada versión del proyecto a `1.9.28` con fecha `2026-09-23`.
+  - Incorporada documentación de **Sincronización desde Producción (Production Sync)**: exportación API, servicio `ProductionSyncService`, modal interactivo en Filament (`SyncFromProductionAction`), pantalla de seguimiento en vivo con detección de timeout, comando `php artisan production:sync` y soporte para sincronización de asesores con vinculación a proyectos y plantas.
+  - Documentado **Orden Natural en Tablas de Plantas**: ordenación numérica en columnas `name`, `piso`, precios (`precio_base`, `precio_lista`, `precio_final`) y porcentajes de descuento.
+  - Documentada acción de **Reseteo Masivo de Unidades Sale**: botón de cabecera `ResetSalePlantsAction` en el listado de plantas de Filament.
+  - Actualizados comandos del **Scheduler Operativo** según `routes/console.php` (`reservations:expire` cada min, `SyncPlantsJob` condicionado cada min, `salesforce:refresh-token` cada 45 min, `model:prune` de preview links diario).
+  - Corregidos comandos Artisan en la guía operativa (`sync:plants`, `production:sync`, `salesforce:refresh-token`).
+  - Documentada la integración de **Protocolos de Descubrimiento para Agentes IA**: endpoints `/.well-known/acp.json`, `/.well-known/ucp`, `/openapi.json`, `/auth.md`, `/.well-known/oauth-authorization-server`, `/.well-known/mcp/server-card.json`, `/.well-known/agent-skills/` y `llms.txt`.
+- **Directivas y Guía de Agentes (`AGENTS.md`)**:
+  - Sincronizada versión documentada a `1.9.28` (`2026-09-23`).
+  - Incorporado módulo activo `Production Sync` y servicio `ProductionSync/` en la arquitectura de directorios.
+  - Documentadas adiciones recientes de orden natural, reseteo de unidades sale y protocolos de agentes.
+- **Guía de Uso de la API (`API_USAGE.md`)**:
+  - Detallado el payload completo de exportación en `GET /api/v1/production-sync/export` incluyendo asesores y relaciones pivote.
+  - Añadido ejemplo cURL para exportación de snapshot de producción.
+- **Sistema de Pagos (`PAYMENTS.md`)**:
+  - Actualizada lista de verificación y notas operativas reflejando tests automatizados completos, emails con FinMail, acciones de aprobación en Filament y sanitización de metadata con `FlowLogMatrix`.
+
 
 ### 👥 Sincronización de Asesores desde Producción y Vinculación con Proyectos y Plantas
 

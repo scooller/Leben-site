@@ -11,13 +11,14 @@ import { removeStructuredData, setStructuredData } from './utils/structuredData'
 import { buildSpecialAnnouncementSchema, buildSaleEventSchema } from './utils/saleEventSchema';
 import SiteHeader from './components/SiteHeader';
 import SiteFooter from './components/SiteFooter';
+import ThemeToggle from './components/ThemeToggle';
+import { appendPreviewTokenToUrl, syncPreviewTokenToCurrentUrl } from './utils/previewToken';
 import './App.scss';
 import './styles/maintenance.scss';
 
 const Home = lazy(() => import('./pages/Home'));
 const Contact = lazy(() => import('./pages/Contact'));
 const Payment = lazy(() => import('./pages/Payment'));
-const Match = lazy(() => import('./pages/Match'));
 
 const normalizePathname = (value) => {
   const sanitizedPath = `${value || '/'}`.split('?')[0];
@@ -48,10 +49,6 @@ const resolvePageTitle = (pathname, siteName = 'iLeben') => {
     return `${siteName} | Pago`;
   }
 
-  if (pathname === '/match') {
-    return `${siteName} | Match`;
-  }
-
   if (pathname.startsWith('/p/')) {
     return `${siteName} | Planta`;
   }
@@ -70,10 +67,6 @@ const resolvePageDescription = (pathname, siteDescription = '') => {
 
   if (pathname === '/pago') {
     return 'Estado y resumen de pago de tu reserva inmobiliaria.';
-  }
-
-  if (pathname === '/match') {
-    return 'Responde algunas preguntas y descubre las plantas que mejor coinciden con lo que estas buscando.';
   }
 
   if (pathname === '/f' || pathname.startsWith('/f/') || pathname === '/plantas') {
@@ -153,9 +146,10 @@ function AppContent() {
 
   const navigate = useCallback((nextPath) => {
     const targetPath = normalizePathname(nextPath);
+    const targetWithToken = appendPreviewTokenToUrl(nextPath);
 
     if (targetPath !== pathname) {
-      window.history.pushState({}, '', targetPath);
+      window.history.pushState({}, '', targetWithToken);
       setPathname(targetPath);
     }
 
@@ -173,6 +167,7 @@ function AppContent() {
 
     captureUtmParamsFromUrl(currentSearch);
     cleanTrackedUtmsFromCurrentUrl(currentSearch);
+    syncPreviewTokenToCurrentUrl();
   }, [pathname]);
 
   useEffect(() => {
@@ -315,37 +310,38 @@ function AppContent() {
   }, []);
 
   return (
-    <wa-page className="app">
-      <MaintenanceMode
-        maintenanceMode={config?.maintenance_mode}
-        maintenanceMessage={config?.maintenance_message}
-      />
-      <ErrorNotification
-        error={globalError}
-        onClose={() => setGlobalError(null)}
-        duration={5500}
-      />
-      <SiteHeader
-        config={config}
-        currentPath={currentPath}
-        onNavigate={navigate}
-        onMenuClick={handleMenuNavigation}
-      />
-      <main>
-        <Suspense fallback={<AppRouteFallback />}>
-          {currentPath === '/contacto' ? (
-            <Contact onNavigate={navigate} currentPath={currentPath} />
-          ) : currentPath === '/pago' ? (
-            <Payment onNavigate={navigate} currentPath={currentPath} />
-          ) : currentPath === '/match' ? (
-            <Match onNavigate={navigate} currentPath={currentPath} />
-          ) : (
-            <Home onNavigate={navigate} currentPath={currentPath} />
-          )}
-        </Suspense>
-      </main>
-      <SiteFooter config={config} onNavigate={navigate} />
-    </wa-page>
+    <>
+      <wa-page className="app">
+        <MaintenanceMode
+          maintenanceMode={config?.maintenance_mode}
+          maintenanceMessage={config?.maintenance_message}
+        />
+        <ErrorNotification
+          error={globalError}
+          onClose={() => setGlobalError(null)}
+          duration={5500}
+        />
+        <SiteHeader
+          config={config}
+          currentPath={currentPath}
+          onNavigate={navigate}
+          onMenuClick={handleMenuNavigation}
+        />
+        <main>
+          <Suspense fallback={<AppRouteFallback />}>
+            {currentPath === '/contacto' ? (
+              <Contact onNavigate={navigate} currentPath={currentPath} />
+            ) : currentPath === '/pago' ? (
+              <Payment onNavigate={navigate} currentPath={currentPath} />
+            ) : (
+              <Home onNavigate={navigate} currentPath={currentPath} />
+            )}
+          </Suspense>
+        </main>
+        <SiteFooter config={config} onNavigate={navigate} />
+      </wa-page>
+      <ThemeToggle />
+    </>
   );
 }
 

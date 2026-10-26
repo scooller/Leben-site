@@ -33,9 +33,9 @@ class SyncPlantsJob implements ShouldQueue
         $result = SyncPlantsAction::execute();
 
         if ($result['success']) {
-            Log::debug('SyncPlantsJob: ' . $result['message']);
+            Log::debug('SyncPlantsJob: '.$result['message']);
         } else {
-            Log::error('SyncPlantsJob: ' . $result['message']);
+            Log::error('SyncPlantsJob: '.$result['message']);
         }
     }
 }
