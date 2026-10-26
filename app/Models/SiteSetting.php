@@ -417,6 +417,18 @@ class SiteSetting extends Model
             'contact_hero_alt',
             'contact_hero_link',
             'contact_hero_link_new_tab',
+            'company_razon_social',
+            'company_rut',
+            'company_representante_legal',
+            'company_rut_representante',
+            'company_city',
+            'company_schedule',
+            'footer_copyright',
+            'announcement_enabled',
+            'announcement_id',
+            'announcement_title',
+            'announcement_message',
+            'announcement_button_text',
         ];
 
         $filtered = [];
@@ -615,6 +627,40 @@ class SiteSetting extends Model
                 'twitter' => $settings->twitter_url,
                 'linkedin' => $settings->linkedin_url,
                 'youtube' => $settings->youtube_url,
+            ],
+            'social_links' => [
+                'facebook' => $settings->facebook_url ?? 'https://www.facebook.com/inmobiliarialeben',
+                'instagram' => $settings->instagram_url ?? 'https://www.instagram.com/inmobiliarialeben',
+                'linkedin' => $settings->linkedin_url ?? 'https://www.linkedin.com/company/ileben/posts/?feedView=all',
+            ],
+            'company' => [
+                'razon_social' => $extraSettings['company_razon_social'] ?? 'Inmobiliaria Cenit Limitada',
+                'rut' => $extraSettings['company_rut'] ?? '76.065.957-6',
+                'representante_legal' => $extraSettings['company_representante_legal'] ?? 'Juan Ignacio Pinto',
+                'rut_representante' => $extraSettings['company_rut_representante'] ?? '15.378.760-3',
+                'address' => [
+                    'street' => $settings->contact_address ?? 'Dr. Manuel Barros Borgoño 386',
+                    'city' => $extraSettings['company_city'] ?? 'Providencia, Santiago, Chile',
+                ],
+                'schedule' => is_array($extraSettings['company_schedule'] ?? null)
+                    ? $extraSettings['company_schedule']
+                    : [
+                        'Lun a Vie: 09:00 a 14:00 hrs',
+                        'y 15:00 a 18:00 hrs',
+                    ],
+                'phone' => $settings->contact_phone ?? '+569 9129 7804',
+                'email' => $settings->contact_email ?? 'info@ileben.cl',
+            ],
+            'legal' => [
+                'disclaimer' => $settings->footer_legal_text ?? 'La promoción se encuentra adscrita en las Bases de promoción protocolizadas...',
+                'copyright' => $extraSettings['footer_copyright'] ?? '© 2026 Leben. Todos los derechos reservados.',
+            ],
+            'announcement' => [
+                'enabled' => (bool) ($extraSettings['announcement_enabled'] ?? false),
+                'id' => $extraSettings['announcement_id'] ?? 'aviso-atencion-especial-2026',
+                'title' => $extraSettings['announcement_title'] ?? 'Horario Especial de Atención',
+                'message' => $extraSettings['announcement_message'] ?? 'Informamos a nuestros clientes e inversionistas que...',
+                'button_text' => $extraSettings['announcement_button_text'] ?? 'Entendido',
             ],
             'custom_css' => $settings->custom_css,
             'header_scripts' => $settings->header_scripts,

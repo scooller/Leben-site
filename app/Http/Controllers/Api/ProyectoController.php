@@ -40,6 +40,7 @@ class ProyectoController extends Controller
         'project_image_id',
         'descuento_defecto_cotizacion_web',
         'descuento_maximo_unidad',
+        'sort_order',
         'precio_desde',
         'tipologias',
     ];
@@ -71,6 +72,7 @@ class ProyectoController extends Controller
         'descuento_maximo_unidad',
         'descuento_iva',
         'is_active',
+        'sort_order',
         'entrega_inmediata',
         'salesforce_logo_url',
         'salesforce_portada_url',
@@ -147,6 +149,12 @@ class ProyectoController extends Controller
         if (count($databaseFields) > 0) {
             $query->select($databaseFields);
         }
+
+        if ($request->boolean('include_details')) {
+            $query->with(['detail.amenities', 'detail.pois', 'detail.galleries']);
+        }
+
+        $query->orderBy('sort_order', 'asc')->orderBy('id', 'asc');
 
         $perPage = (int) $request->input('perPage', 15);
         $proyectos = $query->paginate(max(1, min($perPage, 100)));
@@ -244,6 +252,15 @@ class ProyectoController extends Controller
         }
 
         $proyecto = $query->findOrFail($id);
+
+        if (request()->boolean('include_details')) {
+            $proyecto->load([
+                'detail.amenities',
+                'detail.pois',
+                'detail.galleries',
+                'testimonials' => fn ($tq) => $tq->where('is_published', true)->orderBy('sort_order'),
+            ]);
+        }
 
         if ($hideSalesforceId) {
             $proyecto->makeHidden('salesforce_id');

@@ -152,6 +152,12 @@ class ProyectoForm
                             ->helperText('Si el proyecto no está activo, no se mostrará en la página web')
                             ->required(),
 
+                        TextInput::make('sort_order')
+                            ->label('Orden de Visualización')
+                            ->numeric()
+                            ->default(0)
+                            ->helperText('Posición en el catálogo público y APIs'),
+
                         Select::make('asesores')
                             ->label('Asesores')
                             ->beforeLabel(Icon::make(Heroicon::UserGroup))
@@ -362,6 +368,60 @@ class ProyectoForm
                         Toggle::make('entrega_inmediata')
                             ->label('Entrega Inmediata')
                             ->helperText('Si el proyecto se entrega de forma inmediata, se mostrará en la página web con fecha de entrega inmediata'),
+                    ]),
+
+                Section::make('Ficha Canónica y Contenido Web (Inn.jsx)')
+                    ->description('Configuración de diseño de alta gama, paleta cromática, tours 360, interiorismo y avisos por proyecto')
+                    ->collapsible()
+                    ->relationship('detail')
+                    ->schema([
+                        Section::make('Paleta Cromática (Theming CSS)')
+                            ->schema([
+                                TextInput::make('theme_colors.accent')->label('Color de Acento (--lb-project-accent)')->placeholder('#d9bc70'),
+                                TextInput::make('theme_colors.accent_dark')->label('Acento Oscuro (--lb-project-accent-dark)')->placeholder('#c4a355'),
+                                TextInput::make('theme_colors.accent_light')->label('Acento Claro (--lb-project-accent-light)')->placeholder('#e2ca8d'),
+                                TextInput::make('theme_colors.gradient')->label('Gradiente (--lb-project-gradient)')->placeholder('linear-gradient(135deg, #d9bc70 0%, #b89345 100%)'),
+                            ])->columns(2),
+
+                        Section::make('Hero y Barra Técnica')
+                            ->schema([
+                                TextInput::make('hero_eyebrow')->label('Eyebrow Hero')->placeholder('Puerto Varas'),
+                                TextInput::make('hero_title')->label('Título Hero (si difiere del nombre)')->nullable(),
+                                TextInput::make('hero_subtitle')->label('Subtítulo Hero')->nullable(),
+                                TextInput::make('hero_video_url')->label('URL Video Hero (MP4)')->nullable(),
+                                CuratorPicker::make('hero_logo_id')->label('Logo Específico del Proyecto (Curator)'),
+                                TextInput::make('hero_logo_url')->label('URL directa de Logo (Fallback)')->nullable(),
+                                Repeater::make('technical_info')
+                                    ->label('Especificaciones Barra Técnica INFO')
+                                    ->schema([
+                                        TextInput::make('id')->label('ID')->required(),
+                                        TextInput::make('label')->label('Etiqueta')->required(),
+                                        TextInput::make('value')->label('Valor (HTML soportado)')->required(),
+                                    ])->columns(3)->defaultItems(0),
+                            ])->columns(2),
+
+                        Section::make('Overview, Terminaciones y Recorridos 360')
+                            ->schema([
+                                TextInput::make('overview_title')->label('Título Overview')->nullable(),
+                                Textarea::make('overview_description')->label('Descripción Overview')->rows(3)->nullable(),
+                                TextInput::make('virtual_tour_matterport_url')->label('URL Tour Matterport 3D')->nullable(),
+                                TextInput::make('virtual_tour_360_url')->label('URL Recorrido 360 (La Nube 360)')->nullable(),
+                                TextInput::make('virtual_tour_video_url')->label('URL Video YouTube')->nullable(),
+                                TextInput::make('brochure_pdf_url')->label('URL Folleto / Brochure PDF')->nullable(),
+                            ])->columns(2),
+
+                        Section::make('Aviso Emergente y Horarios de este Proyecto')
+                            ->schema([
+                                Toggle::make('announcement.enabled')->label('Activar Aviso Emergente en este Proyecto')->default(false),
+                                TextInput::make('announcement.id')->label('ID Aviso (para tracking de cierre)')->placeholder('aviso-inn-2026'),
+                                TextInput::make('announcement.title')->label('Título del Aviso')->placeholder('Horario Especial Sala de Ventas'),
+                                TextInput::make('announcement.message')->label('Mensaje')->placeholder('Informamos a nuestros clientes...'),
+                                TextInput::make('announcement.button_text')->label('Texto Botón')->default('Entendido'),
+                                Repeater::make('schedule')
+                                    ->label('Horarios de Atención Sala de Ventas')
+                                    ->simple(TextInput::make('item')->label('Línea de Horario'))
+                                    ->defaultItems(0),
+                            ])->columns(2),
                     ]),
             ]);
     }

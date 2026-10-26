@@ -11,6 +11,7 @@ use Filament\Actions\EditAction;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\TextInputColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -50,6 +51,7 @@ class ProyectosTable
                 );
             })
             ->columns(self::getColumns())
+            ->defaultSort('sort_order', 'asc')
             ->filters(self::getFilters())
             ->recordActions([
                 EditAction::make(),
@@ -95,6 +97,11 @@ class ProyectosTable
     public static function getColumns(): array
     {
         return [
+            TextInputColumn::make('sort_order')
+                ->label('Orden')
+                ->sortable()
+                ->rules(['integer']),
+
             TextColumn::make('name')
                 ->label('Nombre')
                 ->searchable()

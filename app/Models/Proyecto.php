@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 
@@ -69,6 +71,7 @@ class Proyecto extends Model
         'etapa',
         'horario_atencion',
         'is_active',
+        'sort_order',
         'project_image_id',
         'salesforce_logo_url',
         'salesforce_portada_url',
@@ -96,6 +99,7 @@ class Proyecto extends Model
         'descuento_iva' => 'decimal:2',
         'entrega_inmediata' => 'boolean',
         'is_active' => 'boolean',
+        'sort_order' => 'integer',
         'manual_payment_bank_accounts' => 'array',
     ];
 
@@ -346,6 +350,39 @@ class Proyecto extends Model
     public function plantas(): HasMany
     {
         return $this->hasMany(Plant::class, 'salesforce_proyecto_id', 'salesforce_id');
+    }
+
+    public function detail(): HasOne
+    {
+        return $this->hasOne(ProjectDetail::class, 'project_id');
+    }
+
+    public function amenities(): HasManyThrough
+    {
+        return $this->hasManyThrough(ProjectAmenity::class, ProjectDetail::class, 'project_id', 'project_detail_id');
+    }
+
+    public function pois(): HasManyThrough
+    {
+        return $this->hasManyThrough(ProjectPoi::class, ProjectDetail::class, 'project_id', 'project_detail_id');
+    }
+
+    public function galleries(): HasManyThrough
+    {
+        return $this->hasManyThrough(ProjectGallery::class, ProjectDetail::class, 'project_id', 'project_detail_id');
+    }
+
+    public function testimonials(): HasMany
+    {
+        return $this->hasMany(Testimonial::class, 'project_id');
+    }
+
+    /**
+     * Alcance: ordenar por sort_order y luego id
+     */
+    public function scopeOrdered($query)
+    {
+        return $query->orderBy('sort_order', 'asc')->orderBy('id', 'asc');
     }
 
     /**

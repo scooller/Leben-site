@@ -67,8 +67,12 @@ class ContactSubmissionController extends Controller
         }
 
         return response()->json([
+            'success' => true,
             'message' => 'Tu mensaje fue enviado correctamente.',
             'id' => $submission->id,
+            'data' => [
+                'submission_id' => $submission->id,
+            ],
         ], 201);
     }
 

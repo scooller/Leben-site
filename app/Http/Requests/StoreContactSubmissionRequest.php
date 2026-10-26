@@ -29,6 +29,25 @@ class StoreContactSubmissionRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $fields = $this->input('fields');
+
+        if (is_array($fields)) {
+            if (empty($fields['message']) && ! empty($fields['mensaje'])) {
+                $fields['message'] = $fields['mensaje'];
+            }
+            if (empty($fields['phone']) && ! empty($fields['telefono'])) {
+                $fields['phone'] = $fields['telefono'];
+            }
+            if (empty($fields['name']) && ! empty($fields['nombre'])) {
+                $fields['name'] = $fields['nombre'];
+            }
+
+            $this->merge(['fields' => $fields]);
+        }
+    }
+
     /**
      * Get the validation rules that apply to the request.
      *
@@ -286,6 +305,13 @@ class StoreContactSubmissionRequest extends FormRequest
 
     private function validateRequiredContactSelectionFields(Validator $validator): void
     {
+        $channel = $this->resolvedChannel();
+        $isSaleChannel = $channel === null || in_array($channel->slug, ['sale', 'ventas', 'contacto'], true);
+
+        if (! $isSaleChannel) {
+            return;
+        }
+
         $this->validateRequiredFieldGroup(
             validator: $validator,
             aliases: ['comuna', 'commune', 'district', 'project_commune'],

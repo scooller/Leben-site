@@ -74,6 +74,15 @@ class AppServiceProvider extends ServiceProvider
 
         $sanctumTokenModel::observe(PersonalAccessTokenObserver::class);
 
+        \App\Models\Page::observe(\App\Observers\ContentCacheObserver::class);
+        \App\Models\PageSection::observe(\App\Observers\ContentCacheObserver::class);
+        \App\Models\Proyecto::observe(\App\Observers\ContentCacheObserver::class);
+        \App\Models\ProjectDetail::observe(\App\Observers\ContentCacheObserver::class);
+        \App\Models\Testimonial::observe(\App\Observers\ContentCacheObserver::class);
+        \App\Models\Menu::observe(\App\Observers\ContentCacheObserver::class);
+        \App\Models\MenuItem::observe(\App\Observers\ContentCacheObserver::class);
+        \App\Models\SiteSetting::observe(\App\Observers\ContentCacheObserver::class);
+
         if (class_exists(\BinaryBuilds\CommandRunner\Models\CommandRun::class)) {
             \BinaryBuilds\CommandRunner\Models\CommandRun::observe(CommandRunObserver::class);
         }

@@ -4,6 +4,31 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.12.0] - 2026-10-26
+
+### 🚀 Feat / 🌐 SSOT Backend Integration — Páginas, Proyectos Canónicos, Testimonios y Menús
+- **Base de Datos y Modelos**:
+  - Migraciones y modelos para `Page`, `PageSection`, `ProjectDetail`, `ProjectAmenity`, `ProjectPoi`, `ProjectGallery`, `Testimonial`, `Menu` y `MenuItem`.
+  - Agregado campo `sort_order` a tabla `proyectos` con soporte para orden preferencial del catálogo.
+  - Observer `ContentCacheObserver` para invalidación automática de caché ante eventos `saved` y `deleted`.
+- **API REST v1**:
+  - `GET /api/v1/pages/{slug}`: Contenido dinámico de páginas institucionales y landings (`home`, `nosotros`, `brokers`, `invest`, etc.).
+  - `GET /api/v1/proyectos/{slug_or_id}/content`: Ficha canónica enriquecida estándar `Inn.jsx` (hero, temas cromáticos, info técnica, equipamiento, terminaciones, tours 360, interioristas, panoramas, amenidades, POIs, galerías).
+  - `GET /api/v1/testimonials`: Testimonios publicados (soporte para filtro opcional `?project_id=`).
+  - `GET /api/v1/menus/{location}`: Navegación dinámica (`header_main`, `header_dropdown`, `footer_corporate`, `footer_legal`).
+  - `GET /api/v1/site-config`: Enriquecido con datos corporativos (`company`), enlaces sociales (`social_links`), aviso emergente (`announcement`) y marco legal (`legal`).
+  - `GET /api/v1/proyectos`: Ordenamiento nativo por `sort_order` y soporte para `?include_details=1`.
+  - `POST /api/v1/contact-submissions`: Flexibilización de validación de comuna/proyecto para canales `broker`, `investor` y `job` con normalización de alias (`mensaje` -> `message`).
+- **Filament 5**:
+  - Creación de recursos administrativos `ContentPageResource`, `TestimonialResource` y `MenuResource` con integración a `Awcodes Curator`.
+  - Edición inline de `sort_order` en `ProyectosTable`.
+  - Formulario y RelationManager para detalles editoriales y testimonios en `ProyectoResource`.
+- **Seeders**:
+  - `InitialPagesSeeder`, `InitialInnProjectDetailSeeder`, `InitialTestimonialsSeeder`, `InitialMenusSeeder`, `InitialSiteSettingsSeeder`, `InitialContactChannelsSeeder` y `ProjectSortOrderSeeder`.
+  - Orquestador `InitialContentSeeder` para migración idempotente de todo el contenido frontend previo.
+- **Tests**:
+  - Suite completa de integración en `tests/Feature/Api/V1/BackendIntegrationApiTest.php` (10 pruebas, 224 aserciones).
+
 ## [1.11.4] - 2026-10-20
 
 ### 🔒 Security / 👥 Auth — Permisos de importación de contactos para rol marketing

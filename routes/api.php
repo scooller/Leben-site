@@ -116,8 +116,12 @@ Route::prefix('v1')->group(function () {
 
     // Catálogo público (el bloqueo por mostrar_plantas se maneja en frontend)
     Route::middleware(['token.origin'])->group(function () {
+        Route::get('/pages/{slug}', [App\Http\Controllers\Api\PageController::class, 'show']);
         Route::get('/proyectos', [App\Http\Controllers\Api\ProyectoController::class, 'index']);
+        Route::get('/proyectos/{slugOrId}/content', [App\Http\Controllers\Api\ProjectDetailController::class, 'show']);
         Route::get('/proyectos/{id}', [App\Http\Controllers\Api\ProyectoController::class, 'show']);
+        Route::get('/testimonials', [App\Http\Controllers\Api\TestimonialController::class, 'index']);
+        Route::get('/menus/{location}', [App\Http\Controllers\Api\MenuController::class, 'showByLocation']);
 
         Route::get('/plantas', [App\Http\Controllers\Api\PlantController::class, 'index']);
         Route::get('/plantas/filtros-ubicacion', [App\Http\Controllers\Api\PlantController::class, 'locationFilters']);

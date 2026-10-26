@@ -77,6 +77,7 @@ class ProyectoResource extends Resource
     {
         return [
             PlantasRelationManager::class,
+            \App\Filament\Resources\Proyectos\RelationManagers\TestimonialsRelationManager::class,
         ];
     }
 
