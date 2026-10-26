@@ -165,6 +165,44 @@ class ProyectoResourceTest extends TestCase
         $this->assertFalse($comunaComponent->isDisabled());
     }
 
+    public function test_project_detail_get_defaults_from_proyecto(): void
+    {
+        $proyecto = Proyecto::factory()->create([
+            'name' => 'Edificio Los Aromos',
+            'slug' => 'edificio-los-aromos',
+            'direccion' => 'Av. Providencia 1234',
+            'comuna' => 'Providencia',
+            'region' => 'Metropolitana',
+            'descripcion' => 'Hermoso proyecto en el corazón de Providencia.',
+            'etapa' => 'venta_en_verde',
+            'horario_atencion' => 'Lunes a Viernes 09:00 a 18:00',
+            'salesforce_logo_url' => 'https://cdn.example.com/logo.png',
+        ]);
+
+        $defaults = \App\Models\ProjectDetail::getDefaultsFromProyecto($proyecto);
+
+        $this->assertSame('Edificio Los Aromos', $defaults['hero_title']);
+        $this->assertSame('Providencia', $defaults['hero_eyebrow']);
+        $this->assertSame('https://cdn.example.com/logo.png', $defaults['hero_logo_url']);
+        $this->assertSame('Edificio Los Aromos', $defaults['overview_title']);
+        $this->assertSame('Hermoso proyecto en el corazón de Providencia.', $defaults['overview_description']);
+        $this->assertNotEmpty($defaults['technical_info']);
+        $this->assertContains('Lunes a Viernes 09:00 a 18:00', $defaults['schedule']);
+        $this->assertSame('aviso-edificio-los-aromos-2026', $defaults['announcement']['id']);
+    }
+
+    public function test_proyecto_form_has_two_tabs_general_and_web(): void
+    {
+        $schema = ProyectoForm::configure(Schema::make($this->makeSchemaHost()));
+        $tabs = collect($schema->getComponents())->first(fn ($c) => $c instanceof \Filament\Schemas\Components\Tabs);
+
+        $this->assertNotNull($tabs);
+        $tabList = $tabs->getChildComponents();
+        $this->assertCount(2, $tabList);
+        $this->assertSame('Información General & Salesforce', $tabList[0]->getLabel());
+        $this->assertSame('Información Web (Ficha Canónica)', $tabList[1]->getLabel());
+    }
+
     public function test_proyectos_table_has_comuna_filter(): void
     {
         Proyecto::factory()->create(['comuna' => 'Las Condes']);

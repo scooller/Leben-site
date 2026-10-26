@@ -4,6 +4,18 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.12.1] - 2026-10-26
+
+### 🎨 UI / ⚡ Filament — Ficha de Proyecto en 2 Tabs con Grid 2 Columnas y Pre-rellenado Automático desde Salesforce
+- **Tabs y Layout en 2 Columnas**:
+  - `ProyectoForm`: Estructuración en 2 pestañas dedicadas (`Información General & Salesforce` y `Información Web (Ficha Canónica)`).
+  - Preservación estricta de grid responsivo `columns(2)` en secciones y sub-secciones, ubicando `Paleta Cromática` y `Avisos/Horarios` en paralelo (`columnSpan(1)` cada una) y `Hero` / `Overview` ocupando ancho completo (`columnSpan(2)`).
+- **Pre-rellenado Automático desde Salesforce**:
+  - Método `ProjectDetail::getDefaultsFromProyecto(Proyecto $record)`: Homologa título, subtítulo, eyebrow, logo, descripción, dirección, estado, horario de atención y aviso inicial a partir de los datos existentes de Salesforce.
+  - `EditProyecto`: `mutateFormDataBeforeFill` pre-rellena campos web vacíos al abrir el formulario de edición y acción de cabecera `prefillWebInfo` para actualización a demanda.
+- **Tests**:
+  - Pruebas unitarias añadidas en `ProyectoResourceTest` validando estructura de pestañas y función de pre-rellenado.
+
 ## [1.12.0] - 2026-10-26
 
 ### 🚀 Feat / 🌐 SSOT Backend Integration — Páginas, Proyectos Canónicos, Testimonios y Menús

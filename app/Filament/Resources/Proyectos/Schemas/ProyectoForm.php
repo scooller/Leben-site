@@ -14,6 +14,8 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Icon;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Builder;
@@ -24,404 +26,436 @@ class ProyectoForm
     public static function configure(Schema $schema): Schema
     {
         return $schema
+            ->model(Proyecto::class)
             ->schema([
-                Section::make('Información General')
-                    ->description('Datos básicos del proyecto')
-                    ->schema([
-                        TextInput::make('name')
-                            ->label('Nombre del Proyecto')
-                            ->disabled()
-                            ->dehydrated(false)
-                            ->required(),
-
-                        TextInput::make('salesforce_id')
-                            ->label('Salesforce Product ID')
-                            ->disabled()
-                            ->dehydrated(false)
-                            ->suffixAction(
-                                Action::make('openSalesforceProject')
-                                    ->label('Ver en Salesforce')
-                                    ->icon('heroicon-m-arrow-top-right-on-square')
-                                    ->url(fn (?Proyecto $record): ?string => filled($record?->salesforce_id)
-                                        ? "https://leben.lightning.force.com/lightning/r/Proyecto__c/{$record->salesforce_id}/view"
-                                        : null)
-                                    ->openUrlInNewTab()
-                                    ->visible(fn (?Proyecto $record): bool => filled($record?->salesforce_id))
-                            ),
-
-                        Textarea::make('descripcion')
-                            ->label('Descripción')
-                            ->disabled()
-                            ->dehydrated(false)
-                            ->rows(3),
-
-                        Select::make('tipo')
-                            ->label('Tipo de Proyecto')
-                            ->beforeLabel(Icon::make(Heroicon::BuildingOffice))
-                            ->multiple()
-                            ->options([
-                                'best' => 'Best',
-                                'broker' => 'Broker',
-                                'home' => 'Home',
-                                'icon' => 'Icon',
-                                'invest' => 'Invest',
-                            ])
-                            ->searchable()
-                            ->preload(),
-
-                        TextInput::make('direccion')
-                            ->label('Dirección')
-                            ->disabled()
-                            ->dehydrated(false),
-
-                        TextInput::make('comuna')
-                            ->label('Comuna')
-                            ->maxLength(255),
-
-                        TextInput::make('provincia')
-                            ->label('Provincia')
-                            ->disabled()
-                            ->dehydrated(false),
-
-                        TextInput::make('region')
-                            ->label('Región')
-                            ->disabled()
-                            ->dehydrated(false),
-
-                        TextInput::make('razon_social')
-                            ->label('Razón Social')
-                            ->disabled()
-                            ->dehydrated(false),
-
-                        TextInput::make('rut')
-                            ->label('RUT')
-                            ->disabled()
-                            ->dehydrated(false),
-
-                        TextInput::make('email')
-                            ->label('Email')
-                            ->email()
-                            ->disabled()
-                            ->dehydrated(false),
-
-                        TextInput::make('telefono')
-                            ->label('Teléfono')
-                            ->disabled()
-                            ->dehydrated(false),
-
-                        TextInput::make('pagina_web')
-                            ->label('Página Web')
-                            ->url()
-                            ->placeholder('https://...')
-                            ->suffixAction(
-                                Action::make('openProjectWebsite')
-                                    ->label('Ver página')
-                                    ->icon('heroicon-m-arrow-top-right-on-square')
-                                    ->url(fn (?Proyecto $record): ?string => filled($record?->pagina_web)
-                                        ? (str_starts_with($record->pagina_web, 'http://') || str_starts_with($record->pagina_web, 'https://')
-                                            ? $record->pagina_web
-                                            : "https://{$record->pagina_web}")
-                                        : null)
-                                    ->openUrlInNewTab()
-                                    ->visible(fn (?Proyecto $record): bool => filled($record?->pagina_web))
-                            ),
-
-                        DatePicker::make('fecha_inicio_ventas')
-                            ->label('Fecha Inicio Ventas')
-                            ->disabled()
-                            ->dehydrated(false),
-
-                        TextInput::make('fecha_entrega')
-                            ->label('Fecha de Entrega')
-                            ->disabled()
-                            ->dehydrated(false),
-
-                        Select::make('etapa')
-                            ->options(Proyecto::etapaOptions())
-                            ->nullable()
-                            ->placeholder('--None--')
-                            ->label('Etapa'),
-
-                        TextInput::make('horario_atencion')
-                            ->label('Horario de Atención')
-                            ->disabled()
-                            ->dehydrated(false),
-
-                        Toggle::make('is_active')
-                            ->label('Activo')
-                            ->helperText('Si el proyecto no está activo, no se mostrará en la página web')
-                            ->required(),
-
-                        TextInput::make('sort_order')
-                            ->label('Orden de Visualización')
-                            ->numeric()
-                            ->default(0)
-                            ->helperText('Posición en el catálogo público y APIs'),
-
-                        Select::make('asesores')
-                            ->label('Asesores')
-                            ->beforeLabel(Icon::make(Heroicon::UserGroup))
-                            ->relationship(
-                                name: 'asesores',
-                                titleAttribute: 'email',
-                                modifyQueryUsing: fn (Builder $query): Builder => $query
-                                    ->orderBy('first_name')
-                                    ->orderBy('last_name')
-                            )
-                            ->multiple()
-                            ->preload()
-                            ->searchable(['first_name', 'last_name', 'email'])
-                            ->getOptionLabelFromRecordUsing(function (Model $record): string {
-                                $fullName = trim(implode(' ', array_filter([$record->first_name, $record->last_name])));
-
-                                if ($fullName !== '' && filled($record->email)) {
-                                    return "{$fullName} ({$record->email})";
-                                }
-
-                                return $fullName !== '' ? $fullName : (string) ($record->email ?? 'Asesor');
-                            })
-                            ->helperText('Puedes vincular uno o más asesores a este proyecto. Los asesores Salesforce se sincronizan automáticamente al sincronizar proyectos.')
-                            ->columnSpan(2),
-
-                        CuratorPicker::make('project_image_id')
-                            ->label('Imagen del Proyecto')
-                            ->helperText('Imagen manual del proyecto. Si no se define, se usará la Portada de Salesforce; si tampoco existe, se usará el logo principal del sitio o un ícono por defecto.')
-                            ->columnSpan(2),
-
-                        Section::make('Branding Salesforce')
-                            ->description('Activos sincronizados automáticamente desde Salesforce para este proyecto')
+                Tabs::make('ProyectoTabs')
+                    ->columnSpanFull()
+                    ->tabs([
+                        Tab::make('Información General & Salesforce')
+                            ->icon('heroicon-o-building-office-2')
                             ->schema([
-                                TextInput::make('salesforce_portada_url')
-                                    ->label('Portada (Salesforce)')
-                                    ->disabled()
-                                    ->dehydrated(false)
-                                    ->url()
-                                    ->suffixAction(
-                                        Action::make('openSalesforcePortada')
-                                            ->icon('heroicon-m-arrow-top-right-on-square')
-                                            ->url(fn (?Proyecto $record): ?string => $record?->salesforce_portada_url)
-                                            ->openUrlInNewTab()
-                                            ->visible(fn (?Proyecto $record): bool => filled($record?->salesforce_portada_url))
-                                    ),
+                                Section::make('Información General')
+                                    ->description('Datos básicos del proyecto')
+                                    ->schema([
+                                        TextInput::make('name')
+                                            ->label('Nombre del Proyecto')
+                                            ->disabled()
+                                            ->dehydrated(false)
+                                            ->required(),
 
-                                TextInput::make('salesforce_logo_url')
-                                    ->label('Logo (Salesforce)')
-                                    ->disabled()
-                                    ->dehydrated(false)
-                                    ->url()
-                                    ->suffixAction(
-                                        Action::make('openSalesforceLogo')
-                                            ->icon('heroicon-m-arrow-top-right-on-square')
-                                            ->url(fn (?Proyecto $record): ?string => $record?->salesforce_logo_url)
-                                            ->openUrlInNewTab()
-                                            ->visible(fn (?Proyecto $record): bool => filled($record?->salesforce_logo_url))
-                                    ),
+                                        TextInput::make('salesforce_id')
+                                            ->label('Salesforce Product ID')
+                                            ->disabled()
+                                            ->dehydrated(false)
+                                            ->suffixAction(
+                                                Action::make('openSalesforceProject')
+                                                    ->label('Ver en Salesforce')
+                                                    ->icon('heroicon-m-arrow-top-right-on-square')
+                                                    ->url(fn (?Proyecto $record): ?string => filled($record?->salesforce_id)
+                                                        ? "https://leben.lightning.force.com/lightning/r/Proyecto__c/{$record->salesforce_id}/view"
+                                                        : null)
+                                                    ->openUrlInNewTab()
+                                                    ->visible(fn (?Proyecto $record): bool => filled($record?->salesforce_id))
+                                            ),
 
-                                Placeholder::make('salesforce_branding_hint')
-                                    ->hiddenLabel()
-                                    ->content('La portada se usa como fallback de "Imagen del Proyecto" cuando no hay imagen manual cargada en Curator.')
-                                    ->columnSpan(2),
-                            ])
-                            ->columns(2)
-                            ->columnSpan(2),
-                    ])
-                    ->columns(2),
+                                        Textarea::make('descripcion')
+                                            ->label('Descripción')
+                                            ->disabled()
+                                            ->dehydrated(false)
+                                            ->rows(3),
 
-                Section::make('Pago y Financiamiento')
-                    ->description('Configuración de códigos de comercio, pago manual, reserva exigida y entrega inmediata')
-                    ->schema([
-                        Select::make('transbank_commerce_code')
-                            ->label('Código de Comercio Transbank Mall')
-                            ->beforeLabel(Icon::make(Heroicon::DocumentCurrencyDollar))
-                            ->helperText('Código único de comercio para Transbank en este proyecto')
-                            ->options(function () {
-                                $codes = config('payments.gateways.transbank.commerce_codes', []);
+                                        Select::make('tipo')
+                                            ->label('Tipo de Proyecto')
+                                            ->beforeLabel(Icon::make(Heroicon::BuildingOffice))
+                                            ->multiple()
+                                            ->options([
+                                                'best' => 'Best',
+                                                'broker' => 'Broker',
+                                                'home' => 'Home',
+                                                'icon' => 'Icon',
+                                                'invest' => 'Invest',
+                                            ])
+                                            ->searchable()
+                                            ->preload(),
 
-                                if (empty($codes)) {
-                                    return [];
-                                }
+                                        TextInput::make('direccion')
+                                            ->label('Dirección')
+                                            ->disabled()
+                                            ->dehydrated(false),
 
-                                // Crear opciones: code => "Nombre del Proyecto - CODE"
-                                $options = [];
-                                foreach ($codes as $slug => $code) {
-                                    // Buscar el proyecto por slug
-                                    $proyecto = Proyecto::where('slug', $slug)->first();
+                                        TextInput::make('comuna')
+                                            ->label('Comuna')
+                                            ->maxLength(255),
 
-                                    // Si encuentra proyecto, mostrar nombre + código
-                                    // Si no, mostrar slug + código como fallback
-                                    if ($proyecto) {
-                                        $label = "{$proyecto->name}";
-                                    } else {
-                                        $label = "{$slug}";
-                                    }
+                                        TextInput::make('provincia')
+                                            ->label('Provincia')
+                                            ->disabled()
+                                            ->dehydrated(false),
 
-                                    $options[$code] = $label;
-                                }
+                                        TextInput::make('region')
+                                            ->label('Región')
+                                            ->disabled()
+                                            ->dehydrated(false),
 
-                                return $options;
-                            })
-                            ->searchable()
-                            ->nullable()
-                            ->validationMessages([
-                                'in' => 'El código de comercio seleccionado no es válido o no está configurado en Transbank.',
+                                        TextInput::make('razon_social')
+                                            ->label('Razón Social')
+                                            ->disabled()
+                                            ->dehydrated(false),
+
+                                        TextInput::make('rut')
+                                            ->label('RUT')
+                                            ->disabled()
+                                            ->dehydrated(false),
+
+                                        TextInput::make('email')
+                                            ->label('Email')
+                                            ->email()
+                                            ->disabled()
+                                            ->dehydrated(false),
+
+                                        TextInput::make('telefono')
+                                            ->label('Teléfono')
+                                            ->disabled()
+                                            ->dehydrated(false),
+
+                                        TextInput::make('pagina_web')
+                                            ->label('Página Web')
+                                            ->url()
+                                            ->placeholder('https://...')
+                                            ->suffixAction(
+                                                Action::make('openProjectWebsite')
+                                                    ->label('Ver página')
+                                                    ->icon('heroicon-m-arrow-top-right-on-square')
+                                                    ->url(fn (?Proyecto $record): ?string => filled($record?->pagina_web)
+                                                        ? (str_starts_with($record->pagina_web, 'http://') || str_starts_with($record->pagina_web, 'https://')
+                                                            ? $record->pagina_web
+                                                            : "https://{$record->pagina_web}")
+                                                        : null)
+                                                    ->openUrlInNewTab()
+                                                    ->visible(fn (?Proyecto $record): bool => filled($record?->pagina_web))
+                                            ),
+
+                                        DatePicker::make('fecha_inicio_ventas')
+                                            ->label('Fecha Inicio Ventas')
+                                            ->disabled()
+                                            ->dehydrated(false),
+
+                                        TextInput::make('fecha_entrega')
+                                            ->label('Fecha de Entrega')
+                                            ->disabled()
+                                            ->dehydrated(false),
+
+                                        Select::make('etapa')
+                                            ->options(Proyecto::etapaOptions())
+                                            ->nullable()
+                                            ->placeholder('--None--')
+                                            ->label('Etapa'),
+
+                                        TextInput::make('horario_atencion')
+                                            ->label('Horario de Atención')
+                                            ->disabled()
+                                            ->dehydrated(false),
+
+                                        Toggle::make('is_active')
+                                            ->label('Activo')
+                                            ->helperText('Si el proyecto no está activo, no se mostrará en la página web')
+                                            ->required(),
+
+                                        TextInput::make('sort_order')
+                                            ->label('Orden de Visualización')
+                                            ->numeric()
+                                            ->default(0)
+                                            ->helperText('Posición en el catálogo público y APIs'),
+
+                                        Select::make('asesores')
+                                            ->label('Asesores')
+                                            ->beforeLabel(Icon::make(Heroicon::UserGroup))
+                                            ->relationship(
+                                                name: 'asesores',
+                                                titleAttribute: 'email',
+                                                modifyQueryUsing: fn (Builder $query): Builder => $query
+                                                    ->orderBy('first_name')
+                                                    ->orderBy('last_name')
+                                            )
+                                            ->multiple()
+                                            ->preload()
+                                            ->searchable(['first_name', 'last_name', 'email'])
+                                            ->getOptionLabelFromRecordUsing(function (Model $record): string {
+                                                $fullName = trim(implode(' ', array_filter([$record->first_name, $record->last_name])));
+
+                                                if ($fullName !== '' && filled($record->email)) {
+                                                    return "{$fullName} ({$record->email})";
+                                                }
+
+                                                return $fullName !== '' ? $fullName : (string) ($record->email ?? 'Asesor');
+                                            })
+                                            ->helperText('Puedes vincular uno o más asesores a este proyecto. Los asesores Salesforce se sincronizan automáticamente al sincronizar proyectos.')
+                                            ->columnSpan(2),
+
+                                        CuratorPicker::make('project_image_id')
+                                            ->label('Imagen del Proyecto')
+                                            ->helperText('Imagen manual del proyecto. Si no se define, se usará la Portada de Salesforce; si tampoco existe, se usará el logo principal del sitio o un ícono por defecto.')
+                                            ->columnSpan(2),
+
+                                        Section::make('Branding Salesforce')
+                                            ->description('Activos sincronizados automáticamente desde Salesforce para este proyecto')
+                                            ->schema([
+                                                TextInput::make('salesforce_portada_url')
+                                                    ->label('Portada (Salesforce)')
+                                                    ->disabled()
+                                                    ->dehydrated(false)
+                                                    ->url()
+                                                    ->suffixAction(
+                                                        Action::make('openSalesforcePortada')
+                                                            ->icon('heroicon-m-arrow-top-right-on-square')
+                                                            ->url(fn (?Proyecto $record): ?string => $record?->salesforce_portada_url)
+                                                            ->openUrlInNewTab()
+                                                            ->visible(fn (?Proyecto $record): bool => filled($record?->salesforce_portada_url))
+                                                    ),
+
+                                                TextInput::make('salesforce_logo_url')
+                                                    ->label('Logo (Salesforce)')
+                                                    ->disabled()
+                                                    ->dehydrated(false)
+                                                    ->url()
+                                                    ->suffixAction(
+                                                        Action::make('openSalesforceLogo')
+                                                            ->icon('heroicon-m-arrow-top-right-on-square')
+                                                            ->url(fn (?Proyecto $record): ?string => $record?->salesforce_logo_url)
+                                                            ->openUrlInNewTab()
+                                                            ->visible(fn (?Proyecto $record): bool => filled($record?->salesforce_logo_url))
+                                                    ),
+
+                                                Placeholder::make('salesforce_branding_hint')
+                                                    ->hiddenLabel()
+                                                    ->content('La portada se usa como fallback de "Imagen del Proyecto" cuando no hay imagen manual cargada en Curator.')
+                                                    ->columnSpan(2),
+                                            ])
+                                            ->columns(2)
+                                            ->columnSpan(2),
+                                    ])
+                                    ->columns(2),
+
+                                Section::make('Pago y Financiamiento')
+                                    ->description('Configuración de códigos de comercio, pago manual, reserva exigida y entrega inmediata')
+                                    ->schema([
+                                        Select::make('transbank_commerce_code')
+                                            ->label('Código de Comercio Transbank Mall')
+                                            ->beforeLabel(Icon::make(Heroicon::DocumentCurrencyDollar))
+                                            ->helperText('Código único de comercio para Transbank en este proyecto')
+                                            ->options(function () {
+                                                $codes = config('payments.gateways.transbank.commerce_codes', []);
+
+                                                if (empty($codes)) {
+                                                    return [];
+                                                }
+
+                                                // Crear opciones: code => "Nombre del Proyecto - CODE"
+                                                $options = [];
+                                                foreach ($codes as $slug => $code) {
+                                                    // Buscar el proyecto por slug
+                                                    $proyecto = Proyecto::where('slug', $slug)->first();
+
+                                                    // Si encuentra proyecto, mostrar nombre + código
+                                                    // Si no, mostrar slug + código como fallback
+                                                    if ($proyecto) {
+                                                        $label = "{$proyecto->name}";
+                                                    } else {
+                                                        $label = "{$slug}";
+                                                    }
+
+                                                    $options[$code] = $label;
+                                                }
+
+                                                return $options;
+                                            })
+                                            ->searchable()
+                                            ->nullable()
+                                            ->validationMessages([
+                                                'in' => 'El código de comercio seleccionado no es válido o no está configurado en Transbank.',
+                                            ]),
+
+                                        Section::make('Pago Manual por Proyecto')
+                                            ->description('Configura los datos de depósito y/o link de pago para este proyecto')
+                                            ->schema([
+                                                TextInput::make('manual_payment_link')
+                                                    ->label('Link de Pago del Proyecto')
+                                                    ->url()
+                                                    ->placeholder('https://...')
+                                                    ->helperText('Si se define, se enviará al checkout manual de este proyecto.'),
+
+                                                Textarea::make('manual_payment_instructions')
+                                                    ->label('Instrucciones de Depósito')
+                                                    ->rows(3)
+                                                    ->maxLength(2000)
+                                                    ->helperText('Estas instrucciones tienen prioridad sobre la configuración global.'),
+
+                                                Repeater::make('manual_payment_bank_accounts')
+                                                    ->label('Cuentas para Depósito')
+                                                    ->schema([
+                                                        TextInput::make('bank')
+                                                            ->label('Banco')
+                                                            ->maxLength(150),
+                                                        TextInput::make('account_type')
+                                                            ->label('Tipo de Cuenta')
+                                                            ->maxLength(100),
+                                                        TextInput::make('account_number')
+                                                            ->label('Número de Cuenta')
+                                                            ->maxLength(100),
+                                                        TextInput::make('account_holder')
+                                                            ->label('Titular')
+                                                            ->maxLength(150),
+                                                        TextInput::make('rut')
+                                                            ->label('RUT Titular')
+                                                            ->maxLength(20),
+                                                    ])
+                                                    ->columns(2)
+                                                    ->defaultItems(0)
+                                                    ->reorderable(false)
+                                                    ->collapsible()
+                                                    ->helperText('Puedes agregar una o más cuentas de depósito para este proyecto.'),
+                                            ])
+                                            ->columns(1),
+
+                                        Section::make('Descuentos y valores')
+                                            ->description('Solo administradores y super administradores pueden modificar los valores de reserva y descuentos.')
+                                            ->schema([
+                                                TextInput::make('valor_reserva_exigido_defecto_peso')
+                                                    ->label('Valor Defecto ($)')
+                                                    ->beforeLabel(Icon::make(Heroicon::CurrencyDollar))
+                                                    ->numeric()
+                                                    ->prefix('$')
+                                                    ->disabled(fn (): bool => ! (auth()->user()?->canManageFinancialValues() ?? false)),
+
+                                                TextInput::make('valor_reserva_exigido_min_peso')
+                                                    ->label('Valor Mínimo ($)')
+                                                    ->beforeLabel(Icon::make(Heroicon::CurrencyDollar))
+                                                    ->numeric()
+                                                    ->prefix('$')
+                                                    ->disabled(fn (): bool => ! (auth()->user()?->canManageFinancialValues() ?? false)),
+
+                                                TextInput::make('descuento_defecto_cotizacion_web')
+                                                    ->label('Defecto Cotización Web (%)')
+                                                    ->beforeLabel(Icon::make(Heroicon::PercentBadge))
+                                                    ->numeric()
+                                                    ->step(0.01)
+                                                    ->minValue(0)
+                                                    ->maxValue(100)
+                                                    ->prefix('Dcto.')
+                                                    ->suffix('%')
+                                                    ->disabled(fn (): bool => ! (auth()->user()?->canManageFinancialValues() ?? false)),
+
+                                                TextInput::make('descuento_maximo_unidad')
+                                                    ->label('Máximo Unidad (%)')
+                                                    ->beforeLabel(Icon::make(Heroicon::PercentBadge))
+                                                    ->belowContent([
+                                                        'Se aplica cuando Sale este Activo',
+                                                        Icon::make(Heroicon::InformationCircle),
+                                                    ])
+                                                    ->numeric()
+                                                    ->step(0.01)
+                                                    ->minValue(0)
+                                                    ->maxValue(100)
+                                                    ->prefix('Dcto.')
+                                                    ->suffix('%')
+                                                    ->disabled(fn (): bool => ! (auth()->user()?->canManageFinancialValues() ?? false)),
+
+                                                TextInput::make('descuento_iva')
+                                                    ->label('Dcto. IVA')
+                                                    ->beforeLabel(Icon::make(Heroicon::PercentBadge))
+                                                    ->numeric()
+                                                    ->step(0.01)
+                                                    ->minValue(0)
+                                                    ->maxValue(100)
+                                                    ->default(0)
+                                                    ->prefix('Dcto.')
+                                                    ->suffix('%')
+                                                    ->disabled(fn (): bool => ! (auth()->user()?->canManageFinancialValues() ?? false)),
+                                            ])
+                                            ->columns(2),
+
+                                        Toggle::make('entrega_inmediata')
+                                            ->label('Entrega Inmediata')
+                                            ->helperText('Si el proyecto se entrega de forma inmediata, se mostrará en la página web con fecha de entrega inmediata')
+                                            ->columnSpan(2),
+                                    ])
+                                    ->columns(2),
                             ]),
 
-                        Section::make('Pago Manual por Proyecto')
-                            ->description('Configura los datos de depósito y/o link de pago para este proyecto')
+                        Tab::make('Información Web (Ficha Canónica)')
+                            ->icon('heroicon-o-globe-alt')
                             ->schema([
-                                TextInput::make('manual_payment_link')
-                                    ->label('Link de Pago del Proyecto')
-                                    ->url()
-                                    ->placeholder('https://...')
-                                    ->helperText('Si se define, se enviará al checkout manual de este proyecto.'),
-
-                                Textarea::make('manual_payment_instructions')
-                                    ->label('Instrucciones de Depósito')
-                                    ->rows(3)
-                                    ->maxLength(2000)
-                                    ->helperText('Estas instrucciones tienen prioridad sobre la configuración global.'),
-
-                                Repeater::make('manual_payment_bank_accounts')
-                                    ->label('Cuentas para Depósito')
-                                    ->schema([
-                                        TextInput::make('bank')
-                                            ->label('Banco')
-                                            ->maxLength(150),
-                                        TextInput::make('account_type')
-                                            ->label('Tipo de Cuenta')
-                                            ->maxLength(100),
-                                        TextInput::make('account_number')
-                                            ->label('Número de Cuenta')
-                                            ->maxLength(100),
-                                        TextInput::make('account_holder')
-                                            ->label('Titular')
-                                            ->maxLength(150),
-                                        TextInput::make('rut')
-                                            ->label('RUT Titular')
-                                            ->maxLength(20),
-                                    ])
+                                Section::make('Ficha Canónica y Contenido Web (Inn.jsx)')
+                                    ->description('Configuración de diseño de alta gama, paleta cromática, tours 360, interiorismo y avisos por proyecto')
+                                    ->collapsible(false)
+                                    ->relationship('detail')
                                     ->columns(2)
-                                    ->defaultItems(0)
-                                    ->reorderable(false)
-                                    ->collapsible()
-                                    ->helperText('Puedes agregar una o más cuentas de depósito para este proyecto.'),
-                            ])
-                            ->columns(1),
-
-                        Section::make('Descuentos y valores')
-                            ->description('Solo administradores y super administradores pueden modificar los valores de reserva y descuentos.')
-                            ->schema([
-                                TextInput::make('valor_reserva_exigido_defecto_peso')
-                                    ->label('Valor Defecto ($)')
-                                    ->beforeLabel(Icon::make(Heroicon::CurrencyDollar))
-                                    ->numeric()
-                                    ->prefix('$')
-                                    ->disabled(fn (): bool => ! (auth()->user()?->canManageFinancialValues() ?? false)),
-
-                                TextInput::make('valor_reserva_exigido_min_peso')
-                                    ->label('Valor Mínimo ($)')
-                                    ->beforeLabel(Icon::make(Heroicon::CurrencyDollar))
-                                    ->numeric()
-                                    ->prefix('$')
-                                    ->disabled(fn (): bool => ! (auth()->user()?->canManageFinancialValues() ?? false)),
-
-                                TextInput::make('descuento_defecto_cotizacion_web')
-                                    ->label('Defecto Cotización Web (%)')
-                                    ->beforeLabel(Icon::make(Heroicon::PercentBadge))
-                                    ->numeric()
-                                    ->step(0.01)
-                                    ->minValue(0)
-                                    ->maxValue(100)
-                                    ->prefix('Dcto.')
-                                    ->suffix('%')
-                                    ->disabled(fn (): bool => ! (auth()->user()?->canManageFinancialValues() ?? false)),
-
-                                TextInput::make('descuento_maximo_unidad')
-                                    ->label('Máximo Unidad (%)')
-                                    ->beforeLabel(Icon::make(Heroicon::PercentBadge))
-                                    ->belowContent([
-                                        'Se aplica cuando Sale este Activo',
-                                        Icon::make(Heroicon::InformationCircle),
-                                    ])
-                                    ->numeric()
-                                    ->step(0.01)
-                                    ->minValue(0)
-                                    ->maxValue(100)
-                                    ->prefix('Dcto.')
-                                    ->suffix('%')
-                                    ->disabled(fn (): bool => ! (auth()->user()?->canManageFinancialValues() ?? false)),
-
-                                TextInput::make('descuento_iva')
-                                    ->label('Dcto. IVA')
-                                    ->beforeLabel(Icon::make(Heroicon::PercentBadge))
-                                    ->numeric()
-                                    ->step(0.01)
-                                    ->minValue(0)
-                                    ->maxValue(100)
-                                    ->default(0)
-                                    ->prefix('Dcto.')
-                                    ->suffix('%')
-                                    ->disabled(fn (): bool => ! (auth()->user()?->canManageFinancialValues() ?? false)),
-                            ])
-                            ->columns(2),
-
-                        Toggle::make('entrega_inmediata')
-                            ->label('Entrega Inmediata')
-                            ->helperText('Si el proyecto se entrega de forma inmediata, se mostrará en la página web con fecha de entrega inmediata'),
-                    ]),
-
-                Section::make('Ficha Canónica y Contenido Web (Inn.jsx)')
-                    ->description('Configuración de diseño de alta gama, paleta cromática, tours 360, interiorismo y avisos por proyecto')
-                    ->collapsible()
-                    ->relationship('detail')
-                    ->schema([
-                        Section::make('Paleta Cromática (Theming CSS)')
-                            ->schema([
-                                TextInput::make('theme_colors.accent')->label('Color de Acento (--lb-project-accent)')->placeholder('#d9bc70'),
-                                TextInput::make('theme_colors.accent_dark')->label('Acento Oscuro (--lb-project-accent-dark)')->placeholder('#c4a355'),
-                                TextInput::make('theme_colors.accent_light')->label('Acento Claro (--lb-project-accent-light)')->placeholder('#e2ca8d'),
-                                TextInput::make('theme_colors.gradient')->label('Gradiente (--lb-project-gradient)')->placeholder('linear-gradient(135deg, #d9bc70 0%, #b89345 100%)'),
-                            ])->columns(2),
-
-                        Section::make('Hero y Barra Técnica')
-                            ->schema([
-                                TextInput::make('hero_eyebrow')->label('Eyebrow Hero')->placeholder('Puerto Varas'),
-                                TextInput::make('hero_title')->label('Título Hero (si difiere del nombre)')->nullable(),
-                                TextInput::make('hero_subtitle')->label('Subtítulo Hero')->nullable(),
-                                TextInput::make('hero_video_url')->label('URL Video Hero (MP4)')->nullable(),
-                                CuratorPicker::make('hero_logo_id')->label('Logo Específico del Proyecto (Curator)'),
-                                TextInput::make('hero_logo_url')->label('URL directa de Logo (Fallback)')->nullable(),
-                                Repeater::make('technical_info')
-                                    ->label('Especificaciones Barra Técnica INFO')
                                     ->schema([
-                                        TextInput::make('id')->label('ID')->required(),
-                                        TextInput::make('label')->label('Etiqueta')->required(),
-                                        TextInput::make('value')->label('Valor (HTML soportado)')->required(),
-                                    ])->columns(3)->defaultItems(0),
-                            ])->columns(2),
+                                        Section::make('Paleta Cromática (Theming CSS)')
+                                            ->description('Variables CSS inyectadas dinámicamente')
+                                            ->schema([
+                                                TextInput::make('theme_colors.accent')->label('Color de Acento (--lb-project-accent)')->placeholder('#d9bc70'),
+                                                TextInput::make('theme_colors.accent_dark')->label('Acento Oscuro (--lb-project-accent-dark)')->placeholder('#c4a355'),
+                                                TextInput::make('theme_colors.accent_light')->label('Acento Claro (--lb-project-accent-light)')->placeholder('#e2ca8d'),
+                                                TextInput::make('theme_colors.gradient')->label('Gradiente (--lb-project-gradient)')->placeholder('linear-gradient(135deg, #d9bc70 0%, #b89345 100%)'),
+                                            ])
+                                            ->columns(2)
+                                            ->columnSpan(1),
 
-                        Section::make('Overview, Terminaciones y Recorridos 360')
-                            ->schema([
-                                TextInput::make('overview_title')->label('Título Overview')->nullable(),
-                                Textarea::make('overview_description')->label('Descripción Overview')->rows(3)->nullable(),
-                                TextInput::make('virtual_tour_matterport_url')->label('URL Tour Matterport 3D')->nullable(),
-                                TextInput::make('virtual_tour_360_url')->label('URL Recorrido 360 (La Nube 360)')->nullable(),
-                                TextInput::make('virtual_tour_video_url')->label('URL Video YouTube')->nullable(),
-                                TextInput::make('brochure_pdf_url')->label('URL Folleto / Brochure PDF')->nullable(),
-                            ])->columns(2),
+                                        Section::make('Aviso Emergente y Horarios')
+                                            ->description('Pop-up y horarios específicos')
+                                            ->schema([
+                                                Toggle::make('announcement.enabled')->label('Activar Aviso Emergente')->default(false)->columnSpan(2),
+                                                TextInput::make('announcement.id')->label('ID Aviso')->placeholder('aviso-inn-2026'),
+                                                TextInput::make('announcement.title')->label('Título del Aviso')->placeholder('Horario Especial'),
+                                                TextInput::make('announcement.message')->label('Mensaje')->placeholder('Informamos a nuestros clientes...')->columnSpan(2),
+                                                TextInput::make('announcement.button_text')->label('Texto Botón')->default('Entendido')->columnSpan(2),
+                                                Repeater::make('schedule')
+                                                    ->label('Horarios de Atención')
+                                                    ->simple(TextInput::make('item')->label('Línea de Horario'))
+                                                    ->defaultItems(0)
+                                                    ->columnSpan(2),
+                                            ])
+                                            ->columns(2)
+                                            ->columnSpan(1),
 
-                        Section::make('Aviso Emergente y Horarios de este Proyecto')
-                            ->schema([
-                                Toggle::make('announcement.enabled')->label('Activar Aviso Emergente en este Proyecto')->default(false),
-                                TextInput::make('announcement.id')->label('ID Aviso (para tracking de cierre)')->placeholder('aviso-inn-2026'),
-                                TextInput::make('announcement.title')->label('Título del Aviso')->placeholder('Horario Especial Sala de Ventas'),
-                                TextInput::make('announcement.message')->label('Mensaje')->placeholder('Informamos a nuestros clientes...'),
-                                TextInput::make('announcement.button_text')->label('Texto Botón')->default('Entendido'),
-                                Repeater::make('schedule')
-                                    ->label('Horarios de Atención Sala de Ventas')
-                                    ->simple(TextInput::make('item')->label('Línea de Horario'))
-                                    ->defaultItems(0),
-                            ])->columns(2),
+                                        Section::make('Hero y Barra Técnica')
+                                            ->description('Encabezado principal y especificaciones clave')
+                                            ->schema([
+                                                TextInput::make('hero_eyebrow')->label('Eyebrow Hero')->placeholder('Puerto Varas'),
+                                                TextInput::make('hero_title')->label('Título Hero (si difiere del nombre)')->nullable(),
+                                                TextInput::make('hero_subtitle')->label('Subtítulo Hero')->nullable(),
+                                                TextInput::make('hero_video_url')->label('URL Video Hero (MP4)')->nullable(),
+                                                CuratorPicker::make('hero_logo_id')->label('Logo Específico del Proyecto (Curator)'),
+                                                TextInput::make('hero_logo_url')->label('URL directa de Logo (Fallback)')->nullable(),
+                                                Repeater::make('technical_info')
+                                                    ->label('Especificaciones Barra Técnica INFO')
+                                                    ->schema([
+                                                        TextInput::make('id')->label('ID')->required(),
+                                                        TextInput::make('label')->label('Etiqueta')->required(),
+                                                        TextInput::make('value')->label('Valor (HTML soportado)')->required(),
+                                                    ])
+                                                    ->columns(3)
+                                                    ->defaultItems(0)
+                                                    ->columnSpan(2),
+                                            ])
+                                            ->columns(2)
+                                            ->columnSpan(2),
+
+                                        Section::make('Overview, Terminaciones y Recorridos 360')
+                                            ->description('Contenido descriptivo, tours 3D y brochure descargable')
+                                            ->schema([
+                                                TextInput::make('overview_title')->label('Título Overview')->nullable(),
+                                                TextInput::make('brochure_pdf_url')->label('URL Folleto / Brochure PDF')->nullable(),
+                                                Textarea::make('overview_description')->label('Descripción Overview')->rows(3)->nullable()->columnSpan(2),
+                                                TextInput::make('virtual_tour_matterport_url')->label('URL Tour Matterport 3D')->nullable(),
+                                                TextInput::make('virtual_tour_360_url')->label('URL Recorrido 360 (La Nube 360)')->nullable(),
+                                                TextInput::make('virtual_tour_video_url')->label('URL Video YouTube')->nullable()->columnSpan(2),
+                                            ])
+                                            ->columns(2)
+                                            ->columnSpan(2),
+                                    ]),
+                            ]),
                     ]),
             ]);
     }
