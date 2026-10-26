@@ -4,6 +4,15 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.12.2] - 2026-10-26
+
+### 🎨 UI / 🛠️ Filament — Inputs Mejorados (ColorPicker, RichEditor WYSIWYG y Validación URL) en Ficha Web
+- **ColorPicker**: Colores de la paleta temática (`theme_colors.accent`, `theme_colors.accent_dark`, `theme_colors.accent_light`) configurados con selector visual `ColorPicker`.
+- **RichEditor (WYSIWYG)**:
+  - `announcement.message`: Mensaje de aviso de contingencia del proyecto enriquecido con editor WYSIWYG.
+  - `overview_description`: Descripción editorial de overview enriquecida con editor WYSIWYG.
+- **Validación URL**: Inputs `hero_video_url`, `hero_logo_url`, `brochure_pdf_url`, `virtual_tour_matterport_url`, `virtual_tour_360_url` y `virtual_tour_video_url` configurados con regla y formateador `url()`.
+
 ## [1.12.1] - 2026-10-26
 
 ### 🎨 UI / ⚡ Filament — Ficha de Proyecto en 2 Tabs con Grid 2 Columnas y Pre-rellenado Automático desde Salesforce

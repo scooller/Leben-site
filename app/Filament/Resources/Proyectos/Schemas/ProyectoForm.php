@@ -5,9 +5,11 @@ namespace App\Filament\Resources\Proyectos\Schemas;
 use App\Models\Proyecto;
 use Awcodes\Curator\Components\Forms\CuratorPicker;
 use Filament\Actions\Action;
+use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -394,9 +396,9 @@ class ProyectoForm
                                         Section::make('Paleta Cromática (Theming CSS)')
                                             ->description('Variables CSS inyectadas dinámicamente')
                                             ->schema([
-                                                TextInput::make('theme_colors.accent')->label('Color de Acento (--lb-project-accent)')->placeholder('#d9bc70'),
-                                                TextInput::make('theme_colors.accent_dark')->label('Acento Oscuro (--lb-project-accent-dark)')->placeholder('#c4a355'),
-                                                TextInput::make('theme_colors.accent_light')->label('Acento Claro (--lb-project-accent-light)')->placeholder('#e2ca8d'),
+                                                ColorPicker::make('theme_colors.accent')->label('Color de Acento (--lb-project-accent)')->placeholder('#d9bc70'),
+                                                ColorPicker::make('theme_colors.accent_dark')->label('Acento Oscuro (--lb-project-accent-dark)')->placeholder('#c4a355'),
+                                                ColorPicker::make('theme_colors.accent_light')->label('Acento Claro (--lb-project-accent-light)')->placeholder('#e2ca8d'),
                                                 TextInput::make('theme_colors.gradient')->label('Gradiente (--lb-project-gradient)')->placeholder('linear-gradient(135deg, #d9bc70 0%, #b89345 100%)'),
                                             ])
                                             ->columns(2)
@@ -408,7 +410,10 @@ class ProyectoForm
                                                 Toggle::make('announcement.enabled')->label('Activar Aviso Emergente')->default(false)->columnSpan(2),
                                                 TextInput::make('announcement.id')->label('ID Aviso')->placeholder('aviso-inn-2026'),
                                                 TextInput::make('announcement.title')->label('Título del Aviso')->placeholder('Horario Especial'),
-                                                TextInput::make('announcement.message')->label('Mensaje')->placeholder('Informamos a nuestros clientes...')->columnSpan(2),
+                                                RichEditor::make('announcement.message')
+                                                    ->label('Mensaje del Aviso (WYSIWYG)')
+                                                    ->placeholder('Informamos a nuestros clientes e inversionistas...')
+                                                    ->columnSpan(2),
                                                 TextInput::make('announcement.button_text')->label('Texto Botón')->default('Entendido')->columnSpan(2),
                                                 Repeater::make('schedule')
                                                     ->label('Horarios de Atención')
@@ -425,9 +430,9 @@ class ProyectoForm
                                                 TextInput::make('hero_eyebrow')->label('Eyebrow Hero')->placeholder('Puerto Varas'),
                                                 TextInput::make('hero_title')->label('Título Hero (si difiere del nombre)')->nullable(),
                                                 TextInput::make('hero_subtitle')->label('Subtítulo Hero')->nullable(),
-                                                TextInput::make('hero_video_url')->label('URL Video Hero (MP4)')->nullable(),
+                                                TextInput::make('hero_video_url')->label('URL Video Hero (MP4)')->url()->placeholder('https://...')->nullable(),
                                                 CuratorPicker::make('hero_logo_id')->label('Logo Específico del Proyecto (Curator)'),
-                                                TextInput::make('hero_logo_url')->label('URL directa de Logo (Fallback)')->nullable(),
+                                                TextInput::make('hero_logo_url')->label('URL directa de Logo (Fallback)')->url()->placeholder('https://...')->nullable(),
                                                 Repeater::make('technical_info')
                                                     ->label('Especificaciones Barra Técnica INFO')
                                                     ->schema([
@@ -446,11 +451,14 @@ class ProyectoForm
                                             ->description('Contenido descriptivo, tours 3D y brochure descargable')
                                             ->schema([
                                                 TextInput::make('overview_title')->label('Título Overview')->nullable(),
-                                                TextInput::make('brochure_pdf_url')->label('URL Folleto / Brochure PDF')->nullable(),
-                                                Textarea::make('overview_description')->label('Descripción Overview')->rows(3)->nullable()->columnSpan(2),
-                                                TextInput::make('virtual_tour_matterport_url')->label('URL Tour Matterport 3D')->nullable(),
-                                                TextInput::make('virtual_tour_360_url')->label('URL Recorrido 360 (La Nube 360)')->nullable(),
-                                                TextInput::make('virtual_tour_video_url')->label('URL Video YouTube')->nullable()->columnSpan(2),
+                                                TextInput::make('brochure_pdf_url')->label('URL Folleto / Brochure PDF')->url()->placeholder('https://...')->nullable(),
+                                                RichEditor::make('overview_description')
+                                                    ->label('Descripción Overview (WYSIWYG)')
+                                                    ->nullable()
+                                                    ->columnSpan(2),
+                                                TextInput::make('virtual_tour_matterport_url')->label('URL Tour Matterport 3D')->url()->placeholder('https://...')->nullable(),
+                                                TextInput::make('virtual_tour_360_url')->label('URL Recorrido 360 (La Nube 360)')->url()->placeholder('https://...')->nullable(),
+                                                TextInput::make('virtual_tour_video_url')->label('URL Video YouTube')->url()->placeholder('https://...')->nullable()->columnSpan(2),
                                             ])
                                             ->columns(2)
                                             ->columnSpan(2),
