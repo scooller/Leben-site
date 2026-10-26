@@ -4,6 +4,14 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.13.1] - 2026-10-26
+
+### 🧹 Refactor / Ponytail — Eliminación de Duplicidad en Tipo de Usuario Broker
+- **Unificación de Fuente de Verdad para Brokers**:
+  - Removido `broker` como opción en `user_type` de `UserForm` y `UsersTable` en el módulo de Usuarios.
+  - La gestión de corredores reside exclusivamente en el módulo `Brokers > Brokers` (con categoría, Salesforce ID `Broker__c`, comisiones y portafolio).
+  - En `User::isBroker()`: Resuelto directamente mediante relación `$this->broker()->exists() || $this->hasRole('broker')` sin requerir valor redundante en la tabla `users`.
+
 ## [1.13.0] - 2026-10-26
 
 ### 🧭 Menús — Gestor Dedicado de Menús (Cabecera y Footer) en Filament

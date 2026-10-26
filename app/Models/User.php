@@ -99,8 +99,6 @@ class User extends Authenticatable implements FilamentUser
 
     public const TYPE_MARKETING = 'marketing';
 
-    public const TYPE_BROKER = 'broker';
-
     public const TYPE_CUSTOMER = 'customer';
 
     public function isMarketing(): bool
@@ -113,7 +111,7 @@ class User extends Authenticatable implements FilamentUser
      */
     public function isBroker(): bool
     {
-        return $this->hasRole('broker') || $this->user_type === 'broker';
+        return $this->hasRole('broker') || $this->broker()->exists();
     }
 
     /**

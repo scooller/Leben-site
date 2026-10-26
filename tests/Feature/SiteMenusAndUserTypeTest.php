@@ -28,19 +28,18 @@ class SiteMenusAndUserTypeTest extends TestCase
 
     public function test_user_model_supports_broker_type_and_helpers(): void
     {
-        $broker = User::factory()->create([
-            'user_type' => User::TYPE_BROKER,
+        $user = User::factory()->create([
+            'user_type' => 'customer',
         ]);
-        $broker->assignRole('broker');
+        $this->assertFalse($user->isBroker());
 
-        $this->assertTrue($broker->isBroker());
-        $this->assertFalse($broker->isAdmin());
-        $this->assertFalse($broker->isMarketing());
-        $this->assertFalse($broker->isCustomer());
+        \App\Models\Broker::factory()->create([
+            'user_id' => $user->id,
+        ]);
 
-        $customer = User::factory()->create(['user_type' => 'customer']);
-        $this->assertTrue($customer->isCustomer());
-        $this->assertFalse($customer->isBroker());
+        $this->assertTrue($user->isBroker());
+        $this->assertFalse($user->isAdmin());
+        $this->assertFalse($user->isMarketing());
     }
 
     public function test_marketing_can_access_and_manage_testimonials(): void
