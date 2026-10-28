@@ -462,13 +462,32 @@ class ProyectoForm
                                                                     ->columnSpanFull(),
                                                                 Repeater::make('video_interstitials')
                                                                     ->label('Banners de Video Intermedios (Entre Secciones)')
+                                                                    ->itemLabel(fn (array $state): ?string => ($state['title'] ?? null) ?: ($state['text'] ?? null) ?: ($state['video_url'] ?? 'Banner de Video'))
+                                                                    ->collapsible()
                                                                     ->schema([
-                                                                        TextInput::make('text')->label('Texto Motivacional sobre Video')->required(),
-                                                                        TextInput::make('video_url')->label('Ruta o URL del Video (MP4)')->required()->placeholder('video/video_reconfortante_a.mp4'),
+                                                                        TextInput::make('eyebrow')
+                                                                            ->label('Eyebrow / Badge Superior')
+                                                                            ->placeholder('ej: Experiencia INN')
+                                                                            ->nullable(),
+                                                                        TextInput::make('title')
+                                                                            ->label('Título')
+                                                                            ->placeholder('ej: Vistas Insospechadas')
+                                                                            ->nullable(),
+                                                                        TextInput::make('text')
+                                                                            ->label('Texto / Frase Principal sobre Video')
+                                                                            ->placeholder('ej: Un estilo de vida único frente al lago y los volcanes')
+                                                                            ->required()
+                                                                            ->columnSpanFull(),
+                                                                        TextInput::make('video_url')
+                                                                            ->label('Ruta o URL del Video (MP4)')
+                                                                            ->required()
+                                                                            ->placeholder('video/video_reconfortante_a.mp4')
+                                                                            ->columnSpanFull(),
                                                                     ])
                                                                     ->columns(2)
                                                                     ->defaultItems(0)
-                                                                    ->columnSpanFull(),
+                                                                    ->columnSpanFull()
+                                                                    ->helperText('Banners con video de fondo que se sitúan entre secciones (ej: tras Proyecto, tras Equipamiento, tras Espacios Comunes). Soporta badge/eyebrow, título, texto principal y video.'),
                                                             ])
                                                             ->columns(2),
                                                     ]),

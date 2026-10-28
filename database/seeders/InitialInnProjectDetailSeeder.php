@@ -85,9 +85,9 @@ class InitialInnProjectDetailSeeder extends Seeder
 
                 // Banners de Video Intermedios
                 'video_interstitials' => [
-                    ['text' => 'Un estilo de vida único frente al lago y los volcanes', 'video_url' => 'video/video_reconfortante_a.mp4'],
-                    ['text' => 'Descubre todo lo que INN tiene para ofrecer', 'video_url' => 'video/exterior.mp4'],
-                    ['text' => 'Despierta tu espíritu aventurero en la Región de Los Lagos', 'video_url' => 'video/lipsum.mp4'],
+                    ['eyebrow' => '', 'title' => '', 'text' => 'Un estilo de vida único frente al lago y los volcanes', 'video_url' => 'video/video_reconfortante_a.mp4'],
+                    ['eyebrow' => '', 'title' => '', 'text' => 'Descubre todo lo que INN tiene para ofrecer', 'video_url' => 'video/exterior.mp4'],
+                    ['eyebrow' => '', 'title' => '', 'text' => 'Despierta tu espíritu aventurero en la Región de Los Lagos', 'video_url' => 'video/lipsum.mp4'],
                 ],
 
                 // Sección 2: Equipamiento

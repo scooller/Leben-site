@@ -2,9 +2,24 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.4] - 2026-10-28
+
+### 🎬 Banners de Video Intermedios — Campos de Texto Estructurados
+
+- **Formulario Filament `ProyectoForm`**:
+  - En la pestaña `2. Proyecto & Videos`, enriquecido el Repeater `video_interstitials` con campos editables completos:
+    - `eyebrow`: Badge o texto superior (ej: *Experiencia INN*).
+    - `title`: Título secundario / descriptivo (ej: *Vistas Insospechadas*).
+    - `text`: Texto o frase principal sobre el video.
+    - `video_url`: Ruta o URL del archivo MP4.
+  - Añadido `itemLabel` dinámico y soporte colapsable para una navegación limpia en el panel de administración.
+- **Seeder `InitialInnProjectDetailSeeder`**:
+  - Actualizado para incluir la estructura de datos con `eyebrow` y `title`.
+
 ## [1.13.3] - 2026-10-28
 
 ### 🔄 Recorridos 360 — Repeater de Secciones e Interiores Anidados
+
 - **Migración `2026_10_28_000002_add_virtual_tours_header_to_project_details_table`**:
   - Incorporadas columnas `virtual_tours_eyebrow` y `virtual_tours_title` en `project_details`.
 - **Formulario Filament `ProyectoForm`**:
@@ -17,6 +32,7 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 ## [1.13.2] - 2026-10-28
 
 ### 📑 Filament — Secciones Web en Pestañas Verticales a la Derecha
+
 - **Formulario Filament `ProyectoForm`**:
   - En la pestaña "Información Web (Ficha Canónica)", se reemplazó el listado colapsable vertical por pestañas anidadas verticales situadas a la derecha (`Tabs::make()->vertical()`, con clase de inversión flex `!flex-row-reverse items-start gap-6` y menú fijo sticky `top-20`).
   - Las 9 secciones editoriales (Identidad & Hero, Proyecto & Videos, Equipamiento, Recorridos 360, Espacios Comunes, Ubicación & Mapa, Interiorismo, Panoramas, Contacto & Ventas) se navegan fluidamente desde la barra lateral derecha sin desbordamiento ni scroll masivo.
@@ -25,6 +41,7 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 ## [1.13.1] - 2026-10-26
 
 ### 🧹 Refactor / Ponytail — Eliminación de Duplicidad en Tipo de Usuario Broker
+
 - **Unificación de Fuente de Verdad para Brokers**:
   - Removido `broker` como opción en `user_type` de `UserForm` y `UsersTable` en el módulo de Usuarios.
   - La gestión de corredores reside exclusivamente en el módulo `Brokers > Brokers` (con categoría, Salesforce ID `Broker__c`, comisiones y portafolio).
@@ -33,6 +50,7 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 ## [1.13.0] - 2026-10-26
 
 ### 🧭 Menús — Gestor Dedicado de Menús (Cabecera y Footer) en Filament
+
 - **Página Filament `ManageSiteMenus`**: Creado panel dedicado accesible en `Contenido Web > Menús` con pestañas para:
   - **Menú General (Cabecera / Navbar)**: Repeater interactivo para enlaces principales y dropdown opcional de proyectos con reordenamiento drag-and-drop, creación y eliminación.
   - **Menú Footer (Pie de Página)**: Gestión independiente de Enlaces Corporativos (`footer_corporate`) y Enlaces Legales (`footer_legal`) con reordenamiento, creación y eliminación.
@@ -40,6 +58,7 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 - **Ocultamiento de `MenuResource` crudo**: Ocultado del menú lateral para evitar duplicidad, canalizando la administración a través de la interfaz visual unificada.
 
 ### 👥 Usuarios & Permisos — Tipo de Usuario Broker y Acceso Marketing
+
 - **Tipo de Usuario Broker**:
   - Modelo `User`: Añadida constante `TYPE_BROKER = 'broker'` y método helper `isBroker()`.
   - `UserForm`: Añadida opción `broker` ("Corredor / Broker") en el selector de tipo de usuario.
@@ -52,6 +71,7 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 ## [1.12.2] - 2026-10-26
 
 ### 🎨 UI / 🛠️ Filament — Inputs Mejorados (ColorPicker, RichEditor WYSIWYG y Validación URL) en Ficha Web
+
 - **ColorPicker**: Colores de la paleta temática (`theme_colors.accent`, `theme_colors.accent_dark`, `theme_colors.accent_light`) configurados con selector visual `ColorPicker`.
 - **RichEditor (WYSIWYG)**:
   - `announcement.message`: Mensaje de aviso de contingencia del proyecto enriquecido con editor WYSIWYG.
@@ -61,6 +81,7 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 ## [1.12.1] - 2026-10-26
 
 ### 🎨 UI / ⚡ Filament — Ficha de Proyecto en 2 Tabs con Grid 2 Columnas y Pre-rellenado Automático desde Salesforce
+
 - **Tabs y Layout en 2 Columnas**:
   - `ProyectoForm`: Estructuración en 2 pestañas dedicadas (`Información General & Salesforce` y `Información Web (Ficha Canónica)`).
   - Preservación estricta de grid responsivo `columns(2)` en secciones y sub-secciones, ubicando `Paleta Cromática` y `Avisos/Horarios` en paralelo (`columnSpan(1)` cada una) y `Hero` / `Overview` ocupando ancho completo (`columnSpan(2)`).
@@ -73,6 +94,7 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 ## [1.12.0] - 2026-10-26
 
 ### 🚀 Feat / 🌐 SSOT Backend Integration — Páginas, Proyectos Canónicos, Testimonios y Menús
+
 - **Base de Datos y Modelos**:
   - Migraciones y modelos para `Page`, `PageSection`, `ProjectDetail`, `ProjectAmenity`, `ProjectPoi`, `ProjectGallery`, `Testimonial`, `Menu` y `MenuItem`.
   - Agregado campo `sort_order` a tabla `proyectos` con soporte para orden preferencial del catálogo.
@@ -98,6 +120,7 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 ## [1.11.4] - 2026-10-20
 
 ### 🔒 Security / 👥 Auth — Permisos de importación de contactos para rol marketing
+
 - **`app/Filament/Actions/ImportContactSubmissionsCsvAction.php`**:
   - `visible()` y `authorize()`: Permitir expresamente a usuarios con rol `marketing` (además de `admin`) ver y ejecutar la acción de importación de CSV de contactos.
 - **`app/Filament/Pages/ContactImportProgress.php`**:
@@ -110,6 +133,7 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 ## [1.11.3] - 2026-10-20
 
 ### 🐛 Fixed / 📥 Import CSV — Deduplicación y sanitización de campos a asignar
+
 - **`app/Filament/Actions/ImportContactSubmissionsCsvAction.php`**:
   - `targetFieldOptions()`: Filtrado estricto de alias dinámicos redundantes (`rut`, `nombre`, `email`, `telefono`, `rango`, `comentario_cliente`) que duplicaban campos nativos principales y base en el desplegable de mapeo adicional.
   - Inclusión de `fields.comuna_inversion` en `$baseOptions` para asignar limpiamente la comuna de interés o inversión homologada para Salesforce.
@@ -124,6 +148,7 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 ## [1.11.2] - 2026-10-19
 
 ### 🐛 Fixed / 🔄 Salesforce — Homologación canónica de comunas desde proyectos Salesforce
+
 - **`app/Models/Proyecto.php`**:
   - `salesforceComunas()`: Devuelve la lista unívoca de comunas registradas en los proyectos sincronizados desde Salesforce.
   - `resolveSalesforceComuna(?string $input, ?Proyecto $project)`: Resuelve y homologa cualquier variante o slug (`la_florida`, `santiago_centro`, `ñuñoa`) al formato oficial en mayúsculas de Salesforce (`LA FLORIDA`, `SANTIAGO CENTRO`), recurriendo a la comuna del proyecto si el valor ingresado es genérico o inválido (`Comunas Genericas`), o devolviendo `null` si no hay coincidencia.
@@ -139,6 +164,7 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 ## [1.11.1] - 2026-10-19
 
 ### 🐛 Fixed / 🎨 UI — Legibilidad y contraste de dropdowns y opciones seleccionadas en front
+
 - **`frontend/src/styles/global.scss`**:
   - Definición de `--wa-form-control-activated-color: var(--brand-color)` en `:root` para asegurar contraste alto en componentes de formulario de Web Awesome.
   - Estilizado de `wa-select::part(tag)` con fondo de acento de marca y texto contrastado para opciones multi-select seleccionadas.
@@ -151,6 +177,7 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 ## [1.11.0] - 2026-10-19
 
 ### ✨ Feature / 🚀 API — Cyber Feed Canónico para Cyber AI (cyber.cl)
+
 - **`database/migrations/2026_10_19_123348_add_sku_to_plants_table.php`**: Adición de columna `sku` (string, nullable, indexed) en tabla `plants` para identificación unívoca ante integraciones y marketplaces externos.
 - **`app/Models/Plant.php`**:
   - Registro de `'sku'` en `$fillable` y `syncableFields()`.
@@ -180,8 +207,8 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
   - `src/pages/Home.jsx`: Alineación de `sku` en el schema estructurado JSON-LD (`schema.org/Product` y `RealEstateListing`) utilizando el SKU prioritario de la unidad.
 - **`tests/Feature/CyberFeedApiTest.php`**: Suite completa de pruebas con 11 tests y 89 aserciones cubriendo respuesta 200 genérica y específica, estructura canónica, filtros, estados de disponibilidad, exclusión de unidades inválidas, revalidación condicional 304, autogeneración en creación/importación y comando CLI de SKUs con parámetro `--actualizar`.
 
-
 ### 🐛 Fix / 🎨 UI — Ajuste de altura e imagen 100% en Banner Hero
+
 - **`frontend/src/pages/Home.jsx`**:
   - Adición de clase condicional `is-image` a `.video-home` cuando el banner hero es tipo imagen.
   - Asignación de clases `hero-picture` a `<picture>` y `hero-image` al elemento `<img>` para desacoplar su estilizado de las restricciones de video.
@@ -411,7 +438,6 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 - **`frontend/src/components/PlantDetailDialog.jsx`**: Se revierte el redondeo forzado en los badges de detalle ("Dcto. IVA", "Dcto. Unidad" y "Dcto. Total") y tooltip, mostrando los valores decimales exactos (ej. `17.98%`) en lugar de redondear a `18%`.
 - **`frontend/src/components/PlantsGrid.jsx`**: El tooltip del sello de descuento ahora muestra los valores exactos de IVA y unidad sin redondear a 1 decimal.
 - **`frontend/src/pages/Home.jsx`**: `totalDiscountPercentage` conserva precisión de 2 decimales para evitar cálculo distorsionado de precios y descuentos activos.
-
 
 ## [1.9.58] - 2026-10-02
 
@@ -760,7 +786,6 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 - **Sistema de Pagos (`PAYMENTS.md`)**:
   - Actualizada lista de verificación y notas operativas reflejando tests automatizados completos, emails con FinMail, acciones de aprobación en Filament y sanitización de metadata con `FlowLogMatrix`.
 
-
 ### 👥 Sincronización de Asesores desde Producción y Vinculación con Proyectos y Plantas
 
 - **Exportación de Producción (`app/Http/Controllers/Api/ProductionSyncController.php`, `app/Models/Asesor.php`)**:
@@ -938,10 +963,12 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 ### ✅ SEO Estructurado — Evento Sale/Cyber (controlado desde backend)
 
 **Backend:**
+
 - `SiteSettings.php` (Filament): nueva Section "Evento Sale — SEO" en el tab SEO, visible solo cuando `evento_sale` está activo. Campos: `sale_event_name`, `sale_event_description`, `sale_event_start_date`, `sale_event_end_date`, `sale_og_image_id` (CuratorPicker).
 - `SiteSetting.php` (Model): se agrega `DatePicker` al import de Filament; `forFrontend()` expone `seo.sale_event` (null cuando inactivo, objeto con 5 campos cuando activo); `seo.og_image` ahora prefiere `sale_og_image` durante el evento.
 
 **Frontend:**
+
 - `utils/saleEventSchema.js` (nuevo): builders `buildSpecialAnnouncementSchema` y `buildSaleEventSchema` que generan JSON-LD schema.org desde los datos del backend.
 - `App.jsx`: nuevo `useEffect` que inyecta/elimina los dos schemas (`ileben-jsonld-sale-announcement`, `ileben-jsonld-sale-event`) reactivamente cuando `config.seo.sale_event` cambia. Limpieza automática en unmount.
 
@@ -960,6 +987,7 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 ## [1.9.16] - 2026-09-21
 
 ### 🚦 Preferencias de Uso de Contenido IA (`Content-Signal` en `robots.txt`)
+
 - **Directivas Content Signals (`frontend/public/robots.txt`, `public/robots.txt`)**:
   - Incorporada la directiva estándar `Content-Signal: ai-train=no, search=yes, ai-input=no` bajo el bloque `User-agent: *` según el estándar de `contentsignals.org` y el borrador IETF.
   - Permite la indexación y búsqueda por motores IA (`search=yes`), mientras restringe el entrenamiento de modelos fundacionales (`ai-train=no`) y el uso como input de generación (`ai-input=no`).
@@ -973,6 +1001,7 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 ## [1.9.15] - 2026-09-21
 
 ### 📝 Negociación de Contenido Markdown para Agentes IA (`Accept: text/markdown`)
+
 - **Middleware Global de Negociación (`NegotiateMarkdownForAgents.php`, `bootstrap/app.php`)**:
   - Implementado middleware global que detecta solicitudes de agentes con cabecera `Accept: text/markdown`.
   - Entrega una representación limpia en Markdown de la página y catálogo inmobiliario con cabecera `Content-Type: text/markdown; charset=UTF-8`, `Vary: Accept` y estimación de tokens `x-markdown-tokens`.
@@ -990,6 +1019,7 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 ## [1.9.14] - 2026-09-21
 
 ### 🤖 Descubrimiento de Agentes IA (RFC 8288 & RFC 9727)
+
 - **Cabeceras HTTP `Link` (`AddAgentDiscoveryHeaders.php`, `bootstrap/app.php`)**:
   - Creado middleware `AddAgentDiscoveryHeaders` registrado en el grupo `web` para inyectar cabeceras de respuesta `Link` estándar RFC 8288:
     - `Link: </.well-known/api-catalog>; rel="api-catalog"`
@@ -1009,6 +1039,7 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 ## [1.9.13] - 2026-09-21
 
 ### 🏗️ Arquitectura de Shell y Layout Web Awesome (`<wa-page>`)
+
 - **Adopción de `<wa-page>` en Shell Principal (`App.jsx`, `App.scss`)**:
   - Implementado el componente `<wa-page>` como contenedor principal de la aplicación siguiendo la receta oficial de sitio de marketing de Web Awesome.
   - El shell ahora centraliza de forma persistente el `<SiteHeader />` (`slot="header"` y `slot="navigation"`) y `<SiteFooter />` (`slot="footer"`).
@@ -1024,6 +1055,7 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 ## [1.9.12] - 2026-09-21
 
 ### 🚀 Optimización SEO Técnico, Marketing & Marcado Semántico LLMO
+
 - **Schema.org Enriquecido (`App.jsx`, `Home.jsx`)**:
   - Incorporado tipo `RealEstateAgent` y dirección postal (`PostalAddress`) en la entidad principal `Organization`.
   - Evolucionado el marcado estructurado de plantas a `['Product', 'RealEstateListing']` incorporando el objeto `about` de tipo `Apartment` / `SingleFamilyResidence`, con dormitorios (`programa`), superficie m² (`QuantitativeValue`) y dirección postal completa (`streetAddress`, `addressLocality`, `addressRegion`, país `CL`).
@@ -1033,6 +1065,7 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 - **Validación**: Compilación frontend exitosa (`npm run build`), prerenderizado de rutas completado y 27 tests de backend pasando sin errores.
 
 ### 🔄 Migración de Componentes y Atributos Web Awesome
+
 - **Migración a sintaxis moderna de Web Awesome 3.x (`Home.jsx`, `Contact.jsx`, `PlantDetailDialog.jsx`)**:
   - Reemplazado atributo obsoleto `clearable` por el estándar oficial `with-clear` en elementos `<wa-select>`.
   - Reemplazado atributo obsoleto `variant="primary"` por `variant="brand"` en `<wa-button>` y `<wa-tag>`.
@@ -1042,6 +1075,7 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 ## [1.9.10] - 2026-09-21
 
 ### 📦 Dependencias Frontend
+
 - **Actualización de Web Awesome Pro (`frontend/package.json`)**: Actualizado `@web.awesome.me/webawesome-pro` de `^3.7.0` a `^3.13.0`.
 - **Configuración de Autenticación NPM (`frontend/.env`)**: Actualizado el token de autenticación para el registro privado de Cloudsmith (`WEBAWESOME_NPM_TOKEN`).
 - **Build Frontend**: Compilación y prerenderizado validados sin errores con Vite y SEO check.
@@ -1049,6 +1083,7 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 ## [1.9.9] - 2026-09-21
 
 ### 🛠️ Correcciones y Flujo Anónimo de Checkout
+
 - **Reservas y Checkout Anónimos (`routes/api.php`)**: Movidas las rutas de checkout (`POST /api/v1/checkout`) y reservas (`POST /api/v1/reservations`, `DELETE /api/v1/reservations/{sessionToken}`, `GET /api/v1/reservations/planta/{plantId}`) fuera del middleware `auth:sanctum` al grupo público con `token.origin`.
 - **Servicio y Controlador de Reservas (`PlantReservationService.php`, `PlantReservationController.php`)**: Habilitado `$userId` nullable en la creación y extensión de reservas de plantas. Soporte para control y liberación anónima por `session_token` único (UUID).
 - **Controlador de Checkout (`CheckoutController.php`, `CheckoutInitiateRequest.php`)**: Habilitada la autorización pública y resolución automática de clientes anónimos a través de `User::firstOrCreate(...)` vinculando su email de facturación.
@@ -1058,6 +1093,7 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 ## [1.9.8] - 2026-09-21
 
 ### 🛠️ Correcciones
+
 - **Ruta `payment-gateways` pública en API (`routes/api.php`)**: Movido el endpoint `GET /api/v1/payment-gateways` fuera del middleware `auth:sanctum` al grupo de catálogo con `token.origin`. Esto permite a los visitantes del frontend explorar y seleccionar pasarelas disponibles sin requerir inicio de sesión previo.
 - **Soporte de Enlaces Preview (`EnsureTokenOriginIsAuthorized.php`)**: Permitido acceso a rutas protegidas por `token.origin` para enlaces preview autorizados (`FrontendPreviewLink::isAuthorizedForRequest()`) sin requerir un token Bearer estático.
 - **Tests Automatizados**: Añadidos tests en `ApiAuthenticationTest` para verificar el acceso no autenticado a `payment-gateways` con token de API y con token preview.
@@ -1065,6 +1101,7 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 ## [1.9.7] - 2026-09-21
 
 ### 🔒 Parches de Seguridad
+
 - **Path Traversal en Curator (`routes/web.php`)**: Implementada validación de `realpath` y confinamiento de directorio sobre `storage/app/public` en la ruta `/curator/{path}` para prevenir acceso arbitrario a archivos del sistema (e.g. `.env`).
 - **Control de Acceso en Sync Export (`ProductionSyncController.php`)**: Requerida verificación administrativa (`isAdmin()`) en `GET /api/v1/production-sync/export` para impedir que usuarios registrados sin privilegios extraigan configuraciones sensibles de pasarelas de pago y datos del sistema.
 - **Exención CSRF para Webhooks de Pago (`bootstrap/app.php`)**: Añadida la ruta `payments/*` a `validateCsrfTokens(except: ...)` para garantizar la recepción confiable de notificaciones POST externas de Mercado Pago y Transbank.
@@ -1075,6 +1112,7 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 ### ✨ Nuevas características
 
 #### API de Proyectos — `precio_desde` y `tipologias`
+
 - Agregados campos computados `precio_desde` y `tipologias` a los endpoints `GET /api/v1/proyectos` y `GET /api/v1/proyectos/{id}`.
 - `precio_desde`: precio de lista (`precio_lista`) más bajo entre las plantas activas del proyecto.
 - `tipologias`: agrupación de plantas activas por `programa` (dormitorios) + `programa2` (baños) + `tipo_producto`, con cantidad de unidades, precio mínimo, superficie útil min/max.
@@ -1083,9 +1121,10 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 - Tests feature cubriendo listado, detalle, proyecto sin plantas, exclusión de plantas inactivas y selección de campos.
 
 #### Salesforce OAuth — Auto-Refresh Proactivo
+
 - Refactorización para implementar auto-refresh proactivo de tokens antes de que expiren silenciosamente.
 - Creados los métodos `isTokenExpiringSoon()` y `proactiveRefresh()` en `SalesforceService` para manejar proactivamente la expiración.
-- Implementado el wrapper centralizado `executeWithTokenProtection()` que valida el token, hace refresh proactivo o intenta reconexión y fallback de retry en caso de error. 
+- Implementado el wrapper centralizado `executeWithTokenProtection()` que valida el token, hace refresh proactivo o intenta reconexión y fallback de retry en caso de error.
 - Refactorizados `query()` y `createCase()` para usar el wrapper.
 - Refactorizado el primer intento de `createLead()` para usar el wrapper, manteniendo la lógica de retry específica de payloads.
 - Actualizado el comando `salesforce:refresh-token` para hacer un refresh proactivo cuando detecta que el token está próximo a expirar en lugar de solo resincronizar el backup.
@@ -1101,11 +1140,13 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 ### 🔒 Seguridad y Observabilidad
 
 #### Hardening de logs en flujos de pago
+
 - Sanitización de tokens y reducción de payloads crudos en logs de Transbank y MercadoPago.
 - Eliminación de persistencia de campos sensibles innecesarios en metadata de webhooks (`transbank_abort_payload`, `mercadopago_payment`).
 - Ajustes de contexto para mantener trazabilidad operativa sin exponer PII/secrets.
 
 #### Matriz centralizada de niveles de log
+
 - Nuevo `App\Support\FlowLogMatrix` para definir severidad por evento/flujo.
 - Adopción de la matriz en:
   - `PaymentWebhookController`
@@ -1118,9 +1159,11 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 ### 🧱 Manejo de Errores
 
 #### Excepciones con mejor trazabilidad
+
 - Refactor de rethrows en servicios de pago para preservar excepción previa (`previous`) y mantener stack trace original.
 
 #### Production Sync
+
 - Logging explícito para:
   - Configuración incompleta
   - Respuestas HTTP no exitosas
@@ -1139,6 +1182,7 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 ### 🔄 Cambios
 
 #### Salesforce OAuth — refinamientos de auto-reconexión y refresh
+
 - `CreateSalesforceCaseJob` ahora intenta `tryAutoReconnect()` tanto cuando OAuth está marcado como desconectado como cuando no hay token en caché, antes de omitir el envío.
 - `salesforce:refresh-token` dejó de forzar `Forrest::refresh()` cuando ya existe token en caché; en ese caso ahora sincroniza y persiste backups (`token_cache_backup` / `refresh_token_cache_backup`) para evitar `invalid_grant` en escenarios con rotación de refresh token.
 - `SalesforceService::updateTokenBackup()` detecta refresh token rotado dentro del blob de token y lo sincroniza en caché + DB.
@@ -1151,11 +1195,13 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 ### 🔄 Cambios
 
 #### Salesforce OAuth — Auto-reconexión silenciosa tras pérdida de token
+
 Resuelve la pérdida de sincronización que ocurría al limpiar el caché (deployments, restart de Redis).
 
 **Problema raíz**: `omniphx/forrest` almacena el access token y el refresh token únicamente en el caché de Laravel (`forrest_token`, `forrest_refresh_token`). Al ejecutar `php artisan cache:clear`, ambas claves se eliminan. Sin el refresh token en caché, Forrest no puede renovar el access token y lanza `MissingResourceException`, lo que provocaba marcación manual como "desconectado" en el panel.
 
 **Solución implementada**:
+
 - `SalesforceOAuthController::callback()` persiste el backup cifrado de `forrest_token` y `forrest_refresh_token` en `SiteSetting.extra_settings.salesforce_oauth` (`token_cache_backup`, `refresh_token_cache_backup`) tras cada OAuth exitoso.
 - `SalesforceService::tryAutoReconnect()`: restaura ambos tokens al caché desde la DB y llama `Forrest::refresh()` para obtener un nuevo access token de Salesforce sin intervención del usuario. Retorna `bool`.
 - `SalesforceService::updateTokenBackup()`: actualiza `token_cache_backup` en DB con el nuevo access token tras cada refresh.
@@ -1166,6 +1212,7 @@ Resuelve la pérdida de sincronización que ocurría al limpiar el caché (deplo
 **Requisito post-deploy**: reconectar OAuth una vez desde `/admin/site-settings` para generar el backup inicial.
 
 #### Panel — Proyectos inactivos visibles en SiteSettings
+
 - El selector de proyecto en `SiteSettings` ahora incluye proyectos inactivos con prefijo `[Inactivo]` en lugar de filtrarlos.
 - Ordenamiento actualizado: activos primero (`orderBy('is_active', 'desc')`), luego por nombre y comuna.
 
@@ -1176,6 +1223,7 @@ Resuelve la pérdida de sincronización que ocurría al limpiar el caché (deplo
 ### 🔒 Seguridad
 
 #### Endurecimiento de autenticación API (`token.origin`)
+
 - `EnsureTokenOriginIsAuthorized` ahora **rechaza requests sin bearer token** con 401 (antes los dejaba pasar).
 - Tokens inválidos o inexistentes en BD también retornan 401 en lugar de pasar silenciosamente.
 - Se corrigió el bug donde `$request->user()` era `null` en rutas sin `auth:sanctum`: el middleware ahora usa `PersonalAccessToken::findToken()` directamente, sin depender de sesión de usuario.
@@ -1183,6 +1231,7 @@ Resuelve la pérdida de sincronización que ocurría al limpiar el caché (deplo
 - Verificación explícita de expiración de token (`expires_at`).
 
 #### Ocultamiento de datos sensibles en `/api/v1/site-config`
+
 - Los campos `payment_gateways.*.config`, `price_source` y `price_percentage_source` **ya no se exponen públicamente**.
 - Se muestran únicamente si el request incluye un bearer token válido y activo.
 - `SiteSetting::forFrontend()` recibe la variable `$hasValidToken` derivada del bearer token del request.
@@ -1194,6 +1243,7 @@ Resuelve la pérdida de sincronización que ocurría al limpiar el caché (deplo
 ### 🔄 Cambios
 
 #### Salesforce OAuth — Duración y Reconexión de Token
+
 - Se incorporó configuración explícita de OAuth scope y prompt para robustecer la entrega de `refresh_token` en el flujo WebServer.
 - Nuevas variables de configuración para Salesforce OAuth:
   - `SF_OAUTH_SCOPE` (default: `api refresh_token offline_access`)
@@ -1209,11 +1259,13 @@ Resuelve la pérdida de sincronización que ocurría al limpiar el caché (deplo
 ### ✨ Agregado
 
 #### Permisos y Control de Acceso (Spatie)
+
 - Integración de `spatie/laravel-permission` para control de acceso granular
 - Rol `marketing` con acceso restringido a recursos específicos del panel
 - Roles y permisos registrados en el seeder principal
 
 #### Canal de Contacto (ContactChannel)
+
 - Nuevo modelo `ContactChannel` con recurso Filament completo
 - Tabla `contact_channels` con campos: nombre, código, icono, color, estado
 - Sincronización de canales desde Salesforce con migración idempotente
@@ -1221,36 +1273,43 @@ Resuelve la pérdida de sincronización que ocurría al limpiar el caché (deplo
 - Resource con List, Create, Edit y filtros de estado
 
 #### Actividad de Usuarios
+
 - Página personalizada `UserActivitiesPage` en Filament para visualizar el log de actividad por usuario
 - Vista Blade dedicada con historial detallado de acciones
 - Tests de cobertura para la página y vista
 
 #### Identidad Visual Modo Oscuro
+
 - Campo `logo_dark_id` con `CuratorPicker` en SiteSettings (tab Branding)
 - `AdminPanelProvider` carga logo claro u oscuro según el modo activo del panel
 - Tests de cobertura para la selección dinámica de logo
 
 #### Acceso y Validación
+
 - Campo RUT en el formulario de usuario con validación de formato chileno
 - Eliminación de rol duplicado al registrar usuarios
 - Restricción de acceso al panel administrativo según permisos Spatie
 
 #### QR y Enlaces de Asesores
+
 - Acción de creación de shortlink QR desde la tabla de asesores
 - Mejoras de descripción y formato en formularios/infolist de Short Links
 - Nuevo flujo de redirección WhatsApp para asesores con helpers UTM
 
 #### Salesforce - Métricas Comerciales de Brokers
+
 - Nuevo comando `salesforce:sync-broker-metrics` para recalcular métricas comerciales desde snapshots locales de oportunidades
 - Programación en scheduler cada 15 minutos con `withoutOverlapping()` para mantener datos de brokers actualizados
 
 #### Herramientas y Flujo de Agentes
+
 - Actualización de instrucciones y contexto operativo para agentes (`AGENTS.md` y `copilot-instructions.md`)
 - Ajustes de tooling de desarrollo para mejorar consistencia del flujo de asistencia en el repositorio
 
 ### 🔄 Cambios
 
 #### Importación CSV de Contactos
+
 - Flujo del wizard ajustado para seleccionar `canal` antes de definir mapeos de columnas.
 - Página de progreso de importación registrada en Filament y navegación del panel.
 - Mapeo CSV robustecido con normalización de llaves y aliases:
@@ -1263,11 +1322,13 @@ Resuelve la pérdida de sincronización que ocurría al limpiar el caché (deplo
 - Cobertura de pruebas actualizada para mapper CSV, normalización histórica y flujo del job de importación.
 
 #### Curator y Tests
+
 - Ajuste de estilo en `MediaForm` (closures y concatenación) para mantener consistencia de formato.
 - Normalización de concatenación en test de QR short link para mayor legibilidad.
 - Sin cambios funcionales en el flujo de redirección ni en la generación de short links.
 
 #### Salesforce — Etapas de Proyecto
+
 - Normalización centralizada de `etapa` con catálogo canónico y aliases legacy
 - Sincronización de proyectos normaliza `Etapa__c` antes de persistir
 - API y tablas del panel homologan representación de etapa (filtros, badges y payload)
@@ -1275,15 +1336,18 @@ Resuelve la pérdida de sincronización que ocurría al limpiar el caché (deplo
 - Tests unitarios y feature actualizados para cubrir normalización y casos legacy
 
 #### Pricing Dinámico de Proyectos
+
 - Incorporación de `descuento_maximo_unidad` y `descuento_maximo_cotizacion_web` en modelo, migraciones y recursos del panel
 - Ajustes de `SiteSettings` para definir fuentes de descuento usadas por el pricing de API
 - Cobertura de pruebas ajustada para validar persistencia, exposición y cálculo de descuentos
 
 #### UX de Panel Filament
+
 - Integración de script/asset para dual scroll en tablas extensas del panel
 - Ajustes de visibilidad de columnas en Contact Submissions para priorizar lectura operativa (por ejemplo, `rango_renta` oculto por defecto)
 
 #### Salesforce — Refinamiento de Mapeos
+
 - Refinamiento de `SalesforceCaseMapper` para resolver website por canal con reglas más robustas
 - Ajustes de mapeo para campos de proyecto legacy/canónicos, incluyendo manejo de `Proyect_ID__c`
 
@@ -1294,6 +1358,7 @@ Resuelve la pérdida de sincronización que ocurría al limpiar el caché (deplo
 ### ✨ Agregado
 
 #### Short Links
+
 - Nuevo modelo `ShortLink` con recurso Filament completo (List, Create, Edit)
 - Rutas cortas configurables con slug, destino, estado y etiquetas UTM
 - Acción `ExportShortLinksAction` con nombre nullable para exportaciones genéricas
@@ -1301,23 +1366,27 @@ Resuelve la pérdida de sincronización que ocurría al limpiar el caché (deplo
 - Icono de cursor outline en navegación de recursos
 
 #### Salesforce — UI y Sincronización
+
 - URL de lead de Salesforce visible como acción de vista rápida en submissions
 - Columnas dinámicas de Salesforce expuestas en la tabla de submissions
 - Acción de re-sincronización forzada de leads desde la tabla del panel
 - Mejoras de UI en el formulario de submissions (defaults de slug, tag manager)
 
 #### Frontend
+
 - Poster para el video hero en la página principal
 - Disclaimers configurables visibles en la sección hero
 - Columna toggles habilitados en tablas para mayor flexibilidad operativa
 - Tweaks de analítica en frontend con deduplicación de eventos
 
 #### Pasarelas de Pago
+
 - Columna `commerce_code` renombrada para mayor consistencia
 - Link manual de pago configurable por pago en Filament
 - Lógica de preferencia: el código de comercio persistido tiene prioridad sobre configuración
 
 #### Logging
+
 - Niveles de log ajustados a `debug` con lógica env-aware para no saturar producción
 
 ---
@@ -1327,11 +1396,13 @@ Resuelve la pérdida de sincronización que ocurría al limpiar el caché (deplo
 ### ✨ Agregado
 
 #### SEO
+
 - Tab SEO en SiteSettings con meta título, descripción, keywords, og:image
 - Frontend React consume y aplica configuración SEO desde `siteConfig` context
 - Tags Open Graph y meta description generados dinámicamente
 
 #### Catálogo Público y Preview
+
 - API de catálogo completamente pública (sin autenticación requerida)
 - Middleware `CatalogPreviewMiddleware` para acceso de preview con token
 - Campo `preview_path` en proyectos para generar URLs de preview
@@ -1339,26 +1410,31 @@ Resuelve la pérdida de sincronización que ocurría al limpiar el caché (deplo
 - Tests de cobertura para el middleware y tokens
 
 #### Facturación y Pago
+
 - Campos de facturación (`billing_name`, `billing_rut`, `billing_address`, etc.) en el flujo de pago
 - Reutilización de datos del usuario pagador para pre-llenar campos de facturación
 - Página pública de estado y resultado del pago sin autenticación
 - No sobreescribir email/RUT del usuario al actualizar desde el formulario de pago
 
 #### Cloudflare Turnstile
+
 - Integración de Cloudflare Turnstile como captcha en el formulario de contacto
 - Validación server-side del token Turnstile
 
 #### MercadoPago Webhooks
+
 - Verificación de firma en webhooks de Mercado Pago
 - Mejoras en el procesamiento del formulario de contacto post-pago
 
 #### Scripts de Header/Footer
+
 - Inyección de scripts de header y footer configurables desde SiteSettings
 - Precarga de `site-config` para evitar inserción doble de scripts
 - Timeout configurable para el fetch de configuración
 - Deduplicación de eventos Facebook Pixel
 
 #### UTM y Rastreo
+
 - Respeto de `utm_campaign` por defecto configurado en SiteSettings
 - Soporte para legacy `auto-tagging` de UTM campaign
 - Resolución del teléfono del asesor del proyecto para contacto
@@ -1371,6 +1447,7 @@ Resuelve la pérdida de sincronización que ocurría al limpiar el caché (deplo
 ### ✨ Agregado
 
 #### Salesforce — Flujo de Leads
+
 - El formulario de contacto ahora crea Leads en lugar de Cases
 - Reintentos automáticos de Lead ante campos inválidos con mapeo de UTMs
 - Eliminación de campos no escribibles en el payload de Salesforce
@@ -1378,6 +1455,7 @@ Resuelve la pérdida de sincronización que ocurría al limpiar el caché (deplo
 - Logging detallado de operaciones Salesforce
 
 #### Formulario de Contacto — Enriquecimiento
+
 - Campo de rango de ingresos (`income_range`) en el formulario de contacto
 - Manejo de `project_types` por opción con rangos selectables
 - Lógica condicional basada en proyectos en lugar de categorías
@@ -1386,20 +1464,24 @@ Resuelve la pérdida de sincronización que ocurría al limpiar el caché (deplo
 - RUT y datos de proyecto enviados al mapper de Salesforce
 
 #### Catálogo y Curator
+
 - Toggle `mostrar_plantas` en SiteSettings para mostrar/ocultar el catálogo
 - Textos de catálogo no disponible configurables con RichEditor
 - Curación de Curator y toggle de UI del catálogo
 - `is_active` preservado en sincronización de proyectos
 
 #### Preview y Tokens
+
 - Generación de URLs de preview con token firmado
 - Links de preview frontend con token de acceso
 - Eliminación de la acción de activación masiva
 
 #### QueuePendingList
+
 - Widget `QueuePendingList` en el dashboard para monitorear trabajos pendientes en cola
 
 #### Exporter
+
 - `ContactSubmissionsExporter` con acción de exportación CSV
 
 ---
@@ -1409,6 +1491,7 @@ Resuelve la pérdida de sincronización que ocurría al limpiar el caché (deplo
 ### ✨ Agregado
 
 #### GTM y Analítica
+
 - Integración de Google Tag Manager configurable desde SiteSettings
 - Soporte para Facebook Pixel en el Tag Manager
 - Filtros de catálogo por slug de proyecto y comuna
@@ -1416,6 +1499,7 @@ Resuelve la pérdida de sincronización que ocurría al limpiar el caché (deplo
 - Mejoras en el formulario de contacto con enhancements de tracking
 
 #### Transbank Mall — Estabilización
+
 - Persistencia de pagos Transbank y manejo completo de webhooks de retorno
 - Logging detallado del flujo de checkout
 - Bridge de redirección para el retorno de Transbank
@@ -1425,15 +1509,18 @@ Resuelve la pérdida de sincronización que ocurría al limpiar el caché (deplo
 - Corrección de parámetros y mejora de manejo de errores
 
 #### Tipo de Producto en Plantas
+
 - Campo `tipo_producto` en el modelo `Plant`
 - Normalización y filtros de `tipo_producto` en API y Filament
 - Filtro con tests de cobertura para tipo de producto
 
 #### Configuración Salesforce
+
 - Tab de configuración de sincronización Salesforce en SiteSettings
 - Filtro de sincronización de plantas por proyecto y tipo de producto
 
 #### UI y Operación
+
 - Logo de venta configurable desde SiteSettings y aplicado en frontend
 - HtmlCodeEditor disponible como componente de formulario
 - Manejo del cierre del dialog de plantas en frontend
@@ -1445,17 +1532,20 @@ Resuelve la pérdida de sincronización que ocurría al limpiar el caché (deplo
 ### ✨ Agregado
 
 #### Sumisiones de Contacto
+
 - Tabla `contact_submissions` con campos de venta y unidad
 - Filtros de `unidad_sale` y activación masiva en la tabla de Filament
 - Tokens de monto y moneda de reserva en templates de notificaciones
 
 #### FinMail — Notificaciones de Email
+
 - Integración del plugin `fin-mail` para notificaciones de correo transaccional
 - Migraciones de tablas de email (`fin_mail_*`)
 - Logging de actividad de negocio vinculado a eventos del sistema
 - Wrap del registro del scheduler en try/catch para mayor estabilidad
 
 #### UI de Plantas (Frontend)
+
 - Interfaz actualizada del detalle de planta con estado de carga
 - Asesores de proyecto expuestos en el payload de planta y en la UI
 - Sincronización de imágenes de planta, branding y asesores desde Salesforce
@@ -1464,6 +1554,7 @@ Resuelve la pérdida de sincronización que ocurría al limpiar el caché (deplo
 - Sello de descuento y refactoring del detalle de planta
 
 #### Exportaciones y Pagos Manuales
+
 - `ExportAction` habilitado para usuarios, pagos y plantas
 - Soporte para pagos manuales con referencia libre
 - API de disponibilidad de plantas mejorada
@@ -1475,10 +1566,12 @@ Resuelve la pérdida de sincronización que ocurría al limpiar el caché (deplo
 ### ✨ Agregado
 
 #### Web Awesome 3.4.0
+
 - Migración al paquete `@web.awesome.me` con versión 3.4.0
 - Soporte actualizado para componentes React de Web Awesome
 
 #### Filtros de Ubicación
+
 - Filtros por región y comuna en la API de proyectos y catálogo
 - Mejoras de UI en Filament para filtros de proyectos y plantas
 
@@ -1489,26 +1582,31 @@ Resuelve la pérdida de sincronización que ocurría al limpiar el caché (deplo
 ### ✨ Agregado
 
 #### Sincronización de Plantas — Mejoras
+
 - Job `SyncPlantsJob` con tests de cobertura
 - Columna de imagen de portada visible en la tabla de plantas del panel
 - Payloads de imagen de plantas en tests
 - Timeout de reserva configurable con validación de UI
 
 #### API de Plantas — Filtros y Documentación
+
 - Filtros avanzados en la API de plantas (tipo, estado, proyecto, región)
 - Endpoint de documentación de la API v1
 - Tests de cobertura para filtros y documentación
 
 #### Autenticación de API
+
 - Gestión de API tokens en el panel Filament
 - Middleware de origen (`origin`) para control de acceso
 - Autenticación requerida para endpoints públicos de API
 
 #### Activity Log
+
 - `ActivityLogAuthorization` como middleware para restringir el log por perfil
 - Seeder actualizado para incluir el permiso de activity log
 
 #### Pruebas y Entorno
+
 - Aislamiento con `sqlite_testing` para suite de tests
 - Payloads de imágenes de plantas en escenarios de prueba
 
@@ -1519,6 +1617,7 @@ Resuelve la pérdida de sincronización que ocurría al limpiar el caché (deplo
 ### ✨ Agregado
 
 #### Transbank Mall — Implementación
+
 - `TransbankService` migrado de Simple a Mall (`WebpayMall`)
 - Soporte para múltiples códigos de comercio por proyecto via `TRANSBANK_STORE_CODES` JSON
 - `createTransaction()` con `commerce_code_store` dinámico resuelto desde el proyecto
@@ -1527,17 +1626,20 @@ Resuelve la pérdida de sincronización que ocurría al limpiar el caché (deplo
 - Filament UI para gestión de códigos de comercio por proyecto
 
 #### Sistema de Reservas de Plantas
+
 - Tabla `plant_reservations` con timeout configurable
 - Job `ExpireReservations` para expirar reservas vencidas
 - API de disponibilidad considera reservas activas y pagos completados
 - Dialog de confirmación de reserva en frontend
 
 #### PaymentGatewayDialog
+
 - Componente React `PaymentGatewayDialog` integrado en Home
 - Soporte para múltiples gateways desde un único dialog
 - Dashboard con orden de widgets configurable
 
 #### API de Monitoreo
+
 - Widgets de monitoreo de API en el dashboard con tests
 - Endpoint de documentación de API v1
 - Autenticación requerida para endpoints administrativos
@@ -1545,6 +1647,7 @@ Resuelve la pérdida de sincronización que ocurría al limpiar el caché (deplo
 ### 🔄 Cambios
 
 #### Configuración del Proyecto
+
 - Archivos de bootstrap cacheados removidos del tracking de git
 - `TRANSBANK_STORE_CODES` como variable de entorno JSON para mapeo proyecto↔código
 - Pruebas migradas a SQLite para aislamiento
@@ -1556,6 +1659,7 @@ Resuelve la pérdida de sincronización que ocurría al limpiar el caché (deplo
 ### ✨ Agregado
 
 #### Gestión Centralizada de Medios (Filament Curator)
+
 - Instalación e integración de `awcodes/filament-curator` v1.x
 - Tabla `curator` para registro de archivos con metadata
 - File Manager accesible en `/admin/media`
@@ -1570,6 +1674,7 @@ Resuelve la pérdida de sincronización que ocurría al limpiar el caché (deplo
 - Glide token generado para transformaciones de imagen
 
 #### Sistema de Mantenimiento Avanzado
+
 - RichEditor WYSIWYG para editar mensajes de mantenimiento
 - Toggle para cambiar entre vista enriquecida y HTML plano
 - Web Awesome `<wa-dialog>` component (reemplaza overlay custom)
@@ -1579,6 +1684,7 @@ Resuelve la pérdida de sincronización que ocurría al limpiar el caché (deplo
 - Campo `maintenance_use_html` para modo HTML
 
 #### UI/UX
+
 - Banner promocional con imagen y link configurables
 - Integración de Web Awesome 3.4.0 en componentes del frontend y mantenimiento
 - 11 temas Web Awesome disponibles en configuración
@@ -1586,6 +1692,7 @@ Resuelve la pérdida de sincronización que ocurría al limpiar el caché (deplo
 - Soporte para múltiples paletas de colores
 
 #### Estructuras de Base de Datos
+
 - Migración: `2026_02_25_122347_add_transbank_commerce_code_to_proyectos.php`
   - Campo `transbank_commerce_code` en proyectos para multiples códigos comerciales
 - Migración: `2026_02_25_124607_add_banner_fields_to_site_settings.php`
@@ -1600,6 +1707,7 @@ Resuelve la pérdida de sincronización que ocurría al limpiar el caché (deplo
   - Foreign keys a tabla `curator` con `onDelete('set null')`
 
 #### Backend (Laravel/Filament)
+
 - SiteSetting modelo:
   - Relaciones `belongsTo(Media)` para todos los campos de imagen
   - Método `forFrontend()` que carga URLs directas desde Curator Media
@@ -1617,6 +1725,7 @@ Resuelve la pérdida de sincronización que ocurría al limpiar el caché (deplo
   - HTML mode toggle con lógica de dehydration
 
 #### Frontend (React)
+
 - Componente MaintenanceMode:
   - Web Awesome `<wa-dialog>` (modal behavior)
   - Uso de `dialog.open` property (no métodos deprecated)
@@ -1630,6 +1739,7 @@ Resuelve la pérdida de sincronización que ocurría al limpiar el caché (deplo
 - Home.jsx: Integración de BannerPromo antes de hero
 
 #### Build & Tooling
+
 - Creación de `tailwind.config.js`
   - Content paths para Filament y Curator views
   - Asegura que Tailwind procese clases de Curator
@@ -1642,16 +1752,19 @@ Resuelve la pérdida de sincronización que ocurría al limpiar el caché (deplo
 ### 🔄 Cambios
 
 #### Model Updates
+
 - `Proyecto` model: Removidas relaciones innecesarias con PaymentPlan
 - `SiteSetting` model: Migracion de relaciones de disco a Curator Media
 - Proyectos Form schema reorganizado en 2 secciones principales
 
 #### Admin Panel
+
 - Logo y favicon ahora cargan desde Curator en lugar de disco branding
 - Todos los campos de imagen migrados de FileUpload a CuratorPicker
 - RichEditor cambió de attachments en disco a Curator Media attachments
 
 #### Frontend
+
 - Maintenance overlay reemplazado por Web Awesome dialog component
 - Dialog styling con SCSS personalizado para Web Awesome
 - Body class management implementado para estado de mantenimiento
@@ -1680,6 +1793,7 @@ Resuelve la pérdida de sincronización que ocurría al limpiar el caché (deplo
 ```
 
 Instaladas automáticamente:
+
 - `crop/cropper`: ^1.6.2 (CropperJS)
 - `league/php-mime-type-detection`: ^1.x
 - Otros dependencies de Curator
@@ -1712,6 +1826,7 @@ Instaladas automáticamente:
 ### 🎯 Casos de Uso
 
 **Flujo de Upload de Logo:**
+
 1. Admin va a `/admin/site-settings` → Branding tab
 2. Hace click en CuratorPicker para logo
 3. Sube imagen desde File Manager o carga existente
@@ -1721,6 +1836,7 @@ Instaladas automáticamente:
 7. Logo aparece en admin panel y frontend automáticamente
 
 **Flujo de Attachment en Maintenance Message:**
+
 1. Admin activa `maintenance_mode`
 2. Escribe mensaje en RichEditor
 3. Hace click en botón "Attach Curator Media"
@@ -1732,6 +1848,7 @@ Instaladas automáticamente:
 ### 🚀 Deployment
 
 Antes de deployar a producción:
+
 1. Ejecutar `php artisan migrate --force`
 2. Verificar que `storage/` está writable
 3. Ejecutar `php artisan storage:link`
@@ -1744,23 +1861,28 @@ Antes de deployar a producción:
 ## Notas para Desarrolladores
 
 ### Estructura de Migrations
+
 Las migraciones se ejecutan en orden cronológico. Verificar que las FK están en orden:
+
 - `2026_02_25_140351_create_curator_table.php` debe ejecutarse antes de
 - `2026_02_25_142024_add_curator_media_ids_to_site_settings.php`
 
 ### Troubleshooting
 
 **Logo no carga en admin:**
+
 - Verificar que `logo_id` tiene valor en DB
 - Verificar que relación `logoMedia()` está configurada
 - Ejecutar `php artisan optimize:clear`
 
 **Attachment en RichEditor no aparece:**
+
 - Verificar que `AttachCuratorMediaPlugin::make()` está registrado
 - Verificar que toolbar buttons include `'attachCuratorMedia'`
 - Comprobar que tabla `curator` tiene registros
 
 **Styles de Curator incompletos:**
+
 - Ejecutar `npm run build` para compilar tailwind
 - Verificar content paths en `tailwind.config.js`
 - Limpiar caché: `php artisan optimize:clear`
@@ -1777,6 +1899,7 @@ Las migraciones se ejecutan en orden cronológico. Verificar que las FK están e
 ---
 
 **Stack Versions Utilizadas:**
+
 - Laravel 12.49.0
 - Filament 5.x
 - PHP 8.4.16
