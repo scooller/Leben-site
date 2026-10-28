@@ -2,6 +2,19 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.9] - 2026-10-28
+
+### 🎨 Modal Interactivo para Configurar Gradiente CSS (`ProyectoForm`)
+
+- **Tab 1: Identidad Visual, Paleta & Hero**:
+  - Reemplazados múltiples inputs sueltos en el formulario principal por una acción limpia en modal (`suffixAction` con icono de paleta `heroicon-m-swatch` sobre `theme_colors.gradient`).
+  - Al hacer clic en el botón de edición se abre un modal con:
+    - **Vista previa visual en vivo**: Render interactivo de 60px de altura con sombra y código CSS resultante actualizado en tiempo real.
+    - **Color Inicial (0%)**: Selector `ColorPicker`.
+    - **Color Final (100%)**: Selector `ColorPicker`.
+    - **Ángulo de Inclinación (`0° - 360°`)**: Campo numérico con sufijo `deg`.
+  - Precarga inteligente del formulario (`fillForm`) parseando el valor actual de `theme_colors.gradient` y asignación automática al confirmar el modal.
+
 ## [1.13.8] - 2026-10-28
 
 ### 🗺️ Curator para Logos y Fondos Decorativos & Ocultamiento de Mapa sin Imagen

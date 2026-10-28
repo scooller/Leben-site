@@ -20,11 +20,13 @@ use Filament\Schemas\Components\Icon;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\HtmlString;
 
 class ProyectoForm
 {
@@ -413,7 +415,84 @@ class ProyectoForm
                                                                 ColorPicker::make('theme_colors.accent')->label('Color de Acento (--lb-project-accent)')->placeholder('#d9bc70'),
                                                                 ColorPicker::make('theme_colors.accent_dark')->label('Acento Oscuro (--lb-project-accent-dark)')->placeholder('#c4a355'),
                                                                 ColorPicker::make('theme_colors.accent_light')->label('Acento Claro (--lb-project-accent-light)')->placeholder('#e2ca8d'),
-                                                                TextInput::make('theme_colors.gradient')->label('Gradiente (--lb-project-gradient)')->placeholder('linear-gradient(135deg, #d9bc70 0%, #b89345 100%)'),
+
+                                                                TextInput::make('theme_colors.gradient')
+                                                                    ->label('Gradiente (--lb-project-gradient)')
+                                                                    ->placeholder('linear-gradient(135deg, #d9bc70 0%, #b89345 100%)')
+                                                                    ->default('linear-gradient(135deg, #d9bc70 0%, #b89345 100%)')
+                                                                    ->helperText('Haz clic en el botón de la derecha para abrir el editor visual de gradiente (colores y ángulo).')
+                                                                    ->suffixAction(
+                                                                        Action::make('openGradientBuilder')
+                                                                            ->label('Editar')
+                                                                            ->icon('heroicon-m-swatch')
+                                                                            ->tooltip('Abrir editor visual de gradiente')
+                                                                            ->modalHeading('Configurador de Gradiente CSS')
+                                                                            ->modalDescription('Ajusta los colores inicial, final y el ángulo de inclinación para tu gradiente.')
+                                                                            ->modalSubmitActionLabel('Aplicar Gradiente')
+                                                                            ->modalWidth('lg')
+                                                                            ->fillForm(function (Get $get): array {
+                                                                                $current = $get('theme_colors.gradient');
+                                                                                $deg = 135;
+                                                                                $from = '#d9bc70';
+                                                                                $to = '#b89345';
+
+                                                                                if ($current && preg_match('/linear-gradient\(\s*(-?\d+)deg\s*,\s*([^,]+?)\s*(?:0%)?\s*,\s*([^,]+?)\s*(?:100%)?\s*\)/i', $current, $matches)) {
+                                                                                    $deg = (int) $matches[1];
+                                                                                    $from = trim($matches[2]);
+                                                                                    $to = trim($matches[3]);
+                                                                                }
+
+                                                                                return [
+                                                                                    'deg' => $deg,
+                                                                                    'from' => $from,
+                                                                                    'to' => $to,
+                                                                                ];
+                                                                            })
+                                                                            ->form([
+                                                                                Placeholder::make('modal_gradient_preview')
+                                                                                    ->label('Vista Previa en Vivo')
+                                                                                    ->columnSpanFull()
+                                                                                    ->content(function (Get $get): HtmlString {
+                                                                                        $deg = $get('deg') ?? 135;
+                                                                                        $from = $get('from') ?: '#d9bc70';
+                                                                                        $to = $get('to') ?: '#b89345';
+                                                                                        $css = "linear-gradient({$deg}deg, {$from} 0%, {$to} 100%)";
+
+                                                                                        return new HtmlString('
+                                                                                            <div style="height: 60px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 4px 12px rgba(0,0,0,0.15); background: '.$css.';"></div>
+                                                                                            <div style="font-family: monospace; font-size: 11px; margin-top: 6px; opacity: .75; text-align: center;">'.$css.'</div>
+                                                                                        ');
+                                                                                    }),
+
+                                                                                ColorPicker::make('from')
+                                                                                    ->label('Color Inicial (0%)')
+                                                                                    ->default('#d9bc70')
+                                                                                    ->live()
+                                                                                    ->required(),
+
+                                                                                ColorPicker::make('to')
+                                                                                    ->label('Color Final (100%)')
+                                                                                    ->default('#b89345')
+                                                                                    ->live()
+                                                                                    ->required(),
+
+                                                                                TextInput::make('deg')
+                                                                                    ->label('Ángulo (0° - 360°)')
+                                                                                    ->numeric()
+                                                                                    ->default(135)
+                                                                                    ->suffix('deg')
+                                                                                    ->minValue(0)
+                                                                                    ->maxValue(360)
+                                                                                    ->live()
+                                                                                    ->required(),
+                                                                            ])
+                                                                            ->action(function (array $data, Set $set): void {
+                                                                                $deg = $data['deg'] ?? 135;
+                                                                                $from = $data['from'] ?? '#d9bc70';
+                                                                                $to = $data['to'] ?? '#b89345';
+                                                                                $set('theme_colors.gradient', "linear-gradient({$deg}deg, {$from} 0%, {$to} 100%)");
+                                                                            })
+                                                                    ),
                                                                 TextInput::make('hero_eyebrow')->label('Eyebrow Hero')->placeholder('Puerto Varas'),
                                                                 TextInput::make('hero_title')->label('Título Hero (SplitTitle)')->placeholder('VIVE EL LUJO EN PUERTO VARAS'),
                                                                 TextInput::make('hero_subtitle')->label('Subtítulo Hero')->nullable(),
