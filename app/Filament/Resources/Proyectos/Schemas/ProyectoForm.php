@@ -275,7 +275,8 @@ class ProyectoForm
                                             ->nullable()
                                             ->validationMessages([
                                                 'in' => 'El código de comercio seleccionado no es válido o no está configurado en Transbank.',
-                                            ]),
+                                            ])
+                                            ->columnSpanFull(),
 
                                         Section::make('Pago Manual por Proyecto')
                                             ->description('Configura los datos de depósito y/o link de pago para este proyecto')
@@ -387,54 +388,28 @@ class ProyectoForm
                         Tab::make('Información Web (Ficha Canónica)')
                             ->icon('heroicon-o-globe-alt')
                             ->schema([
-                                Section::make('Ficha Canónica y Contenido Web (Inn.jsx)')
-                                    ->description('Configuración de diseño de alta gama, paleta cromática, tours 360, interiorismo y avisos por proyecto')
+                                Section::make('Gestión Integral de la Ficha Web del Proyecto')
+                                    ->description('Configura todos los textos, imágenes, videos, amenidades y mapas interactivos que se visualizan en el frontend.')
                                     ->collapsible(false)
                                     ->relationship('detail')
-                                    ->columns(2)
                                     ->schema([
-                                        Section::make('Paleta Cromática (Theming CSS)')
-                                            ->description('Variables CSS inyectadas dinámicamente')
+                                        // 1. PALETA & HERO
+                                        Section::make('1. Identidad Visual, Paleta & Hero')
+                                            ->description('Colores de acento CSS, video de cabecera y logotipos')
+                                            ->collapsible()
                                             ->schema([
                                                 ColorPicker::make('theme_colors.accent')->label('Color de Acento (--lb-project-accent)')->placeholder('#d9bc70'),
                                                 ColorPicker::make('theme_colors.accent_dark')->label('Acento Oscuro (--lb-project-accent-dark)')->placeholder('#c4a355'),
                                                 ColorPicker::make('theme_colors.accent_light')->label('Acento Claro (--lb-project-accent-light)')->placeholder('#e2ca8d'),
                                                 TextInput::make('theme_colors.gradient')->label('Gradiente (--lb-project-gradient)')->placeholder('linear-gradient(135deg, #d9bc70 0%, #b89345 100%)'),
-                                            ])
-                                            ->columns(2)
-                                            ->columnSpan(1),
-
-                                        Section::make('Aviso Emergente y Horarios')
-                                            ->description('Pop-up y horarios específicos')
-                                            ->schema([
-                                                Toggle::make('announcement.enabled')->label('Activar Aviso Emergente')->default(false)->columnSpan(2),
-                                                TextInput::make('announcement.id')->label('ID Aviso')->placeholder('aviso-inn-2026'),
-                                                TextInput::make('announcement.title')->label('Título del Aviso')->placeholder('Horario Especial'),
-                                                RichEditor::make('announcement.message')
-                                                    ->label('Mensaje del Aviso (WYSIWYG)')
-                                                    ->placeholder('Informamos a nuestros clientes e inversionistas...')
-                                                    ->columnSpan(2),
-                                                TextInput::make('announcement.button_text')->label('Texto Botón')->default('Entendido')->columnSpan(2),
-                                                Repeater::make('schedule')
-                                                    ->label('Horarios de Atención')
-                                                    ->simple(TextInput::make('item')->label('Línea de Horario'))
-                                                    ->defaultItems(0)
-                                                    ->columnSpan(2),
-                                            ])
-                                            ->columns(2)
-                                            ->columnSpan(1),
-
-                                        Section::make('Hero y Barra Técnica')
-                                            ->description('Encabezado principal y especificaciones clave')
-                                            ->schema([
                                                 TextInput::make('hero_eyebrow')->label('Eyebrow Hero')->placeholder('Puerto Varas'),
-                                                TextInput::make('hero_title')->label('Título Hero (si difiere del nombre)')->nullable(),
+                                                TextInput::make('hero_title')->label('Título Hero (SplitTitle)')->placeholder('VIVE EL LUJO EN PUERTO VARAS'),
                                                 TextInput::make('hero_subtitle')->label('Subtítulo Hero')->nullable(),
-                                                TextInput::make('hero_video_url')->label('URL Video Hero (MP4)')->url()->placeholder('https://...')->nullable(),
-                                                CuratorPicker::make('hero_logo_id')->label('Logo Específico del Proyecto (Curator)'),
-                                                TextInput::make('hero_logo_url')->label('URL directa de Logo (Fallback)')->url()->placeholder('https://...')->nullable(),
+                                                TextInput::make('hero_video_url')->label('URL Video Hero (MP4)')->url()->placeholder('https://... o video/inn-new.mp4'),
+                                                CuratorPicker::make('hero_logo_id')->label('Logo Header (Curator)'),
+                                                TextInput::make('hero_logo_url')->label('URL Directa de Logo Header (Fallback)')->placeholder('images/inn/Logo_INN_Header.png'),
                                                 Repeater::make('technical_info')
-                                                    ->label('Especificaciones Barra Técnica INFO')
+                                                    ->label('Barra Técnica de Especificaciones (INFO)')
                                                     ->schema([
                                                         TextInput::make('id')->label('ID')->required(),
                                                         TextInput::make('label')->label('Etiqueta')->required(),
@@ -442,26 +417,264 @@ class ProyectoForm
                                                     ])
                                                     ->columns(3)
                                                     ->defaultItems(0)
-                                                    ->columnSpan(2),
+                                                    ->columnSpanFull(),
+                                                Toggle::make('announcement.enabled')->label('Activar Aviso Emergente')->default(false)->columnSpan(2),
+                                                TextInput::make('announcement.title')->label('Título del Aviso')->placeholder('Horario Especial'),
+                                                RichEditor::make('announcement.message')->label('Mensaje del Aviso')->columnSpan(2),
+                                                Repeater::make('schedule')
+                                                    ->label('Líneas de Horario de Atención')
+                                                    ->simple(TextInput::make('item')->label('Horario'))
+                                                    ->defaultItems(0)
+                                                    ->columnSpanFull(),
                                             ])
-                                            ->columns(2)
-                                            ->columnSpan(2),
+                                            ->columns(2),
 
-                                        Section::make('Overview, Terminaciones y Recorridos 360')
-                                            ->description('Contenido descriptivo, tours 3D y brochure descargable')
+                                        // 2. SECCIÓN PROYECTO & VIDEOS INTERMEDIOS
+                                        Section::make('2. Sección Proyecto & Videos Intermedios')
+                                            ->description('Textos editoriales del proyecto, oferta destacada, carrusel de fotos y banners de video')
+                                            ->collapsible()
                                             ->schema([
-                                                TextInput::make('overview_title')->label('Título Overview')->nullable(),
-                                                TextInput::make('brochure_pdf_url')->label('URL Folleto / Brochure PDF')->url()->placeholder('https://...')->nullable(),
-                                                RichEditor::make('overview_description')
-                                                    ->label('Descripción Overview (WYSIWYG)')
-                                                    ->nullable()
-                                                    ->columnSpan(2),
-                                                TextInput::make('virtual_tour_matterport_url')->label('URL Tour Matterport 3D')->url()->placeholder('https://...')->nullable(),
-                                                TextInput::make('virtual_tour_360_url')->label('URL Recorrido 360 (La Nube 360)')->url()->placeholder('https://...')->nullable(),
-                                                TextInput::make('virtual_tour_video_url')->label('URL Video YouTube')->url()->placeholder('https://...')->nullable()->columnSpan(2),
+                                                TextInput::make('project_eyebrow')->label('Eyebrow Sección')->default('Proyecto'),
+                                                TextInput::make('project_title')->label('Título Sección')->placeholder('LOS MEJORES DEPARTAMENTOS DE PUERTO VARAS'),
+                                                TextInput::make('project_highlight_offer')->label('Oferta Destacada (HTML)')->placeholder('paga el pie en <b>60</b> cuotas'),
+                                                RichEditor::make('project_description')->label('Descripción Editorial (HTML)')->columnSpanFull(),
+                                                Repeater::make('project_slides')
+                                                    ->label('Slides del Carrusel de Proyecto')
+                                                    ->schema([
+                                                        TextInput::make('img')->label('Ruta o URL de Imagen')->required()->placeholder('images/inn/proyecto/Proyecto_01_Acceso.jpg'),
+                                                        TextInput::make('alt')->label('Texto Alternativo')->required()->placeholder('Acceso'),
+                                                    ])
+                                                    ->columns(2)
+                                                    ->defaultItems(0)
+                                                    ->columnSpanFull(),
+                                                Repeater::make('video_interstitials')
+                                                    ->label('Banners de Video Intermedios (Entre Secciones)')
+                                                    ->schema([
+                                                        TextInput::make('text')->label('Texto Motivacional sobre Video')->required(),
+                                                        TextInput::make('video_url')->label('Ruta o URL del Video (MP4)')->required()->placeholder('video/video_reconfortante_a.mp4'),
+                                                    ])
+                                                    ->columns(2)
+                                                    ->defaultItems(0)
+                                                    ->columnSpanFull(),
                                             ])
-                                            ->columns(2)
-                                            ->columnSpan(2),
+                                            ->columns(2),
+
+                                        // 3. EQUIPAMIENTO Y MODAL DE ESPACIOS
+                                        Section::make('3. Sección Equipamiento / Departamentos')
+                                            ->description('Marcas aliadas, terminaciones, slides y galerías del modal Ver Detalles')
+                                            ->collapsible()
+                                            ->schema([
+                                                TextInput::make('equipment_eyebrow')->label('Eyebrow')->default('Equipamiento'),
+                                                TextInput::make('equipment_title')->label('Título')->placeholder('SOFISTICACIÓN EN CADA DETALLE'),
+                                                TextInput::make('equipment_bg_image_url')->label('Fondo Decorativo SVG/PNG')->placeholder('images/inn/Perspectiva.svg'),
+                                                RichEditor::make('equipment_description')->label('Descripción de Equipamiento')->columnSpanFull(),
+                                                Repeater::make('equipment_brands')
+                                                    ->label('Logos de Marcas Aliadas')
+                                                    ->schema([
+                                                        TextInput::make('src')->label('Ruta / URL del Logo')->required()->placeholder('images/logos/franke.png'),
+                                                        TextInput::make('alt')->label('Nombre de la Marca')->required()->placeholder('Franke'),
+                                                    ])
+                                                    ->columns(2)
+                                                    ->defaultItems(0)
+                                                    ->columnSpanFull(),
+                                                Repeater::make('equipment_slides')
+                                                    ->label('Slides de Equipamiento Principal')
+                                                    ->schema([
+                                                        TextInput::make('img')->label('Ruta / URL Imagen')->required()->placeholder('images/inn/equipamiento/Equipamiento_Principal_Cocina.jpg'),
+                                                        TextInput::make('alt')->label('Etiqueta')->required()->placeholder('Cocina'),
+                                                    ])
+                                                    ->columns(2)
+                                                    ->defaultItems(0)
+                                                    ->columnSpanFull(),
+                                                Repeater::make('equipment_spaces_modal')
+                                                    ->label('Galerías del Modal "Ver Detalles" (Por Ambiente)')
+                                                    ->schema([
+                                                        TextInput::make('label')->label('Nombre del Ambiente (ej: Cocina, Baños)')->required(),
+                                                        Repeater::make('images')
+                                                            ->label('Imágenes del Ambiente')
+                                                            ->schema([
+                                                                TextInput::make('img')->label('URL Imagen Grande')->required(),
+                                                                TextInput::make('alt')->label('Descripción / Título')->required(),
+                                                                TextInput::make('thumb')->label('Miniatura (Opcional)')->nullable(),
+                                                            ])
+                                                            ->columns(3)
+                                                            ->defaultItems(0),
+                                                    ])
+                                                    ->defaultItems(0)
+                                                    ->columnSpanFull(),
+                                            ])
+                                            ->columns(2),
+
+                                        // 4. RECORRIDOS 360 & MASTERPLAN
+                                        Section::make('4. Recorridos 360, Masterplan & Folleto')
+                                            ->description('Tours virtuales Matterport, 360 interactivos, folleto descargable y vistas')
+                                            ->collapsible()
+                                            ->schema([
+                                                TextInput::make('virtual_tour_matterport_url')->label('URL Matterport 3D')->placeholder('https://my.matterport.com/show/?m=...'),
+                                                TextInput::make('virtual_tour_360_url')->label('URL Recorrido 360 (La Nube 360)')->placeholder('https://www.lanube360.com/...'),
+                                                TextInput::make('virtual_tour_video_url')->label('URL Video Recorrido (YouTube / MP4)')->placeholder('https://...'),
+                                                TextInput::make('brochure_pdf_url')->label('URL Folleto / Brochure PDF')->placeholder('https://... o /storage/...'),
+                                                Repeater::make('virtual_tours_config')
+                                                    ->label('Tours y Subvistas Personalizadas (Masterplan)')
+                                                    ->schema([
+                                                        TextInput::make('label')->label('Pestaña (ej: Masterplan, Piloto 360)')->required(),
+                                                        TextInput::make('title')->label('Título')->required(),
+                                                        TextInput::make('src')->label('URL o Archivo Principal (Iframe / Imagen)')->nullable(),
+                                                        Repeater::make('images')
+                                                            ->label('Subvistas (si es Masterplan multipiso)')
+                                                            ->schema([
+                                                                TextInput::make('title')->label('Nombre de Subvista (ej: Piso 1)')->required(),
+                                                                TextInput::make('src')->label('Ruta / URL Imagen')->required(),
+                                                            ])
+                                                            ->columns(2)
+                                                            ->defaultItems(0),
+                                                    ])
+                                                    ->defaultItems(0)
+                                                    ->columnSpanFull(),
+                                            ])
+                                            ->columns(2),
+
+                                        // 5. ESPACIOS COMUNES (AMENIDADES)
+                                        Section::make('5. Espacios Comunes (Amenidades)')
+                                            ->description('Carrusel de espacios comunes con íconos animados y fotografías')
+                                            ->collapsible()
+                                            ->schema([
+                                                TextInput::make('espacios_eyebrow')->label('Eyebrow')->default('Espacios'),
+                                                TextInput::make('espacios_title')->label('Título')->placeholder('ESPACIOS DE OTRO NIVEL'),
+                                                TextInput::make('espacios_bg_image_url')->label('Fondo Decorativo SVG/PNG')->placeholder('images/inn/Climbing.svg'),
+                                                RichEditor::make('espacios_description')->label('Descripción de Espacios Comunes')->columnSpanFull(),
+                                                Repeater::make('espacios_items')
+                                                    ->label('Lista de Espacios Comunes / Amenidades')
+                                                    ->schema([
+                                                        TextInput::make('id')->label('ID Único (ej: hall, gourmet, piscina)')->required(),
+                                                        TextInput::make('label')->label('Nombre con salto (ej: Sala gourmet con<br />quincho)')->required(),
+                                                        Select::make('icon_key')
+                                                            ->label('Ícono')
+                                                            ->options([
+                                                                'bell' => 'Conserjería / Acceso (Bell)',
+                                                                'table' => 'Atrio / Mesa (Table)',
+                                                                'chef-hat' => 'Quincho / Gourmet (Chef Hat)',
+                                                                'dumbbell' => 'Training Zone / Gimnasio (Dumbbell)',
+                                                                'hot-tub' => 'Rooftop / Jacuzzi (Hot Tub)',
+                                                                'waves-ladder' => 'Piscina Climatizada (Pool)',
+                                                                'kayak' => 'Bodega Náutica (Kayak)',
+                                                            ])
+                                                            ->default('bell')
+                                                            ->required(),
+                                                        TextInput::make('img')->label('Ruta / URL Imagen')->required()->placeholder('images/inn/eecc/EECC_01.jpg'),
+                                                        TextInput::make('link')->label('URL Imagen Ampliable (Fancybox)')->nullable(),
+                                                        TextInput::make('alt')->label('Texto Alternativo')->required(),
+                                                    ])
+                                                    ->columns(3)
+                                                    ->defaultItems(0)
+                                                    ->columnSpanFull(),
+                                            ])
+                                            ->columns(2),
+
+                                        // 6. MAPA INTERACTIVO Y POIS
+                                        Section::make('6. Ubicación & Mapa Interactivo')
+                                            ->description('Mapa gráfico con pin del proyecto y puntos de interés sincronizados')
+                                            ->collapsible()
+                                            ->schema([
+                                                TextInput::make('map_eyebrow')->label('Eyebrow')->default('Ubicación'),
+                                                TextInput::make('map_title')->label('Título Mapa')->placeholder('Entorno INNigualable'),
+                                                TextInput::make('map_logo_url')->label('Logo Decorativo')->placeholder('images/inn/E_titulo.png'),
+                                                TextInput::make('map_btn_text')->label('Texto del Botón')->default('Experiencias'),
+                                                TextInput::make('map_address')->label('Dirección Visible')->placeholder('Vicente Pérez Rosales 991, Puerto Varas'),
+                                                CuratorPicker::make('entorno_map_image_id')->label('Imagen del Mapa (Curator)'),
+                                                TextInput::make('entorno_map_image_url')->label('URL Imagen del Mapa (Fallback)')->placeholder('images/inn/Mapa_Ok_Sitio.png'),
+                                                TextInput::make('map_pin_x')->label('Coordenada X del Proyecto (%)')->numeric()->default(33.3),
+                                                TextInput::make('map_pin_y')->label('Coordenada Y del Proyecto (%)')->numeric()->default(72.4),
+                                                TextInput::make('map_pin_logo_url')->label('Logo del Pin de Proyecto')->placeholder('images/inn/pin_logo.png'),
+                                                RichEditor::make('map_description')->label('Descripción de Ubicación & Entorno')->columnSpanFull(),
+                                                Repeater::make('map_pois')
+                                                    ->label('Puntos de Interés Interactivos (POIs)')
+                                                    ->schema([
+                                                        TextInput::make('name')->label('Nombre')->required(),
+                                                        TextInput::make('label')->label('Etiqueta en Mapa')->nullable(),
+                                                        TextInput::make('category')->label('Categoría')->placeholder('Gastronomía, Supermercado, etc.')->required(),
+                                                        TextInput::make('distance')->label('Distancia')->placeholder('1.2 km')->required(),
+                                                        TextInput::make('time')->label('Tiempo Caminando')->placeholder('12 minutos')->required(),
+                                                        TextInput::make('x')->label('Posición X (%)')->numeric()->required(),
+                                                        TextInput::make('y')->label('Posición Y (%)')->numeric()->required(),
+                                                        Select::make('direction')
+                                                            ->label('Dirección Pin')
+                                                            ->options([
+                                                                'right' => 'Derecha',
+                                                                'left' => 'Izquierda',
+                                                                'down' => 'Abajo',
+                                                                'top' => 'Arriba',
+                                                            ])
+                                                            ->default('right'),
+                                                        TextInput::make('img')->label('Ruta / URL Foto')->placeholder('images/inn/ubicacion/Mesa_Tropera_AI.jpg')->required(),
+                                                    ])
+                                                    ->columns(3)
+                                                    ->defaultItems(0)
+                                                    ->columnSpanFull(),
+                                            ])
+                                            ->columns(2),
+
+                                        // 7. INTERIORISMO
+                                        Section::make('7. Interiorismo & Diseñadores')
+                                            ->description('Equipo de diseño de interiores, iluminación y propuestas de autor')
+                                            ->collapsible()
+                                            ->schema([
+                                                TextInput::make('interiorismo_eyebrow')->label('Eyebrow')->default('Interiorismo'),
+                                                TextInput::make('interiorismo_title')->label('Título')->placeholder('MAESTRÍA EN CADA DETALLE'),
+                                                TextInput::make('interiorismo_bg_image_url')->label('Fondo Decorativo SVG/PNG')->placeholder('images/inn/Interiorismo.svg'),
+                                                RichEditor::make('interiorismo_description')->label('Descripción de Interiorismo')->columnSpanFull(),
+                                                Repeater::make('designers')
+                                                    ->label('Lista de Diseñadores / Interioristas')
+                                                    ->schema([
+                                                        TextInput::make('name')->label('Nombre y Cargo (HTML: Sofía<br/><small>Interiorista</small>)')->required(),
+                                                        TextInput::make('image')->label('Ruta / URL Foto')->required()->placeholder('images/inn/Foto_Iturralde.jpg'),
+                                                        ColorPicker::make('color')->label('Color de Acento')->default('#d9bc70'),
+                                                        TextInput::make('alt')->label('Texto Alternativo')->nullable(),
+                                                        Textarea::make('text')->label('Biografía o Enfoque de Diseño')->rows(3)->nullable()->columnSpanFull(),
+                                                    ])
+                                                    ->columns(2)
+                                                    ->defaultItems(0)
+                                                    ->columnSpanFull(),
+                                            ])
+                                            ->columns(2),
+
+                                        // 8. MODAL PANORAMAS / EXPERIENCIAS
+                                        Section::make('8. Modal Panoramas / Experiencias del Sur')
+                                            ->description('Categorías y tarjetas de turismo, gastronomía y paseos en la zona')
+                                            ->collapsible()
+                                            ->schema([
+                                                Repeater::make('panoramas_categories')
+                                                    ->label('Categorías de Panoramas')
+                                                    ->schema([
+                                                        TextInput::make('id')->label('ID de Categoría (ej: ruta-del-lago)')->required(),
+                                                        TextInput::make('name')->label('Nombre de Categoría')->required(),
+                                                        TextInput::make('tabLabel')->label('Etiqueta Pestaña')->required(),
+                                                        Repeater::make('slides')
+                                                            ->label('Tarjetas de Panoramas')
+                                                            ->schema([
+                                                                TextInput::make('id')->label('ID')->required(),
+                                                                TextInput::make('title')->label('Título del Destino')->required(),
+                                                                TextInput::make('distance')->label('Distancia')->placeholder('40 km')->required(),
+                                                                TextInput::make('image')->label('Ruta / URL Foto')->placeholder('images/inn/panoramas/Ensenada_04_IA.jpg')->required(),
+                                                            ])
+                                                            ->columns(2)
+                                                            ->defaultItems(0),
+                                                    ])
+                                                    ->defaultItems(0)
+                                                    ->columnSpanFull(),
+                                            ]),
+
+                                        // 9. SALA DE VENTAS & CONTACTO
+                                        Section::make('9. Sala de Ventas & Contacto')
+                                            ->description('Encabezados, horarios de atención, mapa Waze y contacto')
+                                            ->collapsible()
+                                            ->schema([
+                                                TextInput::make('contact_eyebrow')->label('Eyebrow')->default('Contacto'),
+                                                TextInput::make('contact_title')->label('Título')->default('Conversemos'),
+                                                TextInput::make('contact_waze_url')->label('URL Embed de Waze (Iframe)')->placeholder('https://embed.waze.com/...'),
+                                                RichEditor::make('contact_subtitle')->label('Texto de Dirección y Horarios')->columnSpanFull(),
+                                            ])
+                                            ->columns(2),
                                     ]),
                             ]),
                     ]),

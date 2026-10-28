@@ -29,6 +29,7 @@ class ProjectDetailController extends Controller
                 })
                 ->where('is_active', true)
                 ->with([
+                    'asesores',
                     'detail.heroLogoMedia',
                     'detail.entornoMapMedia',
                     'detail.amenities.imageMedia',

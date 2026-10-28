@@ -4,6 +4,18 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+### 🏢 Ficha de Proyecto Integral — Edición 100% en Filament y API Enriquecida
+- **Migración `2026_10_28_000001_add_editorial_sections_to_project_details_table`**:
+  - Incorporadas columnas para secciones editoriales completas en `project_details`: textos y slides de proyecto (`project_*`), banners de video intermedios (`video_interstitials`), equipamiento y modal de ambientes (`equipment_*`), configuración de tours 360 y masterplan (`virtual_tours_config`), espacios comunes y amenidades (`espacios_*`), mapa interactivo con pines y puntos de interés (`map_*`, `map_pois`), interiorismo y diseñadores (`interiorismo_*`, `designers`), modal panoramas (`panoramas_categories`) y sala de ventas / contacto (`contact_*`).
+- **Modelo `ProjectDetail`**:
+  - Actualizado `$fillable` y `casts` para soportar todas las estructuras JSON de forma nativa.
+- **Formulario Filament `ProyectoForm`**:
+  - Pestaña "Información Web (Ficha Canónica)" rediseñada con 9 secciones colapsables y Repeaters estructurados para gestionar todo el contenido visual y editorial de forma intuitiva.
+- **Controlador y Recurso API `ProjectDetailResource` & `ProjectDetailController`**:
+  - Eager loading de `asesores` y resolución de rutas dinámicas de medios, con fallback elegante a especificaciones base.
+- **Seeder `InitialInnProjectDetailSeeder`**:
+  - Sembrado 100% completo con los datos canónicos de Edificio INN.
+
 ## [1.13.1] - 2026-10-26
 
 ### 🧹 Refactor / Ponytail — Eliminación de Duplicidad en Tipo de Usuario Broker

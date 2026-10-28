@@ -49,6 +49,41 @@ class ProjectDetailResource extends JsonResource
 
         $testimonials = $proyecto->testimonials ?? collect();
 
+        // Asesores vinculados al proyecto
+        $asesores = $proyecto->asesores ?? collect();
+
+        // Items de amenidades / espacios
+        $espaciosItems = $detail?->espacios_items;
+        if (empty($espaciosItems) && $amenities->isNotEmpty()) {
+            $espaciosItems = $amenities->map(fn (ProjectAmenity $a): array => [
+                'id' => $a->icon_key ?: 'hall',
+                'navId' => $a->icon_key ?: 'hall',
+                'label' => $a->name,
+                'name' => $a->name,
+                'icon_key' => $a->icon_key,
+                'img' => $a->resolved_image_url,
+                'link' => $a->link_url ?: $a->resolved_image_url,
+                'alt' => $a->name,
+            ])->values()->all();
+        }
+
+        // Puntos de interés (POIs) de mapa
+        $mapPois = $detail?->map_pois;
+        if (empty($mapPois) && $pois->isNotEmpty()) {
+            $mapPois = $pois->map(fn (ProjectPoi $p): array => [
+                'id' => $p->id,
+                'name' => $p->name,
+                'label' => strtoupper($p->name),
+                'category' => $p->category,
+                'distance' => $p->distance,
+                'time' => $p->walking_time,
+                'x' => (float) $p->coordinate_x,
+                'y' => (float) $p->coordinate_y,
+                'direction' => $p->pin_direction,
+                'img' => $p->resolved_image_url,
+            ])->values()->all();
+        }
+
         return [
             'project_id' => $proyecto->id,
             'slug' => $proyecto->slug,
@@ -67,10 +102,23 @@ class ProjectDetailResource extends JsonResource
                 ['id' => 'comuna', 'label' => 'Comuna', 'value' => $proyecto->comuna ?? ''],
                 ['id' => 'estado', 'label' => 'Estado del proyecto', 'value' => $proyecto->etapa ?? ''],
             ],
+            'project_section' => [
+                'eyebrow' => $detail?->project_eyebrow ?? 'Proyecto',
+                'title' => $detail?->project_title ?? $proyecto->name,
+                'description' => $detail?->project_description ?? $proyecto->descripcion,
+                'highlight_offer' => $detail?->project_highlight_offer,
+                'slides' => $detail?->project_slides ?? [],
+            ],
             'project_slides' => $detail?->project_slides ?? [],
+            'video_interstitials' => $detail?->video_interstitials ?? [],
             'equipment' => [
+                'eyebrow' => $detail?->equipment_eyebrow ?? 'Equipamiento',
+                'title' => $detail?->equipment_title ?? 'Equipamiento',
+                'description' => $detail?->equipment_description ?? '',
+                'bg_image_url' => $detail?->equipment_bg_image_url,
                 'brands' => $equipmentBrands,
                 'slides' => $equipmentSlides,
+                'spaces_modal' => $detail?->equipment_spaces_modal ?? [],
             ],
             'overview' => [
                 'eyebrow' => '1. Proyecto | Único en su clase',
@@ -93,13 +141,59 @@ class ProjectDetailResource extends JsonResource
                 'matterport_url' => $detail?->virtual_tour_matterport_url,
                 'panoramic_360_url' => $detail?->virtual_tour_360_url,
                 'video_url' => $detail?->virtual_tour_video_url,
+                'tours' => $detail?->virtual_tours_config ?? [],
+            ],
+            'espacios' => [
+                'eyebrow' => $detail?->espacios_eyebrow ?? 'Espacios',
+                'title' => $detail?->espacios_title ?? 'Espacios Comunes',
+                'description' => $detail?->espacios_description ?? '',
+                'bg_image_url' => $detail?->espacios_bg_image_url,
+                'items' => $espaciosItems ?? [],
             ],
             'brochure_pdf_url' => $detail?->brochure_pdf_url,
-            'designers' => $detail?->designers ?? [],
-            'panoramas' => $detail?->panoramas ?? [],
+            'map' => [
+                'eyebrow' => $detail?->map_eyebrow ?? 'Ubicación',
+                'title' => $detail?->map_title ?? 'Entorno Inigualable',
+                'description' => $detail?->map_description ?? $detail?->entorno_description,
+                'logo_url' => $detail?->map_logo_url,
+                'btn_text' => $detail?->map_btn_text ?? 'Experiencias',
+                'address' => $detail?->map_address ?? $proyecto->direccion,
+                'image_url' => $detail?->resolved_entorno_map_image_url,
+                'pin' => [
+                    'x' => $detail?->map_pin_x ?? 33.3,
+                    'y' => $detail?->map_pin_y ?? 72.4,
+                    'logo_url' => $detail?->map_pin_logo_url,
+                ],
+                'pois' => $mapPois ?? [],
+            ],
             'entorno' => [
                 'description' => $detail?->entorno_description,
                 'map_image_url' => $detail?->resolved_entorno_map_image_url,
+            ],
+            'interiorismo' => [
+                'eyebrow' => $detail?->interiorismo_eyebrow ?? 'Interiorismo',
+                'title' => $detail?->interiorismo_title ?? 'Interiorismo',
+                'description' => $detail?->interiorismo_description ?? '',
+                'bg_image_url' => $detail?->interiorismo_bg_image_url,
+                'designers' => $detail?->designers ?? [],
+            ],
+            'designers' => $detail?->designers ?? [],
+            'panoramas' => [
+                'categories' => $detail?->panoramas_categories ?? ($detail?->panoramas ?? []),
+            ],
+            'contact' => [
+                'eyebrow' => $detail?->contact_eyebrow ?? 'Contacto',
+                'title' => $detail?->contact_title ?? 'Conversemos',
+                'subtitle' => $detail?->contact_subtitle,
+                'waze_url' => $detail?->contact_waze_url,
+                'schedule' => $detail?->schedule ?? ($proyecto->horario_atencion ? [$proyecto->horario_atencion] : []),
+                'agents' => $asesores->map(fn ($a): array => [
+                    'id' => $a->id,
+                    'name' => $a->full_name,
+                    'phone' => $a->whatsapp_owner ?? $a->phone ?? '',
+                    'email' => $a->email ?? '',
+                    'avatar' => $a->avatar_url ?? $a->avatar_manual_url ?? '',
+                ])->values()->all(),
             ],
             'amenities' => $amenities->map(fn (ProjectAmenity $a): array => [
                 'id' => $a->id,
