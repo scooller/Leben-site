@@ -202,6 +202,7 @@ class ProjectDetailResource extends JsonResource
             ],
             'designers' => $detail?->designers ?? [],
             'panoramas' => [
+                'bg_image_url' => $detail?->resolved_panoramas_bg_image_url,
                 'categories' => $detail?->panoramas_categories ?? ($detail?->panoramas ?? []),
             ],
             'contact' => [

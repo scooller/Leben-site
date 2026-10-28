@@ -735,8 +735,45 @@ class ProyectoForm
                                                             ->columns(2),
                                                     ]),
 
-                                                // 7. INTERIORISMO
-                                                Tab::make('7. Interiorismo')
+                                                // 7. MODAL PANORAMAS / EXPERIENCIAS (Ligado al botón Experiencias del Mapa)
+                                                Tab::make('7. Panoramas')
+                                                    ->icon('heroicon-o-photo')
+                                                    ->schema([
+                                                        Section::make('Modal Panoramas / Experiencias del Sur')
+                                                            ->description('Categorías y tarjetas de turismo, gastronomía y paseos en la zona (activadas desde el botón del Mapa)')
+                                                            ->schema([
+                                                                CuratorPicker::make('panoramas_bg_image_id')
+                                                                    ->label('Imagen de Fondo del Modal (Curator)'),
+
+                                                                TextInput::make('panoramas_bg_image_url')
+                                                                    ->label('URL directa de Imagen de Fondo (Fallback)')
+                                                                    ->placeholder('images/inn/panoramas/bg-forest.jpg'),
+
+                                                                Repeater::make('panoramas_categories')
+                                                                    ->label('Categorías de Panoramas')
+                                                                    ->schema([
+                                                                        TextInput::make('id')->label('ID de Categoría (ej: ruta-del-lago)')->required(),
+                                                                        TextInput::make('name')->label('Nombre de Categoría')->required(),
+                                                                        TextInput::make('tabLabel')->label('Etiqueta Pestaña')->required(),
+                                                                        Repeater::make('slides')
+                                                                            ->label('Tarjetas de Panoramas')
+                                                                            ->schema([
+                                                                                TextInput::make('id')->label('ID')->required(),
+                                                                                TextInput::make('title')->label('Título del Destino')->required(),
+                                                                                TextInput::make('distance')->label('Distancia')->placeholder('40 km')->required(),
+                                                                                TextInput::make('image')->label('Ruta / URL Foto')->placeholder('images/inn/panoramas/Ensenada_04_IA.jpg')->required(),
+                                                                            ])
+                                                                            ->columns(2)
+                                                                            ->defaultItems(0),
+                                                                    ])
+                                                                    ->defaultItems(0)
+                                                                    ->columnSpanFull(),
+                                                            ])
+                                                            ->columns(2),
+                                                    ]),
+
+                                                // 8. INTERIORISMO
+                                                Tab::make('8. Interiorismo')
                                                     ->icon('heroicon-o-paint-brush')
                                                     ->schema([
                                                         Section::make('Interiorismo & Diseñadores')
@@ -760,35 +797,6 @@ class ProyectoForm
                                                                     ->columnSpanFull(),
                                                             ])
                                                             ->columns(2),
-                                                    ]),
-
-                                                // 8. MODAL PANORAMAS / EXPERIENCIAS
-                                                Tab::make('8. Panoramas')
-                                                    ->icon('heroicon-o-photo')
-                                                    ->schema([
-                                                        Section::make('Modal Panoramas / Experiencias del Sur')
-                                                            ->description('Categorías y tarjetas de turismo, gastronomía y paseos en la zona')
-                                                            ->schema([
-                                                                Repeater::make('panoramas_categories')
-                                                                    ->label('Categorías de Panoramas')
-                                                                    ->schema([
-                                                                        TextInput::make('id')->label('ID de Categoría (ej: ruta-del-lago)')->required(),
-                                                                        TextInput::make('name')->label('Nombre de Categoría')->required(),
-                                                                        TextInput::make('tabLabel')->label('Etiqueta Pestaña')->required(),
-                                                                        Repeater::make('slides')
-                                                                            ->label('Tarjetas de Panoramas')
-                                                                            ->schema([
-                                                                                TextInput::make('id')->label('ID')->required(),
-                                                                                TextInput::make('title')->label('Título del Destino')->required(),
-                                                                                TextInput::make('distance')->label('Distancia')->placeholder('40 km')->required(),
-                                                                                TextInput::make('image')->label('Ruta / URL Foto')->placeholder('images/inn/panoramas/Ensenada_04_IA.jpg')->required(),
-                                                                            ])
-                                                                            ->columns(2)
-                                                                            ->defaultItems(0),
-                                                                    ])
-                                                                    ->defaultItems(0)
-                                                                    ->columnSpanFull(),
-                                                            ]),
                                                     ]),
 
                                                 // 9. SALA DE VENTAS & CONTACTO

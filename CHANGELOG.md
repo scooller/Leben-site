@@ -2,6 +2,19 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.6] - 2026-10-28
+
+### 🗺️ Panoramas & Mapa — Reordenación de Pestaña 7 y Fondo de Modal Personalizable
+- **Reordenación de Pestañas Editoriales (`ProyectoForm`)**:
+  - `7. Panoramas` reubicada inmediatamente después de `6. Ubicación & Mapa` (debido a su vinculación directa con el botón "Experiencias" del mapa) y antes de `8. Interiorismo`.
+- **Migración `2026_10_28_000004_add_panoramas_bg_image_to_project_details_table`**:
+  - Incorporadas columnas `panoramas_bg_image_id` (Curator FK) y `panoramas_bg_image_url` en `project_details`.
+- **Soporte de Carga de Imagen de Fondo**:
+  - En la pestaña `7. Panoramas`, añadidos campos para subir imagen con CuratorPicker y fallback por URL directa para el fondo del modal de panoramas.
+- **Modelo & API**:
+  - `ProjectDetail` expone `resolved_panoramas_bg_image_url` y `panoramasBgImageMedia`.
+  - `ProjectDetailResource` entrega `bg_image_url` en el nodo `panoramas`.
+
 ## [1.13.5] - 2026-10-28
 
 ### 🏢 Espacios Comunes — Banner de Video Intermedio Integrado

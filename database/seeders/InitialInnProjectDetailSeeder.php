@@ -261,6 +261,7 @@ class InitialInnProjectDetailSeeder extends Seeder
                 ],
 
                 // Modal Panoramas
+                'panoramas_bg_image_url' => 'images/inn/panoramas/bg-forest.jpg',
                 'panoramas_categories' => [
                     [
                         'id' => 'ruta-del-lago',

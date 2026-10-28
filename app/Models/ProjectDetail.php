@@ -58,6 +58,8 @@ class ProjectDetail extends Model
         'designers',
         'panoramas',
         'panoramas_categories',
+        'panoramas_bg_image_id',
+        'panoramas_bg_image_url',
         'entorno_description',
         'entorno_map_image_id',
         'entorno_map_image_url',
@@ -138,6 +140,11 @@ class ProjectDetail extends Model
         return $this->belongsTo(Media::class, 'entorno_map_image_id');
     }
 
+    public function panoramasBgImageMedia(): BelongsTo
+    {
+        return $this->belongsTo(Media::class, 'panoramas_bg_image_id');
+    }
+
     public function amenities(): HasMany
     {
         return $this->hasMany(ProjectAmenity::class)->orderBy('sort_order');
@@ -161,6 +168,11 @@ class ProjectDetail extends Model
     public function getResolvedEntornoMapImageUrlAttribute(): ?string
     {
         return $this->entornoMapMedia?->url ?? $this->entorno_map_image_url;
+    }
+
+    public function getResolvedPanoramasBgImageUrlAttribute(): ?string
+    {
+        return $this->panoramasBgImageMedia?->url ?? $this->panoramas_bg_image_url;
     }
 
     /**
