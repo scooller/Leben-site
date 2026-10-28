@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Proyectos\Schemas;
 
 use App\Models\Proyecto;
 use Awcodes\Curator\Components\Forms\CuratorPicker;
+use Awcodes\Curator\Models\Media;
 use Filament\Actions\Action;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\DatePicker;
@@ -19,6 +20,7 @@ use Filament\Schemas\Components\Icon;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Builder;
@@ -415,7 +417,21 @@ class ProyectoForm
                                                                 TextInput::make('hero_eyebrow')->label('Eyebrow Hero')->placeholder('Puerto Varas'),
                                                                 TextInput::make('hero_title')->label('Título Hero (SplitTitle)')->placeholder('VIVE EL LUJO EN PUERTO VARAS'),
                                                                 TextInput::make('hero_subtitle')->label('Subtítulo Hero')->nullable(),
-                                                                TextInput::make('hero_video_url')->label('URL Video Hero (MP4)')->url()->placeholder('https://... o video/inn-new.mp4'),
+                                                                TextInput::make('hero_video_url')->label('URL Video Hero (MP4)')->placeholder('https://... o video/inn-new.mp4'),
+                                                                CuratorPicker::make('hero_video_media_id')
+                                                                    ->label('Seleccionar Video Hero desde Curator')
+                                                                    ->buttonLabel('Elegir Video Hero')
+                                                                    ->acceptedFileTypes(['video/*'])
+                                                                    ->dehydrated(false)
+                                                                    ->live()
+                                                                    ->afterStateUpdated(function ($state, Set $set) {
+                                                                        if ($state) {
+                                                                            $media = Media::find($state);
+                                                                            if ($media) {
+                                                                                $set('hero_video_url', $media->url);
+                                                                            }
+                                                                        }
+                                                                    }),
                                                                 CuratorPicker::make('hero_logo_id')->label('Logo Header (Curator)'),
                                                                 TextInput::make('hero_logo_url')->label('URL Directa de Logo Header (Fallback)')->placeholder('images/inn/Logo_INN_Header.png'),
                                                                 Repeater::make('technical_info')
@@ -481,8 +497,21 @@ class ProyectoForm
                                                                         TextInput::make('video_url')
                                                                             ->label('Ruta o URL del Video (MP4)')
                                                                             ->required()
-                                                                            ->placeholder('video/video_reconfortante_a.mp4')
-                                                                            ->columnSpanFull(),
+                                                                            ->placeholder('video/video_reconfortante_a.mp4'),
+                                                                        CuratorPicker::make('video_media_id')
+                                                                            ->label('Seleccionar Video desde Curator')
+                                                                            ->buttonLabel('Elegir Video')
+                                                                            ->acceptedFileTypes(['video/*'])
+                                                                            ->dehydrated(false)
+                                                                            ->live()
+                                                                            ->afterStateUpdated(function ($state, Set $set) {
+                                                                                if ($state) {
+                                                                                    $media = Media::find($state);
+                                                                                    if ($media) {
+                                                                                        $set('video_url', $media->url);
+                                                                                    }
+                                                                                }
+                                                                            }),
                                                                     ])
                                                                     ->columns(2)
                                                                     ->defaultItems(0)
@@ -616,8 +645,22 @@ class ProyectoForm
                                                                         TextInput::make('virtual_tour_matterport_url')->label('URL Matterport 3D')->placeholder('https://my.matterport.com/show/?m=...'),
                                                                         TextInput::make('virtual_tour_360_url')->label('URL Recorrido 360 (La Nube 360)')->placeholder('https://www.lanube360.com/...'),
                                                                         TextInput::make('virtual_tour_video_url')->label('URL Video Recorrido (YouTube / MP4)')->placeholder('https://...'),
+                                                                        CuratorPicker::make('virtual_tour_video_media_id')
+                                                                            ->label('Seleccionar Video desde Curator')
+                                                                            ->buttonLabel('Elegir Video')
+                                                                            ->acceptedFileTypes(['video/*'])
+                                                                            ->dehydrated(false)
+                                                                            ->live()
+                                                                            ->afterStateUpdated(function ($state, Set $set) {
+                                                                                if ($state) {
+                                                                                    $media = Media::find($state);
+                                                                                    if ($media) {
+                                                                                        $set('virtual_tour_video_url', $media->url);
+                                                                                    }
+                                                                                }
+                                                                            }),
                                                                     ])
-                                                                    ->columns(3)
+                                                                    ->columns(2)
                                                                     ->columnSpanFull(),
                                                             ])
                                                             ->columns(2),
@@ -680,8 +723,21 @@ class ProyectoForm
                                                                         TextInput::make('espacios_video.video_url')
                                                                             ->label('Ruta o URL del Video (MP4)')
                                                                             ->placeholder('video/lipsum.mp4')
-                                                                            ->nullable()
-                                                                            ->columnSpanFull(),
+                                                                            ->nullable(),
+                                                                        CuratorPicker::make('espacios_video_media_id')
+                                                                            ->label('Seleccionar Video desde Curator')
+                                                                            ->buttonLabel('Elegir Video')
+                                                                            ->acceptedFileTypes(['video/*'])
+                                                                            ->dehydrated(false)
+                                                                            ->live()
+                                                                            ->afterStateUpdated(function ($state, Set $set) {
+                                                                                if ($state) {
+                                                                                    $media = Media::find($state);
+                                                                                    if ($media) {
+                                                                                        $set('espacios_video.video_url', $media->url);
+                                                                                    }
+                                                                                }
+                                                                            }),
                                                                     ])
                                                                     ->columns(2)
                                                                     ->columnSpanFull(),

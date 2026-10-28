@@ -2,9 +2,22 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.7] - 2026-10-28
+
+### 🎥 Selector de Curator para Autocompletar URLs de Video
+
+- **Formulario Filament `ProyectoForm`**:
+  - Incorporado selector `CuratorPicker` interactivo (filtrado a tipos MIME de video `video/*`) junto a los campos de texto de URL de video en:
+    - **1. Identidad & Hero**: `hero_video_url` (removida además restricción rígida `url()` para admitir URLs relativas como `/storage/...`).
+    - **2. Proyecto & Videos**: `video_url` dentro del Repeater `video_interstitials`.
+    - **4. Recorridos 360**: `virtual_tour_video_url`.
+    - **5. Espacios Comunes**: `espacios_video.video_url`.
+  - El selector es no-deshidratado (`dehydrated(false)`) y actualiza reactivamente (`live()`) el campo de texto con la URL del archivo de video seleccionado en Curator (`/storage/...`), permitiendo tanto subida/selección visual como edición manual de rutas externas o relativas.
+
 ## [1.13.6] - 2026-10-28
 
 ### 🗺️ Panoramas & Mapa — Reordenación de Pestaña 7 y Fondo de Modal Personalizable
+
 - **Reordenación de Pestañas Editoriales (`ProyectoForm`)**:
   - `7. Panoramas` reubicada inmediatamente después de `6. Ubicación & Mapa` (debido a su vinculación directa con el botón "Experiencias" del mapa) y antes de `8. Interiorismo`.
 - **Migración `2026_10_28_000004_add_panoramas_bg_image_to_project_details_table`**:
@@ -18,6 +31,7 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 ## [1.13.5] - 2026-10-28
 
 ### 🏢 Espacios Comunes — Banner de Video Intermedio Integrado
+
 - **Migración `2026_10_28_000003_add_espacios_video_to_project_details_table`**:
   - Incorporada columna `espacios_video` (JSON) en la tabla `project_details`.
 - **Formulario Filament `ProyectoForm`**:
