@@ -2,6 +2,26 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.8] - 2026-10-28
+
+### 🗺️ Curator para Logos y Fondos Decorativos & Ocultamiento de Mapa sin Imagen
+
+- **Tab 6: Ubicación & Mapa (`ProyectoForm`)**:
+  - Eliminado input redundante `entorno_map_image_url` (URL Imagen del Mapa Fallback).
+  - Añadido selector `CuratorPicker` para `map_logo_id` (Logo Decorativo) y `map_pin_logo_id` (Logo del Pin de Proyecto).
+- **Fondos Decorativos a través de Curator**:
+  - Incorporados `CuratorPicker` para fondos vectoriales/decorativos en:
+    - Tab 3: `equipment_bg_image_id` (Fondo Decorativo Equipamiento).
+    - Tab 5: `espacios_bg_image_id` (Fondo Decorativo Espacios Comunes).
+    - Tab 8: `interiorismo_bg_image_id` (Fondo Decorativo Interiorismo).
+- **Migraciones y Modelo `ProjectDetail`**:
+  - Migraciones `2026_10_28_130836_add_curator_media_to_project_details_table` y `2026_10_28_131453_add_decorative_bg_media_to_project_details_table`.
+  - Relaciones y accesores automáticos `resolved_*` para resolver URLs directas o desde la tabla `curator`.
+- **API `ProjectDetailResource`**:
+  - Retorna `resolved_map_logo_url`, `resolved_map_pin_logo_url`, `resolved_equipment_bg_image_url`, `resolved_espacios_bg_image_url` y `resolved_interiorismo_bg_image_url`.
+- **Frontend `new-leben-react`**:
+  - Sección mapa (`lb-inn-map`) y carrusel de galería (`lb-inn-gallery`) condicionados a `mapData.hasMap`. Si el proyecto no tiene mapa configurado, la sección se oculta limpiamente.
+
 ## [1.13.7] - 2026-10-28
 
 ### 🎥 Selector de Curator para Autocompletar URLs de Video

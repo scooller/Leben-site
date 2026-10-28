@@ -31,6 +31,7 @@ class ProjectDetail extends Model
         'equipment_eyebrow',
         'equipment_title',
         'equipment_description',
+        'equipment_bg_image_id',
         'equipment_bg_image_url',
         'equipment_brands',
         'equipment_slides',
@@ -52,6 +53,7 @@ class ProjectDetail extends Model
         'espacios_eyebrow',
         'espacios_title',
         'espacios_description',
+        'espacios_bg_image_id',
         'espacios_bg_image_url',
         'espacios_items',
         'espacios_video',
@@ -66,16 +68,19 @@ class ProjectDetail extends Model
         'map_eyebrow',
         'map_title',
         'map_description',
+        'map_logo_id',
         'map_logo_url',
         'map_btn_text',
         'map_address',
         'map_pin_x',
         'map_pin_y',
+        'map_pin_logo_id',
         'map_pin_logo_url',
         'map_pois',
         'interiorismo_eyebrow',
         'interiorismo_title',
         'interiorismo_description',
+        'interiorismo_bg_image_id',
         'interiorismo_bg_image_url',
         'contact_eyebrow',
         'contact_title',
@@ -130,6 +135,21 @@ class ProjectDetail extends Model
         return $this->belongsTo(Proyecto::class, 'project_id');
     }
 
+    public function equipmentBgImageMedia(): BelongsTo
+    {
+        return $this->belongsTo(Media::class, 'equipment_bg_image_id');
+    }
+
+    public function espaciosBgImageMedia(): BelongsTo
+    {
+        return $this->belongsTo(Media::class, 'espacios_bg_image_id');
+    }
+
+    public function interiorismoBgImageMedia(): BelongsTo
+    {
+        return $this->belongsTo(Media::class, 'interiorismo_bg_image_id');
+    }
+
     public function heroLogoMedia(): BelongsTo
     {
         return $this->belongsTo(Media::class, 'hero_logo_id');
@@ -138,6 +158,16 @@ class ProjectDetail extends Model
     public function entornoMapMedia(): BelongsTo
     {
         return $this->belongsTo(Media::class, 'entorno_map_image_id');
+    }
+
+    public function mapLogoMedia(): BelongsTo
+    {
+        return $this->belongsTo(Media::class, 'map_logo_id');
+    }
+
+    public function mapPinLogoMedia(): BelongsTo
+    {
+        return $this->belongsTo(Media::class, 'map_pin_logo_id');
     }
 
     public function panoramasBgImageMedia(): BelongsTo
@@ -160,6 +190,21 @@ class ProjectDetail extends Model
         return $this->hasMany(ProjectGallery::class)->orderBy('sort_order');
     }
 
+    public function getResolvedEquipmentBgImageUrlAttribute(): ?string
+    {
+        return $this->equipmentBgImageMedia?->url ?? $this->equipment_bg_image_url;
+    }
+
+    public function getResolvedEspaciosBgImageUrlAttribute(): ?string
+    {
+        return $this->espaciosBgImageMedia?->url ?? $this->espacios_bg_image_url;
+    }
+
+    public function getResolvedInteriorismoBgImageUrlAttribute(): ?string
+    {
+        return $this->interiorismoBgImageMedia?->url ?? $this->interiorismo_bg_image_url;
+    }
+
     public function getResolvedHeroLogoUrlAttribute(): ?string
     {
         return $this->heroLogoMedia?->url ?? $this->hero_logo_url;
@@ -168,6 +213,16 @@ class ProjectDetail extends Model
     public function getResolvedEntornoMapImageUrlAttribute(): ?string
     {
         return $this->entornoMapMedia?->url ?? $this->entorno_map_image_url;
+    }
+
+    public function getResolvedMapLogoUrlAttribute(): ?string
+    {
+        return $this->mapLogoMedia?->url ?? $this->map_logo_url;
+    }
+
+    public function getResolvedMapPinLogoUrlAttribute(): ?string
+    {
+        return $this->mapPinLogoMedia?->url ?? $this->map_pin_logo_url;
     }
 
     public function getResolvedPanoramasBgImageUrlAttribute(): ?string

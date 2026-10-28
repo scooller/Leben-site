@@ -530,7 +530,8 @@ class ProyectoForm
                                                             ->schema([
                                                                 TextInput::make('equipment_eyebrow')->label('Eyebrow')->default('Equipamiento'),
                                                                 TextInput::make('equipment_title')->label('Título')->placeholder('SOFISTICACIÓN EN CADA DETALLE'),
-                                                                TextInput::make('equipment_bg_image_url')->label('Fondo Decorativo SVG/PNG')->placeholder('images/inn/Perspectiva.svg'),
+                                                                CuratorPicker::make('equipment_bg_image_id')->label('Fondo Decorativo SVG/PNG (Curator)'),
+                                                                TextInput::make('equipment_bg_image_url')->label('URL Fondo Decorativo (Fallback)')->placeholder('images/inn/Perspectiva.svg'),
                                                                 RichEditor::make('equipment_description')->label('Descripción de Equipamiento')->columnSpanFull(),
                                                                 Repeater::make('equipment_brands')
                                                                     ->label('Logos de Marcas Aliadas')
@@ -675,7 +676,8 @@ class ProyectoForm
                                                             ->schema([
                                                                 TextInput::make('espacios_eyebrow')->label('Eyebrow')->default('Espacios'),
                                                                 TextInput::make('espacios_title')->label('Título')->placeholder('ESPACIOS DE OTRO NIVEL'),
-                                                                TextInput::make('espacios_bg_image_url')->label('Fondo Decorativo SVG/PNG')->placeholder('images/inn/Climbing.svg'),
+                                                                CuratorPicker::make('espacios_bg_image_id')->label('Fondo Decorativo SVG/PNG (Curator)'),
+                                                                TextInput::make('espacios_bg_image_url')->label('URL Fondo Decorativo (Fallback)')->placeholder('images/inn/Climbing.svg'),
                                                                 RichEditor::make('espacios_description')->label('Descripción de Espacios Comunes')->columnSpanFull(),
                                                                 Repeater::make('espacios_items')
                                                                     ->label('Lista de Espacios Comunes / Amenidades')
@@ -754,14 +756,15 @@ class ProyectoForm
                                                             ->schema([
                                                                 TextInput::make('map_eyebrow')->label('Eyebrow')->default('Ubicación'),
                                                                 TextInput::make('map_title')->label('Título Mapa')->placeholder('Entorno INNigualable'),
-                                                                TextInput::make('map_logo_url')->label('Logo Decorativo')->placeholder('images/inn/E_titulo.png'),
+                                                                CuratorPicker::make('map_logo_id')->label('Logo Decorativo (Curator)'),
+                                                                TextInput::make('map_logo_url')->label('URL Logo Decorativo (Fallback)')->placeholder('images/inn/E_titulo.png'),
                                                                 TextInput::make('map_btn_text')->label('Texto del Botón')->default('Experiencias'),
                                                                 TextInput::make('map_address')->label('Dirección Visible')->placeholder('Vicente Pérez Rosales 991, Puerto Varas'),
                                                                 CuratorPicker::make('entorno_map_image_id')->label('Imagen del Mapa (Curator)'),
-                                                                TextInput::make('entorno_map_image_url')->label('URL Imagen del Mapa (Fallback)')->placeholder('images/inn/Mapa_Ok_Sitio.png'),
                                                                 TextInput::make('map_pin_x')->label('Coordenada X del Proyecto (%)')->numeric()->default(33.3),
                                                                 TextInput::make('map_pin_y')->label('Coordenada Y del Proyecto (%)')->numeric()->default(72.4),
-                                                                TextInput::make('map_pin_logo_url')->label('Logo del Pin de Proyecto')->placeholder('images/inn/pin_logo.png'),
+                                                                CuratorPicker::make('map_pin_logo_id')->label('Logo del Pin de Proyecto (Curator)'),
+                                                                TextInput::make('map_pin_logo_url')->label('URL Logo del Pin de Proyecto (Fallback)')->placeholder('images/inn/pin_logo.png'),
                                                                 RichEditor::make('map_description')->label('Descripción de Ubicación & Entorno')->columnSpanFull(),
                                                                 Repeater::make('map_pois')
                                                                     ->label('Puntos de Interés Interactivos (POIs)')
@@ -837,7 +840,8 @@ class ProyectoForm
                                                             ->schema([
                                                                 TextInput::make('interiorismo_eyebrow')->label('Eyebrow')->default('Interiorismo'),
                                                                 TextInput::make('interiorismo_title')->label('Título')->placeholder('MAESTRÍA EN CADA DETALLE'),
-                                                                TextInput::make('interiorismo_bg_image_url')->label('Fondo Decorativo SVG/PNG')->placeholder('images/inn/Interiorismo.svg'),
+                                                                CuratorPicker::make('interiorismo_bg_image_id')->label('Fondo Decorativo SVG/PNG (Curator)'),
+                                                                TextInput::make('interiorismo_bg_image_url')->label('URL Fondo Decorativo (Fallback)')->placeholder('images/inn/Interiorismo.svg'),
                                                                 RichEditor::make('interiorismo_description')->label('Descripción de Interiorismo')->columnSpanFull(),
                                                                 Repeater::make('designers')
                                                                     ->label('Lista de Diseñadores / Interioristas')
