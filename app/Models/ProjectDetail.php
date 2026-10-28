@@ -45,6 +45,8 @@ class ProjectDetail extends Model
         'virtual_tour_matterport_url',
         'virtual_tour_360_url',
         'virtual_tour_video_url',
+        'virtual_tours_eyebrow',
+        'virtual_tours_title',
         'virtual_tours_config',
         'brochure_pdf_url',
         'espacios_eyebrow',

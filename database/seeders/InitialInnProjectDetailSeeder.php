@@ -172,11 +172,13 @@ class InitialInnProjectDetailSeeder extends Seeder
                 'virtual_tour_360_url' => 'https://www.lanube360.com/ileben1/',
                 'virtual_tour_video_url' => null,
                 'brochure_pdf_url' => '/storage/inn/brochure-inn.pdf',
+                'virtual_tours_eyebrow' => 'Recorridos Virtuales',
+                'virtual_tours_title' => 'Descubre INN',
                 'virtual_tours_config' => [
                     [
                         'label' => 'Masterplan',
                         'title' => 'Masterplan',
-                        'images' => [
+                        'interiores' => [
                             ['title' => 'Masterplan', 'src' => 'images/inn/masterplan inn.jpg'],
                             ['title' => 'Masterplan Primer Piso', 'src' => 'images/inn/masterplan-piso-1.jpg'],
                             ['title' => 'Masterplan Piso 10', 'src' => 'images/inn/masterplan-piso-10.jpg'],
@@ -186,11 +188,13 @@ class InitialInnProjectDetailSeeder extends Seeder
                         'label' => 'Piloto 360',
                         'src' => 'https://my.matterport.com/show/?m=hQ8Fm33FqFY&brand=0',
                         'title' => 'Conoce tu próximo departamento',
+                        'interiores' => [],
                     ],
                     [
                         'label' => 'Vista 360',
                         'src' => 'https://www.lanube360.com/ileben1/',
                         'title' => 'En primera línea frente al lago',
+                        'interiores' => [],
                     ],
                 ],
 

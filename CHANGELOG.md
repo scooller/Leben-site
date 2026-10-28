@@ -2,6 +2,18 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.3] - 2026-10-28
+
+### 🔄 Recorridos 360 — Repeater de Secciones e Interiores Anidados
+- **Migración `2026_10_28_000002_add_virtual_tours_header_to_project_details_table`**:
+  - Incorporadas columnas `virtual_tours_eyebrow` y `virtual_tours_title` en `project_details`.
+- **Formulario Filament `ProyectoForm`**:
+  - En la pestaña `4. Recorridos 360`, implementado un **Repeater principal de Secciones** (`virtual_tours_config`) con soporte para título, etiqueta y fallback directo, y un **Repeater anidado de Interiores/Subvistas** (`interiores`) para configurar ilimitados ambientes o pisos por sección.
+- **Recurso API `ProjectDetailResource`**:
+  - Normalización bidireccional de `interiores` e `images` en cada tour, exportando `eyebrow`, `title`, `brochure_url` y la lista de tours estructurada.
+- **Seeder `InitialInnProjectDetailSeeder`**:
+  - Actualizado para usar la estructura estandarizada `interiores` con subtours de Masterplan y tours 360.
+
 ## [1.13.2] - 2026-10-28
 
 ### 📑 Filament — Secciones Web en Pestañas Verticales a la Derecha

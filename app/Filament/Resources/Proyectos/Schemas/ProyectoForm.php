@@ -527,28 +527,78 @@ class ProyectoForm
                                                     ->icon('heroicon-o-viewfinder-circle')
                                                     ->schema([
                                                         Section::make('Recorridos 360, Masterplan & Folleto')
-                                                            ->description('Tours virtuales Matterport, 360 interactivos, folleto descargable y vistas')
+                                                            ->description('Configura múltiples secciones de recorridos (Masterplan, Pilotos 360, Vistas) y sus interiores o subvistas asociadas.')
                                                             ->schema([
-                                                                TextInput::make('virtual_tour_matterport_url')->label('URL Matterport 3D')->placeholder('https://my.matterport.com/show/?m=...'),
-                                                                TextInput::make('virtual_tour_360_url')->label('URL Recorrido 360 (La Nube 360)')->placeholder('https://www.lanube360.com/...'),
-                                                                TextInput::make('virtual_tour_video_url')->label('URL Video Recorrido (YouTube / MP4)')->placeholder('https://...'),
-                                                                TextInput::make('brochure_pdf_url')->label('URL Folleto / Brochure PDF')->placeholder('https://... o /storage/...'),
+                                                                TextInput::make('virtual_tours_eyebrow')
+                                                                    ->label('Eyebrow Sección')
+                                                                    ->placeholder('Recorridos Virtuales')
+                                                                    ->default('Recorridos Virtuales'),
+
+                                                                TextInput::make('virtual_tours_title')
+                                                                    ->label('Título Sección (SplitTitle)')
+                                                                    ->placeholder('Descubre el Proyecto'),
+
+                                                                TextInput::make('brochure_pdf_url')
+                                                                    ->label('URL Folleto / Brochure PDF')
+                                                                    ->placeholder('https://... o /storage/...')
+                                                                    ->columnSpan(2),
+
                                                                 Repeater::make('virtual_tours_config')
-                                                                    ->label('Tours y Subvistas Personalizadas (Masterplan)')
+                                                                    ->label('Secciones / Tours 360 del Proyecto')
+                                                                    ->itemLabel(fn (array $state): ?string => filled($state['label'] ?? null)
+                                                                        ? ($state['label'].(filled($state['title'] ?? null) ? " — {$state['title']}" : ''))
+                                                                        : 'Nueva Sección de Recorrido')
+                                                                    ->collapsible()
                                                                     ->schema([
-                                                                        TextInput::make('label')->label('Pestaña (ej: Masterplan, Piloto 360)')->required(),
-                                                                        TextInput::make('title')->label('Título')->required(),
-                                                                        TextInput::make('src')->label('URL o Archivo Principal (Iframe / Imagen)')->nullable(),
-                                                                        Repeater::make('images')
-                                                                            ->label('Subvistas (si es Masterplan multipiso)')
+                                                                        TextInput::make('label')
+                                                                            ->label('Nombre de la Pestaña / Botón')
+                                                                            ->placeholder('ej: Masterplan, Piloto 360, Vista 360')
+                                                                            ->required(),
+
+                                                                        TextInput::make('title')
+                                                                            ->label('Título Descriptivo')
+                                                                            ->placeholder('ej: Conoce tu próximo departamento')
+                                                                            ->required(),
+
+                                                                        TextInput::make('src')
+                                                                            ->label('URL o Imagen Principal (Fallback si no tiene interiores)')
+                                                                            ->placeholder('https://my.matterport.com/... o images/...'),
+
+                                                                        Repeater::make('interiores')
+                                                                            ->label('Interiores / Subvistas de esta Sección')
+                                                                            ->itemLabel(fn (array $state): ?string => $state['title'] ?? null)
+                                                                            ->collapsible()
                                                                             ->schema([
-                                                                                TextInput::make('title')->label('Nombre de Subvista (ej: Piso 1)')->required(),
-                                                                                TextInput::make('src')->label('Ruta / URL Imagen')->required(),
+                                                                                TextInput::make('title')
+                                                                                    ->label('Nombre del Interior / Subvista')
+                                                                                    ->placeholder('ej: Living Comedor 360, Piso 1, Terraza')
+                                                                                    ->required(),
+
+                                                                                TextInput::make('src')
+                                                                                    ->label('Ruta de Imagen o URL 360 (Iframe / Matterport)')
+                                                                                    ->placeholder('images/... o https://my.matterport.com/...')
+                                                                                    ->required(),
                                                                             ])
                                                                             ->columns(2)
-                                                                            ->defaultItems(0),
+                                                                            ->defaultItems(0)
+                                                                            ->reorderable()
+                                                                            ->columnSpanFull()
+                                                                            ->helperText('Si esta sección tiene múltiples ambientes o niveles, agrégalos aquí. Se mostrarán como botones de sub-navegación dentro de esta sección.'),
                                                                     ])
+                                                                    ->columns(3)
                                                                     ->defaultItems(0)
+                                                                    ->reorderable()
+                                                                    ->columnSpanFull(),
+
+                                                                Section::make('URLs Directas de Respaldo (Opcionales)')
+                                                                    ->description('URLs directas heredadas si no se configuran secciones personalizadas arriba')
+                                                                    ->collapsed()
+                                                                    ->schema([
+                                                                        TextInput::make('virtual_tour_matterport_url')->label('URL Matterport 3D')->placeholder('https://my.matterport.com/show/?m=...'),
+                                                                        TextInput::make('virtual_tour_360_url')->label('URL Recorrido 360 (La Nube 360)')->placeholder('https://www.lanube360.com/...'),
+                                                                        TextInput::make('virtual_tour_video_url')->label('URL Video Recorrido (YouTube / MP4)')->placeholder('https://...'),
+                                                                    ])
+                                                                    ->columns(3)
                                                                     ->columnSpanFull(),
                                                             ])
                                                             ->columns(2),

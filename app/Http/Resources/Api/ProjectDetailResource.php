@@ -84,6 +84,20 @@ class ProjectDetailResource extends JsonResource
             ])->values()->all();
         }
 
+        $rawTours = $detail?->virtual_tours_config ?? [];
+        $normalizedTours = collect($rawTours)->map(function (array $tour): array {
+            $interiores = $tour['interiores'] ?? $tour['images'] ?? [];
+
+            return [
+                'label' => $tour['label'] ?? '',
+                'title' => $tour['title'] ?? '',
+                'src' => $tour['src'] ?? null,
+                'allow' => $tour['allow'] ?? 'fullscreen; autoplay',
+                'interiores' => $interiores,
+                'images' => $interiores,
+            ];
+        })->values()->all();
+
         return [
             'project_id' => $proyecto->id,
             'slug' => $proyecto->slug,
@@ -138,10 +152,13 @@ class ProjectDetailResource extends JsonResource
                 'items' => $detail?->terminaciones_items ?? [],
             ],
             'virtual_tours' => [
+                'eyebrow' => $detail?->virtual_tours_eyebrow ?? 'Recorridos Virtuales',
+                'title' => $detail?->virtual_tours_title ?? ('Descubre '.($proyecto->name ?? 'el Proyecto')),
                 'matterport_url' => $detail?->virtual_tour_matterport_url,
                 'panoramic_360_url' => $detail?->virtual_tour_360_url,
                 'video_url' => $detail?->virtual_tour_video_url,
-                'tours' => $detail?->virtual_tours_config ?? [],
+                'brochure_url' => $detail?->brochure_pdf_url,
+                'tours' => $normalizedTours,
             ],
             'espacios' => [
                 'eyebrow' => $detail?->espacios_eyebrow ?? 'Espacios',
