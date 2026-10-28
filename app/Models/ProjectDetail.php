@@ -54,6 +54,7 @@ class ProjectDetail extends Model
         'espacios_description',
         'espacios_bg_image_url',
         'espacios_items',
+        'espacios_video',
         'designers',
         'panoramas',
         'panoramas_categories',
@@ -97,6 +98,7 @@ class ProjectDetail extends Model
             'terminaciones_items' => 'array',
             'virtual_tours_config' => 'array',
             'espacios_items' => 'array',
+            'espacios_video' => 'array',
             'designers' => 'array',
             'panoramas' => 'array',
             'panoramas_categories' => 'array',
@@ -106,6 +108,19 @@ class ProjectDetail extends Model
             'schedule' => 'array',
             'announcement' => 'array',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::saving(function (ProjectDetail $detail): void {
+            if (! empty($detail->espacios_video)) {
+                $interstitials = $detail->video_interstitials ?? [];
+                $interstitials[2] = array_merge($interstitials[2] ?? [], $detail->espacios_video);
+                $detail->video_interstitials = $interstitials;
+            } elseif (! empty($detail->video_interstitials[2]) && empty($detail->espacios_video)) {
+                $detail->espacios_video = $detail->video_interstitials[2];
+            }
+        });
     }
 
     public function project(): BelongsTo

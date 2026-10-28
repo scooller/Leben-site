@@ -98,6 +98,11 @@ class ProjectDetailResource extends JsonResource
             ];
         })->values()->all();
 
+        $videoInterstitials = $detail?->video_interstitials ?? [];
+        if (! empty($detail?->espacios_video)) {
+            $videoInterstitials[2] = array_merge($videoInterstitials[2] ?? [], $detail->espacios_video);
+        }
+
         return [
             'project_id' => $proyecto->id,
             'slug' => $proyecto->slug,
@@ -124,7 +129,7 @@ class ProjectDetailResource extends JsonResource
                 'slides' => $detail?->project_slides ?? [],
             ],
             'project_slides' => $detail?->project_slides ?? [],
-            'video_interstitials' => $detail?->video_interstitials ?? [],
+            'video_interstitials' => $videoInterstitials,
             'equipment' => [
                 'eyebrow' => $detail?->equipment_eyebrow ?? 'Equipamiento',
                 'title' => $detail?->equipment_title ?? 'Equipamiento',
@@ -166,6 +171,7 @@ class ProjectDetailResource extends JsonResource
                 'description' => $detail?->espacios_description ?? '',
                 'bg_image_url' => $detail?->espacios_bg_image_url,
                 'items' => $espaciosItems ?? [],
+                'video' => $detail?->espacios_video ?? ($videoInterstitials[2] ?? null),
             ],
             'brochure_pdf_url' => $detail?->brochure_pdf_url,
             'map' => [

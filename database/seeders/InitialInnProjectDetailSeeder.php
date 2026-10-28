@@ -212,6 +212,12 @@ class InitialInnProjectDetailSeeder extends Seeder
                     ['id' => 'piscina', 'navId' => 'piscina', 'label' => 'Piscina climatizada', 'icon_key' => 'waves-ladder', 'img' => 'images/inn/eecc/EECC_Piscina_Climatizada.jpg', 'link' => 'images/inn/eecc/EECC_Piscina_Climatizada.jpg', 'alt' => 'Piscina climatizada'],
                     ['id' => 'bodega', 'navId' => 'bodega', 'label' => 'Bodega náutica', 'icon_key' => 'kayak', 'img' => 'images/inn/eecc/EECC_02.jpg', 'link' => 'images/inn/eecc/EECC_Bodega_Nautica.jpg', 'alt' => 'Bodega náutica'],
                 ],
+                'espacios_video' => [
+                    'eyebrow' => '',
+                    'title' => '',
+                    'text' => 'Despierta tu espíritu aventurero en la Región de Los Lagos',
+                    'video_url' => 'video/lipsum.mp4',
+                ],
 
                 // Sección 5: Ubicación & Mapa
                 'map_eyebrow' => 'Ubicación',

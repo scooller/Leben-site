@@ -2,6 +2,18 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.5] - 2026-10-28
+
+### 🏢 Espacios Comunes — Banner de Video Intermedio Integrado
+- **Migración `2026_10_28_000003_add_espacios_video_to_project_details_table`**:
+  - Incorporada columna `espacios_video` (JSON) en la tabla `project_details`.
+- **Formulario Filament `ProyectoForm`**:
+  - En la pestaña `5. Espacios Comunes`, integrada sección colapsable `Banner de Video Intermedio (Posterior a Espacios Comunes)` con soporte completo para `eyebrow`, `title`, `text` y `video_url`.
+- **Modelo `ProjectDetail`**:
+  - Cast `espacios_video` a array y sincronización bidireccional automática en evento `saving` con `video_interstitials[2]`.
+- **Recurso API `ProjectDetailResource`**:
+  - Exportado `video` dentro del bloque `espacios` y asegurada consistencia con la lista global `video_interstitials`.
+
 ## [1.13.4] - 2026-10-28
 
 ### 🎬 Banners de Video Intermedios — Campos de Texto Estructurados

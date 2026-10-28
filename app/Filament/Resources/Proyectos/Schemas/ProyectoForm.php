@@ -659,6 +659,32 @@ class ProyectoForm
                                                                     ->columns(3)
                                                                     ->defaultItems(0)
                                                                     ->columnSpanFull(),
+
+                                                                Section::make('Banner de Video Intermedio (Posterior a Espacios Comunes)')
+                                                                    ->description('Banner con video de fondo y texto sobrepuesto que se sitúa tras la sección de Espacios Comunes (antes del Mapa)')
+                                                                    ->collapsible()
+                                                                    ->schema([
+                                                                        TextInput::make('espacios_video.eyebrow')
+                                                                            ->label('Eyebrow / Badge Superior')
+                                                                            ->placeholder('ej: Naturaleza & Confort')
+                                                                            ->nullable(),
+                                                                        TextInput::make('espacios_video.title')
+                                                                            ->label('Título')
+                                                                            ->placeholder('ej: Región de Los Lagos')
+                                                                            ->nullable(),
+                                                                        TextInput::make('espacios_video.text')
+                                                                            ->label('Texto / Frase Principal sobre Video')
+                                                                            ->placeholder('ej: Despierta tu espíritu aventurero en la Región de Los Lagos')
+                                                                            ->nullable()
+                                                                            ->columnSpanFull(),
+                                                                        TextInput::make('espacios_video.video_url')
+                                                                            ->label('Ruta o URL del Video (MP4)')
+                                                                            ->placeholder('video/lipsum.mp4')
+                                                                            ->nullable()
+                                                                            ->columnSpanFull(),
+                                                                    ])
+                                                                    ->columns(2)
+                                                                    ->columnSpanFull(),
                                                             ])
                                                             ->columns(2),
                                                     ]),
