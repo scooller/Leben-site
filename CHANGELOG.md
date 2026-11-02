@@ -2,6 +2,12 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.10] - 2026-11-02
+
+### Fixed
+- **Carga de Ficha Web en Panel Filament (EditProyecto)**: Corregido mutateFormDataBeforeFill para precargar y preservar todos los datos existentes de ProjectDetail (project_title, equipment_title, espacios_items, panoramas_categories, designers, etc.) y no solo los valores por defecto de Identidad & Hero.
+- **Tests**: Anadido ProyectoEditDetailFillTest verificando la precarga completa de todas las secciones de la ficha web en Filament.
+
 ## [1.13.9] - 2026-10-28
 
 ### 🎨 Modal Interactivo para Configurar Gradiente CSS (`ProyectoForm`)

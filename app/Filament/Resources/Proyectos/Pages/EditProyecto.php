@@ -62,15 +62,15 @@ class EditProyecto extends EditRecord
         $record = $this->record;
         $defaults = ProjectDetail::getDefaultsFromProyecto($record);
 
-        if (! isset($data['detail']) || ! is_array($data['detail'])) {
-            $data['detail'] = [];
-        }
+        $detailData = $data['detail'] ?? ($record->detail ? $record->detail->toArray() : []);
 
         foreach ($defaults as $key => $defaultValue) {
-            if (! array_key_exists($key, $data['detail']) || blank($data['detail'][$key])) {
-                $data['detail'][$key] = $defaultValue;
+            if (! array_key_exists($key, $detailData) || blank($detailData[$key])) {
+                $detailData[$key] = $defaultValue;
             }
         }
+
+        $data['detail'] = $detailData;
 
         return $data;
     }
