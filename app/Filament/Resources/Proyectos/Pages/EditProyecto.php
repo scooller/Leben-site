@@ -15,6 +15,20 @@ class EditProyecto extends EditRecord
 {
     protected static string $resource = ProyectoResource::class;
 
+    public function mount(int|string $record): void
+    {
+        /** @var Proyecto $proyecto */
+        $proyecto = $this->resolveRecord($record);
+
+        if (! $proyecto->detail()->exists()) {
+            $proyecto->detail()->create(
+                ProjectDetail::getDefaultsFromProyecto($proyecto)
+            );
+        }
+
+        parent::mount($record);
+    }
+
     protected function getHeaderActions(): array
     {
         return [

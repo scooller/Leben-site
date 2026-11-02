@@ -2,6 +2,13 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.12] - 2026-11-02
+
+### Fixed
+- Corregida persistencia de campos en la pestaña 'Información Web' (Ficha Canónica) al guardar proyectos en Filament: eliminado `->model(Proyecto::class)` en `ProyectoForm` que sobrescribía la instancia del modelo y deshabilitaba el guardado de relaciones en Filament v5.
+- Agregada inicialización automática de `ProjectDetail` con defaults de Salesforce en `EditProyecto::mount()` para proyectos sin detalle previo.
+- Añadidos tests unitarios y de integración para asegurar la persistencia en `project_details`.
+
 ## [1.13.11] - 2026-11-02
 
 ### Fixed

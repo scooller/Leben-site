@@ -33,7 +33,6 @@ class ProyectoForm
     public static function configure(Schema $schema): Schema
     {
         return $schema
-            ->model(Proyecto::class)
             ->schema([
                 Tabs::make('ProyectoTabs')
                     ->columnSpanFull()
@@ -487,7 +486,11 @@ class ProyectoForm
                                                                             })
                                                                     ),
                                                                 TextInput::make('hero_eyebrow')->label('Eyebrow Hero')->placeholder('Puerto Varas'),
-                                                                TextInput::make('hero_title')->label('Título Hero (SplitTitle)')->placeholder('VIVE EL LUJO EN PUERTO VARAS'),
+                                                                Textarea::make('hero_title')
+                                                                    ->label('Título Hero (SplitTitle)')
+                                                                    ->placeholder("VIVE EL LUJO\nEN PUERTO VARAS")
+                                                                    ->rows(2)
+                                                                    ->helperText('Presiona Enter para saltos de línea (SplitTitle multilínea en web)'),
                                                                 TextInput::make('hero_subtitle')->label('Subtítulo Hero')->nullable(),
                                                                 TextInput::make('hero_video_url')->label('URL Video Hero (MP4)')->placeholder('https://... o video/inn-new.mp4'),
                                                                 CuratorPicker::make('hero_video_media_id')
@@ -536,7 +539,11 @@ class ProyectoForm
                                                             ->description('Textos editoriales del proyecto, oferta destacada, carrusel de fotos y banners de video')
                                                             ->schema([
                                                                 TextInput::make('project_eyebrow')->label('Eyebrow Sección')->default('Proyecto'),
-                                                                TextInput::make('project_title')->label('Título Sección')->placeholder('LOS MEJORES DEPARTAMENTOS DE PUERTO VARAS'),
+                                                                Textarea::make('project_title')
+                                                                    ->label('Título Sección')
+                                                                    ->placeholder("LOS MEJORES DEPARTAMENTOS\nDE PUERTO VARAS")
+                                                                    ->rows(2)
+                                                                    ->helperText('Presiona Enter para saltos de línea'),
                                                                 TextInput::make('project_highlight_offer')->label('Oferta Destacada (HTML)')->placeholder('paga el pie en <b>60</b> cuotas'),
                                                                 RichEditor::make('project_description')->label('Descripción Editorial (HTML)')->columnSpanFull(),
                                                                 Repeater::make('project_slides')
@@ -601,7 +608,11 @@ class ProyectoForm
                                                             ->description('Marcas aliadas, terminaciones, slides y galerías del modal Ver Detalles')
                                                             ->schema([
                                                                 TextInput::make('equipment_eyebrow')->label('Eyebrow')->default('Equipamiento'),
-                                                                TextInput::make('equipment_title')->label('Título')->placeholder('SOFISTICACIÓN EN CADA DETALLE'),
+                                                                Textarea::make('equipment_title')
+                                                                    ->label('Título')
+                                                                    ->placeholder("SOFISTICACIÓN\nEN CADA DETALLE")
+                                                                    ->rows(2)
+                                                                    ->helperText('Presiona Enter para saltos de línea'),
                                                                 CuratorPicker::make('equipment_bg_image_id')->label('Fondo Decorativo SVG/PNG (Curator)'),
                                                                 TextInput::make('equipment_bg_image_url')->label('URL Fondo Decorativo (Fallback)')->placeholder('images/inn/Perspectiva.svg'),
                                                                 RichEditor::make('equipment_description')->label('Descripción de Equipamiento')->columnSpanFull(),
@@ -747,7 +758,11 @@ class ProyectoForm
                                                             ->description('Carrusel de espacios comunes con íconos animados y fotografías')
                                                             ->schema([
                                                                 TextInput::make('espacios_eyebrow')->label('Eyebrow')->default('Espacios'),
-                                                                TextInput::make('espacios_title')->label('Título')->placeholder('ESPACIOS DE OTRO NIVEL'),
+                                                                Textarea::make('espacios_title')
+                                                                    ->label('Título')
+                                                                    ->placeholder("ESPACIOS DE\nOTRO NIVEL")
+                                                                    ->rows(2)
+                                                                    ->helperText('Presiona Enter para saltos de línea'),
                                                                 CuratorPicker::make('espacios_bg_image_id')->label('Fondo Decorativo SVG/PNG (Curator)'),
                                                                 TextInput::make('espacios_bg_image_url')->label('URL Fondo Decorativo (Fallback)')->placeholder('images/inn/Climbing.svg'),
                                                                 RichEditor::make('espacios_description')->label('Descripción de Espacios Comunes')->columnSpanFull(),
@@ -827,7 +842,11 @@ class ProyectoForm
                                                             ->description('Mapa gráfico con pin del proyecto y puntos de interés sincronizados')
                                                             ->schema([
                                                                 TextInput::make('map_eyebrow')->label('Eyebrow')->default('Ubicación'),
-                                                                TextInput::make('map_title')->label('Título Mapa')->placeholder('Entorno INNigualable'),
+                                                                Textarea::make('map_title')
+                                                                    ->label('Título Mapa')
+                                                                    ->placeholder("Entorno\nINNigualable")
+                                                                    ->rows(2)
+                                                                    ->helperText('Presiona Enter para saltos de línea'),
                                                                 CuratorPicker::make('map_logo_id')->label('Logo Decorativo (Curator)'),
                                                                 TextInput::make('map_logo_url')->label('URL Logo Decorativo (Fallback)')->placeholder('images/inn/E_titulo.png'),
                                                                 TextInput::make('map_btn_text')->label('Texto del Botón')->default('Experiencias'),
@@ -911,7 +930,11 @@ class ProyectoForm
                                                             ->description('Equipo de diseño de interiores, iluminación y propuestas de autor')
                                                             ->schema([
                                                                 TextInput::make('interiorismo_eyebrow')->label('Eyebrow')->default('Interiorismo'),
-                                                                TextInput::make('interiorismo_title')->label('Título')->placeholder('MAESTRÍA EN CADA DETALLE'),
+                                                                Textarea::make('interiorismo_title')
+                                                                    ->label('Título')
+                                                                    ->placeholder('MAESTRÍA EN CADA DETALLE')
+                                                                    ->rows(2)
+                                                                    ->helperText('Presiona Enter para saltos de línea'),
                                                                 CuratorPicker::make('interiorismo_bg_image_id')->label('Fondo Decorativo SVG/PNG (Curator)'),
                                                                 TextInput::make('interiorismo_bg_image_url')->label('URL Fondo Decorativo (Fallback)')->placeholder('images/inn/Interiorismo.svg'),
                                                                 RichEditor::make('interiorismo_description')->label('Descripción de Interiorismo')->columnSpanFull(),
@@ -939,7 +962,11 @@ class ProyectoForm
                                                             ->description('Encabezados, horarios de atención, mapa Waze y contacto')
                                                             ->schema([
                                                                 TextInput::make('contact_eyebrow')->label('Eyebrow')->default('Contacto'),
-                                                                TextInput::make('contact_title')->label('Título')->default('Conversemos'),
+                                                                Textarea::make('contact_title')
+                                                                    ->label('Título')
+                                                                    ->default('Conversemos')
+                                                                    ->rows(2)
+                                                                    ->helperText('Presiona Enter para saltos de línea'),
                                                                 TextInput::make('contact_waze_url')->label('URL Embed de Waze (Iframe)')->placeholder('https://embed.waze.com/...'),
                                                                 RichEditor::make('contact_subtitle')->label('Texto de Dirección y Horarios')->columnSpanFull(),
                                                             ])

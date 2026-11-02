@@ -66,4 +66,26 @@ class ProyectoEditDetailFillTest extends TestCase
         $this->assertEquals('Las Condes', $detail['hero_eyebrow']);
         $this->assertEquals('Proyecto Nuevo', $detail['hero_title']);
     }
+
+    public function test_edit_proyecto_persists_web_info_detail_changes_on_save(): void
+    {
+        $user = User::factory()->create(['user_type' => 'admin']);
+        $this->actingAs($user);
+
+        $this->seed(InitialInnProjectDetailSeeder::class);
+
+        $proyecto = Proyecto::where('slug', 'edificio-inn')->firstOrFail();
+
+        $livewire = Livewire::test(EditProyecto::class, ['record' => $proyecto->id])
+            ->set('data.detail.hero_title', 'TITULO ACTUALIZADO HERO')
+            ->set('data.detail.project_title', 'PROYECTO ACTUALIZADO')
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertDatabaseHas('project_details', [
+            'project_id' => $proyecto->id,
+            'hero_title' => 'TITULO ACTUALIZADO HERO',
+            'project_title' => 'PROYECTO ACTUALIZADO',
+        ]);
+    }
 }
