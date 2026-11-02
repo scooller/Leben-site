@@ -34,20 +34,17 @@ class ContentCacheObserver
                 Cache::forget("page_{$model->page->slug}");
             }
         } elseif ($model instanceof Proyecto) {
-            Cache::forget("project_content_{$model->id}");
-            Cache::forget("project_content_{$model->slug}");
+            $this->clearProjectContentCache($model);
         } elseif ($model instanceof ProjectDetail) {
             if ($model->project) {
-                Cache::forget("project_content_{$model->project->id}");
-                Cache::forget("project_content_{$model->project->slug}");
+                $this->clearProjectContentCache($model->project);
             }
         } elseif ($model instanceof Testimonial) {
             Cache::forget('testimonials_all');
             if ($model->project_id) {
                 Cache::forget("testimonials_project_{$model->project_id}");
                 if ($model->project) {
-                    Cache::forget("project_content_{$model->project->id}");
-                    Cache::forget("project_content_{$model->project->slug}");
+                    $this->clearProjectContentCache($model->project);
                 }
             }
         } elseif ($model instanceof Menu) {
@@ -59,5 +56,17 @@ class ContentCacheObserver
         } elseif ($model instanceof SiteSetting) {
             Cache::forget('site_settings_current');
         }
+    }
+
+    private function clearProjectContentCache(Proyecto $proyecto): void
+    {
+        $slug = $proyecto->slug;
+        $rawSlug = str_replace('edificio-', '', $slug);
+        $normalizedSlug = str_starts_with($slug, 'edificio-') ? $slug : 'edificio-'.$slug;
+
+        Cache::forget("project_content_{$proyecto->id}");
+        Cache::forget("project_content_{$slug}");
+        Cache::forget("project_content_{$rawSlug}");
+        Cache::forget("project_content_{$normalizedSlug}");
     }
 }

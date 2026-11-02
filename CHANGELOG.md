@@ -2,6 +2,11 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.13] - 2026-11-02
+
+### Fixed
+- Corregida invalidación de caché en `ContentCacheObserver`: ahora purga todas las variantes del slug (`id`, `slug`, `rawSlug` sin prefijo 'edificio-', y `normalizedSlug`) para que endpoints como `/api/v1/proyectos/inn/content` se actualicen de inmediato en lugar de retener caché de 10 minutos.
+
 ## [1.13.12] - 2026-11-02
 
 ### Fixed
