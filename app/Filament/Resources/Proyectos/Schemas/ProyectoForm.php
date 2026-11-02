@@ -257,21 +257,14 @@ class ProyectoForm
                                                     return [];
                                                 }
 
-                                                // Crear opciones: code => "Nombre del Proyecto - CODE"
+                                                $projectNames = Proyecto::query()
+                                                    ->whereIn('slug', array_keys($codes))
+                                                    ->pluck('name', 'slug')
+                                                    ->all();
+
                                                 $options = [];
                                                 foreach ($codes as $slug => $code) {
-                                                    // Buscar el proyecto por slug
-                                                    $proyecto = Proyecto::where('slug', $slug)->first();
-
-                                                    // Si encuentra proyecto, mostrar nombre + código
-                                                    // Si no, mostrar slug + código como fallback
-                                                    if ($proyecto) {
-                                                        $label = "{$proyecto->name}";
-                                                    } else {
-                                                        $label = "{$slug}";
-                                                    }
-
-                                                    $options[$code] = $label;
+                                                    $options[$code] = $projectNames[$slug] ?? (string) $slug;
                                                 }
 
                                                 return $options;

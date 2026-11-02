@@ -1,5 +1,10 @@
 <?php
 
+// Ensure adequate memory limit for Filament admin panel and complex schemas
+if ((int) ini_get('memory_limit') < 512 && ini_get('memory_limit') !== '-1') {
+    @ini_set('memory_limit', '512M');
+}
+
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;

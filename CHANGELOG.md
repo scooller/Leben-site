@@ -2,6 +2,12 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.11] - 2026-11-02
+
+### Fixed
+- **Optimización de Memoria en Filament (`ProyectoForm`)**: Reemplazadas 44 consultas N+1 en opciones de códigos de comercio Transbank (`transbank_commerce_code`) por una única consulta `whereIn` más mapeo en array, reduciendo drásticamente el consumo de memoria.
+- **Configuración de Límite de Memoria**: Elevado límite de memoria en tiempo de ejecución a `512M` en `bootstrap/app.php` y añadido `public/.user.ini` para evitar errores `Allowed memory size exhausted` al renderizar formularios complejos de Filament.
+
 ## [1.13.10] - 2026-11-02
 
 ### Fixed
