@@ -88,4 +88,47 @@ class ProyectoEditDetailFillTest extends TestCase
             'project_title' => 'PROYECTO ACTUALIZADO',
         ]);
     }
+
+    public function test_edit_proyecto_persists_virtual_tours_and_brochure(): void
+    {
+        $user = User::factory()->create(['user_type' => 'admin']);
+        $this->actingAs($user);
+
+        $this->seed(InitialInnProjectDetailSeeder::class);
+
+        $proyecto = Proyecto::where('slug', 'edificio-inn')->firstOrFail();
+
+        $toursConfig = [
+            [
+                'label' => 'Masterplan',
+                'title' => 'Plano General y Pisos',
+                'src' => 'https://example.com/media/masterplan.jpg',
+                'interiores' => [
+                    [
+                        'title' => 'Piso 1 Acceso',
+                        'src' => 'https://example.com/media/piso1.jpg',
+                    ],
+                ],
+            ],
+            [
+                'label' => 'Piloto 360',
+                'title' => 'Matterport Virtual',
+                'src' => 'https://my.matterport.com/show/?m=sample123',
+                'interiores' => [],
+            ],
+        ];
+
+        Livewire::test(EditProyecto::class, ['record' => $proyecto->id])
+            ->set('data.detail.brochure_pdf_url', 'https://example.com/media/brochure.pdf')
+            ->set('data.detail.virtual_tours_config', $toursConfig)
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $detail = $proyecto->fresh()->detail;
+        $this->assertEquals('https://example.com/media/brochure.pdf', $detail->brochure_pdf_url);
+        $this->assertCount(2, $detail->virtual_tours_config);
+        $this->assertEquals('https://example.com/media/masterplan.jpg', $detail->virtual_tours_config[0]['src']);
+        $this->assertEquals('https://example.com/media/piso1.jpg', $detail->virtual_tours_config[0]['interiores'][0]['src']);
+        $this->assertEquals('https://my.matterport.com/show/?m=sample123', $detail->virtual_tours_config[1]['src']);
+    }
 }

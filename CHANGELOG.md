@@ -2,6 +2,17 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.14] - 2026-11-03
+
+### Added
+- **CuratorPicker en Recorridos 360, Masterplan & Folleto (`ProyectoForm`)**: Agregada selección de archivos e imágenes desde Curator (`CuratorPicker`) con sincronización reactiva a los campos de URL en la pestaña *Información Web (Ficha Canónica)*:
+  - `brochure_pdf_url`: selector `brochure_pdf_media_id` para folletos PDF y documentos.
+  - `virtual_tours_config`: selector `src_media_id` para planos generales/Masterplan y recorridos.
+  - `virtual_tours_config.interiores`: selector `src_media_id` para subvistas, pisos y ambientes interiores.
+  - `virtual_tour_360_url`: selector `virtual_tour_360_media_id` para recorridos de respaldo.
+- Mantiene compatibilidad total para ingresar manualmente URLs de iframes externos (Matterport, La Nube 360, YouTube o CDNs).
+- Pruebas automatizadas en `ProyectoEditDetailFillTest` para validar persistencia de tours y folletos.
+
 ## [1.13.13] - 2026-11-02
 
 ### Fixed

@@ -673,7 +673,23 @@ class ProyectoForm
                                                                 TextInput::make('brochure_pdf_url')
                                                                     ->label('URL Folleto / Brochure PDF')
                                                                     ->placeholder('https://... o /storage/...')
-                                                                    ->columnSpan(2),
+                                                                    ->helperText('Ingresa una URL directa (externa o de archivo) o selecciona un archivo desde Curator a la derecha.')
+                                                                    ->columnSpan(1),
+
+                                                                CuratorPicker::make('brochure_pdf_media_id')
+                                                                    ->label('Seleccionar Folleto / PDF desde Curator')
+                                                                    ->buttonLabel('Elegir Archivo')
+                                                                    ->dehydrated(false)
+                                                                    ->live()
+                                                                    ->afterStateUpdated(function ($state, Set $set) {
+                                                                        if ($state) {
+                                                                            $media = Media::find($state);
+                                                                            if ($media) {
+                                                                                $set('brochure_pdf_url', $media->url);
+                                                                            }
+                                                                        }
+                                                                    })
+                                                                    ->columnSpan(1),
 
                                                                 Repeater::make('virtual_tours_config')
                                                                     ->label('Secciones / Tours 360 del Proyecto')
@@ -693,8 +709,23 @@ class ProyectoForm
                                                                             ->required(),
 
                                                                         TextInput::make('src')
-                                                                            ->label('URL o Imagen Principal (Fallback si no tiene interiores)')
-                                                                            ->placeholder('https://my.matterport.com/... o images/...'),
+                                                                            ->label('Ruta de Imagen o URL 360 / Iframe')
+                                                                            ->placeholder('https://my.matterport.com/... o images/... o /storage/...')
+                                                                            ->helperText('Ingresa una URL de iframe (Matterport/La Nube 360) o selecciona una imagen/archivo desde Curator.'),
+
+                                                                        CuratorPicker::make('src_media_id')
+                                                                            ->label('Seleccionar Imagen / Archivo desde Curator')
+                                                                            ->buttonLabel('Elegir Archivo')
+                                                                            ->dehydrated(false)
+                                                                            ->live()
+                                                                            ->afterStateUpdated(function ($state, Set $set) {
+                                                                                if ($state) {
+                                                                                    $media = Media::find($state);
+                                                                                    if ($media) {
+                                                                                        $set('src', $media->url);
+                                                                                    }
+                                                                                }
+                                                                            }),
 
                                                                         Repeater::make('interiores')
                                                                             ->label('Interiores / Subvistas de esta Sección')
@@ -704,12 +735,28 @@ class ProyectoForm
                                                                                 TextInput::make('title')
                                                                                     ->label('Nombre del Interior / Subvista')
                                                                                     ->placeholder('ej: Living Comedor 360, Piso 1, Terraza')
-                                                                                    ->required(),
+                                                                                    ->required()
+                                                                                    ->columnSpanFull(),
 
                                                                                 TextInput::make('src')
                                                                                     ->label('Ruta de Imagen o URL 360 (Iframe / Matterport)')
-                                                                                    ->placeholder('images/... o https://my.matterport.com/...')
+                                                                                    ->placeholder('images/... o https://my.matterport.com/... o /storage/...')
+                                                                                    ->helperText('Ingresa una URL o selecciona el archivo/imagen desde Curator.')
                                                                                     ->required(),
+
+                                                                                CuratorPicker::make('src_media_id')
+                                                                                    ->label('Seleccionar Imagen / Archivo desde Curator')
+                                                                                    ->buttonLabel('Elegir Archivo')
+                                                                                    ->dehydrated(false)
+                                                                                    ->live()
+                                                                                    ->afterStateUpdated(function ($state, Set $set) {
+                                                                                        if ($state) {
+                                                                                            $media = Media::find($state);
+                                                                                            if ($media) {
+                                                                                                $set('src', $media->url);
+                                                                                            }
+                                                                                        }
+                                                                                    }),
                                                                             ])
                                                                             ->columns(2)
                                                                             ->defaultItems(0)
@@ -717,7 +764,7 @@ class ProyectoForm
                                                                             ->columnSpanFull()
                                                                             ->helperText('Si esta sección tiene múltiples ambientes o niveles, agrégalos aquí. Se mostrarán como botones de sub-navegación dentro de esta sección.'),
                                                                     ])
-                                                                    ->columns(3)
+                                                                    ->columns(2)
                                                                     ->defaultItems(0)
                                                                     ->reorderable()
                                                                     ->columnSpanFull(),
@@ -728,6 +775,19 @@ class ProyectoForm
                                                                     ->schema([
                                                                         TextInput::make('virtual_tour_matterport_url')->label('URL Matterport 3D')->placeholder('https://my.matterport.com/show/?m=...'),
                                                                         TextInput::make('virtual_tour_360_url')->label('URL Recorrido 360 (La Nube 360)')->placeholder('https://www.lanube360.com/...'),
+                                                                        CuratorPicker::make('virtual_tour_360_media_id')
+                                                                            ->label('Seleccionar Archivo 360 desde Curator')
+                                                                            ->buttonLabel('Elegir Archivo 360')
+                                                                            ->dehydrated(false)
+                                                                            ->live()
+                                                                            ->afterStateUpdated(function ($state, Set $set) {
+                                                                                if ($state) {
+                                                                                    $media = Media::find($state);
+                                                                                    if ($media) {
+                                                                                        $set('virtual_tour_360_url', $media->url);
+                                                                                    }
+                                                                                }
+                                                                            }),
                                                                         TextInput::make('virtual_tour_video_url')->label('URL Video Recorrido (YouTube / MP4)')->placeholder('https://...'),
                                                                         CuratorPicker::make('virtual_tour_video_media_id')
                                                                             ->label('Seleccionar Video desde Curator')
