@@ -4,6 +4,15 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.11.5] - 2026-11-03
+
+### 🐛 Fixed / 🗄️ Database — Permitir `null` en columna `descuento_iva` de proyectos
+- **`database/migrations/2026_11_03_175209_make_descuento_iva_nullable_in_proyectos_table.php`**:
+  - Modificación de columna `descuento_iva` en tabla `proyectos` a `nullable()` con `default(null)`.
+  - Resuelve error de violación de integridad `SQLSTATE[23000]: 1048 Column 'descuento_iva' cannot be null` al sincronizar proyectos nuevos desde Salesforce.
+- **`tests/Unit/Models/ProyectoTest.php`**:
+  - Test unitario `test_proyecto_allows_null_descuento_iva` para validar persistencia de `null` en `descuento_iva`.
+
 ## [1.11.4] - 2026-10-20
 
 ### 🔒 Security / 👥 Auth — Permisos de importación de contactos para rol marketing

@@ -52,6 +52,19 @@ class ProyectoTest extends TestCase
         $this->assertSame('19.00', $proyecto->descuento_iva);
     }
 
+    public function test_proyecto_allows_null_descuento_iva(): void
+    {
+        $proyecto = Proyecto::factory()->create([
+            'descuento_iva' => null,
+        ]);
+
+        $this->assertNull($proyecto->descuento_iva);
+        $this->assertDatabaseHas('proyectos', [
+            'id' => $proyecto->id,
+            'descuento_iva' => null,
+        ]);
+    }
+
     public function test_proyecto_has_many_plantas(): void
     {
         $proyecto = Proyecto::factory()->create();
