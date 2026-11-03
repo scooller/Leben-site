@@ -119,9 +119,21 @@ class ProjectDetailResource extends JsonResource
             ];
         })->values()->all();
 
-        $videoInterstitials = $detail?->video_interstitials ?? [];
+        $videoInterstitials = collect($detail?->video_interstitials ?? [])->map(function ($item): array {
+            $item = (array) $item;
+            if (empty($item['video_url']) && ! empty($item['video_media_id'])) {
+                $item['video_url'] = Media::find($item['video_media_id'])?->url;
+            }
+
+            return $item;
+        })->all();
+
         if (! empty($detail?->espacios_video)) {
-            $videoInterstitials[2] = array_merge($videoInterstitials[2] ?? [], $detail->espacios_video);
+            $espaciosVideo = (array) $detail->espacios_video;
+            if (empty($espaciosVideo['video_url']) && ! empty($espaciosVideo['video_media_id'])) {
+                $espaciosVideo['video_url'] = Media::find($espaciosVideo['video_media_id'])?->url;
+            }
+            $videoInterstitials[2] = array_merge($videoInterstitials[2] ?? [], $espaciosVideo);
         }
 
         return [

@@ -597,22 +597,14 @@ class ProyectoForm
                                                                             ->columnSpanFull(),
                                                                         TextInput::make('video_url')
                                                                             ->label('Ruta o URL del Video (MP4)')
-                                                                            ->required()
-                                                                            ->placeholder('video/video_reconfortante_a.mp4'),
+                                                                            ->placeholder('video/video_reconfortante_a.mp4')
+                                                                            ->helperText('Opcional si seleccionas un video desde Curator. Puedes ingresar una URL directa.')
+                                                                            ->nullable(),
                                                                         CuratorPicker::make('video_media_id')
                                                                             ->label('Seleccionar Video desde Curator')
                                                                             ->buttonLabel('Elegir Video')
                                                                             ->acceptedFileTypes(['video/*'])
-                                                                            ->dehydrated(false)
-                                                                            ->live()
-                                                                            ->afterStateUpdated(function ($state, Set $set) {
-                                                                                if ($state) {
-                                                                                    $media = Media::find($state);
-                                                                                    if ($media) {
-                                                                                        $set('video_url', $media->url);
-                                                                                    }
-                                                                                }
-                                                                            }),
+                                                                            ->formatStateUsing(fn ($state) => static::formatCuratorState($state)),
                                                                     ])
                                                                     ->columns(2)
                                                                     ->defaultItems(0)
@@ -869,21 +861,13 @@ class ProyectoForm
                                                                         TextInput::make('espacios_video.video_url')
                                                                             ->label('Ruta o URL del Video (MP4)')
                                                                             ->placeholder('video/lipsum.mp4')
+                                                                            ->helperText('Opcional si seleccionas un video desde Curator. Puedes ingresar una URL directa.')
                                                                             ->nullable(),
-                                                                        CuratorPicker::make('espacios_video_media_id')
+                                                                        CuratorPicker::make('espacios_video.video_media_id')
                                                                             ->label('Seleccionar Video desde Curator')
                                                                             ->buttonLabel('Elegir Video')
                                                                             ->acceptedFileTypes(['video/*'])
-                                                                            ->dehydrated(false)
-                                                                            ->live()
-                                                                            ->afterStateUpdated(function ($state, Set $set) {
-                                                                                if ($state) {
-                                                                                    $media = Media::find($state);
-                                                                                    if ($media) {
-                                                                                        $set('espacios_video.video_url', $media->url);
-                                                                                    }
-                                                                                }
-                                                                            }),
+                                                                            ->formatStateUsing(fn ($state) => static::formatCuratorState($state)),
                                                                     ])
                                                                     ->columns(2)
                                                                     ->columnSpanFull(),

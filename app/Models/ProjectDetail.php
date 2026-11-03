@@ -154,6 +154,32 @@ class ProjectDetail extends Model
                 $detail->virtual_tours_config = $tours;
             }
 
+            if (! empty($detail->video_interstitials) && is_array($detail->video_interstitials)) {
+                $interstitials = $detail->video_interstitials;
+                foreach ($interstitials as &$item) {
+                    $vMediaId = $item['video_media_id'] ?? null;
+                    if (! empty($vMediaId) && empty($item['video_url'])) {
+                        $vMedia = Media::find($vMediaId);
+                        if ($vMedia) {
+                            $item['video_url'] = $vMedia->url;
+                        }
+                    }
+                }
+                $detail->video_interstitials = $interstitials;
+            }
+
+            if (! empty($detail->espacios_video) && is_array($detail->espacios_video)) {
+                $espMediaId = $detail->espacios_video['video_media_id'] ?? null;
+                if (! empty($espMediaId) && empty($detail->espacios_video['video_url'])) {
+                    $espMedia = Media::find($espMediaId);
+                    if ($espMedia) {
+                        $espVideo = $detail->espacios_video;
+                        $espVideo['video_url'] = $espMedia->url;
+                        $detail->espacios_video = $espVideo;
+                    }
+                }
+            }
+
             if (! empty($detail->espacios_video)) {
                 $interstitials = $detail->video_interstitials ?? [];
                 $interstitials[2] = array_merge($interstitials[2] ?? [], $detail->espacios_video);

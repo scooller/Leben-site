@@ -182,4 +182,47 @@ class ProyectoEditDetailFillTest extends TestCase
         $this->assertEquals($media->id, $detail->virtual_tours_config[0]['interiores'][0]['media_id']);
         $this->assertEquals($media->url, $detail->virtual_tours_config[0]['interiores'][0]['src']);
     }
+
+    public function test_edit_proyecto_persists_video_interstitials_with_curator_media_without_manual_url(): void
+    {
+        $user = User::factory()->create(['user_type' => 'admin']);
+        $this->actingAs($user);
+
+        $this->seed(InitialInnProjectDetailSeeder::class);
+
+        $proyecto = Proyecto::where('slug', 'edificio-inn')->firstOrFail();
+
+        $media = \Awcodes\Curator\Models\Media::create([
+            'disk' => 'public',
+            'directory' => 'media',
+            'visibility' => 'public',
+            'name' => 'banner-video',
+            'path' => 'media/banner-video.mp4',
+            'width' => 1920,
+            'height' => 1080,
+            'size' => 10485760,
+            'type' => 'video/mp4',
+            'ext' => 'mp4',
+        ]);
+
+        $interstitials = [
+            [
+                'eyebrow' => 'Experiencia INN',
+                'title' => 'Vistas Insospechadas',
+                'text' => 'Un estilo de vida único frente al lago',
+                'video_url' => null,
+                'video_media_id' => [(string) \Illuminate\Support\Str::uuid() => $media->toArray()],
+            ],
+        ];
+
+        Livewire::test(EditProyecto::class, ['record' => $proyecto->id])
+            ->set('data.detail.video_interstitials', $interstitials)
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $detail = $proyecto->fresh()->detail;
+        $this->assertNotEmpty($detail->video_interstitials);
+        $this->assertEquals($media->id, $detail->video_interstitials[0]['video_media_id']);
+        $this->assertEquals($media->url, $detail->video_interstitials[0]['video_url']);
+    }
 }

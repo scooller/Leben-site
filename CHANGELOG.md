@@ -2,6 +2,15 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.16] - 2026-11-03
+
+### Fixed
+- **Validación y Persistencia de Video en Banners Intermedios (`video_interstitials`)**:
+  - Removido `required()` de `video_url` ("Ruta o URL del Video (MP4)") en los banners intermedios para permitir guardar sin error cuando el video se selecciona vía Curator.
+  - Almacenamiento persistente de `video_media_id` en `video_interstitials` y `espacios_video`.
+  - Auto-resolución de `video_url` con `$media->url` en `ProjectDetail::saving` y `ProjectDetailResource`.
+  - Agregado formateador `formatCuratorState` para renderizar el reproductor/preview de video en CuratorPicker sin fallos de tipo en Livewire.
+
 ## [1.13.15] - 2026-11-03
 
 ### Fixed
