@@ -131,4 +131,55 @@ class ProyectoEditDetailFillTest extends TestCase
         $this->assertEquals('https://example.com/media/piso1.jpg', $detail->virtual_tours_config[0]['interiores'][0]['src']);
         $this->assertEquals('https://my.matterport.com/show/?m=sample123', $detail->virtual_tours_config[1]['src']);
     }
+
+    public function test_edit_proyecto_persists_curator_media_without_manual_src(): void
+    {
+        $user = User::factory()->create(['user_type' => 'admin']);
+        $this->actingAs($user);
+
+        $this->seed(InitialInnProjectDetailSeeder::class);
+
+        $proyecto = Proyecto::where('slug', 'edificio-inn')->firstOrFail();
+
+        $media = \Awcodes\Curator\Models\Media::create([
+            'disk' => 'public',
+            'directory' => 'media',
+            'visibility' => 'public',
+            'name' => 'masterplan-inn',
+            'path' => 'media/masterplan-inn.jpg',
+            'width' => 1920,
+            'height' => 1080,
+            'size' => 257740,
+            'type' => 'image/jpeg',
+            'ext' => 'jpg',
+        ]);
+
+        $toursConfig = [
+            [
+                'label' => 'Masterplan',
+                'title' => 'Masterplan General',
+                'src' => null,
+                'media_id' => [(string) \Illuminate\Support\Str::uuid() => $media->toArray()],
+                'interiores' => [
+                    [
+                        'title' => 'Masterplan Vista',
+                        'src' => null,
+                        'media_id' => [(string) \Illuminate\Support\Str::uuid() => $media->toArray()],
+                    ],
+                ],
+            ],
+        ];
+
+        Livewire::test(EditProyecto::class, ['record' => $proyecto->id])
+            ->set('data.detail.virtual_tours_config', $toursConfig)
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $detail = $proyecto->fresh()->detail;
+        $this->assertCount(1, $detail->virtual_tours_config);
+        $this->assertEquals($media->id, $detail->virtual_tours_config[0]['media_id']);
+        $this->assertEquals($media->url, $detail->virtual_tours_config[0]['src']);
+        $this->assertEquals($media->id, $detail->virtual_tours_config[0]['interiores'][0]['media_id']);
+        $this->assertEquals($media->url, $detail->virtual_tours_config[0]['interiores'][0]['src']);
+    }
 }

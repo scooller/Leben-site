@@ -50,6 +50,7 @@ class ProjectDetail extends Model
         'virtual_tours_title',
         'virtual_tours_config',
         'brochure_pdf_url',
+        'brochure_media_id',
         'espacios_eyebrow',
         'espacios_title',
         'espacios_description',
@@ -120,6 +121,39 @@ class ProjectDetail extends Model
     protected static function booted(): void
     {
         static::saving(function (ProjectDetail $detail): void {
+            if (! empty($detail->brochure_media_id) && empty($detail->brochure_pdf_url)) {
+                $brochureMedia = Media::find($detail->brochure_media_id);
+                if ($brochureMedia) {
+                    $detail->brochure_pdf_url = $brochureMedia->url;
+                }
+            }
+
+            if (! empty($detail->virtual_tours_config) && is_array($detail->virtual_tours_config)) {
+                $tours = $detail->virtual_tours_config;
+                foreach ($tours as &$tour) {
+                    $tourMediaId = $tour['media_id'] ?? $tour['src_media_id'] ?? null;
+                    if (! empty($tourMediaId) && empty($tour['src'])) {
+                        $tourMedia = Media::find($tourMediaId);
+                        if ($tourMedia) {
+                            $tour['src'] = $tourMedia->url;
+                        }
+                    }
+
+                    if (! empty($tour['interiores']) && is_array($tour['interiores'])) {
+                        foreach ($tour['interiores'] as &$interior) {
+                            $intMediaId = $interior['media_id'] ?? $interior['src_media_id'] ?? null;
+                            if (! empty($intMediaId) && empty($interior['src'])) {
+                                $intMedia = Media::find($intMediaId);
+                                if ($intMedia) {
+                                    $interior['src'] = $intMedia->url;
+                                }
+                            }
+                        }
+                    }
+                }
+                $detail->virtual_tours_config = $tours;
+            }
+
             if (! empty($detail->espacios_video)) {
                 $interstitials = $detail->video_interstitials ?? [];
                 $interstitials[2] = array_merge($interstitials[2] ?? [], $detail->espacios_video);
@@ -128,6 +162,16 @@ class ProjectDetail extends Model
                 $detail->espacios_video = $detail->video_interstitials[2];
             }
         });
+    }
+
+    public function brochureMedia(): BelongsTo
+    {
+        return $this->belongsTo(Media::class, 'brochure_media_id');
+    }
+
+    public function getResolvedBrochurePdfUrlAttribute(): ?string
+    {
+        return $this->brochureMedia?->url ?? $this->brochure_pdf_url;
     }
 
     public function project(): BelongsTo

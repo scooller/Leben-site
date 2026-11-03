@@ -26,10 +26,32 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Arr;
 use Illuminate\Support\HtmlString;
+use Illuminate\Support\Str;
 
 class ProyectoForm
 {
+    public static function formatCuratorState(mixed $state): array
+    {
+        if (blank($state)) {
+            return [];
+        }
+
+        if (is_array($state) && ! isset($state['id'])) {
+            return $state;
+        }
+
+        $ids = Arr::wrap($state);
+        $media = function_exists('get_media_items') ? get_media_items($ids)->toArray() : [];
+        $items = [];
+        foreach ($media as $itemData) {
+            $items[(string) Str::uuid()] = $itemData;
+        }
+
+        return $items;
+    }
+
     public static function configure(Schema $schema): Schema
     {
         return $schema
@@ -673,22 +695,14 @@ class ProyectoForm
                                                                 TextInput::make('brochure_pdf_url')
                                                                     ->label('URL Folleto / Brochure PDF')
                                                                     ->placeholder('https://... o /storage/...')
-                                                                    ->helperText('Ingresa una URL directa (externa o de archivo) o selecciona un archivo desde Curator a la derecha.')
+                                                                    ->helperText('Opcional si seleccionas un archivo desde Curator. Puedes ingresar una URL directa.')
+                                                                    ->nullable()
                                                                     ->columnSpan(1),
 
-                                                                CuratorPicker::make('brochure_pdf_media_id')
+                                                                CuratorPicker::make('brochure_media_id')
                                                                     ->label('Seleccionar Folleto / PDF desde Curator')
                                                                     ->buttonLabel('Elegir Archivo')
-                                                                    ->dehydrated(false)
-                                                                    ->live()
-                                                                    ->afterStateUpdated(function ($state, Set $set) {
-                                                                        if ($state) {
-                                                                            $media = Media::find($state);
-                                                                            if ($media) {
-                                                                                $set('brochure_pdf_url', $media->url);
-                                                                            }
-                                                                        }
-                                                                    })
+                                                                    ->formatStateUsing(fn ($state) => static::formatCuratorState($state))
                                                                     ->columnSpan(1),
 
                                                                 Repeater::make('virtual_tours_config')
@@ -711,21 +725,13 @@ class ProyectoForm
                                                                         TextInput::make('src')
                                                                             ->label('Ruta de Imagen o URL 360 / Iframe')
                                                                             ->placeholder('https://my.matterport.com/... o images/... o /storage/...')
-                                                                            ->helperText('Ingresa una URL de iframe (Matterport/La Nube 360) o selecciona una imagen/archivo desde Curator.'),
+                                                                            ->helperText('Opcional si seleccionas un archivo desde Curator. Ingresa una URL para iframes (Matterport/La Nube 360).')
+                                                                            ->nullable(),
 
-                                                                        CuratorPicker::make('src_media_id')
+                                                                        CuratorPicker::make('media_id')
                                                                             ->label('Seleccionar Imagen / Archivo desde Curator')
                                                                             ->buttonLabel('Elegir Archivo')
-                                                                            ->dehydrated(false)
-                                                                            ->live()
-                                                                            ->afterStateUpdated(function ($state, Set $set) {
-                                                                                if ($state) {
-                                                                                    $media = Media::find($state);
-                                                                                    if ($media) {
-                                                                                        $set('src', $media->url);
-                                                                                    }
-                                                                                }
-                                                                            }),
+                                                                            ->formatStateUsing(fn ($state) => static::formatCuratorState($state)),
 
                                                                         Repeater::make('interiores')
                                                                             ->label('Interiores / Subvistas de esta Sección')
@@ -741,22 +747,13 @@ class ProyectoForm
                                                                                 TextInput::make('src')
                                                                                     ->label('Ruta de Imagen o URL 360 (Iframe / Matterport)')
                                                                                     ->placeholder('images/... o https://my.matterport.com/... o /storage/...')
-                                                                                    ->helperText('Ingresa una URL o selecciona el archivo/imagen desde Curator.')
-                                                                                    ->required(),
+                                                                                    ->helperText('Opcional si seleccionas desde Curator. Ingresa una URL para iframes externos.')
+                                                                                    ->nullable(),
 
-                                                                                CuratorPicker::make('src_media_id')
+                                                                                CuratorPicker::make('media_id')
                                                                                     ->label('Seleccionar Imagen / Archivo desde Curator')
                                                                                     ->buttonLabel('Elegir Archivo')
-                                                                                    ->dehydrated(false)
-                                                                                    ->live()
-                                                                                    ->afterStateUpdated(function ($state, Set $set) {
-                                                                                        if ($state) {
-                                                                                            $media = Media::find($state);
-                                                                                            if ($media) {
-                                                                                                $set('src', $media->url);
-                                                                                            }
-                                                                                        }
-                                                                                    }),
+                                                                                    ->formatStateUsing(fn ($state) => static::formatCuratorState($state)),
                                                                             ])
                                                                             ->columns(2)
                                                                             ->defaultItems(0)

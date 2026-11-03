@@ -2,6 +2,16 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.15] - 2026-11-03
+
+### Fixed
+- **Validación y Persistencia de Medios Curator en Recorridos 360 / Masterplan**:
+  - Removido `required()` estricto de `src` en interiores y secciones de tours para permitir guardar sin errores cuando se selecciona una imagen directamente desde Curator.
+  - Almacenamiento persistente de `media_id` en `virtual_tours_config` e `interiores`.
+  - Resolución y sincronización automática de URLs en `ProjectDetail::saving` y `ProjectDetailResource` cuando `src` es omitido y se seleccionó archivo en Curator.
+  - Nueva columna y relación `brochure_media_id` en `project_details` para asociar folletos desde Curator con sincronización a `brochure_pdf_url`.
+  - Agregado formateador `formatCuratorState` para inicializar correctamente el visor de archivos de Curator dentro de repeaters en Livewire.
+
 ## [1.13.14] - 2026-11-03
 
 ### Added

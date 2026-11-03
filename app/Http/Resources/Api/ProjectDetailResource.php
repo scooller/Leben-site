@@ -8,6 +8,7 @@ use App\Models\ProjectGallery;
 use App\Models\ProjectPoi;
 use App\Models\Proyecto;
 use App\Models\Testimonial;
+use Awcodes\Curator\Models\Media;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -86,12 +87,32 @@ class ProjectDetailResource extends JsonResource
 
         $rawTours = $detail?->virtual_tours_config ?? [];
         $normalizedTours = collect($rawTours)->map(function (array $tour): array {
-            $interiores = $tour['interiores'] ?? $tour['images'] ?? [];
+            $interiores = collect($tour['interiores'] ?? $tour['images'] ?? [])->map(function ($interior): array {
+                $interior = (array) $interior;
+                $src = $interior['src'] ?? null;
+                $mediaId = $interior['media_id'] ?? $interior['src_media_id'] ?? null;
+                if (empty($src) && ! empty($mediaId)) {
+                    $src = Media::find($mediaId)?->url;
+                }
+
+                return [
+                    'title' => $interior['title'] ?? '',
+                    'src' => $src,
+                    'media_id' => $mediaId,
+                ];
+            })->values()->all();
+
+            $src = $tour['src'] ?? null;
+            $tourMediaId = $tour['media_id'] ?? $tour['src_media_id'] ?? null;
+            if (empty($src) && ! empty($tourMediaId)) {
+                $src = Media::find($tourMediaId)?->url;
+            }
 
             return [
                 'label' => $tour['label'] ?? '',
                 'title' => $tour['title'] ?? '',
-                'src' => $tour['src'] ?? null,
+                'src' => $src,
+                'media_id' => $tourMediaId,
                 'allow' => $tour['allow'] ?? 'fullscreen; autoplay',
                 'interiores' => $interiores,
                 'images' => $interiores,
@@ -162,7 +183,7 @@ class ProjectDetailResource extends JsonResource
                 'matterport_url' => $detail?->virtual_tour_matterport_url,
                 'panoramic_360_url' => $detail?->virtual_tour_360_url,
                 'video_url' => $detail?->virtual_tour_video_url,
-                'brochure_url' => $detail?->brochure_pdf_url,
+                'brochure_url' => $detail?->resolved_brochure_pdf_url ?? $detail?->brochure_pdf_url,
                 'tours' => $normalizedTours,
             ],
             'espacios' => [
@@ -173,7 +194,7 @@ class ProjectDetailResource extends JsonResource
                 'items' => $espaciosItems ?? [],
                 'video' => $detail?->espacios_video ?? ($videoInterstitials[2] ?? null),
             ],
-            'brochure_pdf_url' => $detail?->brochure_pdf_url,
+            'brochure_pdf_url' => $detail?->resolved_brochure_pdf_url ?? $detail?->brochure_pdf_url,
             'map' => [
                 'eyebrow' => $detail?->map_eyebrow ?? 'Ubicación',
                 'title' => $detail?->map_title ?? 'Entorno Inigualable',
