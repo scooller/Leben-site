@@ -67,6 +67,14 @@ class ProjectGallery extends Model
 
     public function getResolvedThumbnailUrlAttribute(): ?string
     {
-        return $this->thumbnail_url ?? $this->resolved_image_url;
+        $thumb = $this->thumbnail_url;
+        if (! empty($thumb)) {
+            return str_starts_with($thumb, 'http') ? $thumb : url($thumb);
+        }
+        if ($this->imageMedia?->thumbnail_url) {
+            $t = $this->imageMedia->thumbnail_url;
+            return str_starts_with($t, 'http') ? $t : url($t);
+        }
+        return $this->resolved_image_url;
     }
 }

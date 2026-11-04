@@ -249,7 +249,9 @@ class ProjectDetailResource extends JsonResource
                     'name' => $a->full_name,
                     'phone' => $a->whatsapp_owner ?? $a->phone ?? '',
                     'email' => $a->email ?? '',
-                    'avatar' => $a->avatar_url ?? $a->avatar_manual_url ?? '',
+                    'avatar' => $a->resolved_avatar_url ?? $a->avatar_url ?? $a->avatar_manual_url ?? '',
+                    'avatar_url' => $a->resolved_avatar_url ?? $a->avatar_url ?? $a->avatar_manual_url ?? '',
+                    'resolved_avatar_url' => $a->resolved_avatar_url ?? $a->avatar_url ?? $a->avatar_manual_url ?? '',
                 ])->values()->all(),
             ],
             'amenities' => $amenities->map(fn (ProjectAmenity $a): array => [

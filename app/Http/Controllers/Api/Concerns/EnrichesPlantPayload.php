@@ -188,9 +188,9 @@ trait EnrichesPlantPayload
             'type' => $media->type,
             'title' => $media->title,
             'url' => $media->url,
-            'thumbnail_url' => $media->thumbnail_url,
-            'medium_url' => $media->medium_url,
-            'large_url' => $media->large_url,
+            'thumbnail_url' => filled($media->thumbnail_url) ? (str_starts_with($media->thumbnail_url, 'http') ? $media->thumbnail_url : url($media->thumbnail_url)) : $media->url,
+            'medium_url' => filled($media->medium_url) ? (str_starts_with($media->medium_url, 'http') ? $media->medium_url : url($media->medium_url)) : $media->url,
+            'large_url' => filled($media->large_url) ? (str_starts_with($media->large_url, 'http') ? $media->large_url : url($media->large_url)) : $media->url,
         ];
     }
 
