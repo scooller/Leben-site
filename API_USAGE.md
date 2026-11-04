@@ -207,8 +207,36 @@ Ejemplo de elemento en `tipologias`:
 Parametros query:
 - `include_plantas`: `1` o `true` para incluir array de unidades (`plantas`).
 - `include_asesores`: `1` o `true` para incluir array de asesores activos asignados (`asesores`).
+- `include_details`: `1` o `true` para incluir amenidades, POIs, testimonios y detalle editorial.
 - `evento_sale`: `1` o `0` para calcular precios y descuentos de plantas bajo modalidad sale.
 - `fields` / `campos`: seleccion de campos del proyecto.
+
+Campos de galeria incluidos en la respuesta:
+El payload incluye automáticamente los campos `gallery` y `galleries` con la lista completa de imágenes seleccionadas en la pestaña *Galería de Imágenes* de Filament, listas para usar en carruseles y en el cotizador de React:
+```json
+{
+  "id": 1,
+  "name": "Edificio Los Aromos",
+  "gallery": [
+    {
+      "id": 42,
+      "image_id": 42,
+      "url": "https://admin.ileben.cl/curator/media/fachada.webp",
+      "image_url": "https://admin.ileben.cl/curator/media/fachada.webp",
+      "thumbnail_url": "https://admin.ileben.cl/curator/media/fachada.webp",
+      "title": "Fachada Principal",
+      "alt": "Vista exterior del edificio",
+      "alt_text": "Vista exterior del edificio",
+      "width": 1920,
+      "height": 1080,
+      "size": 245600,
+      "category": "general",
+      "sort_order": 1
+    }
+  ],
+  "galleries": [ /* misma coleccion ordenada */ ]
+}
+```
 
 Estructura de asesor incluido:
 ```json
@@ -220,6 +248,73 @@ Estructura de asesor incluido:
   "email": "mgonzalez@ileben.cl",
   "whatsapp_owner": "+56987654321",
   "resolved_avatar_url": "https://dominio.com/curator/media/avatar.webp"
+}
+```
+
+#### Galería dedicada de proyecto (Cotizador / Frontend)
+- **GET** `/api/v1/proyectos/{id}/gallery`
+
+Permite consultar exclusivamente la galería de imágenes de un proyecto (por ID numérico o slug) sin sobrecargar la respuesta con inventario de plantas ni relaciones pesadas. Ideal para el cotizador en React y galerías interactivas (Fancybox, Swiper, carruseles).
+
+Respuesta exitosa (200):
+```json
+{
+  "project_id": 1,
+  "project_name": "Edificio Los Aromos",
+  "project_slug": "edificio-los-aromos",
+  "count": 6,
+  "gallery": [
+    {
+      "id": 42,
+      "image_id": 42,
+      "url": "https://admin.ileben.cl/curator/media/fachada.webp",
+      "image_url": "https://admin.ileben.cl/curator/media/fachada.webp",
+      "thumbnail_url": "https://admin.ileben.cl/curator/media/fachada.webp",
+      "title": "Fachada Principal",
+      "alt": "Vista exterior del edificio",
+      "alt_text": "Vista exterior del edificio",
+      "width": 1920,
+      "height": 1080,
+      "size": 245600,
+      "category": "general",
+      "sort_order": 1
+    }
+  ],
+  "galleries": [ /* misma coleccion */ ]
+}
+```
+
+#### Ficha canónica web de proyecto (Contenido editorial)
+- **GET** `/api/v1/proyectos/{slugOrId}/content`
+
+Retorna la ficha técnica y editorial canónica del proyecto configurada en Filament (*Información Web (Ficha Canónica)*):
+- `hero`: eyebrow, título, subtítulo, video URL y logo del proyecto.
+- `theme_colors`: paleta CSS de acentos (`accent`, `accent_dark`, `accent_light`, `gradient`).
+- `virtual_tours`: configuración de recorridos virtuales 360, masterplan y vistas de ambientes interiores.
+- `amenities`: lista de espacios comunes y amenidades con iconos y fotografías.
+- `pois`: puntos de interés georreferenciados con distancias y minutos de caminata.
+- `gallery` y `galleries`: galería completa del proyecto.
+- `bottom_gallery`: galería decorativa de pie de página.
+- `testimonials`: testimonios publicados de clientes.
+- `brochure_pdf_url`: URL resuelta del folleto PDF.
+
+Respuesta estructurada (200):
+```json
+{
+  "data": {
+    "project_id": 1,
+    "project_slug": "edificio-los-aromos",
+    "hero": {
+      "eyebrow": "Providencia",
+      "title": "Edificio Los Aromos",
+      "subtitle": "Tu nuevo hogar",
+      "logo_url": "https://admin.ileben.cl/curator/media/logo.png"
+    },
+    "gallery": [ /* coleccion resuelta de imagenes */ ],
+    "bottom_gallery": [ /* coleccion pie de pagina */ ],
+    "amenities": [ /* equipamiento */ ],
+    "pois": [ /* puntos de interes */ ]
+  }
 }
 ```
 
@@ -407,6 +502,20 @@ Definidos en `routes/web.php`:
 ### Consulta de catalogo de proyectos con origen autorizado
 ```bash
 curl -X GET "https://tu-dominio.com/api/v1/proyectos?region=Metropolitana&perPage=10" \
+  -H "Authorization: Bearer TU_API_TOKEN" \
+  -H "Origin: https://sale.ileben.cl"
+```
+
+### Consulta de galeria de imagenes de un proyecto (para cotizador o carrusel)
+```bash
+curl -X GET "https://tu-dominio.com/api/v1/proyectos/edificio-los-aromos/gallery" \
+  -H "Authorization: Bearer TU_API_TOKEN" \
+  -H "Origin: https://sale.ileben.cl"
+```
+
+### Consulta de ficha canonica web de un proyecto
+```bash
+curl -X GET "https://tu-dominio.com/api/v1/proyectos/edificio-los-aromos/content" \
   -H "Authorization: Bearer TU_API_TOKEN" \
   -H "Origin: https://sale.ileben.cl"
 ```

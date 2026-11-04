@@ -14,6 +14,7 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
     - Campo `gallery` y `galleries` en `GET /api/v1/proyectos/{id}` y `GET /api/v1/proyectos/{slug}/content`.
     - Endpoint dedicado `GET /api/v1/proyectos/{id}/gallery`.
   - Pruebas automatizadas en `ProyectoGalleryApiTest`, `ProyectoResourceTest` y `ProyectoEditDetailFillTest`.
+  - Documentación completa en `API_USAGE.md` con especificaciones de campos (`gallery`, `galleries`), payloads de respuesta y ejemplos cURL para `/api/v1/proyectos/{id}/gallery` y `/api/v1/proyectos/{slug}/content`.
 
 ## [1.13.17] - 2026-11-04
 
