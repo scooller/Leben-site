@@ -2,6 +2,19 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.17] - 2026-11-04
+
+### Fixed
+- **Sincronización y Visualización de Planos de Plantas desde Salesforce (`Plantas_Cotizaciones`)**:
+  - Ampliada consulta SOQL en `SalesforceService::findPlants()` para incluir `Orientaci_n__c` y `Modelo__r.Orientacion__c` como fallback de orientación ante valores nulos en `Orientacion2__c` (ej: Nórdico, Germania).
+  - Enriquecida la resolución de identificadores de documentos en `SyncPlantsAction`:
+    - Mapeo bidireccional y normalización de orientaciones en español (`Sur` -> `S`, `Poniente` -> `P` / `O`, `Norte` -> `N`, etc.).
+    - Extracción de modelo alternativo desde `product_code` cuando `modelo_name` no está presente.
+    - Soporte tolerante a tildes en nombres de proyectos (`Nórdico` / `Nordico`).
+  - En `PlantsTable`: agregada columna visible `plant_image` que previsualiza el plano de Salesforce (`salesforce_interior_image_url`) o la portada del proyecto con tooltip informativo, reemplazando la columna vacía de Curator.
+  - En `PlantForm`: agregado componente `Placeholder` con vista previa HTML interactiva del plano de Salesforce al editar la ficha de la planta.
+  - Actualizadas pruebas unitarias en `SyncPlantsActionTest` y `PlantTest`.
+
 ## [1.13.16] - 2026-11-03
 
 ### Fixed
