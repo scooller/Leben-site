@@ -36,8 +36,73 @@ class ProjectDetailResource extends JsonResource
         ];
 
         $overviewImages = $detail?->overview_images ?? [];
-        $equipmentSlides = $detail?->equipment_slides ?? [];
-        $equipmentBrands = $detail?->equipment_brands ?? [];
+        $equipmentSlides = collect($detail?->equipment_slides ?? [])->map(function ($slide): array {
+            $slide = (array) $slide;
+            if (empty($slide['img']) && ! empty($slide['media_id'])) {
+                $slide['img'] = ProjectDetail::resolveMediaUrl($slide['media_id']);
+            }
+
+            return $slide;
+        })->values()->all();
+
+        $equipmentBrands = collect($detail?->equipment_brands ?? [])->map(function ($brand): array {
+            $brand = (array) $brand;
+            if (empty($brand['src']) && ! empty($brand['media_id'])) {
+                $brand['src'] = ProjectDetail::resolveMediaUrl($brand['media_id']);
+            }
+
+            return $brand;
+        })->values()->all();
+
+        $equipmentSpacesModal = collect($detail?->equipment_spaces_modal ?? [])->map(function ($space): array {
+            $space = (array) $space;
+            if (! empty($space['images']) && is_array($space['images'])) {
+                $space['images'] = collect($space['images'])->map(function ($image): array {
+                    $image = (array) $image;
+                    if (empty($image['img']) && ! empty($image['media_id'])) {
+                        $image['img'] = ProjectDetail::resolveMediaUrl($image['media_id']);
+                    }
+
+                    return $image;
+                })->values()->all();
+            }
+
+            return $space;
+        })->values()->all();
+
+        $projectSlides = collect($detail?->project_slides ?? [])->map(function ($slide): array {
+            $slide = (array) $slide;
+            if (empty($slide['img']) && ! empty($slide['media_id'])) {
+                $slide['img'] = ProjectDetail::resolveMediaUrl($slide['media_id']);
+            }
+
+            return $slide;
+        })->values()->all();
+
+        $designers = collect($detail?->designers ?? [])->map(function ($designer): array {
+            $designer = (array) $designer;
+            if (empty($designer['image']) && ! empty($designer['media_id'])) {
+                $designer['image'] = ProjectDetail::resolveMediaUrl($designer['media_id']);
+            }
+
+            return $designer;
+        })->values()->all();
+
+        $panoramasCategories = collect($detail?->panoramas_categories ?? ($detail?->panoramas ?? []))->map(function ($cat): array {
+            $cat = (array) $cat;
+            if (! empty($cat['slides']) && is_array($cat['slides'])) {
+                $cat['slides'] = collect($cat['slides'])->map(function ($slide): array {
+                    $slide = (array) $slide;
+                    if (empty($slide['image']) && ! empty($slide['media_id'])) {
+                        $slide['image'] = ProjectDetail::resolveMediaUrl($slide['media_id']);
+                    }
+
+                    return $slide;
+                })->values()->all();
+            }
+
+            return $cat;
+        })->values()->all();
 
         $amenities = $detail?->amenities ?? collect();
         $pois = $detail?->pois ?? collect();
@@ -55,7 +120,16 @@ class ProjectDetailResource extends JsonResource
 
         // Items de amenidades / espacios
         $espaciosItems = $detail?->espacios_items;
-        if (empty($espaciosItems) && $amenities->isNotEmpty()) {
+        if (! empty($espaciosItems) && is_array($espaciosItems)) {
+            $espaciosItems = collect($espaciosItems)->map(function ($item): array {
+                $item = (array) $item;
+                if (empty($item['img']) && ! empty($item['media_id'])) {
+                    $item['img'] = ProjectDetail::resolveMediaUrl($item['media_id']);
+                }
+
+                return $item;
+            })->values()->all();
+        } elseif (empty($espaciosItems) && $amenities->isNotEmpty()) {
             $espaciosItems = $amenities->map(fn (ProjectAmenity $a): array => [
                 'id' => $a->icon_key ?: 'hall',
                 'navId' => $a->icon_key ?: 'hall',
@@ -70,7 +144,16 @@ class ProjectDetailResource extends JsonResource
 
         // Puntos de interés (POIs) de mapa
         $mapPois = $detail?->map_pois;
-        if (empty($mapPois) && $pois->isNotEmpty()) {
+        if (! empty($mapPois) && is_array($mapPois)) {
+            $mapPois = collect($mapPois)->map(function ($poi): array {
+                $poi = (array) $poi;
+                if (empty($poi['img']) && ! empty($poi['media_id'])) {
+                    $poi['img'] = ProjectDetail::resolveMediaUrl($poi['media_id']);
+                }
+
+                return $poi;
+            })->values()->all();
+        } elseif (empty($mapPois) && $pois->isNotEmpty()) {
             $mapPois = $pois->map(fn (ProjectPoi $p): array => [
                 'id' => $p->id,
                 'name' => $p->name,
@@ -159,9 +242,9 @@ class ProjectDetailResource extends JsonResource
                 'title' => $detail?->project_title ?? $proyecto->name,
                 'description' => $detail?->project_description ?? $proyecto->descripcion,
                 'highlight_offer' => $detail?->project_highlight_offer,
-                'slides' => $detail?->project_slides ?? [],
+                'slides' => $projectSlides,
             ],
-            'project_slides' => $detail?->project_slides ?? [],
+            'project_slides' => $projectSlides,
             'video_interstitials' => $videoInterstitials,
             'equipment' => [
                 'eyebrow' => $detail?->equipment_eyebrow ?? 'Equipamiento',
@@ -170,7 +253,7 @@ class ProjectDetailResource extends JsonResource
                 'bg_image_url' => $detail?->resolved_equipment_bg_image_url,
                 'brands' => $equipmentBrands,
                 'slides' => $equipmentSlides,
-                'spaces_modal' => $detail?->equipment_spaces_modal ?? [],
+                'spaces_modal' => $equipmentSpacesModal,
             ],
             'overview' => [
                 'eyebrow' => '1. Proyecto | Único en su clase',
@@ -231,12 +314,12 @@ class ProjectDetailResource extends JsonResource
                 'title' => $detail?->interiorismo_title ?? 'Interiorismo',
                 'description' => $detail?->interiorismo_description ?? '',
                 'bg_image_url' => $detail?->resolved_interiorismo_bg_image_url,
-                'designers' => $detail?->designers ?? [],
+                'designers' => $designers,
             ],
-            'designers' => $detail?->designers ?? [],
+            'designers' => $designers,
             'panoramas' => [
                 'bg_image_url' => $detail?->resolved_panoramas_bg_image_url,
-                'categories' => $detail?->panoramas_categories ?? ($detail?->panoramas ?? []),
+                'categories' => $panoramasCategories,
             ],
             'contact' => [
                 'eyebrow' => $detail?->contact_eyebrow ?? 'Contacto',

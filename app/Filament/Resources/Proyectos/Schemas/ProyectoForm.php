@@ -571,8 +571,16 @@ class ProyectoForm
                                                                 Repeater::make('project_slides')
                                                                     ->label('Slides del Carrusel de Proyecto')
                                                                     ->schema([
-                                                                        TextInput::make('img')->label('Ruta o URL de Imagen')->required()->placeholder('images/inn/proyecto/Proyecto_01_Acceso.jpg'),
-                                                                        TextInput::make('alt')->label('Texto Alternativo')->required()->placeholder('Acceso'),
+                                                                        CuratorPicker::make('media_id')
+                                                                            ->label('Seleccionar Imagen desde Curator')
+                                                                            ->buttonLabel('Elegir Imagen')
+                                                                            ->formatStateUsing(fn ($state) => static::formatCuratorState($state)),
+                                                                        TextInput::make('img')
+                                                                            ->label('Ruta o URL de Imagen (Fallback)')
+                                                                            ->placeholder('images/inn/proyecto/Proyecto_01_Acceso.jpg')
+                                                                            ->helperText('Opcional si seleccionas desde Curator. Puedes ingresar una URL directa.')
+                                                                            ->nullable(),
+                                                                        TextInput::make('alt')->label('Texto Alternativo')->required()->placeholder('Acceso')->columnSpanFull(),
                                                                     ])
                                                                     ->columns(2)
                                                                     ->defaultItems(0)
@@ -633,8 +641,16 @@ class ProyectoForm
                                                                 Repeater::make('equipment_brands')
                                                                     ->label('Logos de Marcas Aliadas')
                                                                     ->schema([
-                                                                        TextInput::make('src')->label('Ruta / URL del Logo')->required()->placeholder('images/logos/franke.png'),
-                                                                        TextInput::make('alt')->label('Nombre de la Marca')->required()->placeholder('Franke'),
+                                                                        CuratorPicker::make('media_id')
+                                                                            ->label('Seleccionar Logo desde Curator')
+                                                                            ->buttonLabel('Elegir Logo')
+                                                                            ->formatStateUsing(fn ($state) => static::formatCuratorState($state)),
+                                                                        TextInput::make('src')
+                                                                            ->label('Ruta / URL del Logo (Fallback)')
+                                                                            ->placeholder('images/logos/franke.png')
+                                                                            ->helperText('Opcional si seleccionas desde Curator.')
+                                                                            ->nullable(),
+                                                                        TextInput::make('alt')->label('Nombre de la Marca')->required()->placeholder('Franke')->columnSpanFull(),
                                                                     ])
                                                                     ->columns(2)
                                                                     ->defaultItems(0)
@@ -642,8 +658,16 @@ class ProyectoForm
                                                                 Repeater::make('equipment_slides')
                                                                     ->label('Slides de Equipamiento Principal')
                                                                     ->schema([
-                                                                        TextInput::make('img')->label('Ruta / URL Imagen')->required()->placeholder('images/inn/equipamiento/Equipamiento_Principal_Cocina.jpg'),
-                                                                        TextInput::make('alt')->label('Etiqueta')->required()->placeholder('Cocina'),
+                                                                        CuratorPicker::make('media_id')
+                                                                            ->label('Seleccionar Imagen desde Curator')
+                                                                            ->buttonLabel('Elegir Imagen')
+                                                                            ->formatStateUsing(fn ($state) => static::formatCuratorState($state)),
+                                                                        TextInput::make('img')
+                                                                            ->label('Ruta / URL Imagen (Fallback)')
+                                                                            ->placeholder('images/inn/equipamiento/Equipamiento_Principal_Cocina.jpg')
+                                                                            ->helperText('Opcional si seleccionas desde Curator.')
+                                                                            ->nullable(),
+                                                                        TextInput::make('alt')->label('Etiqueta')->required()->placeholder('Cocina')->columnSpanFull(),
                                                                     ])
                                                                     ->columns(2)
                                                                     ->defaultItems(0)
@@ -655,11 +679,18 @@ class ProyectoForm
                                                                         Repeater::make('images')
                                                                             ->label('Imágenes del Ambiente')
                                                                             ->schema([
-                                                                                TextInput::make('img')->label('URL Imagen Grande')->required(),
+                                                                                CuratorPicker::make('media_id')
+                                                                                    ->label('Seleccionar Imagen desde Curator')
+                                                                                    ->buttonLabel('Elegir Imagen')
+                                                                                    ->formatStateUsing(fn ($state) => static::formatCuratorState($state)),
+                                                                                TextInput::make('img')
+                                                                                    ->label('URL Imagen Grande (Fallback)')
+                                                                                    ->helperText('Opcional si seleccionas desde Curator.')
+                                                                                    ->nullable(),
                                                                                 TextInput::make('alt')->label('Descripción / Título')->required(),
                                                                                 TextInput::make('thumb')->label('Miniatura (Opcional)')->nullable(),
                                                                             ])
-                                                                            ->columns(3)
+                                                                            ->columns(2)
                                                                             ->defaultItems(0),
                                                                     ])
                                                                     ->defaultItems(0)
@@ -833,7 +864,15 @@ class ProyectoForm
                                                                             ])
                                                                             ->default('bell')
                                                                             ->required(),
-                                                                        TextInput::make('img')->label('Ruta / URL Imagen')->required()->placeholder('images/inn/eecc/EECC_01.jpg'),
+                                                                        CuratorPicker::make('media_id')
+                                                                            ->label('Seleccionar Foto desde Curator')
+                                                                            ->buttonLabel('Elegir Foto')
+                                                                            ->formatStateUsing(fn ($state) => static::formatCuratorState($state)),
+                                                                        TextInput::make('img')
+                                                                            ->label('Ruta / URL Imagen (Fallback)')
+                                                                            ->placeholder('images/inn/eecc/EECC_01.jpg')
+                                                                            ->helperText('Opcional si seleccionas desde Curator.')
+                                                                            ->nullable(),
                                                                         TextInput::make('link')->label('URL Imagen Ampliable (Fancybox)')->nullable(),
                                                                         TextInput::make('alt')->label('Texto Alternativo')->required(),
                                                                     ])
@@ -917,7 +956,15 @@ class ProyectoForm
                                                                                 'top' => 'Arriba',
                                                                             ])
                                                                             ->default('right'),
-                                                                        TextInput::make('img')->label('Ruta / URL Foto')->placeholder('images/inn/ubicacion/Mesa_Tropera_AI.jpg')->required(),
+                                                                        CuratorPicker::make('media_id')
+                                                                            ->label('Seleccionar Foto desde Curator')
+                                                                            ->buttonLabel('Elegir Foto')
+                                                                            ->formatStateUsing(fn ($state) => static::formatCuratorState($state)),
+                                                                        TextInput::make('img')
+                                                                            ->label('Ruta / URL Foto (Fallback)')
+                                                                            ->placeholder('images/inn/ubicacion/Mesa_Tropera_AI.jpg')
+                                                                            ->helperText('Opcional si seleccionas desde Curator.')
+                                                                            ->nullable(),
                                                                     ])
                                                                     ->columns(3)
                                                                     ->defaultItems(0)
@@ -952,7 +999,15 @@ class ProyectoForm
                                                                                 TextInput::make('id')->label('ID')->required(),
                                                                                 TextInput::make('title')->label('Título del Destino')->required(),
                                                                                 TextInput::make('distance')->label('Distancia')->placeholder('40 km')->required(),
-                                                                                TextInput::make('image')->label('Ruta / URL Foto')->placeholder('images/inn/panoramas/Ensenada_04_IA.jpg')->required(),
+                                                                                CuratorPicker::make('media_id')
+                                                                                    ->label('Seleccionar Foto desde Curator')
+                                                                                    ->buttonLabel('Elegir Foto')
+                                                                                    ->formatStateUsing(fn ($state) => static::formatCuratorState($state)),
+                                                                                TextInput::make('image')
+                                                                                    ->label('Ruta / URL Foto (Fallback)')
+                                                                                    ->placeholder('images/inn/panoramas/Ensenada_04_IA.jpg')
+                                                                                    ->helperText('Opcional si seleccionas desde Curator.')
+                                                                                    ->nullable(),
                                                                             ])
                                                                             ->columns(2)
                                                                             ->defaultItems(0),
@@ -983,7 +1038,15 @@ class ProyectoForm
                                                                     ->label('Lista de Diseñadores / Interioristas')
                                                                     ->schema([
                                                                         TextInput::make('name')->label('Nombre y Cargo (HTML: Sofía<br/><small>Interiorista</small>)')->required(),
-                                                                        TextInput::make('image')->label('Ruta / URL Foto')->required()->placeholder('images/inn/Foto_Iturralde.jpg'),
+                                                                        CuratorPicker::make('media_id')
+                                                                            ->label('Seleccionar Foto desde Curator')
+                                                                            ->buttonLabel('Elegir Foto')
+                                                                            ->formatStateUsing(fn ($state) => static::formatCuratorState($state)),
+                                                                        TextInput::make('image')
+                                                                            ->label('Ruta / URL Foto (Fallback)')
+                                                                            ->placeholder('images/inn/Foto_Iturralde.jpg')
+                                                                            ->helperText('Opcional si seleccionas desde Curator.')
+                                                                            ->nullable(),
                                                                         ColorPicker::make('color')->label('Color de Acento')->default('#d9bc70'),
                                                                         TextInput::make('alt')->label('Texto Alternativo')->nullable(),
                                                                         Textarea::make('text')->label('Biografía o Enfoque de Diseño')->rows(3)->nullable()->columnSpanFull(),

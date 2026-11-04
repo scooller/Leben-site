@@ -187,7 +187,108 @@ class ProjectDetail extends Model
             } elseif (! empty($detail->video_interstitials[2]) && empty($detail->espacios_video)) {
                 $detail->espacios_video = $detail->video_interstitials[2];
             }
+
+            if (! empty($detail->project_slides) && is_array($detail->project_slides)) {
+                $slides = $detail->project_slides;
+                foreach ($slides as &$slide) {
+                    if (empty($slide['img']) && ! empty($slide['media_id'])) {
+                        $slide['img'] = static::resolveMediaUrl($slide['media_id']);
+                    }
+                }
+                $detail->project_slides = $slides;
+            }
+
+            if (! empty($detail->equipment_brands) && is_array($detail->equipment_brands)) {
+                $brands = $detail->equipment_brands;
+                foreach ($brands as &$brand) {
+                    if (empty($brand['src']) && ! empty($brand['media_id'])) {
+                        $brand['src'] = static::resolveMediaUrl($brand['media_id']);
+                    }
+                }
+                $detail->equipment_brands = $brands;
+            }
+
+            if (! empty($detail->equipment_slides) && is_array($detail->equipment_slides)) {
+                $eqSlides = $detail->equipment_slides;
+                foreach ($eqSlides as &$slide) {
+                    if (empty($slide['img']) && ! empty($slide['media_id'])) {
+                        $slide['img'] = static::resolveMediaUrl($slide['media_id']);
+                    }
+                }
+                $detail->equipment_slides = $eqSlides;
+            }
+
+            if (! empty($detail->equipment_spaces_modal) && is_array($detail->equipment_spaces_modal)) {
+                $spaces = $detail->equipment_spaces_modal;
+                foreach ($spaces as &$space) {
+                    if (! empty($space['images']) && is_array($space['images'])) {
+                        foreach ($space['images'] as &$image) {
+                            if (empty($image['img']) && ! empty($image['media_id'])) {
+                                $image['img'] = static::resolveMediaUrl($image['media_id']);
+                            }
+                        }
+                    }
+                }
+                $detail->equipment_spaces_modal = $spaces;
+            }
+
+            if (! empty($detail->espacios_items) && is_array($detail->espacios_items)) {
+                $espacios = $detail->espacios_items;
+                foreach ($espacios as &$item) {
+                    if (empty($item['img']) && ! empty($item['media_id'])) {
+                        $item['img'] = static::resolveMediaUrl($item['media_id']);
+                    }
+                }
+                $detail->espacios_items = $espacios;
+            }
+
+            if (! empty($detail->map_pois) && is_array($detail->map_pois)) {
+                $pois = $detail->map_pois;
+                foreach ($pois as &$poi) {
+                    if (empty($poi['img']) && ! empty($poi['media_id'])) {
+                        $poi['img'] = static::resolveMediaUrl($poi['media_id']);
+                    }
+                }
+                $detail->map_pois = $pois;
+            }
+
+            if (! empty($detail->panoramas_categories) && is_array($detail->panoramas_categories)) {
+                $categories = $detail->panoramas_categories;
+                foreach ($categories as &$cat) {
+                    if (! empty($cat['slides']) && is_array($cat['slides'])) {
+                        foreach ($cat['slides'] as &$slide) {
+                            if (empty($slide['image']) && ! empty($slide['media_id'])) {
+                                $slide['image'] = static::resolveMediaUrl($slide['media_id']);
+                            }
+                        }
+                    }
+                }
+                $detail->panoramas_categories = $categories;
+            }
+
+            if (! empty($detail->designers) && is_array($detail->designers)) {
+                $designers = $detail->designers;
+                foreach ($designers as &$designer) {
+                    if (empty($designer['image']) && ! empty($designer['media_id'])) {
+                        $designer['image'] = static::resolveMediaUrl($designer['media_id']);
+                    }
+                }
+                $detail->designers = $designers;
+            }
         });
+    }
+
+    public static function resolveMediaUrl(mixed $mediaId): ?string
+    {
+        if (blank($mediaId)) {
+            return null;
+        }
+
+        if (is_array($mediaId)) {
+            $mediaId = $mediaId['id'] ?? (is_array(reset($mediaId)) ? (reset($mediaId)['id'] ?? null) : reset($mediaId));
+        }
+
+        return is_numeric($mediaId) ? Media::find($mediaId)?->url : null;
     }
 
     public function brochureMedia(): BelongsTo

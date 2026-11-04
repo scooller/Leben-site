@@ -2,6 +2,22 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.19] - 2026-11-04
+
+### Added
+- **CuratorPicker en Panoramas, Interiorismo y Todos los Inputs de Fotos/Videos de Proyectos**:
+  - Incorporado `CuratorPicker` (`media_id`) en todos los repeaters y campos de imagen y video de `ProyectoForm`:
+    - **Panoramas**: Selector de foto de Curator en tarjetas/slides (`panoramas_categories.slides.media_id`) con fallback opcional de URL directa (`image`).
+    - **Interiorismo**: Selector de foto de Curator en lista de diseñadores e interioristas (`designers.media_id`) con fallback opcional de URL directa (`image`).
+    - **Proyecto Slides**: Selector de foto de Curator en slides de carrusel (`project_slides.media_id`) con fallback de URL directa (`img`).
+    - **Equipamiento Marcas**: Selector de logo de Curator en marcas aliadas (`equipment_brands.media_id`) con fallback de URL directa (`src`).
+    - **Equipamiento Slides**: Selector de foto de Curator en slides de equipamiento (`equipment_slides.media_id`) con fallback de URL directa (`img`).
+    - **Equipamiento Espacios Modal**: Selector de foto de Curator en imágenes por ambiente (`equipment_spaces_modal.images.media_id`) con fallback de URL directa (`img`).
+    - **Espacios Comunes**: Selector de foto de Curator en amenidades (`espacios_items.media_id`) con fallback de URL directa (`img`).
+    - **Puntos de Interés (POIs)**: Selector de foto de Curator en POIs de ubicación (`map_pois.media_id`) con fallback de URL directa (`img`).
+  - Resolución automática en `ProjectDetail::saving` y `ProjectDetailResource` mediante helper `resolveMediaUrl(media_id)`, garantizando sincronización de URLs directas en base de datos y respuestas de la API REST.
+  - Pruebas automatizadas en `ProyectoEditDetailFillTest` validando guardado en Filament, resolución de URLs y exposición en `ProjectDetailResource`.
+
 ## [1.13.18] - 2026-11-04
 
 ### Added

@@ -259,4 +259,133 @@ class ProyectoEditDetailFillTest extends TestCase
 
         $this->assertEquals([$media->id], $proyecto->fresh()->gallery_image_ids);
     }
+
+    public function test_edit_proyecto_persists_panoramas_and_designers_with_curator_picker(): void
+    {
+        $user = User::factory()->create(['user_type' => 'admin']);
+        $this->actingAs($user);
+
+        $this->seed(InitialInnProjectDetailSeeder::class);
+
+        $proyecto = Proyecto::where('slug', 'edificio-inn')->firstOrFail();
+
+        $media = \Awcodes\Curator\Models\Media::create([
+            'disk' => 'public',
+            'directory' => 'media',
+            'visibility' => 'public',
+            'name' => 'volcan-ensenada',
+            'path' => 'media/volcan-ensenada.jpg',
+            'width' => 1920,
+            'height' => 1080,
+            'size' => 204800,
+            'type' => 'image/jpeg',
+            'ext' => 'jpg',
+        ]);
+
+        $panoramasCategories = [
+            [
+                'id' => 'turismo',
+                'name' => 'Turismo',
+                'tabLabel' => 'Turismo',
+                'slides' => [
+                    [
+                        'id' => 'ensenada-1',
+                        'title' => 'Ensenada',
+                        'distance' => '40 km',
+                        'image' => null,
+                        'media_id' => [(string) \Illuminate\Support\Str::uuid() => $media->toArray()],
+                    ],
+                ],
+            ],
+        ];
+
+        $designers = [
+            [
+                'name' => 'Sofía Iturralde',
+                'image' => null,
+                'media_id' => [(string) \Illuminate\Support\Str::uuid() => $media->toArray()],
+                'color' => '#d9bc70',
+                'alt' => 'Sofía',
+                'text' => 'Diseño exclusivo',
+            ],
+        ];
+
+        Livewire::test(EditProyecto::class, ['record' => $proyecto->id])
+            ->set('data.detail.panoramas_categories', $panoramasCategories)
+            ->set('data.detail.designers', $designers)
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $detail = $proyecto->fresh()->detail;
+        $this->assertCount(1, $detail->panoramas_categories);
+        $this->assertEquals($media->id, $detail->panoramas_categories[0]['slides'][0]['media_id']);
+        $this->assertEquals($media->url, $detail->panoramas_categories[0]['slides'][0]['image']);
+
+        $this->assertCount(1, $detail->designers);
+        $this->assertEquals($media->id, $detail->designers[0]['media_id']);
+        $this->assertEquals($media->url, $detail->designers[0]['image']);
+
+        $resource = new \App\Http\Resources\Api\ProjectDetailResource($proyecto->fresh());
+        $array = $resource->toArray(request());
+        $this->assertEquals($media->url, $array['panoramas']['categories'][0]['slides'][0]['image']);
+        $this->assertEquals($media->url, $array['designers'][0]['image']);
+    }
+
+    public function test_edit_proyecto_persists_project_slides_and_amenities_with_curator_picker(): void
+    {
+        $user = User::factory()->create(['user_type' => 'admin']);
+        $this->actingAs($user);
+
+        $this->seed(InitialInnProjectDetailSeeder::class);
+
+        $proyecto = Proyecto::where('slug', 'edificio-inn')->firstOrFail();
+
+        $media = \Awcodes\Curator\Models\Media::create([
+            'disk' => 'public',
+            'directory' => 'media',
+            'visibility' => 'public',
+            'name' => 'slide-acceso',
+            'path' => 'media/slide-acceso.jpg',
+            'width' => 1920,
+            'height' => 1080,
+            'size' => 204800,
+            'type' => 'image/jpeg',
+            'ext' => 'jpg',
+        ]);
+
+        $projectSlides = [
+            [
+                'alt' => 'Acceso Principal',
+                'img' => null,
+                'media_id' => [(string) \Illuminate\Support\Str::uuid() => $media->toArray()],
+            ],
+        ];
+
+        $espaciosItems = [
+            [
+                'id' => 'gourmet',
+                'label' => 'Sala Gourmet',
+                'icon_key' => 'chef-hat',
+                'alt' => 'Gourmet',
+                'link' => null,
+                'img' => null,
+                'media_id' => [(string) \Illuminate\Support\Str::uuid() => $media->toArray()],
+            ],
+        ];
+
+        Livewire::test(EditProyecto::class, ['record' => $proyecto->id])
+            ->set('data.detail.project_slides', $projectSlides)
+            ->set('data.detail.espacios_items', $espaciosItems)
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $detail = $proyecto->fresh()->detail;
+        $this->assertCount(1, $detail->project_slides);
+        $this->assertEquals($media->id, $detail->project_slides[0]['media_id']);
+        $this->assertEquals($media->url, $detail->project_slides[0]['img']);
+
+        $this->assertCount(1, $detail->espacios_items);
+        $this->assertEquals($media->id, $detail->espacios_items[0]['media_id']);
+        $this->assertEquals($media->url, $detail->espacios_items[0]['img']);
+    }
 }
