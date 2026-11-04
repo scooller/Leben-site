@@ -2,6 +2,12 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.21] - 2026-11-04
+
+### Changed
+- **Seeder Canónico de Proyecto INN (`InitialInnProjectDetailSeeder`)**:
+  - Incorporadas explícitamente las claves de configuración `proyecto_video` y `equipamiento_video` con sus respectivos textos y videos en el seeder inicial de detalles del proyecto INN, alineado con la estructura fija de secciones en Filament y manteniendo el array `video_interstitials` en sincronía.
+
 ## [1.13.20] - 2026-11-04
 
 ### Changed

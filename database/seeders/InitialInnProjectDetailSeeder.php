@@ -84,6 +84,12 @@ class InitialInnProjectDetailSeeder extends Seeder
                 ],
 
                 // Banners de Video Intermedios
+                'proyecto_video' => [
+                    'eyebrow' => '',
+                    'title' => '',
+                    'text' => 'Un estilo de vida único frente al lago y los volcanes',
+                    'video_url' => 'video/video_reconfortante_a.mp4',
+                ],
                 'video_interstitials' => [
                     ['eyebrow' => '', 'title' => '', 'text' => 'Un estilo de vida único frente al lago y los volcanes', 'video_url' => 'video/video_reconfortante_a.mp4'],
                     ['eyebrow' => '', 'title' => '', 'text' => 'Descubre todo lo que INN tiene para ofrecer', 'video_url' => 'video/exterior.mp4'],
@@ -165,6 +171,12 @@ class InitialInnProjectDetailSeeder extends Seeder
                             ['img' => 'images/inn/equipamiento/Equipamiento_Detalle_Baño_Accesorios_MK.jpg', 'alt' => 'Accesorios marca MK', 'thumb' => 'images/inn/equipamiento/Equipamiento_Detalle_Baño_Accesorios_MK.jpg'],
                         ],
                     ],
+                ],
+                'equipamiento_video' => [
+                    'eyebrow' => '',
+                    'title' => '',
+                    'text' => 'Descubre todo lo que INN tiene para ofrecer',
+                    'video_url' => 'video/exterior.mp4',
                 ],
 
                 // Sección 3: Recorridos 360 & Masterplan
