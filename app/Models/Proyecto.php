@@ -73,6 +73,7 @@ class Proyecto extends Model
         'is_active',
         'sort_order',
         'project_image_id',
+        'gallery_image_ids',
         'salesforce_logo_url',
         'salesforce_portada_url',
         'valor_reserva_exigido_defecto_peso',
@@ -100,6 +101,7 @@ class Proyecto extends Model
         'entrega_inmediata' => 'boolean',
         'is_active' => 'boolean',
         'sort_order' => 'integer',
+        'gallery_image_ids' => 'array',
         'manual_payment_bank_accounts' => 'array',
     ];
 
@@ -375,6 +377,72 @@ class Proyecto extends Model
     public function testimonials(): HasMany
     {
         return $this->hasMany(Testimonial::class, 'project_id');
+    }
+
+    /**
+     * Resuelve la galería completa de imágenes del proyecto para el cotizador y el frontend.
+     * Prioriza las imágenes del selector múltiple (`gallery_image_ids`), con fallback a la relación `galleries`.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function getResolvedGalleryAttribute(): array
+    {
+        $gallery = [];
+
+        $imageIds = $this->gallery_image_ids;
+        if (is_string($imageIds)) {
+            $imageIds = json_decode($imageIds, true);
+        }
+
+        if (! empty($imageIds) && is_array($imageIds)) {
+            $mediaItems = \Awcodes\Curator\Models\Media::whereIn('id', $imageIds)
+                ->get()
+                ->keyBy('id');
+
+            $order = 0;
+            foreach ($imageIds as $id) {
+                if ($media = $mediaItems->get($id)) {
+                    $order++;
+                    $gallery[] = [
+                        'id' => $media->id,
+                        'image_id' => $media->id,
+                        'url' => $media->url,
+                        'image_url' => $media->url,
+                        'thumbnail_url' => $media->thumbnail_url ?? $media->url,
+                        'title' => $media->title ?: $media->name,
+                        'alt' => $media->alt ?: $media->name,
+                        'alt_text' => $media->alt ?: $media->name,
+                        'width' => $media->width,
+                        'height' => $media->height,
+                        'size' => $media->size,
+                        'category' => 'general',
+                        'sort_order' => $order,
+                    ];
+                }
+            }
+        }
+
+        if (empty($gallery) && $this->detail) {
+            foreach ($this->detail->galleries as $g) {
+                $url = $g->resolved_image_url;
+                if ($url) {
+                    $gallery[] = [
+                        'id' => $g->id,
+                        'image_id' => $g->image_id,
+                        'url' => $url,
+                        'image_url' => $url,
+                        'thumbnail_url' => $g->thumbnail_url ?? $url,
+                        'title' => $g->title,
+                        'alt' => $g->alt_text ?? $g->title,
+                        'alt_text' => $g->alt_text ?? $g->title,
+                        'category' => $g->category ?? 'general',
+                        'sort_order' => (int) $g->sort_order,
+                    ];
+                }
+            }
+        }
+
+        return $gallery;
     }
 
     /**

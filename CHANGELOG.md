@@ -5,13 +5,15 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 ## [1.13.18] - 2026-11-04
 
 ### Added
-- **Galería de Imágenes de Proyectos en Panel Filament y API**:
-  - Pestaña `10. Galería de Imágenes` en `ProyectoForm` (dentro de *Información Web (Ficha Canónica)*) con selector `CuratorPicker` para imágenes, URL de respaldo, título, texto alternativo y categorización (`general`, `exterior`, `interior`, `amenities`, `entorno`, `avance`, `bottom`).
-  - Persistencia de la relación `galleries` (`HasMany` -> `project_galleries`) con soporte de ordenamiento y resolución automática de URLs desde Curator en `ProjectGallery::saving`.
+- **Galería de Imágenes de Proyectos para Cotizador (Tab Dedicado y Selector Múltiple)**:
+  - Nueva pestaña superior **`Galería de Imágenes`** en `ProyectoForm`, ubicada inmediatamente después de *Información Web (Ficha Canónica)*.
+  - Reemplazado el repeater por un selector múltiple `CuratorPicker::make('gallery_image_ids')->multiple()` que permite subir y seleccionar decenas de imágenes con un solo clic y ordenarlas mediante arrastre para el cotizador y la galería en React.
+  - Nueva columna `gallery_image_ids` (JSON) en tabla `proyectos` con su respectiva migración.
+  - Accessor `resolved_gallery` en modelo `Proyecto` que resuelve automáticamente las URLs públicas, dimensiones y metadatos de las imágenes seleccionadas desde Curator, manteniendo fallback hacia `project_galleries`.
   - Exposición de la galería de proyectos en API REST:
     - Campo `gallery` y `galleries` en `GET /api/v1/proyectos/{id}` y `GET /api/v1/proyectos/{slug}/content`.
     - Endpoint dedicado `GET /api/v1/proyectos/{id}/gallery`.
-  - Pruebas automatizadas en `ProyectoGalleryApiTest` y `ProyectoEditDetailFillTest`.
+  - Pruebas automatizadas en `ProyectoGalleryApiTest`, `ProyectoResourceTest` y `ProyectoEditDetailFillTest`.
 
 ## [1.13.17] - 2026-11-04
 

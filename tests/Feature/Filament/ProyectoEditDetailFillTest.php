@@ -248,29 +248,15 @@ class ProyectoEditDetailFillTest extends TestCase
             'ext' => 'jpg',
         ]);
 
-        $galleries = [
-            'item-1' => [
-                'title' => 'Fachada Principal',
-                'category' => 'exterior',
-                'image_id' => [(string) \Illuminate\Support\Str::uuid() => $media->toArray()],
-                'image_url' => null,
-                'alt_text' => 'Vista frontal del edificio',
-                'sort_order' => 1,
-            ],
+        $pickerState = [
+            (string) \Illuminate\Support\Str::uuid() => $media->toArray(),
         ];
 
         Livewire::test(EditProyecto::class, ['record' => $proyecto->id])
-            ->set('data.detail.galleries', $galleries)
+            ->set('data.gallery_image_ids', $pickerState)
             ->call('save')
             ->assertHasNoFormErrors();
 
-        $this->assertDatabaseHas('project_galleries', [
-            'project_detail_id' => $proyecto->detail->id,
-            'title' => 'Fachada Principal',
-            'category' => 'exterior',
-            'image_id' => $media->id,
-            'image_url' => $media->url,
-            'alt_text' => 'Vista frontal del edificio',
-        ]);
+        $this->assertEquals([$media->id], $proyecto->fresh()->gallery_image_ids);
     }
 }

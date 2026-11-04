@@ -191,16 +191,17 @@ class ProyectoResourceTest extends TestCase
         $this->assertSame('aviso-edificio-los-aromos-2026', $defaults['announcement']['id']);
     }
 
-    public function test_proyecto_form_has_two_tabs_general_and_web(): void
+    public function test_proyecto_form_has_three_tabs_general_web_and_gallery(): void
     {
         $schema = $this->makeProyectoSchema();
         $tabs = collect($schema->getComponents())->first(fn ($c) => $c instanceof \Filament\Schemas\Components\Tabs);
 
         $this->assertNotNull($tabs);
         $tabList = $tabs->getChildComponents();
-        $this->assertCount(2, $tabList);
+        $this->assertCount(3, $tabList);
         $this->assertSame('Información General & Salesforce', $tabList[0]->getLabel());
         $this->assertSame('Información Web (Ficha Canónica)', $tabList[1]->getLabel());
+        $this->assertSame('Galería de Imágenes', $tabList[2]->getLabel());
     }
 
     public function test_proyectos_table_has_comuna_filter(): void

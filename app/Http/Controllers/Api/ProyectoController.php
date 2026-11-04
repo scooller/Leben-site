@@ -6,7 +6,6 @@ use App\Http\Controllers\Api\Concerns\EnrichesPlantPayload;
 use App\Http\Controllers\Controller;
 use App\Models\Asesor;
 use App\Models\Plant;
-use App\Models\ProjectGallery;
 use App\Models\Proyecto;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -78,6 +77,7 @@ class ProyectoController extends Controller
         'salesforce_logo_url',
         'salesforce_portada_url',
         'project_image_id',
+        'gallery_image_ids',
         'precio_desde',
         'tipologias',
         'gallery',
@@ -224,6 +224,10 @@ class ProyectoController extends Controller
             $hideSalesforceId = true;
         }
 
+        if (count($selectableFields) > 0 && ! in_array('gallery_image_ids', $selectableFields, true)) {
+            $selectableFields[] = 'gallery_image_ids';
+        }
+
         if (count($selectableFields) > 0) {
             $query->select($selectableFields);
         }
@@ -273,15 +277,7 @@ class ProyectoController extends Controller
 
         $payload = $proyecto->toArray();
 
-        $galleryItems = $proyecto->detail?->galleries ? $proyecto->detail->galleries->map(fn (ProjectGallery $g): array => [
-            'id' => $g->id,
-            'category' => $g->category ?: 'general',
-            'url' => $g->resolved_image_url,
-            'thumbnail_url' => $g->resolved_thumbnail_url,
-            'title' => $g->title,
-            'alt' => $g->alt_text ?? $g->title,
-            'sort_order' => (int) $g->sort_order,
-        ])->values()->all() : [];
+        $galleryItems = $proyecto->resolved_gallery;
 
         $payload['gallery'] = $galleryItems;
         $payload['galleries'] = $galleryItems;
@@ -503,18 +499,9 @@ class ProyectoController extends Controller
                     ->orWhere('slug', 'edificio-'.ltrim($id, 'edificio-'));
             })
             ->where('is_active', true)
-            ->with(['detail.galleries.imageMedia'])
             ->firstOrFail();
 
-        $gallery = $proyecto->detail?->galleries ? $proyecto->detail->galleries->map(fn (ProjectGallery $g): array => [
-            'id' => $g->id,
-            'category' => $g->category ?: 'general',
-            'url' => $g->resolved_image_url,
-            'thumbnail_url' => $g->resolved_thumbnail_url,
-            'title' => $g->title,
-            'alt' => $g->alt_text ?? $g->title,
-            'sort_order' => (int) $g->sort_order,
-        ])->values()->all() : [];
+        $gallery = $proyecto->resolved_gallery;
 
         return response()->json([
             'project_id' => $proyecto->id,

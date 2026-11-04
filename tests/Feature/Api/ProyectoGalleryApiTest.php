@@ -177,4 +177,56 @@ class ProyectoGalleryApiTest extends TestCase
         $this->assertEquals($media->url, $gallery->image_url);
         $this->assertEquals($media->url, $gallery->resolved_image_url);
     }
+
+    public function test_project_gallery_from_multiple_image_picker(): void
+    {
+        $headers = $this->validAuthHeaders();
+
+        $media1 = Media::create([
+            'disk' => 'public',
+            'directory' => 'curator',
+            'name' => 'render-1',
+            'path' => 'curator/render-1.jpg',
+            'width' => 1920,
+            'height' => 1080,
+            'size' => 12345,
+            'type' => 'image/jpeg',
+            'ext' => 'jpg',
+        ]);
+
+        $media2 = Media::create([
+            'disk' => 'public',
+            'directory' => 'curator',
+            'name' => 'render-2',
+            'path' => 'curator/render-2.jpg',
+            'width' => 1920,
+            'height' => 1080,
+            'size' => 23456,
+            'type' => 'image/jpeg',
+            'ext' => 'jpg',
+        ]);
+
+        $proyecto = Proyecto::factory()->create([
+            'name' => 'Edificio Multi Gallery',
+            'slug' => 'edificio-multi-gallery',
+            'is_active' => true,
+            'gallery_image_ids' => [$media1->id, $media2->id],
+        ]);
+
+        // Test show endpoint
+        $response = $this->getJson("/api/v1/proyectos/{$proyecto->id}", $headers);
+        $response->assertOk();
+        $gallery = $response->json('gallery');
+        $this->assertCount(2, $gallery);
+        $this->assertEquals($media1->id, $gallery[0]['image_id']);
+        $this->assertEquals($media1->url, $gallery[0]['url']);
+        $this->assertEquals($media2->id, $gallery[1]['image_id']);
+        $this->assertEquals($media2->url, $gallery[1]['url']);
+
+        // Test dedicated gallery endpoint
+        $resGallery = $this->getJson("/api/v1/proyectos/{$proyecto->id}/gallery", $headers);
+        $resGallery->assertOk();
+        $this->assertEquals(2, $resGallery->json('count'));
+        $this->assertEquals($media1->url, $resGallery->json('gallery.0.url'));
+    }
 }

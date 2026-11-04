@@ -277,7 +277,7 @@ class ProjectDetailResource extends JsonResource
                 'title' => $g->title,
                 'alt' => $g->alt_text ?? $g->title,
             ])->values()->all(),
-            'gallery' => $galleries->map(fn (ProjectGallery $g): array => [
+            'gallery' => ! empty($proyecto->resolved_gallery) ? $proyecto->resolved_gallery : $galleries->map(fn (ProjectGallery $g): array => [
                 'id' => $g->id,
                 'category' => $g->category ?: 'general',
                 'url' => $g->resolved_image_url,
@@ -286,7 +286,7 @@ class ProjectDetailResource extends JsonResource
                 'alt' => $g->alt_text ?? $g->title,
                 'sort_order' => (int) $g->sort_order,
             ])->values()->all(),
-            'galleries' => $galleries->map(fn (ProjectGallery $g): array => [
+            'galleries' => ! empty($proyecto->resolved_gallery) ? $proyecto->resolved_gallery : $galleries->map(fn (ProjectGallery $g): array => [
                 'id' => $g->id,
                 'category' => $g->category ?: 'general',
                 'url' => $g->resolved_image_url,
