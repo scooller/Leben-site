@@ -585,39 +585,36 @@ class ProyectoForm
                                                                     ->columns(2)
                                                                     ->defaultItems(0)
                                                                     ->columnSpanFull(),
-                                                                Repeater::make('video_interstitials')
-                                                                    ->label('Banners de Video Intermedios (Entre Secciones)')
-                                                                    ->itemLabel(fn (array $state): ?string => ($state['title'] ?? null) ?: ($state['text'] ?? null) ?: ($state['video_url'] ?? 'Banner de Video'))
+                                                                Section::make('Banner de Video Intermedio (Posterior a Proyecto)')
+                                                                    ->description('Banner con video de fondo y texto sobrepuesto que se sitúa tras la sección de Proyecto (antes de Equipamiento)')
                                                                     ->collapsible()
                                                                     ->schema([
-                                                                        TextInput::make('eyebrow')
+                                                                        TextInput::make('proyecto_video.eyebrow')
                                                                             ->label('Eyebrow / Badge Superior')
                                                                             ->placeholder('ej: Experiencia INN')
                                                                             ->nullable(),
-                                                                        TextInput::make('title')
+                                                                        TextInput::make('proyecto_video.title')
                                                                             ->label('Título')
                                                                             ->placeholder('ej: Vistas Insospechadas')
                                                                             ->nullable(),
-                                                                        TextInput::make('text')
+                                                                        TextInput::make('proyecto_video.text')
                                                                             ->label('Texto / Frase Principal sobre Video')
                                                                             ->placeholder('ej: Un estilo de vida único frente al lago y los volcanes')
-                                                                            ->required()
+                                                                            ->nullable()
                                                                             ->columnSpanFull(),
-                                                                        TextInput::make('video_url')
+                                                                        TextInput::make('proyecto_video.video_url')
                                                                             ->label('Ruta o URL del Video (MP4)')
                                                                             ->placeholder('video/video_reconfortante_a.mp4')
                                                                             ->helperText('Opcional si seleccionas un video desde Curator. Puedes ingresar una URL directa.')
                                                                             ->nullable(),
-                                                                        CuratorPicker::make('video_media_id')
+                                                                        CuratorPicker::make('proyecto_video.video_media_id')
                                                                             ->label('Seleccionar Video desde Curator')
                                                                             ->buttonLabel('Elegir Video')
                                                                             ->acceptedFileTypes(['video/*'])
                                                                             ->formatStateUsing(fn ($state) => static::formatCuratorState($state)),
                                                                     ])
                                                                     ->columns(2)
-                                                                    ->defaultItems(0)
-                                                                    ->columnSpanFull()
-                                                                    ->helperText('Banners con video de fondo que se sitúan entre secciones (ej: tras Proyecto, tras Equipamiento, tras Espacios Comunes). Soporta badge/eyebrow, título, texto principal y video.'),
+                                                                    ->columnSpanFull(),
                                                             ])
                                                             ->columns(2),
                                                     ]),
@@ -694,6 +691,37 @@ class ProyectoForm
                                                                             ->defaultItems(0),
                                                                     ])
                                                                     ->defaultItems(0)
+                                                                    ->columnSpanFull(),
+
+                                                                Section::make('Banner de Video Intermedio (Posterior a Equipamiento)')
+                                                                    ->description('Banner con video de fondo y texto sobrepuesto que se sitúa tras la sección de Equipamiento (antes de Recorridos 360)')
+                                                                    ->collapsible()
+                                                                    ->schema([
+                                                                        TextInput::make('equipamiento_video.eyebrow')
+                                                                            ->label('Eyebrow / Badge Superior')
+                                                                            ->placeholder('ej: Calidad & Confort')
+                                                                            ->nullable(),
+                                                                        TextInput::make('equipamiento_video.title')
+                                                                            ->label('Título')
+                                                                            ->placeholder('ej: Descubre todo lo que INN tiene para ofrecer')
+                                                                            ->nullable(),
+                                                                        TextInput::make('equipamiento_video.text')
+                                                                            ->label('Texto / Frase Principal sobre Video')
+                                                                            ->placeholder('ej: Descubre todo lo que INN tiene para ofrecer')
+                                                                            ->nullable()
+                                                                            ->columnSpanFull(),
+                                                                        TextInput::make('equipamiento_video.video_url')
+                                                                            ->label('Ruta o URL del Video (MP4)')
+                                                                            ->placeholder('video/exterior.mp4')
+                                                                            ->helperText('Opcional si seleccionas un video desde Curator. Puedes ingresar una URL directa.')
+                                                                            ->nullable(),
+                                                                        CuratorPicker::make('equipamiento_video.video_media_id')
+                                                                            ->label('Seleccionar Video desde Curator')
+                                                                            ->buttonLabel('Elegir Video')
+                                                                            ->acceptedFileTypes(['video/*'])
+                                                                            ->formatStateUsing(fn ($state) => static::formatCuratorState($state)),
+                                                                    ])
+                                                                    ->columns(2)
                                                                     ->columnSpanFull(),
                                                             ])
                                                             ->columns(2),

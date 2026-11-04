@@ -84,6 +84,16 @@ class EditProyecto extends EditRecord
             }
         }
 
+        if (empty($detailData['proyecto_video']) && ! empty($detailData['video_interstitials'][0])) {
+            $detailData['proyecto_video'] = $detailData['video_interstitials'][0];
+        }
+        if (empty($detailData['equipamiento_video']) && ! empty($detailData['video_interstitials'][1])) {
+            $detailData['equipamiento_video'] = $detailData['video_interstitials'][1];
+        }
+        if (empty($detailData['espacios_video']) && ! empty($detailData['video_interstitials'][2])) {
+            $detailData['espacios_video'] = $detailData['video_interstitials'][2];
+        }
+
         $data['detail'] = $detailData;
 
         return $data;

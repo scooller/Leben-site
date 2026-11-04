@@ -2,6 +2,19 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.20] - 2026-11-04
+
+### Changed
+- **Banners de Video Intermedios Fijos por Sección en Filament**:
+  - Reemplazado el `Repeater` agrupado de banners en `Tab 2` por secciones fijas independientes ubicadas al final de cada pestaña correspondiente:
+    - **Tab 2 (Proyecto & Videos)**: `Banner de Video Intermedio (Posterior a Proyecto)` con campos estructurados (`proyecto_video.eyebrow`, `title`, `text`, `video_url`, `video_media_id`).
+    - **Tab 3 (Equipamiento)**: `Banner de Video Intermedio (Posterior a Equipamiento)` con campos estructurados (`equipamiento_video.eyebrow`, `title`, `text`, `video_url`, `video_media_id`).
+    - **Tab 5 (Espacios Comunes)**: `Banner de Video Intermedio (Posterior a Espacios Comunes)` con campos estructurados (`espacios_video.eyebrow`, `title`, `text`, `video_url`, `video_media_id`).
+  - Migración `2026_11_04_170000_add_interstitial_video_columns_to_project_details_table` para añadir columnas JSON `proyecto_video` y `equipamiento_video` en `project_details`.
+  - Sincronización bidireccional automática en `ProjectDetail::saving` con el array global `video_interstitials` (índices 0, 1 y 2) preservando compatibilidad con el frontend React y la API REST (`ProjectDetailResource`).
+  - Pre-llenado automático en `EditProyecto::mutateFormDataBeforeFill` desde `video_interstitials` si las columnas específicas vienen vacías.
+  - Pruebas unitarias actualizadas en `ProyectoEditDetailFillTest`.
+
 ## [1.13.19] - 2026-11-04
 
 ### Added

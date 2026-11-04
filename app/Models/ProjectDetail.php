@@ -27,6 +27,7 @@ class ProjectDetail extends Model
         'project_description',
         'project_highlight_offer',
         'project_slides',
+        'proyecto_video',
         'video_interstitials',
         'equipment_eyebrow',
         'equipment_title',
@@ -36,6 +37,7 @@ class ProjectDetail extends Model
         'equipment_brands',
         'equipment_slides',
         'equipment_spaces_modal',
+        'equipamiento_video',
         'overview_title',
         'overview_description',
         'overview_images',
@@ -97,10 +99,12 @@ class ProjectDetail extends Model
             'theme_colors' => 'array',
             'technical_info' => 'array',
             'project_slides' => 'array',
+            'proyecto_video' => 'array',
             'video_interstitials' => 'array',
             'equipment_brands' => 'array',
             'equipment_slides' => 'array',
             'equipment_spaces_modal' => 'array',
+            'equipamiento_video' => 'array',
             'overview_images' => 'array',
             'overview_stats' => 'array',
             'terminaciones_items' => 'array',
@@ -154,39 +158,60 @@ class ProjectDetail extends Model
                 $detail->virtual_tours_config = $tours;
             }
 
-            if (! empty($detail->video_interstitials) && is_array($detail->video_interstitials)) {
-                $interstitials = $detail->video_interstitials;
-                foreach ($interstitials as &$item) {
-                    $vMediaId = $item['video_media_id'] ?? null;
-                    if (! empty($vMediaId) && empty($item['video_url'])) {
-                        $vMedia = Media::find($vMediaId);
-                        if ($vMedia) {
-                            $item['video_url'] = $vMedia->url;
-                        }
-                    }
+            if (! empty($detail->proyecto_video) && is_array($detail->proyecto_video)) {
+                $pVideo = $detail->proyecto_video;
+                if (! empty($pVideo['video_media_id']) && empty($pVideo['video_url'])) {
+                    $pVideo['video_url'] = static::resolveMediaUrl($pVideo['video_media_id']);
                 }
-                $detail->video_interstitials = $interstitials;
+                $detail->proyecto_video = $pVideo;
+            }
+
+            if (! empty($detail->equipamiento_video) && is_array($detail->equipamiento_video)) {
+                $eqVideo = $detail->equipamiento_video;
+                if (! empty($eqVideo['video_media_id']) && empty($eqVideo['video_url'])) {
+                    $eqVideo['video_url'] = static::resolveMediaUrl($eqVideo['video_media_id']);
+                }
+                $detail->equipamiento_video = $eqVideo;
             }
 
             if (! empty($detail->espacios_video) && is_array($detail->espacios_video)) {
-                $espMediaId = $detail->espacios_video['video_media_id'] ?? null;
-                if (! empty($espMediaId) && empty($detail->espacios_video['video_url'])) {
-                    $espMedia = Media::find($espMediaId);
-                    if ($espMedia) {
-                        $espVideo = $detail->espacios_video;
-                        $espVideo['video_url'] = $espMedia->url;
-                        $detail->espacios_video = $espVideo;
+                $espVideo = $detail->espacios_video;
+                if (! empty($espVideo['video_media_id']) && empty($espVideo['video_url'])) {
+                    $espVideo['video_url'] = static::resolveMediaUrl($espVideo['video_media_id']);
+                }
+                $detail->espacios_video = $espVideo;
+            }
+
+            $interstitials = $detail->video_interstitials ?? [];
+
+            if (! empty($detail->proyecto_video)) {
+                $interstitials[0] = array_merge($interstitials[0] ?? [], $detail->proyecto_video);
+            } elseif (! empty($interstitials[0]) && empty($detail->proyecto_video)) {
+                $detail->proyecto_video = $interstitials[0];
+            }
+
+            if (! empty($detail->equipamiento_video)) {
+                $interstitials[1] = array_merge($interstitials[1] ?? [], $detail->equipamiento_video);
+            } elseif (! empty($interstitials[1]) && empty($detail->equipamiento_video)) {
+                $detail->equipamiento_video = $interstitials[1];
+            }
+
+            if (! empty($detail->espacios_video)) {
+                $interstitials[2] = array_merge($interstitials[2] ?? [], $detail->espacios_video);
+            } elseif (! empty($interstitials[2]) && empty($detail->espacios_video)) {
+                $detail->espacios_video = $interstitials[2];
+            }
+
+            foreach ($interstitials as &$item) {
+                if (is_array($item)) {
+                    $vMediaId = $item['video_media_id'] ?? null;
+                    if (! empty($vMediaId) && empty($item['video_url'])) {
+                        $item['video_url'] = static::resolveMediaUrl($vMediaId);
                     }
                 }
             }
 
-            if (! empty($detail->espacios_video)) {
-                $interstitials = $detail->video_interstitials ?? [];
-                $interstitials[2] = array_merge($interstitials[2] ?? [], $detail->espacios_video);
-                $detail->video_interstitials = $interstitials;
-            } elseif (! empty($detail->video_interstitials[2]) && empty($detail->espacios_video)) {
-                $detail->espacios_video = $detail->video_interstitials[2];
-            }
+            $detail->video_interstitials = $interstitials;
 
             if (! empty($detail->project_slides) && is_array($detail->project_slides)) {
                 $slides = $detail->project_slides;

@@ -205,25 +205,35 @@ class ProyectoEditDetailFillTest extends TestCase
             'ext' => 'mp4',
         ]);
 
-        $interstitials = [
-            [
-                'eyebrow' => 'Experiencia INN',
-                'title' => 'Vistas Insospechadas',
-                'text' => 'Un estilo de vida único frente al lago',
-                'video_url' => null,
-                'video_media_id' => [(string) \Illuminate\Support\Str::uuid() => $media->toArray()],
-            ],
+        $proyectoVideo = [
+            'eyebrow' => 'Experiencia INN',
+            'title' => 'Vistas Insospechadas',
+            'text' => 'Un estilo de vida único frente al lago',
+            'video_url' => null,
+            'video_media_id' => [(string) \Illuminate\Support\Str::uuid() => $media->toArray()],
+        ];
+
+        $equipamientoVideo = [
+            'eyebrow' => 'Equipamiento Premium',
+            'title' => 'Cocina Franke',
+            'text' => 'Terminaciones de alto estándar',
+            'video_url' => null,
+            'video_media_id' => [(string) \Illuminate\Support\Str::uuid() => $media->toArray()],
         ];
 
         Livewire::test(EditProyecto::class, ['record' => $proyecto->id])
-            ->set('data.detail.video_interstitials', $interstitials)
+            ->set('data.detail.proyecto_video', $proyectoVideo)
+            ->set('data.detail.equipamiento_video', $equipamientoVideo)
             ->call('save')
             ->assertHasNoFormErrors();
 
         $detail = $proyecto->fresh()->detail;
-        $this->assertNotEmpty($detail->video_interstitials);
-        $this->assertEquals($media->id, $detail->video_interstitials[0]['video_media_id']);
+        $this->assertEquals($media->id, $detail->proyecto_video['video_media_id']);
+        $this->assertEquals($media->url, $detail->proyecto_video['video_url']);
+        $this->assertEquals($media->id, $detail->equipamiento_video['video_media_id']);
+        $this->assertEquals($media->url, $detail->equipamiento_video['video_url']);
         $this->assertEquals($media->url, $detail->video_interstitials[0]['video_url']);
+        $this->assertEquals($media->url, $detail->video_interstitials[1]['video_url']);
     }
 
     public function test_edit_proyecto_persists_gallery_items(): void
