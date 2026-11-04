@@ -2,6 +2,17 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.18] - 2026-11-04
+
+### Added
+- **Galería de Imágenes de Proyectos en Panel Filament y API**:
+  - Pestaña `10. Galería de Imágenes` en `ProyectoForm` (dentro de *Información Web (Ficha Canónica)*) con selector `CuratorPicker` para imágenes, URL de respaldo, título, texto alternativo y categorización (`general`, `exterior`, `interior`, `amenities`, `entorno`, `avance`, `bottom`).
+  - Persistencia de la relación `galleries` (`HasMany` -> `project_galleries`) con soporte de ordenamiento y resolución automática de URLs desde Curator en `ProjectGallery::saving`.
+  - Exposición de la galería de proyectos en API REST:
+    - Campo `gallery` y `galleries` en `GET /api/v1/proyectos/{id}` y `GET /api/v1/proyectos/{slug}/content`.
+    - Endpoint dedicado `GET /api/v1/proyectos/{id}/gallery`.
+  - Pruebas automatizadas en `ProyectoGalleryApiTest` y `ProyectoEditDetailFillTest`.
+
 ## [1.13.17] - 2026-11-04
 
 ### Fixed

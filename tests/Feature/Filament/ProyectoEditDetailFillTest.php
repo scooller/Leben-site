@@ -225,4 +225,52 @@ class ProyectoEditDetailFillTest extends TestCase
         $this->assertEquals($media->id, $detail->video_interstitials[0]['video_media_id']);
         $this->assertEquals($media->url, $detail->video_interstitials[0]['video_url']);
     }
+
+    public function test_edit_proyecto_persists_gallery_items(): void
+    {
+        $user = User::factory()->create(['user_type' => 'admin']);
+        $this->actingAs($user);
+
+        $this->seed(InitialInnProjectDetailSeeder::class);
+
+        $proyecto = Proyecto::where('slug', 'edificio-inn')->firstOrFail();
+
+        $media = \Awcodes\Curator\Models\Media::create([
+            'disk' => 'public',
+            'directory' => 'media',
+            'visibility' => 'public',
+            'name' => 'galeria-fachada',
+            'path' => 'media/galeria-fachada.jpg',
+            'width' => 1920,
+            'height' => 1080,
+            'size' => 102400,
+            'type' => 'image/jpeg',
+            'ext' => 'jpg',
+        ]);
+
+        $galleries = [
+            'item-1' => [
+                'title' => 'Fachada Principal',
+                'category' => 'exterior',
+                'image_id' => [(string) \Illuminate\Support\Str::uuid() => $media->toArray()],
+                'image_url' => null,
+                'alt_text' => 'Vista frontal del edificio',
+                'sort_order' => 1,
+            ],
+        ];
+
+        Livewire::test(EditProyecto::class, ['record' => $proyecto->id])
+            ->set('data.detail.galleries', $galleries)
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertDatabaseHas('project_galleries', [
+            'project_detail_id' => $proyecto->detail->id,
+            'title' => 'Fachada Principal',
+            'category' => 'exterior',
+            'image_id' => $media->id,
+            'image_url' => $media->url,
+            'alt_text' => 'Vista frontal del edificio',
+        ]);
+    }
 }

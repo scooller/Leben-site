@@ -22,11 +22,32 @@ class ProjectGallery extends Model
         'sort_order',
     ];
 
+    protected $attributes = [
+        'category' => 'general',
+        'sort_order' => 0,
+    ];
+
     protected function casts(): array
     {
         return [
             'sort_order' => 'integer',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::saving(function (ProjectGallery $gallery): void {
+            if (empty($gallery->category)) {
+                $gallery->category = 'general';
+            }
+
+            if (! empty($gallery->image_id) && empty($gallery->image_url)) {
+                $media = Media::find($gallery->image_id);
+                if ($media) {
+                    $gallery->image_url = $media->url;
+                }
+            }
+        });
     }
 
     public function detail(): BelongsTo

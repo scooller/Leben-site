@@ -1013,6 +1013,60 @@ class ProyectoForm
                                                             ])
                                                             ->columns(2),
                                                     ]),
+
+                                                // 10. GALERÍA DE IMÁGENES
+                                                Tab::make('10. Galería de Imágenes')
+                                                    ->icon('heroicon-o-photo')
+                                                    ->schema([
+                                                        Section::make('Galería de Imágenes del Proyecto')
+                                                            ->description('Sube y gestiona imágenes del proyecto (renders, fachada, interiores, áreas comunes) para su consumo vía API.')
+                                                            ->schema([
+                                                                Repeater::make('galleries')
+                                                                    ->relationship('galleries')
+                                                                    ->label('Imágenes')
+                                                                    ->itemLabel(fn (array $state): ?string => ($state['title'] ?? null) ?: ($state['alt_text'] ?? null) ?: 'Imagen de Galería')
+                                                                    ->collapsible()
+                                                                    ->reorderable()
+                                                                    ->orderColumn('sort_order')
+                                                                    ->defaultItems(0)
+                                                                    ->columns(2)
+                                                                    ->columnSpanFull()
+                                                                    ->schema([
+                                                                        CuratorPicker::make('image_id')
+                                                                            ->label('Seleccionar Imagen desde Curator')
+                                                                            ->buttonLabel('Elegir Imagen')
+                                                                            ->columnSpan(1),
+                                                                        TextInput::make('image_url')
+                                                                            ->label('Ruta o URL Externa (opcional si se usa Curator)')
+                                                                            ->placeholder('https://... o images/...')
+                                                                            ->maxLength(2048)
+                                                                            ->columnSpan(1),
+                                                                        TextInput::make('title')
+                                                                            ->label('Título de la Imagen')
+                                                                            ->placeholder('ej: Fachada Principal / Living Comedor')
+                                                                            ->maxLength(255)
+                                                                            ->columnSpan(1),
+                                                                        TextInput::make('alt_text')
+                                                                            ->label('Texto Alternativo (Alt)')
+                                                                            ->placeholder('ej: Vista exterior del proyecto')
+                                                                            ->maxLength(255)
+                                                                            ->columnSpan(1),
+                                                                        Select::make('category')
+                                                                            ->label('Categoría')
+                                                                            ->options([
+                                                                                'general' => 'General',
+                                                                                'exterior' => 'Exterior / Fachada',
+                                                                                'interior' => 'Interior / Piloto',
+                                                                                'amenities' => 'Espacios Comunes',
+                                                                                'entorno' => 'Entorno / Vistas',
+                                                                                'avance' => 'Avance de Obra',
+                                                                                'bottom' => 'Pie de Página (Bottom Gallery)',
+                                                                            ])
+                                                                            ->default('general')
+                                                                            ->columnSpan(1),
+                                                                    ]),
+                                                            ]),
+                                                    ]),
                                             ]),
                                     ]),
                             ]),

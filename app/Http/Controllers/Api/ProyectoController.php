@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\Concerns\EnrichesPlantPayload;
 use App\Http\Controllers\Controller;
 use App\Models\Asesor;
 use App\Models\Plant;
+use App\Models\ProjectGallery;
 use App\Models\Proyecto;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -79,6 +80,8 @@ class ProyectoController extends Controller
         'project_image_id',
         'precio_desde',
         'tipologias',
+        'gallery',
+        'galleries',
         'created_at',
         'updated_at',
     ];
@@ -257,9 +260,11 @@ class ProyectoController extends Controller
             $proyecto->load([
                 'detail.amenities',
                 'detail.pois',
-                'detail.galleries',
+                'detail.galleries.imageMedia',
                 'testimonials' => fn ($tq) => $tq->where('is_published', true)->orderBy('sort_order'),
             ]);
+        } else {
+            $proyecto->loadMissing(['detail.galleries.imageMedia']);
         }
 
         if ($hideSalesforceId) {
@@ -267,6 +272,19 @@ class ProyectoController extends Controller
         }
 
         $payload = $proyecto->toArray();
+
+        $galleryItems = $proyecto->detail?->galleries ? $proyecto->detail->galleries->map(fn (ProjectGallery $g): array => [
+            'id' => $g->id,
+            'category' => $g->category ?: 'general',
+            'url' => $g->resolved_image_url,
+            'thumbnail_url' => $g->resolved_thumbnail_url,
+            'title' => $g->title,
+            'alt' => $g->alt_text ?? $g->title,
+            'sort_order' => (int) $g->sort_order,
+        ])->values()->all() : [];
+
+        $payload['gallery'] = $galleryItems;
+        $payload['galleries'] = $galleryItems;
 
         if (! empty($payload['entrega_inmediata'])) {
             $payload['etapa'] = 'Entrega inmediata';
@@ -471,6 +489,41 @@ class ProyectoController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * Get the project image gallery.
+     */
+    public function gallery(string $id): JsonResponse
+    {
+        $proyecto = Proyecto::query()
+            ->where(function ($q) use ($id): void {
+                $q->where('id', is_numeric($id) ? (int) $id : -1)
+                    ->orWhere('slug', $id)
+                    ->orWhere('slug', 'edificio-'.ltrim($id, 'edificio-'));
+            })
+            ->where('is_active', true)
+            ->with(['detail.galleries.imageMedia'])
+            ->firstOrFail();
+
+        $gallery = $proyecto->detail?->galleries ? $proyecto->detail->galleries->map(fn (ProjectGallery $g): array => [
+            'id' => $g->id,
+            'category' => $g->category ?: 'general',
+            'url' => $g->resolved_image_url,
+            'thumbnail_url' => $g->resolved_thumbnail_url,
+            'title' => $g->title,
+            'alt' => $g->alt_text ?? $g->title,
+            'sort_order' => (int) $g->sort_order,
+        ])->values()->all() : [];
+
+        return response()->json([
+            'project_id' => $proyecto->id,
+            'project_name' => $proyecto->name,
+            'project_slug' => $proyecto->slug,
+            'count' => count($gallery),
+            'gallery' => $gallery,
+            'galleries' => $gallery,
+        ]);
     }
 
     /**

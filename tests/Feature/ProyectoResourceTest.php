@@ -108,7 +108,7 @@ class ProyectoResourceTest extends TestCase
 
     public function test_proyecto_form_hides_unused_financing_and_discount_fields(): void
     {
-        $schema = ProyectoForm::configure(Schema::make($this->makeSchemaHost()));
+        $schema = $this->makeProyectoSchema();
         $components = $schema->getFlatComponents(withActions: false, withHidden: true, withAbsoluteKeys: true);
 
         foreach ([
@@ -133,7 +133,7 @@ class ProyectoResourceTest extends TestCase
 
     public function test_proyecto_form_configures_discount_fields_correctly(): void
     {
-        $schema = ProyectoForm::configure(Schema::make($this->makeSchemaHost()));
+        $schema = $this->makeProyectoSchema();
         $components = $schema->getFlatComponents(withActions: false, withHidden: true, withAbsoluteKeys: true);
 
         $this->assertArrayHasKey('descuento_iva', $components);
@@ -156,7 +156,7 @@ class ProyectoResourceTest extends TestCase
 
     public function test_proyecto_form_comuna_is_editable(): void
     {
-        $schema = ProyectoForm::configure(Schema::make($this->makeSchemaHost()));
+        $schema = $this->makeProyectoSchema();
         $components = $schema->getFlatComponents(withActions: false, withHidden: true, withAbsoluteKeys: true);
 
         $this->assertArrayHasKey('comuna', $components);
@@ -193,7 +193,7 @@ class ProyectoResourceTest extends TestCase
 
     public function test_proyecto_form_has_two_tabs_general_and_web(): void
     {
-        $schema = ProyectoForm::configure(Schema::make($this->makeSchemaHost()));
+        $schema = $this->makeProyectoSchema();
         $tabs = collect($schema->getComponents())->first(fn ($c) => $c instanceof \Filament\Schemas\Components\Tabs);
 
         $this->assertNotNull($tabs);
@@ -218,6 +218,13 @@ class ProyectoResourceTest extends TestCase
         $options = $comunaFilter->getOptions();
         $this->assertArrayHasKey('Las Condes', $options);
         $this->assertArrayHasKey('Providencia', $options);
+    }
+
+    private function makeProyectoSchema(): Schema
+    {
+        return ProyectoForm::configure(
+            Schema::make($this->makeSchemaHost())->model(Proyecto::class)
+        );
     }
 
     private function makeSchemaHost(): HasSchemas

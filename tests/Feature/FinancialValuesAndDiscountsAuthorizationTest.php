@@ -68,7 +68,7 @@ class FinancialValuesAndDiscountsAuthorizationTest extends TestCase
         foreach ([$admin, $superAdmin] as $user) {
             $this->actingAs($user);
 
-            $schema = ProyectoForm::configure(Schema::make($this->makeSchemaHost()));
+            $schema = ProyectoForm::configure(Schema::make($this->makeSchemaHost())->model(\App\Models\Proyecto::class));
             $components = $schema->getFlatComponents(withActions: false, withHidden: true, withAbsoluteKeys: true);
 
             $fields = [
@@ -94,7 +94,7 @@ class FinancialValuesAndDiscountsAuthorizationTest extends TestCase
         foreach ([$marketing, $customer] as $user) {
             $this->actingAs($user);
 
-            $schema = ProyectoForm::configure(Schema::make($this->makeSchemaHost()));
+            $schema = ProyectoForm::configure(Schema::make($this->makeSchemaHost())->model(\App\Models\Proyecto::class));
             $components = $schema->getFlatComponents(withActions: false, withHidden: true, withAbsoluteKeys: true);
 
             $fields = [
