@@ -1420,7 +1420,7 @@ class SalesforceService
         ));
 
         // SOQL para obtener plantas desde Product2
-        $soql = 'SELECT Id, Name, ProductCode, Orientacion2__c, Programa__c, Programa2__c, Modelo__r.Name, Modelo__r.Programa__c, Piso__c, '
+        $soql = 'SELECT Id, Name, ProductCode, Orientacion2__c, Orientaci_n__c, Modelo__r.Orientacion__c, Programa__c, Programa2__c, Modelo__r.Name, Modelo__r.Programa__c, Piso__c, '
             .'Precio_Base__c, Precio_Lista__c, Porcentaje_maximo_de_unidad__c, '
             .'Superficie_Total_Producto_Principal__c, Superficie_Interior__c, Superficie_Util__c, '
             .'Superficie_Terraza__c, Proyecto__c, Tipo_Producto__c, IsActive '
@@ -1444,7 +1444,7 @@ class SalesforceService
                         'name' => $entry['Name'] ?? null,
                         'product_code' => $entry['ProductCode'] ?? null,
                         'tipo_producto' => $entry['Tipo_Producto__c'] ?? null,
-                        'orientacion' => $entry['Orientacion2__c'] ?? null,
+                        'orientacion' => $entry['Orientacion2__c'] ?? $entry['Orientaci_n__c'] ?? $entry['Modelo__r']['Orientacion__c'] ?? null,
                         'modelo_name' => $entry['Modelo__r']['Name'] ?? null,
                         'modelo_programa' => $entry['Modelo__r']['Programa__c'] ?? null,
                         'programa' => $entry['Programa__c'] ?? null,
@@ -1474,7 +1474,7 @@ class SalesforceService
                         'name' => $entry['Name'] ?? null,
                         'product_code' => $entry['ProductCode'] ?? null,
                         'tipo_producto' => $entry['Tipo_Producto__c'] ?? null,
-                        'orientacion' => $entry['Orientacion2__c'] ?? null,
+                        'orientacion' => $entry['Orientacion2__c'] ?? $entry['Orientaci_n__c'] ?? $entry['Modelo__r']['Orientacion__c'] ?? null,
                         'modelo_name' => $entry['Modelo__r']['Name'] ?? null,
                         'modelo_programa' => $entry['Modelo__r']['Programa__c'] ?? null,
                         'programa' => $entry['Programa__c'] ?? null,

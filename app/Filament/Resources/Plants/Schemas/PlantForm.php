@@ -7,6 +7,7 @@ use App\Models\Proyecto;
 use Awcodes\Curator\Components\Forms\CuratorPicker;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -17,6 +18,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\HtmlString;
 
 class PlantForm
 {
@@ -240,6 +242,13 @@ class PlantForm
                             ->url(fn (?string $state): ?string => filled($state) ? $state : null, shouldOpenInNewTab: true)
                     )
                     ->helperText('Sincronizada automáticamente desde Salesforce cuando existe un documento con nombre "Proyecto - Planta".'),
+                Placeholder::make('salesforce_interior_preview')
+                    ->label('Vista previa Plano Salesforce')
+                    ->content(fn (?Plant $record): ?HtmlString => filled($record?->salesforce_interior_image_url)
+                        ? new HtmlString('<a href="'.e($record->salesforce_interior_image_url).'" target="_blank" rel="noopener noreferrer"><img src="'.e($record->salesforce_interior_image_url).'" alt="Plano Salesforce" style="max-height: 180px; max-width: 100%; object-fit: contain; border-radius: 0.5rem; border: 1px solid #e5e7eb; padding: 4px; background: #fff;" /></a>')
+                        : null
+                    )
+                    ->visible(fn (?Plant $record): bool => filled($record?->salesforce_interior_image_url)),
                 Toggle::make('is_active')
                     ->label('Activo')
                     ->required(),

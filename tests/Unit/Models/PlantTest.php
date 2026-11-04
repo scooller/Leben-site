@@ -19,6 +19,7 @@ class PlantTest extends TestCase
             'asesor_id',
             'contact_link',
             'name',
+            'sku',
             'product_code',
             'tipo_producto',
             'orientacion',

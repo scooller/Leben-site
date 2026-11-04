@@ -50,6 +50,16 @@ class PlantsTable
 
                         return $query->orderByRaw('CASE WHEN (name + 0) > 0 THEN (name + 0) ELSE 0 END DESC, LENGTH(name) DESC, name DESC');
                     }),
+                ImageColumn::make('plant_image')
+                    ->label('Plano')
+                    ->state(fn (Plant $record): ?string => $record->coverImageMedia?->url
+                        ?: $record->interiorImageMedia?->url
+                        ?: $record->salesforce_interior_image_url
+                        ?: $record->proyecto?->salesforce_portada_url
+                        ?: $record->proyecto?->image_url
+                    )
+                    ->tooltip(fn (Plant $record): string => filled($record->salesforce_interior_image_url) ? 'Plano Salesforce sincronizado' : ($record->proyecto?->salesforce_portada_url ? 'Portada de Proyecto' : 'Sin imagen'))
+                    ->square(),
                 TextColumn::make('proyecto.name')
                     ->label('Proyecto')
                     ->badge()
@@ -217,10 +227,6 @@ class PlantsTable
                     ->boolean()
                     ->color(fn (bool $state): string => $state ? 'green' : 'red')
                     ->sortable(),
-                ImageColumn::make('coverImageMedia.url')
-                    ->label('Imagen de portada')
-                    ->circular()
-                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
