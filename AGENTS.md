@@ -43,6 +43,10 @@ The application supports:
    - Bump `version` in `package.json` (semantic: patch = fix/refactor, minor = feature, major = breaking).
    - Add an entry to `CHANGELOG.md` (Keep a Changelog format) describing the changes.
    - Both must stay in sync (same version in `package.json` and `CHANGELOG.md`).
+9. **ZERO INVENTED LOCATIONS (Critical Business Rule)** — NEVER invent, assume, or hallucinate cities, communes, or project locations (e.g. NEVER mention Temuco, Valdivia, or any unconfirmed locality).
+   - Official geographic scope is strictly **"el sur de Chile y Santiago"** (specifically Puerto Varas, Frutillar / Llanquihue en el sur, y Santiago / Región Metropolitana).
+   - In all copy, SEO, Open Graph, Twitter cards, LLM manifests, API schemas, and marketing texts, always summarize coverage strictly as **"el sur de Chile y Santiago"**.
+   - Specific project names and locations MUST ONLY come directly from live database / API queries (`/api/v1/proyectos`). Assuming unconfirmed cities is a severe violation.
 
 ***
 

@@ -599,7 +599,14 @@ Route::match(['GET', 'HEAD'], '/.well-known/oauth-authorization-server', functio
         'issuer' => $baseUrl,
         'authorization_endpoint' => $baseUrl.'/oauth/authorize',
         'token_endpoint' => $baseUrl.'/oauth/token',
+        'revocation_endpoint' => $baseUrl.'/oauth/revoke',
         'registration_endpoint' => $baseUrl.'/agent/register',
+        'poppy_domains' => array_values(array_unique([
+            parse_url($baseUrl, PHP_URL_HOST) ?: 'ileben.cl',
+            'ileben.cl',
+            'test.ileben.cl',
+            'dev.ileben.cl',
+        ])),
         'jwks_uri' => $baseUrl.'/.well-known/jwks.json',
         'response_types_supported' => ['code', 'token'],
         'grant_types_supported' => [
@@ -643,6 +650,45 @@ Route::match(['GET', 'HEAD'], '/.well-known/oauth-authorization-server', functio
         'Access-Control-Allow-Origin' => '*',
         'Access-Control-Allow-Methods' => 'GET, HEAD, OPTIONS',
         'Cache-Control' => 'public, max-age=3600',
+    ]);
+});
+
+/**
+ * Personal Agent Protocol (Poppy) Discovery Manifest
+ * Spec: https://personalagentprotocol.org/docs/spec#3-discovery
+ */
+Route::match(['GET', 'HEAD'], '/.well-known/poppy.json', function () {
+    $settings = SiteSetting::current();
+    $baseUrl = rtrim((string) ($settings->site_url ?: config('app.frontend_url', url('/'))), '/');
+    $host = parse_url($baseUrl, PHP_URL_HOST) ?: 'ileben.cl';
+    $cleanDomain = preg_replace('/^www\./i', '', $host);
+
+    return response()->json([
+        'protocol_version' => '0.1',
+        'organization' => [
+            'name' => 'Inmobiliaria Leben',
+            'domain' => $cleanDomain,
+        ],
+        'auth' => [
+            'issuer' => $baseUrl,
+        ],
+        'web' => new \stdClass(),
+        'apis' => [
+            [
+                'name' => 'catalog-api',
+                'endpoint' => $baseUrl.'/api/v1/proyectos',
+                'description' => 'Catálogo de proyectos y departamentos disponibles en venta',
+            ],
+        ],
+        'agent' => [
+            'name' => 'leben-agent',
+            'description' => 'Agente comercial y cotizador de proyectos inmobiliarios Leben',
+        ],
+    ], 200, [
+        'Content-Type' => 'application/json; charset=UTF-8',
+        'Access-Control-Allow-Origin' => '*',
+        'Access-Control-Allow-Methods' => 'GET, HEAD, OPTIONS',
+        'Cache-Control' => 'no-cache, no-store, must-revalidate',
     ]);
 });
 

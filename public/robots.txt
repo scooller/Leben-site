@@ -1,9 +1,38 @@
+# Robots.txt for Inmobiliaria Leben (RFC 9309 compliant)
+
+# AI Search Crawlers (Assistants & Search Engines)
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: Claude-SearchBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+# AI Model Training Crawlers
+User-agent: GPTBot
+Disallow: /
+
+User-agent: ClaudeBot
+Disallow: /
+
+User-agent: Google-Extended
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+# General Crawlers
 User-agent: *
 Allow: /
 Disallow: /frontend-preview/
 Disallow: /preview-link/
 Disallow: /*preview_token=
+
+# Content Signals (draft-romm-aipref-contentsignals)
 Content-Signal: ai-train=no, search=yes, ai-input=no
 
-Sitemap: https://sale.ileben.cl/sitemap.xml
-
+# Canonical Sitemap
+Sitemap: https://ileben.cl/sitemap.xml
+Agentmap: https://ileben.cl/.well-known/ai-catalog.json
