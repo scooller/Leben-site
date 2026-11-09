@@ -5,6 +5,7 @@ use App\Http\Controllers\PaymentWebhookController;
 use App\Http\Controllers\ShortLinkRedirectController;
 use App\Models\Payment;
 use App\Models\Plant;
+use App\Models\Proyecto;
 use App\Models\SiteSetting;
 use Illuminate\Support\Facades\Route;
 
@@ -21,7 +22,7 @@ Route::get('/preview-link/{token}', function ($token) {
 
 Route::get('/sitemap.xml', function () {
     $settings = SiteSetting::current();
-    $baseUrl = rtrim((string) ($settings->site_url ?: config('app.frontend_url', 'https://sale.ileben.cl')), '/');
+    $baseUrl = rtrim((string) ($settings->site_url ?: config('app.frontend_url', 'https://ileben.cl')), '/');
 
     $staticUrls = collect([
         [
@@ -31,18 +32,73 @@ Route::get('/sitemap.xml', function () {
             'lastmod' => now()->toDateString(),
         ],
         [
-            'loc' => $baseUrl.'/plantas',
-            'changefreq' => 'daily',
-            'priority' => '0.9',
-            'lastmod' => now()->toDateString(),
-        ],
-        [
-            'loc' => $baseUrl.'/f',
-            'changefreq' => 'daily',
+            'loc' => $baseUrl.'/cotizador',
+            'changefreq' => 'weekly',
             'priority' => '0.8',
             'lastmod' => now()->toDateString(),
         ],
+        [
+            'loc' => $baseUrl.'/brokers',
+            'changefreq' => 'monthly',
+            'priority' => '0.7',
+            'lastmod' => now()->toDateString(),
+        ],
+        [
+            'loc' => $baseUrl.'/invest',
+            'changefreq' => 'monthly',
+            'priority' => '0.7',
+            'lastmod' => now()->toDateString(),
+        ],
+        [
+            'loc' => $baseUrl.'/nosotros',
+            'changefreq' => 'monthly',
+            'priority' => '0.6',
+            'lastmod' => now()->toDateString(),
+        ],
+        [
+            'loc' => $baseUrl.'/proceso-reserva-en-linea',
+            'changefreq' => 'monthly',
+            'priority' => '0.5',
+            'lastmod' => now()->toDateString(),
+        ],
+        [
+            'loc' => $baseUrl.'/bases-legales',
+            'changefreq' => 'monthly',
+            'priority' => '0.4',
+            'lastmod' => now()->toDateString(),
+        ],
+        [
+            'loc' => $baseUrl.'/trabaja-en-leben',
+            'changefreq' => 'monthly',
+            'priority' => '0.5',
+            'lastmod' => now()->toDateString(),
+        ],
+        [
+            'loc' => $baseUrl.'/cookies',
+            'changefreq' => 'yearly',
+            'priority' => '0.3',
+            'lastmod' => now()->toDateString(),
+        ],
     ]);
+
+    $projectUrls = Proyecto::query()
+        ->where('is_active', true)
+        ->get()
+        ->map(function (Proyecto $proyecto) use ($baseUrl): ?array {
+            $slug = trim((string) ($proyecto->slug ?: ''));
+            if ($slug === '') {
+                return null;
+            }
+            $cleanSlug = str_starts_with($slug, 'edificio-') ? substr($slug, 9) : $slug;
+
+            return [
+                'loc' => $baseUrl.'/proyectos/'.rawurlencode($cleanSlug),
+                'changefreq' => 'weekly',
+                'priority' => '0.9',
+                'lastmod' => optional($proyecto->updated_at)->toDateString() ?? now()->toDateString(),
+            ];
+        })
+        ->filter();
 
     $plantUrls = collect();
 
@@ -51,21 +107,19 @@ Route::get('/sitemap.xml', function () {
             ->with(['proyecto:id,salesforce_id,slug,name,is_active'])
             ->where('is_active', true)
             ->whereHas('proyecto', fn ($query) => $query->where('is_active', true))
-            ->whereDoesntHave('activeReservation')
-            ->whereDoesntHave('completedReservation')
-            ->whereDoesntHave('completedPayment')
             ->get()
             ->map(function (Plant $plant) use ($baseUrl): ?array {
-                $projectSlug = trim((string) ($plant->proyecto?->slug ?: ''));
-                $unitName = trim((string) ($plant->name ?? ''));
+                $rawSlug = trim((string) ($plant->proyecto?->slug ?: ''));
+                $cleanSlug = str_starts_with($rawSlug, 'edificio-') ? substr($rawSlug, 9) : $rawSlug;
+                $plantId = $plant->id;
 
-                if ($projectSlug === '' || $unitName === '') {
+                if ($cleanSlug === '' || ! $plantId) {
                     return null;
                 }
 
                 return [
-                    'loc' => $baseUrl.'/p/'.rawurlencode($projectSlug).'/'.rawurlencode($unitName),
-                    'changefreq' => 'daily',
+                    'loc' => $baseUrl.'/proyectos/'.rawurlencode($cleanSlug).'/planta/'.rawurlencode((string) $plantId),
+                    'changefreq' => 'weekly',
                     'priority' => '0.7',
                     'lastmod' => optional($plant->updated_at)->toDateString() ?? now()->toDateString(),
                 ];
@@ -73,7 +127,7 @@ Route::get('/sitemap.xml', function () {
             ->filter();
     }
 
-    $urls = $staticUrls->merge($plantUrls)->values();
+    $urls = $staticUrls->merge($projectUrls)->merge($plantUrls)->values();
 
     return response()
         ->view('sitemap.xml', ['urls' => $urls])
