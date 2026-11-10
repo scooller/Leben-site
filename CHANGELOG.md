@@ -2,6 +2,11 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.24] - 2026-11-10
+
+### Fixed
+- `app/Http/Controllers/Api/ProyectoController.php`: Removidas columnas `custom_css` y `custom_js` de `$defaultFields` y `$allowedFields` de la tabla `proyectos` en `ProyectoController::index` y `show`. `custom_css` y `custom_js` residen en `project_details` y se entregan a través de `ProjectDetailResource` (`/api/v1/proyectos/{slug}/content`), eliminando el error `SQLSTATE[42S22]: Column not found: 1054 Unknown column 'custom_css' in 'SELECT'` en `/api/v1/proyectos`.
+
 ## [1.13.23] - 2026-11-10
 
 ### Added
