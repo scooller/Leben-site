@@ -2,6 +2,12 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.28] - 2026-11-10
+
+### Fixed
+- `app/Filament/Resources/Proyectos/Schemas/ProyectoForm.php`: Removido `formatCuratorState()` y todos los callbacks `formatStateUsing()` sobre `CuratorPicker`. `CuratorPicker` gestiona de manera nativa la hidratación desde IDs/arrays de IDs a estructuras de vista con UUIDs en `afterStateHydrated()`. La función personalizada retornaba arrays numéricos de IDs (`[132, 133, ...]`) en lugar de diccionarios de medios, provocando el error `ErrorException: Trying to access array offset on int` en `vendor/awcodes/filament-curator/resources/views/components/forms/picker.blade.php:74` al editar proyectos (`GET /admin/proyectos/9/edit`).
+- `app/Models/ProjectDetail.php`: Optimizado `resolveMediaUrl()` para extraer inmediatamente la clave `'url'` de estados hidratados de Curator sin requerir consultas SQL adicionales.
+
 ## [1.13.27] - 2026-11-10
 
 ### Changed

@@ -401,7 +401,18 @@ class ProjectDetail extends Model
         }
 
         if (is_array($mediaId)) {
-            $mediaId = $mediaId['id'] ?? (is_array(reset($mediaId)) ? (reset($mediaId)['id'] ?? null) : reset($mediaId));
+            $first = reset($mediaId);
+            if (is_array($first)) {
+                if (! empty($first['url'])) {
+                    return $first['url'];
+                }
+                $mediaId = $first['id'] ?? null;
+            } else {
+                if (! empty($mediaId['url'])) {
+                    return $mediaId['url'];
+                }
+                $mediaId = $mediaId['id'] ?? $first;
+            }
         }
 
         return is_numeric($mediaId) ? Media::find($mediaId)?->url : null;
