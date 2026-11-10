@@ -20,6 +20,7 @@ class ProjectDetail extends Model
         'hero_title',
         'hero_subtitle',
         'hero_video_url',
+        'hero_video_media_id',
         'hero_logo_id',
         'hero_logo_url',
         'theme_colors',
@@ -49,7 +50,9 @@ class ProjectDetail extends Model
         'terminaciones_items',
         'virtual_tour_matterport_url',
         'virtual_tour_360_url',
+        'virtual_tour_360_media_id',
         'virtual_tour_video_url',
+        'virtual_tour_video_media_id',
         'virtual_tours_eyebrow',
         'virtual_tours_title',
         'virtual_tours_config',
@@ -127,10 +130,87 @@ class ProjectDetail extends Model
     protected static function booted(): void
     {
         static::saving(function (ProjectDetail $detail): void {
-            if (! empty($detail->brochure_media_id) && empty($detail->brochure_pdf_url)) {
-                $brochureMedia = Media::find($detail->brochure_media_id);
-                if ($brochureMedia) {
-                    $detail->brochure_pdf_url = $brochureMedia->url;
+            if (! empty($detail->hero_video_media_id)) {
+                $resolved = static::resolveMediaUrl($detail->hero_video_media_id);
+                if ($resolved && (empty($detail->hero_video_url) || $detail->isDirty('hero_video_media_id'))) {
+                    $detail->hero_video_url = $resolved;
+                }
+            }
+
+            if (! empty($detail->hero_logo_id)) {
+                $resolved = static::resolveMediaUrl($detail->hero_logo_id);
+                if ($resolved && (empty($detail->hero_logo_url) || $detail->isDirty('hero_logo_id'))) {
+                    $detail->hero_logo_url = $resolved;
+                }
+            }
+
+            if (! empty($detail->virtual_tour_360_media_id)) {
+                $resolved = static::resolveMediaUrl($detail->virtual_tour_360_media_id);
+                if ($resolved && (empty($detail->virtual_tour_360_url) || $detail->isDirty('virtual_tour_360_media_id'))) {
+                    $detail->virtual_tour_360_url = $resolved;
+                }
+            }
+
+            if (! empty($detail->virtual_tour_video_media_id)) {
+                $resolved = static::resolveMediaUrl($detail->virtual_tour_video_media_id);
+                if ($resolved && (empty($detail->virtual_tour_video_url) || $detail->isDirty('virtual_tour_video_media_id'))) {
+                    $detail->virtual_tour_video_url = $resolved;
+                }
+            }
+
+            if (! empty($detail->brochure_media_id)) {
+                $resolved = static::resolveMediaUrl($detail->brochure_media_id);
+                if ($resolved && (empty($detail->brochure_pdf_url) || $detail->isDirty('brochure_media_id'))) {
+                    $detail->brochure_pdf_url = $resolved;
+                }
+            }
+
+            if (! empty($detail->equipment_bg_image_id)) {
+                $resolved = static::resolveMediaUrl($detail->equipment_bg_image_id);
+                if ($resolved && (empty($detail->equipment_bg_image_url) || $detail->isDirty('equipment_bg_image_id'))) {
+                    $detail->equipment_bg_image_url = $resolved;
+                }
+            }
+
+            if (! empty($detail->espacios_bg_image_id)) {
+                $resolved = static::resolveMediaUrl($detail->espacios_bg_image_id);
+                if ($resolved && (empty($detail->espacios_bg_image_url) || $detail->isDirty('espacios_bg_image_id'))) {
+                    $detail->espacios_bg_image_url = $resolved;
+                }
+            }
+
+            if (! empty($detail->panoramas_bg_image_id)) {
+                $resolved = static::resolveMediaUrl($detail->panoramas_bg_image_id);
+                if ($resolved && (empty($detail->panoramas_bg_image_url) || $detail->isDirty('panoramas_bg_image_id'))) {
+                    $detail->panoramas_bg_image_url = $resolved;
+                }
+            }
+
+            if (! empty($detail->interiorismo_bg_image_id)) {
+                $resolved = static::resolveMediaUrl($detail->interiorismo_bg_image_id);
+                if ($resolved && (empty($detail->interiorismo_bg_image_url) || $detail->isDirty('interiorismo_bg_image_id'))) {
+                    $detail->interiorismo_bg_image_url = $resolved;
+                }
+            }
+
+            if (! empty($detail->entorno_map_image_id)) {
+                $resolved = static::resolveMediaUrl($detail->entorno_map_image_id);
+                if ($resolved && (empty($detail->entorno_map_image_url) || $detail->isDirty('entorno_map_image_id'))) {
+                    $detail->entorno_map_image_url = $resolved;
+                }
+            }
+
+            if (! empty($detail->map_logo_id)) {
+                $resolved = static::resolveMediaUrl($detail->map_logo_id);
+                if ($resolved && (empty($detail->map_logo_url) || $detail->isDirty('map_logo_id'))) {
+                    $detail->map_logo_url = $resolved;
+                }
+            }
+
+            if (! empty($detail->map_pin_logo_id)) {
+                $resolved = static::resolveMediaUrl($detail->map_pin_logo_id);
+                if ($resolved && (empty($detail->map_pin_logo_url) || $detail->isDirty('map_pin_logo_id'))) {
+                    $detail->map_pin_logo_url = $resolved;
                 }
             }
 
@@ -348,6 +428,21 @@ class ProjectDetail extends Model
         return $this->belongsTo(Media::class, 'interiorismo_bg_image_id');
     }
 
+    public function heroVideoMedia(): BelongsTo
+    {
+        return $this->belongsTo(Media::class, 'hero_video_media_id');
+    }
+
+    public function virtualTour360Media(): BelongsTo
+    {
+        return $this->belongsTo(Media::class, 'virtual_tour_360_media_id');
+    }
+
+    public function virtualTourVideoMedia(): BelongsTo
+    {
+        return $this->belongsTo(Media::class, 'virtual_tour_video_media_id');
+    }
+
     public function heroLogoMedia(): BelongsTo
     {
         return $this->belongsTo(Media::class, 'hero_logo_id');
@@ -386,6 +481,21 @@ class ProjectDetail extends Model
     public function galleries(): HasMany
     {
         return $this->hasMany(ProjectGallery::class)->orderBy('sort_order');
+    }
+
+    public function getResolvedHeroVideoUrlAttribute(): ?string
+    {
+        return $this->heroVideoMedia?->url ?? $this->hero_video_url;
+    }
+
+    public function getResolvedVirtualTour360UrlAttribute(): ?string
+    {
+        return $this->virtualTour360Media?->url ?? $this->virtual_tour_360_url;
+    }
+
+    public function getResolvedVirtualTourVideoUrlAttribute(): ?string
+    {
+        return $this->virtualTourVideoMedia?->url ?? $this->virtual_tour_video_url;
     }
 
     public function getResolvedEquipmentBgImageUrlAttribute(): ?string

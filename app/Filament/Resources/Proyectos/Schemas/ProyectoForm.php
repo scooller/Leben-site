@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Proyectos\Schemas;
 
+use App\Models\ProjectDetail;
 use App\Models\Proyecto;
 use Awcodes\Curator\Components\Forms\CuratorPicker;
 use Awcodes\Curator\Models\Media;
@@ -223,6 +224,7 @@ class ProyectoForm
                                         CuratorPicker::make('project_image_id')
                                             ->label('Imagen del Proyecto')
                                             ->helperText('Imagen manual del proyecto. Si no se define, se usará la Portada de Salesforce; si tampoco existe, se usará el logo principal del sitio o un ícono por defecto.')
+                                            ->formatStateUsing(fn ($state) => static::formatCuratorState($state))
                                             ->columnSpan(2),
 
                                         Section::make('Branding Salesforce')
@@ -528,17 +530,24 @@ class ProyectoForm
                                                                     ->label('Seleccionar Video Hero desde Curator')
                                                                     ->buttonLabel('Elegir Video Hero')
                                                                     ->acceptedFileTypes(['video/*'])
-                                                                    ->dehydrated(false)
+                                                                    ->formatStateUsing(fn ($state) => static::formatCuratorState($state))
                                                                     ->live()
                                                                     ->afterStateUpdated(function ($state, Set $set) {
-                                                                        if ($state) {
-                                                                            $media = Media::find($state);
-                                                                            if ($media) {
-                                                                                $set('hero_video_url', $media->url);
-                                                                            }
+                                                                        $url = ProjectDetail::resolveMediaUrl($state);
+                                                                        if ($url) {
+                                                                            $set('hero_video_url', $url);
                                                                         }
                                                                     }),
-                                                                CuratorPicker::make('hero_logo_id')->label('Logo Header (Curator)'),
+                                                                CuratorPicker::make('hero_logo_id')
+                                                                    ->label('Logo Header (Curator)')
+                                                                    ->formatStateUsing(fn ($state) => static::formatCuratorState($state))
+                                                                    ->live()
+                                                                    ->afterStateUpdated(function ($state, Set $set) {
+                                                                        $url = ProjectDetail::resolveMediaUrl($state);
+                                                                        if ($url) {
+                                                                            $set('hero_logo_url', $url);
+                                                                        }
+                                                                    }),
                                                                 TextInput::make('hero_logo_url')->label('URL Directa de Logo Header (Fallback)')->placeholder('images/inn/Logo_INN_Header.png'),
                                                                 Repeater::make('technical_info')
                                                                     ->label('Barra Técnica de Especificaciones (INFO)')
@@ -595,7 +604,14 @@ class ProyectoForm
                                                                         CuratorPicker::make('media_id')
                                                                             ->label('Seleccionar Imagen desde Curator')
                                                                             ->buttonLabel('Elegir Imagen')
-                                                                            ->formatStateUsing(fn ($state) => static::formatCuratorState($state)),
+                                                                            ->formatStateUsing(fn ($state) => static::formatCuratorState($state))
+                                                                            ->live()
+                                                                            ->afterStateUpdated(function ($state, Set $set) {
+                                                                                $url = ProjectDetail::resolveMediaUrl($state);
+                                                                                if ($url) {
+                                                                                    $set('img', $url);
+                                                                                }
+                                                                            }),
                                                                         TextInput::make('img')
                                                                             ->label('Ruta o URL de Imagen (Fallback)')
                                                                             ->placeholder('images/inn/proyecto/Proyecto_01_Acceso.jpg')
@@ -632,7 +648,14 @@ class ProyectoForm
                                                                             ->label('Seleccionar Video desde Curator')
                                                                             ->buttonLabel('Elegir Video')
                                                                             ->acceptedFileTypes(['video/*'])
-                                                                            ->formatStateUsing(fn ($state) => static::formatCuratorState($state)),
+                                                                            ->formatStateUsing(fn ($state) => static::formatCuratorState($state))
+                                                                            ->live()
+                                                                            ->afterStateUpdated(function ($state, Set $set) {
+                                                                                $url = ProjectDetail::resolveMediaUrl($state);
+                                                                                if ($url) {
+                                                                                    $set('proyecto_video.video_url', $url);
+                                                                                }
+                                                                            }),
                                                                     ])
                                                                     ->columns(2)
                                                                     ->columnSpanFull(),
@@ -653,7 +676,16 @@ class ProyectoForm
                                                                     ->placeholder("SOFISTICACIÓN\nEN CADA DETALLE")
                                                                     ->rows(2)
                                                                     ->helperText('Presiona Enter para saltos de línea'),
-                                                                CuratorPicker::make('equipment_bg_image_id')->label('Fondo Decorativo SVG/PNG (Curator)'),
+                                                                CuratorPicker::make('equipment_bg_image_id')
+                                                                    ->label('Fondo Decorativo SVG/PNG (Curator)')
+                                                                    ->formatStateUsing(fn ($state) => static::formatCuratorState($state))
+                                                                    ->live()
+                                                                    ->afterStateUpdated(function ($state, Set $set) {
+                                                                        $url = ProjectDetail::resolveMediaUrl($state);
+                                                                        if ($url) {
+                                                                            $set('equipment_bg_image_url', $url);
+                                                                        }
+                                                                    }),
                                                                 TextInput::make('equipment_bg_image_url')->label('URL Fondo Decorativo (Fallback)')->placeholder('images/inn/Perspectiva.svg'),
                                                                 RichEditor::make('equipment_description')->label('Descripción de Equipamiento')->columnSpanFull(),
                                                                 Repeater::make('equipment_brands')
@@ -662,7 +694,14 @@ class ProyectoForm
                                                                         CuratorPicker::make('media_id')
                                                                             ->label('Seleccionar Logo desde Curator')
                                                                             ->buttonLabel('Elegir Logo')
-                                                                            ->formatStateUsing(fn ($state) => static::formatCuratorState($state)),
+                                                                            ->formatStateUsing(fn ($state) => static::formatCuratorState($state))
+                                                                            ->live()
+                                                                            ->afterStateUpdated(function ($state, Set $set) {
+                                                                                $url = ProjectDetail::resolveMediaUrl($state);
+                                                                                if ($url) {
+                                                                                    $set('src', $url);
+                                                                                }
+                                                                            }),
                                                                         TextInput::make('src')
                                                                             ->label('Ruta / URL del Logo (Fallback)')
                                                                             ->placeholder('images/logos/franke.png')
@@ -679,7 +718,14 @@ class ProyectoForm
                                                                         CuratorPicker::make('media_id')
                                                                             ->label('Seleccionar Imagen desde Curator')
                                                                             ->buttonLabel('Elegir Imagen')
-                                                                            ->formatStateUsing(fn ($state) => static::formatCuratorState($state)),
+                                                                            ->formatStateUsing(fn ($state) => static::formatCuratorState($state))
+                                                                            ->live()
+                                                                            ->afterStateUpdated(function ($state, Set $set) {
+                                                                                $url = ProjectDetail::resolveMediaUrl($state);
+                                                                                if ($url) {
+                                                                                    $set('img', $url);
+                                                                                }
+                                                                            }),
                                                                         TextInput::make('img')
                                                                             ->label('Ruta / URL Imagen (Fallback)')
                                                                             ->placeholder('images/inn/equipamiento/Equipamiento_Principal_Cocina.jpg')
@@ -700,7 +746,14 @@ class ProyectoForm
                                                                                 CuratorPicker::make('media_id')
                                                                                     ->label('Seleccionar Imagen desde Curator')
                                                                                     ->buttonLabel('Elegir Imagen')
-                                                                                    ->formatStateUsing(fn ($state) => static::formatCuratorState($state)),
+                                                                                    ->formatStateUsing(fn ($state) => static::formatCuratorState($state))
+                                                                                    ->live()
+                                                                                    ->afterStateUpdated(function ($state, Set $set) {
+                                                                                        $url = ProjectDetail::resolveMediaUrl($state);
+                                                                                        if ($url) {
+                                                                                            $set('img', $url);
+                                                                                        }
+                                                                                    }),
                                                                                 TextInput::make('img')
                                                                                     ->label('URL Imagen Grande (Fallback)')
                                                                                     ->helperText('Opcional si seleccionas desde Curator.')
@@ -740,7 +793,14 @@ class ProyectoForm
                                                                             ->label('Seleccionar Video desde Curator')
                                                                             ->buttonLabel('Elegir Video')
                                                                             ->acceptedFileTypes(['video/*'])
-                                                                            ->formatStateUsing(fn ($state) => static::formatCuratorState($state)),
+                                                                            ->formatStateUsing(fn ($state) => static::formatCuratorState($state))
+                                                                            ->live()
+                                                                            ->afterStateUpdated(function ($state, Set $set) {
+                                                                                $url = ProjectDetail::resolveMediaUrl($state);
+                                                                                if ($url) {
+                                                                                    $set('equipamiento_video.video_url', $url);
+                                                                                }
+                                                                            }),
                                                                     ])
                                                                     ->columns(2)
                                                                     ->columnSpanFull(),
@@ -775,6 +835,13 @@ class ProyectoForm
                                                                     ->label('Seleccionar Folleto / PDF desde Curator')
                                                                     ->buttonLabel('Elegir Archivo')
                                                                     ->formatStateUsing(fn ($state) => static::formatCuratorState($state))
+                                                                    ->live()
+                                                                    ->afterStateUpdated(function ($state, Set $set) {
+                                                                        $url = ProjectDetail::resolveMediaUrl($state);
+                                                                        if ($url) {
+                                                                            $set('brochure_pdf_url', $url);
+                                                                        }
+                                                                    })
                                                                     ->columnSpan(1),
 
                                                                 Repeater::make('virtual_tours_config')
@@ -803,7 +870,14 @@ class ProyectoForm
                                                                         CuratorPicker::make('media_id')
                                                                             ->label('Seleccionar Imagen / Archivo desde Curator')
                                                                             ->buttonLabel('Elegir Archivo')
-                                                                            ->formatStateUsing(fn ($state) => static::formatCuratorState($state)),
+                                                                            ->formatStateUsing(fn ($state) => static::formatCuratorState($state))
+                                                                            ->live()
+                                                                            ->afterStateUpdated(function ($state, Set $set) {
+                                                                                $url = ProjectDetail::resolveMediaUrl($state);
+                                                                                if ($url) {
+                                                                                    $set('src', $url);
+                                                                                }
+                                                                            }),
 
                                                                         Repeater::make('interiores')
                                                                             ->label('Interiores / Subvistas de esta Sección')
@@ -825,7 +899,14 @@ class ProyectoForm
                                                                                 CuratorPicker::make('media_id')
                                                                                     ->label('Seleccionar Imagen / Archivo desde Curator')
                                                                                     ->buttonLabel('Elegir Archivo')
-                                                                                    ->formatStateUsing(fn ($state) => static::formatCuratorState($state)),
+                                                                                    ->formatStateUsing(fn ($state) => static::formatCuratorState($state))
+                                                                                    ->live()
+                                                                                    ->afterStateUpdated(function ($state, Set $set) {
+                                                                                        $url = ProjectDetail::resolveMediaUrl($state);
+                                                                                        if ($url) {
+                                                                                            $set('src', $url);
+                                                                                        }
+                                                                                    }),
                                                                             ])
                                                                             ->columns(2)
                                                                             ->defaultItems(0)
@@ -847,14 +928,12 @@ class ProyectoForm
                                                                         CuratorPicker::make('virtual_tour_360_media_id')
                                                                             ->label('Seleccionar Archivo 360 desde Curator')
                                                                             ->buttonLabel('Elegir Archivo 360')
-                                                                            ->dehydrated(false)
+                                                                            ->formatStateUsing(fn ($state) => static::formatCuratorState($state))
                                                                             ->live()
                                                                             ->afterStateUpdated(function ($state, Set $set) {
-                                                                                if ($state) {
-                                                                                    $media = Media::find($state);
-                                                                                    if ($media) {
-                                                                                        $set('virtual_tour_360_url', $media->url);
-                                                                                    }
+                                                                                $url = ProjectDetail::resolveMediaUrl($state);
+                                                                                if ($url) {
+                                                                                    $set('virtual_tour_360_url', $url);
                                                                                 }
                                                                             }),
                                                                         TextInput::make('virtual_tour_video_url')->label('URL Video Recorrido (YouTube / MP4)')->placeholder('https://...'),
@@ -862,14 +941,12 @@ class ProyectoForm
                                                                             ->label('Seleccionar Video desde Curator')
                                                                             ->buttonLabel('Elegir Video')
                                                                             ->acceptedFileTypes(['video/*'])
-                                                                            ->dehydrated(false)
+                                                                            ->formatStateUsing(fn ($state) => static::formatCuratorState($state))
                                                                             ->live()
                                                                             ->afterStateUpdated(function ($state, Set $set) {
-                                                                                if ($state) {
-                                                                                    $media = Media::find($state);
-                                                                                    if ($media) {
-                                                                                        $set('virtual_tour_video_url', $media->url);
-                                                                                    }
+                                                                                $url = ProjectDetail::resolveMediaUrl($state);
+                                                                                if ($url) {
+                                                                                    $set('virtual_tour_video_url', $url);
                                                                                 }
                                                                             }),
                                                                     ])
@@ -892,7 +969,16 @@ class ProyectoForm
                                                                     ->placeholder("ESPACIOS DE\nOTRO NIVEL")
                                                                     ->rows(2)
                                                                     ->helperText('Presiona Enter para saltos de línea'),
-                                                                CuratorPicker::make('espacios_bg_image_id')->label('Fondo Decorativo SVG/PNG (Curator)'),
+                                                                CuratorPicker::make('espacios_bg_image_id')
+                                                                    ->label('Fondo Decorativo SVG/PNG (Curator)')
+                                                                    ->formatStateUsing(fn ($state) => static::formatCuratorState($state))
+                                                                    ->live()
+                                                                    ->afterStateUpdated(function ($state, Set $set) {
+                                                                        $url = ProjectDetail::resolveMediaUrl($state);
+                                                                        if ($url) {
+                                                                            $set('espacios_bg_image_url', $url);
+                                                                        }
+                                                                    }),
                                                                 TextInput::make('espacios_bg_image_url')->label('URL Fondo Decorativo (Fallback)')->placeholder('images/inn/Climbing.svg'),
                                                                 RichEditor::make('espacios_description')->label('Descripción de Espacios Comunes')->columnSpanFull(),
                                                                 Repeater::make('espacios_items')
@@ -916,7 +1002,15 @@ class ProyectoForm
                                                                         CuratorPicker::make('media_id')
                                                                             ->label('Seleccionar Foto desde Curator')
                                                                             ->buttonLabel('Elegir Foto')
-                                                                            ->formatStateUsing(fn ($state) => static::formatCuratorState($state)),
+                                                                            ->formatStateUsing(fn ($state) => static::formatCuratorState($state))
+                                                                            ->live()
+                                                                            ->afterStateUpdated(function ($state, Set $set) {
+                                                                                $url = ProjectDetail::resolveMediaUrl($state);
+                                                                                if ($url) {
+                                                                                    $set('img', $url);
+                                                                                    $set('link', $url);
+                                                                                }
+                                                                            }),
                                                                         TextInput::make('img')
                                                                             ->label('Ruta / URL Imagen (Fallback)')
                                                                             ->placeholder('images/inn/eecc/EECC_01.jpg')
@@ -955,7 +1049,14 @@ class ProyectoForm
                                                                             ->label('Seleccionar Video desde Curator')
                                                                             ->buttonLabel('Elegir Video')
                                                                             ->acceptedFileTypes(['video/*'])
-                                                                            ->formatStateUsing(fn ($state) => static::formatCuratorState($state)),
+                                                                            ->formatStateUsing(fn ($state) => static::formatCuratorState($state))
+                                                                            ->live()
+                                                                            ->afterStateUpdated(function ($state, Set $set) {
+                                                                                $url = ProjectDetail::resolveMediaUrl($state);
+                                                                                if ($url) {
+                                                                                    $set('espacios_video.video_url', $url);
+                                                                                }
+                                                                            }),
                                                                     ])
                                                                     ->columns(2)
                                                                     ->columnSpanFull(),
@@ -976,14 +1077,41 @@ class ProyectoForm
                                                                     ->placeholder("Entorno\nINNigualable")
                                                                     ->rows(2)
                                                                     ->helperText('Presiona Enter para saltos de línea'),
-                                                                CuratorPicker::make('map_logo_id')->label('Logo Decorativo (Curator)'),
+                                                                CuratorPicker::make('map_logo_id')
+                                                                    ->label('Logo Decorativo (Curator)')
+                                                                    ->formatStateUsing(fn ($state) => static::formatCuratorState($state))
+                                                                    ->live()
+                                                                    ->afterStateUpdated(function ($state, Set $set) {
+                                                                        $url = ProjectDetail::resolveMediaUrl($state);
+                                                                        if ($url) {
+                                                                            $set('map_logo_url', $url);
+                                                                        }
+                                                                    }),
                                                                 TextInput::make('map_logo_url')->label('URL Logo Decorativo (Fallback)')->placeholder('images/inn/E_titulo.png'),
                                                                 TextInput::make('map_btn_text')->label('Texto del Botón')->default('Experiencias'),
                                                                 TextInput::make('map_address')->label('Dirección Visible')->placeholder('Vicente Pérez Rosales 991, Puerto Varas'),
-                                                                CuratorPicker::make('entorno_map_image_id')->label('Imagen del Mapa (Curator)'),
+                                                                CuratorPicker::make('entorno_map_image_id')
+                                                                    ->label('Imagen del Mapa (Curator)')
+                                                                    ->formatStateUsing(fn ($state) => static::formatCuratorState($state))
+                                                                    ->live()
+                                                                    ->afterStateUpdated(function ($state, Set $set) {
+                                                                        $url = ProjectDetail::resolveMediaUrl($state);
+                                                                        if ($url) {
+                                                                            $set('entorno_map_image_url', $url);
+                                                                        }
+                                                                    }),
                                                                 TextInput::make('map_pin_x')->label('Coordenada X del Proyecto (%)')->numeric()->default(33.3),
                                                                 TextInput::make('map_pin_y')->label('Coordenada Y del Proyecto (%)')->numeric()->default(72.4),
-                                                                CuratorPicker::make('map_pin_logo_id')->label('Logo del Pin de Proyecto (Curator)'),
+                                                                CuratorPicker::make('map_pin_logo_id')
+                                                                    ->label('Logo del Pin de Proyecto (Curator)')
+                                                                    ->formatStateUsing(fn ($state) => static::formatCuratorState($state))
+                                                                    ->live()
+                                                                    ->afterStateUpdated(function ($state, Set $set) {
+                                                                        $url = ProjectDetail::resolveMediaUrl($state);
+                                                                        if ($url) {
+                                                                            $set('map_pin_logo_url', $url);
+                                                                        }
+                                                                    }),
                                                                 TextInput::make('map_pin_logo_url')->label('URL Logo del Pin de Proyecto (Fallback)')->placeholder('images/inn/pin_logo.png'),
                                                                 RichEditor::make('map_description')->label('Descripción de Ubicación & Entorno')->columnSpanFull(),
                                                                 Repeater::make('map_pois')
@@ -1008,7 +1136,14 @@ class ProyectoForm
                                                                         CuratorPicker::make('media_id')
                                                                             ->label('Seleccionar Foto desde Curator')
                                                                             ->buttonLabel('Elegir Foto')
-                                                                            ->formatStateUsing(fn ($state) => static::formatCuratorState($state)),
+                                                                            ->formatStateUsing(fn ($state) => static::formatCuratorState($state))
+                                                                            ->live()
+                                                                            ->afterStateUpdated(function ($state, Set $set) {
+                                                                                $url = ProjectDetail::resolveMediaUrl($state);
+                                                                                if ($url) {
+                                                                                    $set('img', $url);
+                                                                                }
+                                                                            }),
                                                                         TextInput::make('img')
                                                                             ->label('Ruta / URL Foto (Fallback)')
                                                                             ->placeholder('images/inn/ubicacion/Mesa_Tropera_AI.jpg')
@@ -1030,7 +1165,15 @@ class ProyectoForm
                                                             ->description('Categorías y tarjetas de turismo, gastronomía y paseos en la zona (activadas desde el botón del Mapa)')
                                                             ->schema([
                                                                 CuratorPicker::make('panoramas_bg_image_id')
-                                                                    ->label('Imagen de Fondo del Modal (Curator)'),
+                                                                    ->label('Imagen de Fondo del Modal (Curator)')
+                                                                    ->formatStateUsing(fn ($state) => static::formatCuratorState($state))
+                                                                    ->live()
+                                                                    ->afterStateUpdated(function ($state, Set $set) {
+                                                                        $url = ProjectDetail::resolveMediaUrl($state);
+                                                                        if ($url) {
+                                                                            $set('panoramas_bg_image_url', $url);
+                                                                        }
+                                                                    }),
 
                                                                 TextInput::make('panoramas_bg_image_url')
                                                                     ->label('URL directa de Imagen de Fondo (Fallback)')
@@ -1051,7 +1194,14 @@ class ProyectoForm
                                                                                 CuratorPicker::make('media_id')
                                                                                     ->label('Seleccionar Foto desde Curator')
                                                                                     ->buttonLabel('Elegir Foto')
-                                                                                    ->formatStateUsing(fn ($state) => static::formatCuratorState($state)),
+                                                                                    ->formatStateUsing(fn ($state) => static::formatCuratorState($state))
+                                                                                    ->live()
+                                                                                    ->afterStateUpdated(function ($state, Set $set) {
+                                                                                        $url = ProjectDetail::resolveMediaUrl($state);
+                                                                                        if ($url) {
+                                                                                            $set('image', $url);
+                                                                                        }
+                                                                                    }),
                                                                                 TextInput::make('image')
                                                                                     ->label('Ruta / URL Foto (Fallback)')
                                                                                     ->placeholder('images/inn/panoramas/Ensenada_04_IA.jpg')
@@ -1080,7 +1230,16 @@ class ProyectoForm
                                                                     ->placeholder('MAESTRÍA EN CADA DETALLE')
                                                                     ->rows(2)
                                                                     ->helperText('Presiona Enter para saltos de línea'),
-                                                                CuratorPicker::make('interiorismo_bg_image_id')->label('Fondo Decorativo SVG/PNG (Curator)'),
+                                                                CuratorPicker::make('interiorismo_bg_image_id')
+                                                                    ->label('Fondo Decorativo SVG/PNG (Curator)')
+                                                                    ->formatStateUsing(fn ($state) => static::formatCuratorState($state))
+                                                                    ->live()
+                                                                    ->afterStateUpdated(function ($state, Set $set) {
+                                                                        $url = ProjectDetail::resolveMediaUrl($state);
+                                                                        if ($url) {
+                                                                            $set('interiorismo_bg_image_url', $url);
+                                                                        }
+                                                                    }),
                                                                 TextInput::make('interiorismo_bg_image_url')->label('URL Fondo Decorativo (Fallback)')->placeholder('images/inn/Interiorismo.svg'),
                                                                 RichEditor::make('interiorismo_description')->label('Descripción de Interiorismo')->columnSpanFull(),
                                                                 Repeater::make('designers')
@@ -1090,7 +1249,14 @@ class ProyectoForm
                                                                         CuratorPicker::make('media_id')
                                                                             ->label('Seleccionar Foto desde Curator')
                                                                             ->buttonLabel('Elegir Foto')
-                                                                            ->formatStateUsing(fn ($state) => static::formatCuratorState($state)),
+                                                                            ->formatStateUsing(fn ($state) => static::formatCuratorState($state))
+                                                                            ->live()
+                                                                            ->afterStateUpdated(function ($state, Set $set) {
+                                                                                $url = ProjectDetail::resolveMediaUrl($state);
+                                                                                if ($url) {
+                                                                                    $set('image', $url);
+                                                                                }
+                                                                            }),
                                                                         TextInput::make('image')
                                                                             ->label('Ruta / URL Foto (Fallback)')
                                                                             ->placeholder('images/inn/Foto_Iturralde.jpg')
@@ -1139,6 +1305,7 @@ class ProyectoForm
                                             ->label('Imágenes de la Galería')
                                             ->buttonLabel('Seleccionar Imágenes')
                                             ->multiple()
+                                            ->formatStateUsing(fn ($state) => static::formatCuratorState($state))
                                             ->columnSpanFull(),
                                     ]),
                             ]),

@@ -2,6 +2,21 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.25] - 2026-11-10
+
+### Fixed
+- **Auditoría e Integración Completa de Pickers de Curator en Proyectos**:
+  - `database/migrations/2026_11_10_000003_add_video_media_ids_to_project_details_table.php`: Añadidas columnas `hero_video_media_id`, `virtual_tour_360_media_id` y `virtual_tour_video_media_id` a la tabla `project_details`.
+  - `app/Filament/Resources/Proyectos/Schemas/ProyectoForm.php`:
+    - Removido `dehydrated(false)` en `hero_video_media_id`, `virtual_tour_360_media_id` y `virtual_tour_video_media_id` para persistir los IDs seleccionados desde Curator.
+    - Implementado `ProjectDetail::resolveMediaUrl($state)` y `live()` en todos los `CuratorPicker` para actualizar los inputs de URL en tiempo real al seleccionar un archivo en el modal de Curator (`hero_video_url`, `hero_logo_url`, `equipment_bg_image_url`, `equipamiento_video.video_url`, `brochure_pdf_url`, `virtual_tour_360_url`, `virtual_tour_video_url`, `espacios_bg_image_url`, `espacios_video.video_url`, `map_logo_url`, `entorno_map_image_url`, `map_pin_logo_url`, `panoramas_bg_image_url`, `interiorismo_bg_image_url`, y repeaters).
+    - Agregado `formatStateUsing(fn ($state) => static::formatCuratorState($state))` en todos los selectores de Curator para renderizar correctamente sus tarjetas de vista previa al editar registros existentes.
+  - `app/Models/ProjectDetail.php`:
+    - Incorporadas columnas a `$fillable` y relaciones `BelongsTo` (`heroVideoMedia`, `virtualTour360Media`, `virtualTourVideoMedia`).
+    - Evento `saving()` actualizado para resolver automáticamente URLs correspondientes si un `_media_id` está presente o sucio (`isDirty`).
+  - `app/Http/Resources/Api/ProjectDetailResource.php`:
+    - Expuestas URLs resueltas de Curator con fallback (`resolved_hero_video_url`, `resolved_virtual_tour_360_url`, `resolved_virtual_tour_video_url`).
+
 ## [1.13.24] - 2026-11-10
 
 ### Fixed
