@@ -2,6 +2,11 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.27] - 2026-11-10
+
+### Changed
+- `app/Http/Controllers/Api/ProjectDetailController.php`: Incorporado bypass de caché y purge (`Cache::forget($cacheKey)`) para entornos de desarrollo (`local`, `dev`, `development`), peticiones con parámetro `?fresh=1`, o cuando se recibe la cabecera `Cache-Control: no-cache`. En desarrollo se responde con cabecera `Cache-Control: no-cache, no-store, must-revalidate` para que cambios en CSS personalizado y contenidos en Filament se sincronicen de inmediato. En producción se mantiene el almacenamiento en caché de 10 minutos.
+
 ## [1.13.26] - 2026-11-10
 
 ### Added

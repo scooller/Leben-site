@@ -13,8 +13,11 @@ class ProjectDetailController extends Controller
     public function show(string $slugOrId): JsonResponse
     {
         $cacheKey = "project_content_{$slugOrId}";
+        $bypassCache = app()->environment('local', 'dev', 'development')
+            || request()->boolean('fresh')
+            || request()->header('Cache-Control') === 'no-cache';
 
-        $proyecto = Cache::remember($cacheKey, now()->addMinutes(10), function () use ($slugOrId) {
+        $fetchQuery = function () use ($slugOrId) {
             $normalizedSlug = str_starts_with($slugOrId, 'edificio-')
                 ? $slugOrId
                 : 'edificio-'.$slugOrId;
@@ -38,7 +41,14 @@ class ProjectDetailController extends Controller
                     'testimonials' => fn ($tq) => $tq->where('is_published', true)->orderBy('sort_order'),
                 ])
                 ->first();
-        });
+        };
+
+        if ($bypassCache) {
+            Cache::forget($cacheKey);
+            $proyecto = $fetchQuery();
+        } else {
+            $proyecto = Cache::remember($cacheKey, now()->addMinutes(10), $fetchQuery);
+        }
 
         if (! $proyecto) {
             return response()->json([
@@ -47,8 +57,12 @@ class ProjectDetailController extends Controller
             ], 404);
         }
 
-        return (new ProjectDetailResource($proyecto))
-            ->response()
-            ->header('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
+        $response = (new ProjectDetailResource($proyecto))->response();
+
+        if ($bypassCache) {
+            return $response->header('Cache-Control', 'no-cache, no-store, must-revalidate');
+        }
+
+        return $response->header('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
     }
 }
