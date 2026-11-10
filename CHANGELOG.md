@@ -2,6 +2,14 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.22] - 2026-11-10
+
+### Added
+- **Campo URL Cotizar por defecto (`cotiza_url`) en Proyectos**:
+  - Migración `2026_11_10_000001_add_cotiza_url_to_proyectos_table` agregando columna nullable `cotiza_url` (2048 caracteres) a la tabla `proyectos`.
+  - Incorporado `TextInput::make('cotiza_url')->label('URL Cotizar por defecto')` al final de la sección **Información General** en `ProyectoForm`.
+  - Expuesto `cotiza_url` en `Proyecto` (`$fillable` y `syncableFields()`), `ProyectoController`, `PlantController::projectPayload()` y `ProjectDetailResource`.
+
 ## [1.13.21] - 2026-11-04
 
 ### Changed

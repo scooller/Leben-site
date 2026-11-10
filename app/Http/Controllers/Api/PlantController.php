@@ -583,6 +583,7 @@ class PlantController extends Controller
             'provincia' => $proyecto->provincia,
             'region' => $proyecto->region,
             'pagina_web' => $proyecto->pagina_web,
+            'cotiza_url' => $proyecto->cotiza_url,
             'etapa' => $proyecto->entrega_inmediata ? 'Entrega inmediata' : Proyecto::etapaLabel($proyecto->etapa),
             'horario_atencion' => $proyecto->horario_atencion,
             'entrega_inmediata' => (bool) $proyecto->entrega_inmediata,

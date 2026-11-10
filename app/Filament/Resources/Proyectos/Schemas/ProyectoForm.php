@@ -261,6 +261,15 @@ class ProyectoForm
                                             ])
                                             ->columns(2)
                                             ->columnSpan(2),
+
+                                        TextInput::make('cotiza_url')
+                                            ->label('URL Cotizar por defecto')
+                                            ->beforeLabel(Icon::make(Heroicon::GlobeAlt))
+                                            ->url()
+                                            ->placeholder('https://...')
+                                            ->maxLength(2048)
+                                            ->helperText('URL base del cotizador para este proyecto. Al hacer clic en Cotizar se abrirá en un modal inyectando los parámetros UTM.')
+                                            ->columnSpanFull(),
                                     ])
                                     ->columns(2),
 
