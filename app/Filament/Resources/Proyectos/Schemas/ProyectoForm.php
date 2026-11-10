@@ -558,6 +558,18 @@ class ProyectoForm
                                                                     ->simple(TextInput::make('item')->label('Horario'))
                                                                     ->defaultItems(0)
                                                                     ->columnSpanFull(),
+                                                                Textarea::make('custom_css')
+                                                                    ->label('CSS Personalizado del Proyecto')
+                                                                    ->placeholder(".lb-inn-hero {\n    /* Estilos exclusivos para este proyecto */\n}")
+                                                                    ->rows(6)
+                                                                    ->helperText('Código CSS que se inyectará única y exclusivamente en la ficha web de este proyecto.')
+                                                                    ->columnSpanFull(),
+                                                                Textarea::make('custom_js')
+                                                                    ->label('JavaScript Personalizado del Proyecto')
+                                                                    ->placeholder("// Código JS exclusivo para este proyecto\nconsole.log('Proyecto custom JS cargado');")
+                                                                    ->rows(6)
+                                                                    ->helperText('Código JavaScript que se ejecutará única y exclusivamente en la ficha web de este proyecto.')
+                                                                    ->columnSpanFull(),
                                                             ])
                                                             ->columns(2),
                                                     ]),

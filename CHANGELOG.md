@@ -2,6 +2,14 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.23] - 2026-11-10
+
+### Added
+- **Inyección de CSS y JavaScript Personalizados por Proyecto en Filament**:
+  - Migración `2026_11_10_000002_add_custom_css_and_custom_js_to_project_details_table` agregando columnas `custom_css` y `custom_js` (longText, nullable) a la tabla `project_details`.
+  - Agregados campos `Textarea::make('custom_css')` y `Textarea::make('custom_js')` en la sección **'Identidad Visual, Paleta & Hero'** de `ProyectoForm` (Ficha Canónica).
+  - Expuestos `custom_css` y `custom_js` en `ProjectDetail` (`$fillable`), `Proyecto` (accessors), `ProjectDetailResource`, `PlantController::projectPayload()` y `ProyectoController`.
+
 ## [1.13.22] - 2026-11-10
 
 ### Added

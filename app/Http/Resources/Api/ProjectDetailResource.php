@@ -224,6 +224,8 @@ class ProjectDetailResource extends JsonResource
             'slug' => $proyecto->slug,
             'name' => $proyecto->name,
             'cotiza_url' => $proyecto->cotiza_url,
+            'custom_css' => $detail?->custom_css,
+            'custom_js' => $detail?->custom_js,
             'theme' => $themeColors,
             'hero' => [
                 'eyebrow' => $detail?->hero_eyebrow,

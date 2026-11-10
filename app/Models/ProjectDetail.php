@@ -14,6 +14,8 @@ class ProjectDetail extends Model
 
     protected $fillable = [
         'project_id',
+        'custom_css',
+        'custom_js',
         'hero_eyebrow',
         'hero_title',
         'hero_subtitle',

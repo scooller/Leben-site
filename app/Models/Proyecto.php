@@ -361,6 +361,16 @@ class Proyecto extends Model
         return $this->hasOne(ProjectDetail::class, 'project_id');
     }
 
+    public function getCustomCssAttribute(): ?string
+    {
+        return $this->detail?->custom_css;
+    }
+
+    public function getCustomJsAttribute(): ?string
+    {
+        return $this->detail?->custom_js;
+    }
+
     public function amenities(): HasManyThrough
     {
         return $this->hasManyThrough(ProjectAmenity::class, ProjectDetail::class, 'project_id', 'project_detail_id');

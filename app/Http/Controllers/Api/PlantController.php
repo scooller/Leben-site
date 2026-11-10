@@ -584,6 +584,8 @@ class PlantController extends Controller
             'region' => $proyecto->region,
             'pagina_web' => $proyecto->pagina_web,
             'cotiza_url' => $proyecto->cotiza_url,
+            'custom_css' => $proyecto->detail?->custom_css,
+            'custom_js' => $proyecto->detail?->custom_js,
             'etapa' => $proyecto->entrega_inmediata ? 'Entrega inmediata' : Proyecto::etapaLabel($proyecto->etapa),
             'horario_atencion' => $proyecto->horario_atencion,
             'entrega_inmediata' => (bool) $proyecto->entrega_inmediata,
