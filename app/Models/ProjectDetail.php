@@ -28,6 +28,8 @@ class ProjectDetail extends Model
         'project_eyebrow',
         'project_title',
         'project_description',
+        'project_bg_image_id',
+        'project_bg_image_url',
         'project_highlight_offer',
         'project_slides',
         'proyecto_video',
@@ -141,6 +143,13 @@ class ProjectDetail extends Model
                 $resolved = static::resolveMediaUrl($detail->hero_logo_id);
                 if ($resolved && (empty($detail->hero_logo_url) || $detail->isDirty('hero_logo_id'))) {
                     $detail->hero_logo_url = $resolved;
+                }
+            }
+
+            if (! empty($detail->project_bg_image_id)) {
+                $resolved = static::resolveMediaUrl($detail->project_bg_image_id);
+                if ($resolved && (empty($detail->project_bg_image_url) || $detail->isDirty('project_bg_image_id'))) {
+                    $detail->project_bg_image_url = $resolved;
                 }
             }
 
@@ -418,6 +427,11 @@ class ProjectDetail extends Model
         return $this->belongsTo(Media::class, 'equipment_bg_image_id');
     }
 
+    public function projectBgImageMedia(): BelongsTo
+    {
+        return $this->belongsTo(Media::class, 'project_bg_image_id');
+    }
+
     public function espaciosBgImageMedia(): BelongsTo
     {
         return $this->belongsTo(Media::class, 'espacios_bg_image_id');
@@ -496,6 +510,11 @@ class ProjectDetail extends Model
     public function getResolvedVirtualTourVideoUrlAttribute(): ?string
     {
         return $this->virtualTourVideoMedia?->url ?? $this->virtual_tour_video_url;
+    }
+
+    public function getResolvedProjectBgImageUrlAttribute(): ?string
+    {
+        return $this->projectBgImageMedia?->url ?? $this->project_bg_image_url;
     }
 
     public function getResolvedEquipmentBgImageUrlAttribute(): ?string

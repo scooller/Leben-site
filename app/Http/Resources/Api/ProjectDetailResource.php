@@ -245,6 +245,7 @@ class ProjectDetailResource extends JsonResource
                 'title' => $detail?->project_title ?? $proyecto->name,
                 'description' => $detail?->project_description ?? $proyecto->descripcion,
                 'highlight_offer' => $detail?->project_highlight_offer,
+                'bg_image_url' => $detail?->resolved_project_bg_image_url ?? $detail?->project_bg_image_url,
                 'slides' => $projectSlides,
             ],
             'project_slides' => $projectSlides,

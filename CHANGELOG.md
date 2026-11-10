@@ -2,6 +2,15 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.26] - 2026-11-10
+
+### Added
+- **Fondo Decorativo Editable en Sección Proyecto (`project_bg_image_url` y `project_bg_image_id`)**:
+  - Migración `2026_11_10_000004_add_project_bg_image_to_project_details_table.php` incorporando `project_bg_image_url` y `project_bg_image_id` a la tabla `project_details`.
+  - Agregados campos `CuratorPicker::make('project_bg_image_id')` y `TextInput::make('project_bg_image_url')` en la pestaña **2. Proyecto & Videos** de `ProyectoForm` en Filament con resolución en vivo.
+  - Sincronización automática en evento `saving()` de `ProjectDetail` y relación `projectBgImageMedia()`.
+  - Expuesto `bg_image_url` en `project_section` de `ProjectDetailResource`.
+
 ## [1.13.25] - 2026-11-10
 
 ### Fixed

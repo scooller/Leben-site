@@ -596,6 +596,19 @@ class ProyectoForm
                                                                     ->placeholder("LOS MEJORES DEPARTAMENTOS\nDE PUERTO VARAS")
                                                                     ->rows(2)
                                                                     ->helperText('Presiona Enter para saltos de línea'),
+                                                                CuratorPicker::make('project_bg_image_id')
+                                                                    ->label('Fondo Ilustración SVG/PNG - Sección Proyecto (Curator)')
+                                                                    ->formatStateUsing(fn ($state) => static::formatCuratorState($state))
+                                                                    ->live()
+                                                                    ->afterStateUpdated(function ($state, Set $set) {
+                                                                        $url = ProjectDetail::resolveMediaUrl($state);
+                                                                        if ($url) {
+                                                                            $set('project_bg_image_url', $url);
+                                                                        }
+                                                                    }),
+                                                                TextInput::make('project_bg_image_url')
+                                                                    ->label('URL Fondo Ilustración - Sección Proyecto (Fallback)')
+                                                                    ->placeholder('images/inn/bg-montain.svg'),
                                                                 TextInput::make('project_highlight_offer')->label('Oferta Destacada (HTML)')->placeholder('paga el pie en <b>60</b> cuotas'),
                                                                 RichEditor::make('project_description')->label('Descripción Editorial (HTML)')->columnSpanFull(),
                                                                 Repeater::make('project_slides')
@@ -677,7 +690,7 @@ class ProyectoForm
                                                                     ->rows(2)
                                                                     ->helperText('Presiona Enter para saltos de línea'),
                                                                 CuratorPicker::make('equipment_bg_image_id')
-                                                                    ->label('Fondo Decorativo SVG/PNG (Curator)')
+                                                                    ->label('Fondo Ilustración SVG/PNG - Sección Equipamiento (Curator)')
                                                                     ->formatStateUsing(fn ($state) => static::formatCuratorState($state))
                                                                     ->live()
                                                                     ->afterStateUpdated(function ($state, Set $set) {
@@ -686,7 +699,7 @@ class ProyectoForm
                                                                             $set('equipment_bg_image_url', $url);
                                                                         }
                                                                     }),
-                                                                TextInput::make('equipment_bg_image_url')->label('URL Fondo Decorativo (Fallback)')->placeholder('images/inn/Perspectiva.svg'),
+                                                                TextInput::make('equipment_bg_image_url')->label('URL Fondo Ilustración - Sección Equipamiento (Fallback)')->placeholder('images/inn/Perspectiva.svg'),
                                                                 RichEditor::make('equipment_description')->label('Descripción de Equipamiento')->columnSpanFull(),
                                                                 Repeater::make('equipment_brands')
                                                                     ->label('Logos de Marcas Aliadas')
@@ -970,7 +983,7 @@ class ProyectoForm
                                                                     ->rows(2)
                                                                     ->helperText('Presiona Enter para saltos de línea'),
                                                                 CuratorPicker::make('espacios_bg_image_id')
-                                                                    ->label('Fondo Decorativo SVG/PNG (Curator)')
+                                                                    ->label('Fondo Ilustración SVG/PNG - Sección Espacios Comunes (Curator)')
                                                                     ->formatStateUsing(fn ($state) => static::formatCuratorState($state))
                                                                     ->live()
                                                                     ->afterStateUpdated(function ($state, Set $set) {
@@ -979,7 +992,7 @@ class ProyectoForm
                                                                             $set('espacios_bg_image_url', $url);
                                                                         }
                                                                     }),
-                                                                TextInput::make('espacios_bg_image_url')->label('URL Fondo Decorativo (Fallback)')->placeholder('images/inn/Climbing.svg'),
+                                                                TextInput::make('espacios_bg_image_url')->label('URL Fondo Ilustración - Sección Espacios Comunes (Fallback)')->placeholder('images/inn/Climbing.svg'),
                                                                 RichEditor::make('espacios_description')->label('Descripción de Espacios Comunes')->columnSpanFull(),
                                                                 Repeater::make('espacios_items')
                                                                     ->label('Lista de Espacios Comunes / Amenidades')
@@ -1231,7 +1244,7 @@ class ProyectoForm
                                                                     ->rows(2)
                                                                     ->helperText('Presiona Enter para saltos de línea'),
                                                                 CuratorPicker::make('interiorismo_bg_image_id')
-                                                                    ->label('Fondo Decorativo SVG/PNG (Curator)')
+                                                                    ->label('Fondo Ilustración SVG/PNG - Sección Interiorismo (Curator)')
                                                                     ->formatStateUsing(fn ($state) => static::formatCuratorState($state))
                                                                     ->live()
                                                                     ->afterStateUpdated(function ($state, Set $set) {
@@ -1240,7 +1253,7 @@ class ProyectoForm
                                                                             $set('interiorismo_bg_image_url', $url);
                                                                         }
                                                                     }),
-                                                                TextInput::make('interiorismo_bg_image_url')->label('URL Fondo Decorativo (Fallback)')->placeholder('images/inn/Interiorismo.svg'),
+                                                                TextInput::make('interiorismo_bg_image_url')->label('URL Fondo Ilustración - Sección Interiorismo (Fallback)')->placeholder('images/inn/Interiorismo.svg'),
                                                                 RichEditor::make('interiorismo_description')->label('Descripción de Interiorismo')->columnSpanFull(),
                                                                 Repeater::make('designers')
                                                                     ->label('Lista de Diseñadores / Interioristas')
