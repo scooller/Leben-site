@@ -298,6 +298,7 @@ class ProjectDetailResource extends JsonResource
                 'eyebrow' => $detail?->map_eyebrow ?? 'Ubicación',
                 'title' => $detail?->map_title ?? 'Entorno Inigualable',
                 'description' => $detail?->map_description ?? $detail?->entorno_description,
+                'bg_color' => $detail?->map_bg_color,
                 'logo_url' => $detail?->resolved_map_logo_url,
                 'btn_text' => $detail?->map_btn_text ?? 'Experiencias',
                 'address' => $detail?->map_address ?? $proyecto->direccion,
@@ -312,12 +313,14 @@ class ProjectDetailResource extends JsonResource
             'entorno' => [
                 'description' => $detail?->entorno_description,
                 'map_image_url' => $detail?->resolved_entorno_map_image_url,
+                'bg_color' => $detail?->map_bg_color,
             ],
             'interiorismo' => [
                 'eyebrow' => $detail?->interiorismo_eyebrow ?? 'Interiorismo',
                 'title' => $detail?->interiorismo_title ?? 'Interiorismo',
                 'description' => $detail?->interiorismo_description ?? '',
                 'bg_image_url' => $detail?->resolved_interiorismo_bg_image_url,
+                'name_position' => $detail?->interiorismo_name_position ?? 'overlay',
                 'designers' => $designers,
             ],
             'designers' => $designers,

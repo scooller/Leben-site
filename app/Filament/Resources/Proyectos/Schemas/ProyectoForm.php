@@ -1028,6 +1028,10 @@ class ProyectoForm
                                                             ->description('Mapa gráfico con pin del proyecto y puntos de interés sincronizados')
                                                             ->schema([
                                                                 TextInput::make('map_eyebrow')->label('Eyebrow')->default('Ubicación'),
+                                                                ColorPicker::make('map_bg_color')
+                                                                    ->label('Color de Fondo de la Sección Mapa')
+                                                                    ->helperText('Opcional. Si no se especifica, tomará el color de acento claro de Identidad Visual.')
+                                                                    ->nullable(),
                                                                 Textarea::make('map_title')
                                                                     ->label('Título Mapa')
                                                                     ->placeholder("Entorno\nINNigualable")
@@ -1198,6 +1202,15 @@ class ProyectoForm
                                                                     }),
                                                                 TextInput::make('interiorismo_bg_image_url')->label('URL Fondo Ilustración - Sección Interiorismo (Fallback)')->placeholder('images/inn/Interiorismo.svg'),
                                                                 RichEditor::make('interiorismo_description')->label('Descripción de Interiorismo')->columnSpanFull(),
+                                                                Select::make('interiorismo_name_position')
+                                                                    ->label('Ubicación de Nombre y Cargo de Diseñadores')
+                                                                    ->options([
+                                                                        'overlay' => 'Sobre la imagen (superpuesto)',
+                                                                        'above' => 'Encima de la foto (arriba de la tarjeta)',
+                                                                    ])
+                                                                    ->default('overlay')
+                                                                    ->helperText('Define si el nombre y cargo se muestran superpuestos dentro de la foto o arriba de la tarjeta.')
+                                                                    ->required(),
                                                                 Repeater::make('designers')
                                                                     ->label('Lista de Diseñadores / Interioristas')
                                                                     ->schema([

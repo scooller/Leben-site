@@ -2,6 +2,22 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.34] - 2026-11-11
+
+### Added
+- `database/migrations/2026_11_11_104338_add_map_bg_color_and_interiorismo_name_position_to_project_details_table.php`:
+  - Migración con columnas `map_bg_color` (string 50 nullable) e `interiorismo_name_position` (string 20 default 'overlay').
+- `app/Models/ProjectDetail.php`:
+  - Incorporados `map_bg_color` e `interiorismo_name_position` al array `$fillable`.
+- `app/Filament/Resources/Proyectos/Schemas/ProyectoForm.php`:
+  - Pestaña "6. Ubicación & Mapa": Agregado `ColorPicker::make('map_bg_color')` con fallback al acento claro de identidad visual si queda vacío.
+  - Pestaña "8. Interiorismo": Agregado `Select::make('interiorismo_name_position')` con opciones `'overlay'` (sobre la imagen) y `'above'` (encima de la foto / arriba de la tarjeta).
+- `app/Http/Resources/Api/ProjectDetailResource.php`:
+  - Expuesto `bg_color` en objetos `map` y `entorno`.
+  - Expuesto `name_position` en objeto `interiorismo`.
+- `tests/Feature/Filament/ProyectoEditDetailFillTest.php`:
+  - Agregado test `test_edit_proyecto_persists_map_bg_color_and_interiorismo_name_position()` validando persistencia y serialización en el endpoint de contenido.
+
 ## [1.13.33] - 2026-11-11
 
 ### Added

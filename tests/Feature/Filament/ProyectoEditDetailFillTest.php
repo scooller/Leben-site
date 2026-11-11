@@ -492,4 +492,32 @@ class ProyectoEditDetailFillTest extends TestCase
         $this->assertTrue($viewWeb->shouldOpenUrlInNewTab());
         $this->assertStringContainsString('/proyectos/edificio-inn', $viewWeb->getUrl());
     }
+
+    public function test_edit_proyecto_persists_map_bg_color_and_interiorismo_name_position(): void
+    {
+        $user = User::factory()->create(['user_type' => 'admin']);
+        $this->actingAs($user);
+
+        $this->seed(InitialInnProjectDetailSeeder::class);
+
+        $proyecto = Proyecto::where('slug', 'edificio-inn')->firstOrFail();
+
+        Livewire::test(EditProyecto::class, ['record' => $proyecto->id])
+            ->set('data.detail.map_bg_color', '#112233')
+            ->set('data.detail.interiorismo_name_position', 'above')
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertDatabaseHas('project_details', [
+            'project_id' => $proyecto->id,
+            'map_bg_color' => '#112233',
+            'interiorismo_name_position' => 'above',
+        ]);
+
+        $resource = (new \App\Http\Resources\Api\ProjectDetailResource($proyecto->fresh()))->toArray(request());
+
+        $this->assertEquals('#112233', $resource['map']['bg_color']);
+        $this->assertEquals('#112233', $resource['entorno']['bg_color']);
+        $this->assertEquals('above', $resource['interiorismo']['name_position']);
+    }
 }
