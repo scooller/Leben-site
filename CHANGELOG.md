@@ -2,6 +2,13 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.31] - 2026-11-11
+
+### Changed
+- `app/Filament/Resources/Proyectos/Pages/EditProyecto.php`: Sobrescrito `getTitle()` para incluir dinámicamente el nombre del proyecto en la cabecera de la página de edición (`"Editar proyecto - {name}"`).
+- `app/Filament/Resources/ProyectoResource.php`: Corregido `$recordTitleAttribute = 'name'` (anteriormente `'Proyectos'`) para resolución correcta de títulos en breadcrumbs y búsquedas.
+- `tests/Feature/Filament/ProyectoEditDetailFillTest.php`: Agregado test `test_edit_proyecto_title_includes_project_name()` verificando el formato de título dinámico.
+
 ## [1.13.30] - 2026-11-11
 
 ### Fixed

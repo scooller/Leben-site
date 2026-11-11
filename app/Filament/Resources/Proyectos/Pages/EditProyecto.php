@@ -10,10 +10,20 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
+use Illuminate\Contracts\Support\Htmlable;
 
 class EditProyecto extends EditRecord
 {
     protected static string $resource = ProyectoResource::class;
+
+    public function getTitle(): string|Htmlable
+    {
+        /** @var Proyecto|null $record */
+        $record = $this->getRecord();
+        $name = $record?->name;
+
+        return filled($name) ? "Editar proyecto - {$name}" : 'Editar proyecto';
+    }
 
     public function mount(int|string $record): void
     {

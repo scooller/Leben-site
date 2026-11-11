@@ -427,4 +427,18 @@ class ProyectoEditDetailFillTest extends TestCase
         $this->assertEquals('Masterplan', $detail->virtual_tours_config[0]['label']);
         $this->assertNull($detail->virtual_tours_config[0]['title']);
     }
+
+    public function test_edit_proyecto_title_includes_project_name(): void
+    {
+        $user = User::factory()->create(['user_type' => 'admin']);
+        $this->actingAs($user);
+
+        $this->seed(InitialInnProjectDetailSeeder::class);
+
+        $proyecto = Proyecto::where('slug', 'edificio-inn')->firstOrFail();
+
+        $component = Livewire::test(EditProyecto::class, ['record' => $proyecto->id]);
+
+        $this->assertEquals("Editar proyecto - {$proyecto->name}", $component->instance()->getTitle());
+    }
 }
