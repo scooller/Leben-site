@@ -5,7 +5,6 @@ namespace App\Filament\Resources\Proyectos\Schemas;
 use App\Models\ProjectDetail;
 use App\Models\Proyecto;
 use Awcodes\Curator\Components\Forms\CuratorPicker;
-use Awcodes\Curator\Models\Media;
 use Filament\Actions\Action;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\DatePicker;
@@ -27,9 +26,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Arr;
 use Illuminate\Support\HtmlString;
-use Illuminate\Support\Str;
 
 class ProyectoForm
 {
@@ -204,7 +201,7 @@ class ProyectoForm
                                         CuratorPicker::make('project_image_id')
                                             ->label('Imagen del Proyecto')
                                             ->helperText('Imagen manual del proyecto. Si no se define, se usará la Portada de Salesforce; si tampoco existe, se usará el logo principal del sitio o un ícono por defecto.')
-                                            
+
                                             ->columnSpan(2),
 
                                         Section::make('Branding Salesforce')
@@ -510,7 +507,7 @@ class ProyectoForm
                                                                     ->label('Seleccionar Video Hero desde Curator')
                                                                     ->buttonLabel('Elegir Video Hero')
                                                                     ->acceptedFileTypes(['video/*'])
-                                                                    
+
                                                                     ->live()
                                                                     ->afterStateUpdated(function ($state, Set $set) {
                                                                         $url = ProjectDetail::resolveMediaUrl($state);
@@ -520,7 +517,7 @@ class ProyectoForm
                                                                     }),
                                                                 CuratorPicker::make('hero_logo_id')
                                                                     ->label('Logo Header (Curator)')
-                                                                    
+
                                                                     ->live()
                                                                     ->afterStateUpdated(function ($state, Set $set) {
                                                                         $url = ProjectDetail::resolveMediaUrl($state);
@@ -578,7 +575,7 @@ class ProyectoForm
                                                                     ->helperText('Presiona Enter para saltos de línea'),
                                                                 CuratorPicker::make('project_bg_image_id')
                                                                     ->label('Fondo Ilustración SVG/PNG - Sección Proyecto (Curator)')
-                                                                    
+
                                                                     ->live()
                                                                     ->afterStateUpdated(function ($state, Set $set) {
                                                                         $url = ProjectDetail::resolveMediaUrl($state);
@@ -597,7 +594,7 @@ class ProyectoForm
                                                                         CuratorPicker::make('media_id')
                                                                             ->label('Seleccionar Imagen desde Curator')
                                                                             ->buttonLabel('Elegir Imagen')
-                                                                            
+
                                                                             ->live()
                                                                             ->afterStateUpdated(function ($state, Set $set) {
                                                                                 $url = ProjectDetail::resolveMediaUrl($state);
@@ -641,7 +638,7 @@ class ProyectoForm
                                                                             ->label('Seleccionar Video desde Curator')
                                                                             ->buttonLabel('Elegir Video')
                                                                             ->acceptedFileTypes(['video/*'])
-                                                                            
+
                                                                             ->live()
                                                                             ->afterStateUpdated(function ($state, Set $set) {
                                                                                 $url = ProjectDetail::resolveMediaUrl($state);
@@ -671,7 +668,7 @@ class ProyectoForm
                                                                     ->helperText('Presiona Enter para saltos de línea'),
                                                                 CuratorPicker::make('equipment_bg_image_id')
                                                                     ->label('Fondo Ilustración SVG/PNG - Sección Equipamiento (Curator)')
-                                                                    
+
                                                                     ->live()
                                                                     ->afterStateUpdated(function ($state, Set $set) {
                                                                         $url = ProjectDetail::resolveMediaUrl($state);
@@ -687,7 +684,7 @@ class ProyectoForm
                                                                         CuratorPicker::make('media_id')
                                                                             ->label('Seleccionar Logo desde Curator')
                                                                             ->buttonLabel('Elegir Logo')
-                                                                            
+
                                                                             ->live()
                                                                             ->afterStateUpdated(function ($state, Set $set) {
                                                                                 $url = ProjectDetail::resolveMediaUrl($state);
@@ -711,7 +708,7 @@ class ProyectoForm
                                                                         CuratorPicker::make('media_id')
                                                                             ->label('Seleccionar Imagen desde Curator')
                                                                             ->buttonLabel('Elegir Imagen')
-                                                                            
+
                                                                             ->live()
                                                                             ->afterStateUpdated(function ($state, Set $set) {
                                                                                 $url = ProjectDetail::resolveMediaUrl($state);
@@ -739,7 +736,7 @@ class ProyectoForm
                                                                                 CuratorPicker::make('media_id')
                                                                                     ->label('Seleccionar Imagen desde Curator')
                                                                                     ->buttonLabel('Elegir Imagen')
-                                                                                    
+
                                                                                     ->live()
                                                                                     ->afterStateUpdated(function ($state, Set $set) {
                                                                                         $url = ProjectDetail::resolveMediaUrl($state);
@@ -786,7 +783,7 @@ class ProyectoForm
                                                                             ->label('Seleccionar Video desde Curator')
                                                                             ->buttonLabel('Elegir Video')
                                                                             ->acceptedFileTypes(['video/*'])
-                                                                            
+
                                                                             ->live()
                                                                             ->afterStateUpdated(function ($state, Set $set) {
                                                                                 $url = ProjectDetail::resolveMediaUrl($state);
@@ -827,7 +824,7 @@ class ProyectoForm
                                                                 CuratorPicker::make('brochure_media_id')
                                                                     ->label('Seleccionar Folleto / PDF desde Curator')
                                                                     ->buttonLabel('Elegir Archivo')
-                                                                    
+
                                                                     ->live()
                                                                     ->afterStateUpdated(function ($state, Set $set) {
                                                                         $url = ProjectDetail::resolveMediaUrl($state);
@@ -852,7 +849,7 @@ class ProyectoForm
                                                                         TextInput::make('title')
                                                                             ->label('Título Descriptivo')
                                                                             ->placeholder('ej: Conoce tu próximo departamento')
-                                                                            ->required(),
+                                                                            ->nullable(),
 
                                                                         TextInput::make('src')
                                                                             ->label('Ruta de Imagen o URL 360 / Iframe')
@@ -863,7 +860,7 @@ class ProyectoForm
                                                                         CuratorPicker::make('media_id')
                                                                             ->label('Seleccionar Imagen / Archivo desde Curator')
                                                                             ->buttonLabel('Elegir Archivo')
-                                                                            
+
                                                                             ->live()
                                                                             ->afterStateUpdated(function ($state, Set $set) {
                                                                                 $url = ProjectDetail::resolveMediaUrl($state);
@@ -892,7 +889,7 @@ class ProyectoForm
                                                                                 CuratorPicker::make('media_id')
                                                                                     ->label('Seleccionar Imagen / Archivo desde Curator')
                                                                                     ->buttonLabel('Elegir Archivo')
-                                                                                    
+
                                                                                     ->live()
                                                                                     ->afterStateUpdated(function ($state, Set $set) {
                                                                                         $url = ProjectDetail::resolveMediaUrl($state);
@@ -910,40 +907,6 @@ class ProyectoForm
                                                                     ->columns(2)
                                                                     ->defaultItems(0)
                                                                     ->reorderable()
-                                                                    ->columnSpanFull(),
-
-                                                                Section::make('URLs Directas de Respaldo (Opcionales)')
-                                                                    ->description('URLs directas heredadas si no se configuran secciones personalizadas arriba')
-                                                                    ->collapsed()
-                                                                    ->schema([
-                                                                        TextInput::make('virtual_tour_matterport_url')->label('URL Matterport 3D')->placeholder('https://my.matterport.com/show/?m=...'),
-                                                                        TextInput::make('virtual_tour_360_url')->label('URL Recorrido 360 (La Nube 360)')->placeholder('https://www.lanube360.com/...'),
-                                                                        CuratorPicker::make('virtual_tour_360_media_id')
-                                                                            ->label('Seleccionar Archivo 360 desde Curator')
-                                                                            ->buttonLabel('Elegir Archivo 360')
-                                                                            
-                                                                            ->live()
-                                                                            ->afterStateUpdated(function ($state, Set $set) {
-                                                                                $url = ProjectDetail::resolveMediaUrl($state);
-                                                                                if ($url) {
-                                                                                    $set('virtual_tour_360_url', $url);
-                                                                                }
-                                                                            }),
-                                                                        TextInput::make('virtual_tour_video_url')->label('URL Video Recorrido (YouTube / MP4)')->placeholder('https://...'),
-                                                                        CuratorPicker::make('virtual_tour_video_media_id')
-                                                                            ->label('Seleccionar Video desde Curator')
-                                                                            ->buttonLabel('Elegir Video')
-                                                                            ->acceptedFileTypes(['video/*'])
-                                                                            
-                                                                            ->live()
-                                                                            ->afterStateUpdated(function ($state, Set $set) {
-                                                                                $url = ProjectDetail::resolveMediaUrl($state);
-                                                                                if ($url) {
-                                                                                    $set('virtual_tour_video_url', $url);
-                                                                                }
-                                                                            }),
-                                                                    ])
-                                                                    ->columns(2)
                                                                     ->columnSpanFull(),
                                                             ])
                                                             ->columns(2),
@@ -964,7 +927,7 @@ class ProyectoForm
                                                                     ->helperText('Presiona Enter para saltos de línea'),
                                                                 CuratorPicker::make('espacios_bg_image_id')
                                                                     ->label('Fondo Ilustración SVG/PNG - Sección Espacios Comunes (Curator)')
-                                                                    
+
                                                                     ->live()
                                                                     ->afterStateUpdated(function ($state, Set $set) {
                                                                         $url = ProjectDetail::resolveMediaUrl($state);
@@ -995,7 +958,7 @@ class ProyectoForm
                                                                         CuratorPicker::make('media_id')
                                                                             ->label('Seleccionar Foto desde Curator')
                                                                             ->buttonLabel('Elegir Foto')
-                                                                            
+
                                                                             ->live()
                                                                             ->afterStateUpdated(function ($state, Set $set) {
                                                                                 $url = ProjectDetail::resolveMediaUrl($state);
@@ -1042,7 +1005,7 @@ class ProyectoForm
                                                                             ->label('Seleccionar Video desde Curator')
                                                                             ->buttonLabel('Elegir Video')
                                                                             ->acceptedFileTypes(['video/*'])
-                                                                            
+
                                                                             ->live()
                                                                             ->afterStateUpdated(function ($state, Set $set) {
                                                                                 $url = ProjectDetail::resolveMediaUrl($state);
@@ -1072,7 +1035,7 @@ class ProyectoForm
                                                                     ->helperText('Presiona Enter para saltos de línea'),
                                                                 CuratorPicker::make('map_logo_id')
                                                                     ->label('Logo Decorativo (Curator)')
-                                                                    
+
                                                                     ->live()
                                                                     ->afterStateUpdated(function ($state, Set $set) {
                                                                         $url = ProjectDetail::resolveMediaUrl($state);
@@ -1085,7 +1048,7 @@ class ProyectoForm
                                                                 TextInput::make('map_address')->label('Dirección Visible')->placeholder('Vicente Pérez Rosales 991, Puerto Varas'),
                                                                 CuratorPicker::make('entorno_map_image_id')
                                                                     ->label('Imagen del Mapa (Curator)')
-                                                                    
+
                                                                     ->live()
                                                                     ->afterStateUpdated(function ($state, Set $set) {
                                                                         $url = ProjectDetail::resolveMediaUrl($state);
@@ -1097,7 +1060,7 @@ class ProyectoForm
                                                                 TextInput::make('map_pin_y')->label('Coordenada Y del Proyecto (%)')->numeric()->default(72.4),
                                                                 CuratorPicker::make('map_pin_logo_id')
                                                                     ->label('Logo del Pin de Proyecto (Curator)')
-                                                                    
+
                                                                     ->live()
                                                                     ->afterStateUpdated(function ($state, Set $set) {
                                                                         $url = ProjectDetail::resolveMediaUrl($state);
@@ -1129,7 +1092,7 @@ class ProyectoForm
                                                                         CuratorPicker::make('media_id')
                                                                             ->label('Seleccionar Foto desde Curator')
                                                                             ->buttonLabel('Elegir Foto')
-                                                                            
+
                                                                             ->live()
                                                                             ->afterStateUpdated(function ($state, Set $set) {
                                                                                 $url = ProjectDetail::resolveMediaUrl($state);
@@ -1159,7 +1122,7 @@ class ProyectoForm
                                                             ->schema([
                                                                 CuratorPicker::make('panoramas_bg_image_id')
                                                                     ->label('Imagen de Fondo del Modal (Curator)')
-                                                                    
+
                                                                     ->live()
                                                                     ->afterStateUpdated(function ($state, Set $set) {
                                                                         $url = ProjectDetail::resolveMediaUrl($state);
@@ -1187,7 +1150,7 @@ class ProyectoForm
                                                                                 CuratorPicker::make('media_id')
                                                                                     ->label('Seleccionar Foto desde Curator')
                                                                                     ->buttonLabel('Elegir Foto')
-                                                                                    
+
                                                                                     ->live()
                                                                                     ->afterStateUpdated(function ($state, Set $set) {
                                                                                         $url = ProjectDetail::resolveMediaUrl($state);
@@ -1225,7 +1188,7 @@ class ProyectoForm
                                                                     ->helperText('Presiona Enter para saltos de línea'),
                                                                 CuratorPicker::make('interiorismo_bg_image_id')
                                                                     ->label('Fondo Ilustración SVG/PNG - Sección Interiorismo (Curator)')
-                                                                    
+
                                                                     ->live()
                                                                     ->afterStateUpdated(function ($state, Set $set) {
                                                                         $url = ProjectDetail::resolveMediaUrl($state);
@@ -1242,7 +1205,7 @@ class ProyectoForm
                                                                         CuratorPicker::make('media_id')
                                                                             ->label('Seleccionar Foto desde Curator')
                                                                             ->buttonLabel('Elegir Foto')
-                                                                            
+
                                                                             ->live()
                                                                             ->afterStateUpdated(function ($state, Set $set) {
                                                                                 $url = ProjectDetail::resolveMediaUrl($state);
@@ -1298,7 +1261,7 @@ class ProyectoForm
                                             ->label('Imágenes de la Galería')
                                             ->buttonLabel('Seleccionar Imágenes')
                                             ->multiple()
-                                            
+
                                             ->columnSpanFull(),
                                     ]),
                             ]),

@@ -2,6 +2,15 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.29] - 2026-11-11
+
+### Changed
+- `app/Filament/Resources/Proyectos/Schemas/ProyectoForm.php`:
+  - En la pestaña **4. Recorridos 360**, el campo `title` ('Título Descriptivo') dentro del repeater de secciones `virtual_tours_config` ahora es opcional (`->nullable()`).
+  - Removida la sección colapsada 'URLs Directas de Respaldo (Opcionales)' (`virtual_tour_matterport_url`, `virtual_tour_360_url`, `virtual_tour_video_url` y sus pickers de Curator asociados) por redundancia con el sistema dinámico de secciones 360.
+- `tests/Feature/Filament/ProyectoEditDetailFillTest.php`:
+  - Agregado test `test_virtual_tours_title_is_optional()` para garantizar persistencia y validación sin errores al omitir el título descriptivo.
+
 ## [1.13.28] - 2026-11-10
 
 ### Fixed

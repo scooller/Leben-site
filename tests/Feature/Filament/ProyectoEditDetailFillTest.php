@@ -398,4 +398,33 @@ class ProyectoEditDetailFillTest extends TestCase
         $this->assertEquals($media->id, $detail->espacios_items[0]['media_id']);
         $this->assertEquals($media->url, $detail->espacios_items[0]['img']);
     }
+
+    public function test_virtual_tours_title_is_optional(): void
+    {
+        $user = User::factory()->create(['user_type' => 'admin']);
+        $this->actingAs($user);
+
+        $this->seed(InitialInnProjectDetailSeeder::class);
+
+        $proyecto = Proyecto::where('slug', 'edificio-inn')->firstOrFail();
+
+        $toursConfig = [
+            [
+                'label' => 'Masterplan',
+                'title' => null,
+                'src' => 'https://example.com/tour.jpg',
+                'interiores' => [],
+            ],
+        ];
+
+        Livewire::test(EditProyecto::class, ['record' => $proyecto->id])
+            ->set('data.detail.virtual_tours_config', $toursConfig)
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $detail = $proyecto->fresh()->detail;
+        $this->assertCount(1, $detail->virtual_tours_config);
+        $this->assertEquals('Masterplan', $detail->virtual_tours_config[0]['label']);
+        $this->assertNull($detail->virtual_tours_config[0]['title']);
+    }
 }
