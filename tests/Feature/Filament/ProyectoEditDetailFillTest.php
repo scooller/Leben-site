@@ -520,4 +520,42 @@ class ProyectoEditDetailFillTest extends TestCase
         $this->assertEquals('#112233', $resource['entorno']['bg_color']);
         $this->assertEquals('above', $resource['interiorismo']['name_position']);
     }
+
+    public function test_edit_proyecto_persists_carousel_spacing_with_px_default_and_zero_fallback(): void
+    {
+        $user = User::factory()->create(['user_type' => 'admin']);
+        $this->actingAs($user);
+
+        $this->seed(InitialInnProjectDetailSeeder::class);
+
+        $proyecto = Proyecto::where('slug', 'edificio-inn')->firstOrFail();
+
+        Livewire::test(EditProyecto::class, ['record' => $proyecto->id])
+            ->set('data.detail.carousel_spacing.project.top', '20')
+            ->set('data.detail.carousel_spacing.project.bottom', '2rem')
+            ->set('data.detail.carousel_spacing.equipment.top', '')
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $resource = (new \App\Http\Resources\Api\ProjectDetailResource($proyecto->fresh()))->toArray(request());
+
+        $this->assertSame(['top' => '20px', 'bottom' => '2rem'], $resource['project_section']['carousel_spacing']);
+        $this->assertSame(['top' => '0', 'bottom' => '0'], $resource['equipment']['carousel_spacing']);
+        $this->assertSame(['top' => '0', 'bottom' => '0'], $resource['espacios']['carousel_spacing']);
+    }
+
+    public function test_edit_proyecto_rejects_invalid_carousel_spacing(): void
+    {
+        $user = User::factory()->create(['user_type' => 'admin']);
+        $this->actingAs($user);
+
+        $this->seed(InitialInnProjectDetailSeeder::class);
+
+        $proyecto = Proyecto::where('slug', 'edificio-inn')->firstOrFail();
+
+        Livewire::test(EditProyecto::class, ['record' => $proyecto->id])
+            ->set('data.detail.carousel_spacing.project.top', 'url(x)')
+            ->call('save')
+            ->assertHasFormErrors(['detail.carousel_spacing.project.top']);
+    }
 }

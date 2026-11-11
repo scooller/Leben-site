@@ -88,6 +88,7 @@ class ProjectDetail extends Model
         'map_pin_logo_url',
         'map_pois',
         'map_bg_color',
+        'carousel_spacing',
         'interiorismo_eyebrow',
         'interiorismo_title',
         'interiorismo_description',
@@ -124,10 +125,34 @@ class ProjectDetail extends Model
             'panoramas' => 'array',
             'panoramas_categories' => 'array',
             'map_pois' => 'array',
+            'carousel_spacing' => 'array',
             'map_pin_x' => 'float',
             'map_pin_y' => 'float',
             'schedule' => 'array',
             'announcement' => 'array',
+        ];
+    }
+
+    /**
+     * Espaciado top/bottom del carrusel de una sección. Número sin unidad = px; vacío = 0.
+     *
+     * @return array{top: string, bottom: string}
+     */
+    public function carouselSpacing(string $section): array
+    {
+        $normalize = static function (mixed $value): string {
+            $value = trim((string) $value);
+
+            return match (true) {
+                $value === '' => '0',
+                (bool) preg_match('/^\d+(\.\d+)?$/', $value) => $value.'px',
+                default => $value,
+            };
+        };
+
+        return [
+            'top' => $normalize($this->carousel_spacing[$section]['top'] ?? ''),
+            'bottom' => $normalize($this->carousel_spacing[$section]['bottom'] ?? ''),
         ];
     }
 

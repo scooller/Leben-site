@@ -247,6 +247,7 @@ class ProjectDetailResource extends JsonResource
                 'highlight_offer' => $detail?->project_highlight_offer,
                 'bg_image_url' => $detail?->resolved_project_bg_image_url ?? $detail?->project_bg_image_url,
                 'slides' => $projectSlides,
+                'carousel_spacing' => $detail?->carouselSpacing('project'),
             ],
             'project_slides' => $projectSlides,
             'video_interstitials' => $videoInterstitials,
@@ -258,6 +259,7 @@ class ProjectDetailResource extends JsonResource
                 'brands' => $equipmentBrands,
                 'slides' => $equipmentSlides,
                 'spaces_modal' => $equipmentSpacesModal,
+                'carousel_spacing' => $detail?->carouselSpacing('equipment'),
             ],
             'overview' => [
                 'eyebrow' => '1. Proyecto | Único en su clase',
@@ -292,6 +294,7 @@ class ProjectDetailResource extends JsonResource
                 'bg_image_url' => $detail?->resolved_espacios_bg_image_url,
                 'items' => $espaciosItems ?? [],
                 'video' => $detail?->espacios_video ?? ($videoInterstitials[2] ?? null),
+                'carousel_spacing' => $detail?->carouselSpacing('espacios'),
             ],
             'brochure_pdf_url' => $detail?->resolved_brochure_pdf_url ?? $detail?->brochure_pdf_url,
             'map' => [

@@ -30,6 +30,24 @@ use Illuminate\Support\HtmlString;
 
 class ProyectoForm
 {
+    /**
+     * Campos de espaciado top/bottom del carrusel de una sección (px, rem, em, %, vh, vw).
+     *
+     * @return array<int, TextInput>
+     */
+    private static function carouselSpacingFields(string $section): array
+    {
+        return collect(['top' => 'Superior', 'bottom' => 'Inferior'])
+            ->map(fn (string $label, string $side): TextInput => TextInput::make("carousel_spacing.{$section}.{$side}")
+                ->label("Espaciado {$label} del Carrusel")
+                ->placeholder('0')
+                ->helperText('Ej: 20px, 2rem, 5%. Sin unidad = px. Vacío = 0.')
+                ->regex('/^\d+(\.\d+)?(px|rem|em|%|vh|vw)?$/')
+                ->validationMessages(['regex' => 'Usa un número con unidad opcional: px, rem, em, %, vh o vw.']))
+            ->values()
+            ->all();
+    }
+
     public static function configure(Schema $schema): Schema
     {
         return $schema
@@ -588,6 +606,7 @@ class ProyectoForm
                                                                     ->placeholder('images/inn/bg-montain.svg'),
                                                                 TextInput::make('project_highlight_offer')->label('Oferta Destacada (HTML)')->placeholder('paga el pie en <b>60</b> cuotas'),
                                                                 RichEditor::make('project_description')->label('Descripción Editorial (HTML)')->columnSpanFull(),
+                                                                ...self::carouselSpacingFields('project'),
                                                                 Repeater::make('project_slides')
                                                                     ->label('Slides del Carrusel de Proyecto')
                                                                     ->schema([
@@ -702,6 +721,7 @@ class ProyectoForm
                                                                     ->columns(2)
                                                                     ->defaultItems(0)
                                                                     ->columnSpanFull(),
+                                                                ...self::carouselSpacingFields('equipment'),
                                                                 Repeater::make('equipment_slides')
                                                                     ->label('Slides de Equipamiento Principal')
                                                                     ->schema([
@@ -937,6 +957,7 @@ class ProyectoForm
                                                                     }),
                                                                 TextInput::make('espacios_bg_image_url')->label('URL Fondo Ilustración - Sección Espacios Comunes (Fallback)')->placeholder('images/inn/Climbing.svg'),
                                                                 RichEditor::make('espacios_description')->label('Descripción de Espacios Comunes')->columnSpanFull(),
+                                                                ...self::carouselSpacingFields('espacios'),
                                                                 Repeater::make('espacios_items')
                                                                     ->label('Lista de Espacios Comunes / Amenidades')
                                                                     ->schema([

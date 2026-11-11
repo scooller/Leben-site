@@ -2,6 +2,21 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.35] - 2026-11-11
+
+### Added
+- `database/migrations/2026_11_11_115046_add_carousel_spacing_to_project_details_table.php`: Columna JSON `carousel_spacing` nullable en tabla `project_details`.
+- `app/Models/ProjectDetail.php`:
+  - Campo `carousel_spacing` agregado a `$fillable` y `$casts`.
+  - Método helper `carouselSpacing(string $section)` para normalizar valores a `px`, `rem`, `em`, etc., con fallback por defecto `0`.
+- `app/Filament/Resources/Proyectos/Schemas/ProyectoForm.php`:
+  - Campos de espaciado Superior e Inferior (`carousel_spacing.<section>.top` y `bottom`) agregados exclusivamente a secciones con carrusel: Proyecto, Equipamiento y Espacios Comunes.
+  - Validación regex que admite números con unidad opcional (`px`, `rem`, `em`, `%`, `vh`, `vw`).
+- `app/Http/Resources/Api/ProjectDetailResource.php`:
+  - Expuesto `carousel_spacing` en objetos `project_section`, `equipment` y `espacios`.
+- `tests/Feature/Filament/ProyectoEditDetailFillTest.php`:
+  - Tests unitarios validando persistencia, normalización por defecto y rechazo de valores inválidos.
+
 ## [1.13.34] - 2026-11-11
 
 ### Added
