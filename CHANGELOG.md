@@ -2,6 +2,11 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.30] - 2026-11-11
+
+### Fixed
+- `frontend/public/.htaccess`: Añadido encabezado `Cache-Control: no-cache, no-store, must-revalidate` para archivos HTML y excluido `/assets/` en fallback de reescritura SPA para prevenir errores de carga MIME al desactualizarse chunks.
+
 ## [1.13.29] - 2026-11-11
 
 ### Changed
