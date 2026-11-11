@@ -2,6 +2,16 @@
 
 Aplicación backend-first construida con Laravel 12, Filament 5, React 19 y Web Awesome. El sistema opera como mantenedor administrativo de proyectos, plantas y asesores comerciales, con sincronización bidireccional contra Salesforce como sistema maestro, sincronización de datos desde entornos de producción, procesamiento de pagos con Transbank y Mercado Pago, y soporte para protocolos de descubrimiento comercial y agentes de inteligencia artificial.
 
+## 🌐 Entornos y Sitios Oficiales
+
+| Entorno / Rol | URL | Descripción |
+|---|---|---|
+| **Producción — Web Principal** | <https://ileben.cl> (o <https://leben.cl>) | Sitio web institucional y fichas de proyecto en producción |
+| **Producción — Sitio Ventas** | <https://sale.ileben.cl> | Plataforma de cotización, ventas y reserva online en producción |
+| **Producción — Panel Admin** | <https://admin.ileben.cl> | Panel administrativo Filament y API backend en producción |
+| **Desarrollo / Staging — Web** | <https://test.ileben.cl> | Sitio web y fichas de proyecto en entorno de desarrollo/pruebas |
+| **Desarrollo / Local** | `http://localhost:5173` (front) / `http://localhost:8000` (back) | Entorno local de desarrollo |
+
 ## 📋 Stack Tecnológico
 
 ### Backend

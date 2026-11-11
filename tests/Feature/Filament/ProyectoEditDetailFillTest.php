@@ -464,4 +464,32 @@ class ProyectoEditDetailFillTest extends TestCase
         $this->assertEquals('Aceptar', $saveAction->getModalSubmitActionLabel());
         $this->assertEquals('Cancelar', $saveAction->getModalCancelActionLabel());
     }
+
+    public function test_edit_proyecto_header_actions_include_save_and_view_web(): void
+    {
+        $user = User::factory()->create(['user_type' => 'admin']);
+        $this->actingAs($user);
+
+        $this->seed(InitialInnProjectDetailSeeder::class);
+
+        $proyecto = Proyecto::where('slug', 'edificio-inn')->firstOrFail();
+
+        $component = Livewire::test(EditProyecto::class, ['record' => $proyecto->id]);
+
+        $reflection = new \ReflectionMethod(EditProyecto::class, 'getHeaderActions');
+        $reflection->setAccessible(true);
+        /** @var array<\Filament\Actions\Action> $headerActions */
+        $headerActions = $reflection->invoke($component->instance());
+
+        $saveHeader = collect($headerActions)->first(fn ($a) => $a->getName() === 'saveHeader');
+        $this->assertNotNull($saveHeader);
+        $this->assertEquals('Guardar', $saveHeader->getLabel());
+        $this->assertTrue($saveHeader->isConfirmationRequired());
+
+        $viewWeb = collect($headerActions)->first(fn ($a) => $a->getName() === 'viewWeb');
+        $this->assertNotNull($viewWeb);
+        $this->assertEquals('Ver Web', $viewWeb->getLabel());
+        $this->assertTrue($viewWeb->shouldOpenUrlInNewTab());
+        $this->assertStringContainsString('/proyectos/edificio-inn', $viewWeb->getUrl());
+    }
 }

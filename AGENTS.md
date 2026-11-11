@@ -4,8 +4,10 @@
 
 **Leben** is a backend-first platform built with **Laravel 12** + **Filament 5**, specializing in sales management for real estate development projects with Salesforce integration, payment processing, and real-time data synchronization.
 
-- Prod Back url: <https://admin.ileben.cl>
-- Prod Front url: <https://sale.ileben.cl>
+- Prod Web Principal: <https://ileben.cl> (o <https://leben.cl>)
+- Prod Sitio Ventas: <https://sale.ileben.cl>
+- Prod Back (Admin): <https://admin.ileben.cl>
+- Dev / Staging Web: <https://test.ileben.cl>
 
 Current documented version: 1.9.28 (2026-09-23).
 

@@ -5,9 +5,9 @@ namespace App\Filament\Resources\Proyectos\Pages;
 use App\Filament\Resources\ProyectoResource;
 use App\Models\ProjectDetail;
 use App\Models\Proyecto;
+use App\Models\SiteSetting;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
-use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Contracts\Support\Htmlable;
@@ -51,9 +51,44 @@ class EditProyecto extends EditRecord
         parent::mount($record);
     }
 
+    public function getFrontendProjectUrl(): string
+    {
+        /** @var Proyecto|null $record */
+        $record = $this->getRecord();
+        $slug = $record?->slug ?? '';
+
+        $frontendUrl = config('app.frontend_url');
+
+        if (app()->isProduction()) {
+            $baseUrl = (filled($frontendUrl) && ! str_contains($frontendUrl, 'localhost'))
+                ? $frontendUrl
+                : (SiteSetting::first()?->site_url ?: 'https://ileben.cl');
+        } else {
+            $baseUrl = filled($frontendUrl) ? $frontendUrl : 'https://test.ileben.cl';
+        }
+
+        return rtrim($baseUrl, '/').'/proyectos/'.ltrim($slug, '/');
+    }
+
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('saveHeader')
+                ->label('Guardar')
+                ->icon('heroicon-m-check')
+                ->color('primary')
+                ->requiresConfirmation()
+                ->modalHeading('¿Guardar cambios del proyecto?')
+                ->modalDescription('¿Estás seguro de que deseas guardar los cambios?')
+                ->modalSubmitActionLabel('Aceptar')
+                ->modalCancelActionLabel('Cancelar')
+                ->action('save'),
+            Action::make('viewWeb')
+                ->label('Ver Web')
+                ->icon('heroicon-m-arrow-top-right-on-square')
+                ->color('gray')
+                ->url(fn (): string => $this->getFrontendProjectUrl())
+                ->openUrlInNewTab(),
             Action::make('prefillWebInfo')
                 ->label('Pre-rellenar Ficha Web')
                 ->icon('heroicon-m-sparkles')
@@ -83,7 +118,6 @@ class EditProyecto extends EditRecord
                         ->success()
                         ->send();
                 }),
-            ViewAction::make(),
             DeleteAction::make(),
         ];
     }

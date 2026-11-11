@@ -2,6 +2,17 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.33] - 2026-11-11
+
+### Added
+- `app/Filament/Resources/Proyectos/Pages/EditProyecto.php`:
+  - Agregada acción de cabecera "Guardar" (`saveHeader`) con confirmación modal requerida idéntica al formulario inferior.
+  - Reemplazado botón "Ver" por "Ver Web" (`viewWeb`) abriendo en pestaña nueva la ruta `/proyectos/{slug}` del frontend institucional, adaptándose automáticamente entre dev (`localhost:5173` / `https://test.ileben.cl`) y producción (`https://ileben.cl` / `leben.cl`).
+- `README.md` & `AGENTS.md`:
+  - Agregada tabla y especificación explícita de entornos: Producción Web Principal (`leben.cl` / `ileben.cl`), Producción Sitio Ventas (`sale.ileben.cl`), Producción Panel Admin (`admin.ileben.cl`) y Desarrollo Web (`test.ileben.cl`).
+- `tests/Feature/Filament/ProyectoEditDetailFillTest.php`:
+  - Agregado test `test_edit_proyecto_header_actions_include_save_and_view_web()` validando presencia, confirmación y URL dinámica en cabecera.
+
 ## [1.13.32] - 2026-11-11
 
 ### Added
