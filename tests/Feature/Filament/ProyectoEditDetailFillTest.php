@@ -441,4 +441,27 @@ class ProyectoEditDetailFillTest extends TestCase
 
         $this->assertEquals("Editar proyecto - {$proyecto->name}", $component->instance()->getTitle());
     }
+
+    public function test_edit_proyecto_save_action_requires_confirmation(): void
+    {
+        $user = User::factory()->create(['user_type' => 'admin']);
+        $this->actingAs($user);
+
+        $this->seed(InitialInnProjectDetailSeeder::class);
+
+        $proyecto = Proyecto::where('slug', 'edificio-inn')->firstOrFail();
+
+        $component = Livewire::test(EditProyecto::class, ['record' => $proyecto->id]);
+
+        $reflection = new \ReflectionMethod(EditProyecto::class, 'getSaveFormAction');
+        $reflection->setAccessible(true);
+        /** @var \Filament\Actions\Action $saveAction */
+        $saveAction = $reflection->invoke($component->instance());
+
+        $this->assertNotNull($saveAction);
+        $this->assertTrue($saveAction->isConfirmationRequired());
+        $this->assertEquals('¿Guardar cambios del proyecto?', $saveAction->getModalHeading());
+        $this->assertEquals('Aceptar', $saveAction->getModalSubmitActionLabel());
+        $this->assertEquals('Cancelar', $saveAction->getModalCancelActionLabel());
+    }
 }

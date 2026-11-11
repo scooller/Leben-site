@@ -25,6 +25,18 @@ class EditProyecto extends EditRecord
         return filled($name) ? "Editar proyecto - {$name}" : 'Editar proyecto';
     }
 
+    protected function getSaveFormAction(): Action
+    {
+        return parent::getSaveFormAction()
+            ->submit(null)
+            ->action('save')
+            ->requiresConfirmation()
+            ->modalHeading('¿Guardar cambios del proyecto?')
+            ->modalDescription('¿Estás seguro de que deseas guardar los cambios?')
+            ->modalSubmitActionLabel('Aceptar')
+            ->modalCancelActionLabel('Cancelar');
+    }
+
     public function mount(int|string $record): void
     {
         /** @var Proyecto $proyecto */

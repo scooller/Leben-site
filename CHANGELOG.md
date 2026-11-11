@@ -2,6 +2,12 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.32] - 2026-11-11
+
+### Added
+- `app/Filament/Resources/Proyectos/Pages/EditProyecto.php`: Configurado modal de confirmación obligatorio en el botón de guardar (`getSaveFormAction()`) con `->requiresConfirmation()`, título "¿Guardar cambios del proyecto?", y botones explícitos "Aceptar" / "Cancelar".
+- `tests/Feature/Filament/ProyectoEditDetailFillTest.php`: Agregado test `test_edit_proyecto_save_action_requires_confirmation()` validando la presencia de la confirmación modal y sus textos.
+
 ## [1.13.31] - 2026-11-11
 
 ### Changed
