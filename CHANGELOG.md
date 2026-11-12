@@ -4,6 +4,11 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.11.6] - 2026-11-12
+
+### Fixed
+- Importacion de plantas: imagen interior y de portada se asocian por orientacion y variantes de nombre de proyecto con acentos (backport desde dev).
+
 ## [1.11.5] - 2026-11-03
 
 ### 🐛 Fixed / 🗄️ Database — Permitir `null` en columna `descuento_iva` de proyectos

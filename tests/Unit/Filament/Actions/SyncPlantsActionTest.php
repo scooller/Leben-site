@@ -476,4 +476,111 @@ class SyncPlantsActionTest extends TestCase
         $this->assertNotNull($newPlant);
         $this->assertFalse($newPlant->is_active);
     }
+
+    public function test_sync_plants_matches_document_with_abbreviated_orientation(): void
+    {
+        $proyecto = Proyecto::factory()->create([
+            'name' => 'Edificio Indi',
+            'salesforce_id' => 'SF_PROJ_INDI',
+        ]);
+
+        $this->mock(SalesforceService::class, function (MockInterface $mock) use ($proyecto): void {
+            $mock->shouldReceive('findPlants')
+                ->once()
+                ->andReturn([
+                    [
+                        'id' => 'SF_PLANT_INDI_1002',
+                        'name' => '1002',
+                        'product_code' => '1002 DEPARTAMENTO PISO 10 1D+1B MODELO B1',
+                        'orientacion' => 'Sur',
+                        'modelo_name' => 'B1',
+                        'modelo_programa' => '1D+1B',
+                        'programa' => '1D+1B',
+                        'programa2' => '1D+1B',
+                        'piso' => '10',
+                        'precio_base' => 3000.0,
+                        'precio_lista' => 3200.0,
+                        'superficie_total_principal' => 40.0,
+                        'superficie_interior' => 35.0,
+                        'superficie_util' => 35.0,
+                        'superficie_terraza' => 5.0,
+                        'proyecto_id' => $proyecto->salesforce_id,
+                    ],
+                ]);
+
+            $mock->shouldReceive('findPublicProjectDocuments')
+                ->once()
+                ->withArgs(function (array $chunk): bool {
+                    return in_array('Edificio Indi - B1-1D-1B-S', $chunk, true);
+                })
+                ->andReturn([
+                    [
+                        'name' => 'Edificio Indi - B1-1D-1B-S',
+                        'download_url' => 'https://leben.my.salesforce-sites.com/servlet/servlet.ImageServer?id=015U1000002L0wjIAC&oid=00D8c0000018fVyEAI',
+                    ],
+                ]);
+        });
+
+        $result = SyncPlantsAction::execute();
+
+        $this->assertTrue($result['success']);
+        $this->assertDatabaseHas('plants', [
+            'salesforce_product_id' => 'SF_PLANT_INDI_1002',
+            'salesforce_interior_image_url' => 'https://leben.my.salesforce-sites.com/servlet/servlet.ImageServer?id=015U1000002L0wjIAC&oid=00D8c0000018fVyEAI',
+        ]);
+    }
+
+    public function test_sync_plants_matches_document_with_unaccented_project_name(): void
+    {
+        $proyecto = Proyecto::factory()->create([
+            'name' => 'Edificio Nórdico',
+            'salesforce_id' => 'SF_PROJ_NORDICO',
+        ]);
+
+        $this->mock(SalesforceService::class, function (MockInterface $mock) use ($proyecto): void {
+            $mock->shouldReceive('findPlants')
+                ->once()
+                ->andReturn([
+                    [
+                        'id' => 'SF_PLANT_NORD_101',
+                        'name' => '101',
+                        'product_code' => '101 DEPARTAMENTO PISO 1 1D+1B MODELO D1 PATIO',
+                        'orientacion' => 'S',
+                        'modelo_name' => 'D1 PATIO',
+                        'modelo_programa' => '1D+1B',
+                        'programa' => '1D+1B',
+                        'programa2' => '1D+1B',
+                        'piso' => '1',
+                        'precio_base' => 3500.0,
+                        'precio_lista' => 3700.0,
+                        'superficie_total_principal' => 45.0,
+                        'superficie_interior' => 40.0,
+                        'superficie_util' => 40.0,
+                        'superficie_terraza' => 5.0,
+                        'proyecto_id' => $proyecto->salesforce_id,
+                    ],
+                ]);
+
+            $mock->shouldReceive('findPublicProjectDocuments')
+                ->once()
+                ->withArgs(function (array $chunk): bool {
+                    return in_array('Edificio Nordico - D1 PATIO-1D-1B-S', $chunk, true)
+                        || in_array('Edificio Nórdico - D1 PATIO-1D-1B-S', $chunk, true);
+                })
+                ->andReturn([
+                    [
+                        'name' => 'Edificio Nordico - D1 PATIO-1D-1B-S',
+                        'download_url' => 'https://leben.my.salesforce-sites.com/servlet/servlet.ImageServer?id=015U10000080E1ZIAU&oid=00D8c0000018fVyEAI',
+                    ],
+                ]);
+        });
+
+        $result = SyncPlantsAction::execute();
+
+        $this->assertTrue($result['success']);
+        $this->assertDatabaseHas('plants', [
+            'salesforce_product_id' => 'SF_PLANT_NORD_101',
+            'salesforce_interior_image_url' => 'https://leben.my.salesforce-sites.com/servlet/servlet.ImageServer?id=015U10000080E1ZIAU&oid=00D8c0000018fVyEAI',
+        ]);
+    }
 }

@@ -268,12 +268,16 @@ class SyncPlantsAction
                 continue;
             }
 
+            $projectVariants = self::resolveProjectNameVariants($projectName);
+
             foreach (self::extractPlantDocumentIdentifiers($plantData) as $identifier) {
                 if ($identifier === '') {
                     continue;
                 }
 
-                $documentNames[] = self::buildPlantDocumentName($projectName, $identifier);
+                foreach ($projectVariants as $pName) {
+                    $documentNames[] = self::buildPlantDocumentName($pName, $identifier);
+                }
             }
         }
 
@@ -327,11 +331,15 @@ class SyncPlantsAction
             return null;
         }
 
-        foreach (self::extractPlantDocumentIdentifiers($plantData) as $identifier) {
-            $documentName = self::normalizeDocumentName(self::buildPlantDocumentName($projectName, $identifier));
+        $projectVariants = self::resolveProjectNameVariants($projectName);
 
-            if (isset($interiorImageUrlsByDocumentName[$documentName])) {
-                return $interiorImageUrlsByDocumentName[$documentName];
+        foreach (self::extractPlantDocumentIdentifiers($plantData) as $identifier) {
+            foreach ($projectVariants as $pName) {
+                $documentName = self::normalizeDocumentName(self::buildPlantDocumentName($pName, $identifier));
+
+                if (isset($interiorImageUrlsByDocumentName[$documentName])) {
+                    return $interiorImageUrlsByDocumentName[$documentName];
+                }
             }
         }
 
@@ -346,9 +354,8 @@ class SyncPlantsAction
     {
         $identifiers = [];
 
-        $modelBasedIdentifier = self::buildModelBasedIdentifier($plantData);
-        if ($modelBasedIdentifier !== null) {
-            $identifiers[] = $modelBasedIdentifier;
+        foreach (self::buildModelBasedIdentifiers($plantData) as $modelId) {
+            $identifiers[] = $modelId;
         }
 
         $plantName = trim((string) ($plantData['name'] ?? ''));
@@ -375,18 +382,104 @@ class SyncPlantsAction
 
     /**
      * @param  array<string, mixed>  $plantData
+     * @return list<string>
      */
-    private static function buildModelBasedIdentifier(array $plantData): ?string
+    private static function buildModelBasedIdentifiers(array $plantData): array
     {
         $modelName = trim((string) ($plantData['modelo_name'] ?? ''));
         $program = trim((string) (($plantData['modelo_programa'] ?? $plantData['programa'] ?? '')));
-        $orientation = trim((string) ($plantData['orientacion'] ?? ''));
+        $rawOrientation = trim((string) ($plantData['orientacion'] ?? ''));
 
-        if ($modelName === '' || $program === '' || $orientation === '') {
-            return null;
+        if ($modelName === '') {
+            $productCode = (string) ($plantData['product_code'] ?? '');
+            if (preg_match('/MODELO\s+([A-Z0-9\.\s]+?)(?:\s+PISO|\s*$)/i', $productCode, $matches)) {
+                $modelName = trim($matches[1]);
+            }
         }
 
-        return $modelName.'-'.str_replace('+', '-', $program).'-'.$orientation;
+        if ($modelName === '') {
+            return [];
+        }
+
+        $programNormalized = str_replace('+', '-', $program);
+        $orientations = self::resolveOrientationVariants($rawOrientation);
+        $identifiers = [];
+
+        foreach ($orientations as $orient) {
+            if ($programNormalized !== '') {
+                $identifiers[] = $modelName.'-'.$programNormalized.'-'.$orient;
+            }
+            $identifiers[] = $modelName.'-'.$orient;
+        }
+
+        if ($programNormalized !== '') {
+            $identifiers[] = $modelName.'-'.$programNormalized;
+        }
+
+        $identifiers[] = $modelName;
+
+        return array_values(array_unique(array_filter($identifiers, static fn (string $id): bool => $id !== '')));
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function resolveOrientationVariants(string $orientation): array
+    {
+        $orientation = trim($orientation);
+        if ($orientation === '') {
+            return [];
+        }
+
+        $upper = strtoupper($orientation);
+        $variants = [$orientation];
+
+        $map = [
+            'SUR' => ['S'],
+            'NORTE' => ['N'],
+            'PONIENTE' => ['P', 'O'],
+            'ORIENTE' => ['O', 'E'],
+            'OESTE' => ['O', 'P'],
+            'SUR-PONIENTE' => ['SP'],
+            'SURPONIENTE' => ['SP'],
+            'SUR PONIENTE' => ['SP'],
+            'SUR-ORIENTE' => ['SO'],
+            'SURORIENTE' => ['SO'],
+            'SUR ORIENTE' => ['SO'],
+            'NOR-PONIENTE' => ['NP'],
+            'NORPONIENTE' => ['NP'],
+            'NOR PONIENTE' => ['NP'],
+            'NOR-ORIENTE' => ['NO'],
+            'NORORIENTE' => ['NO'],
+            'NOR ORIENTE' => ['NO'],
+        ];
+
+        if (isset($map[$upper])) {
+            $variants = array_merge($variants, $map[$upper]);
+        } elseif (in_array($upper, ['P', 'O'], true)) {
+            $variants[] = $upper === 'P' ? 'O' : 'P';
+        }
+
+        return array_values(array_unique($variants));
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function resolveProjectNameVariants(string $projectName): array
+    {
+        $clean = trim($projectName);
+        if ($clean === '') {
+            return [];
+        }
+
+        $unaccented = str_replace(
+            ['á', 'é', 'í', 'ó', 'ú', 'Á', 'É', 'Í', 'Ó', 'Ú'],
+            ['a', 'e', 'i', 'o', 'u', 'A', 'E', 'I', 'O', 'U'],
+            $clean
+        );
+
+        return array_values(array_unique([$clean, $unaccented]));
     }
 
     private static function buildPlantDocumentName(string $projectName, string $identifier): string
