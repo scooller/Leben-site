@@ -15,7 +15,7 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
   - En pestaña "6. Ubicación & Mapa": `CuratorPicker` para `map_pin_image_id`, input fallback para `map_pin_image_url` e input opcional `map_pin_name`.
 - `app/Http/Resources/Api/ProjectDetailResource.php`:
   - Expuestos `image_url` y `name` en el objeto `pin`.
-  - Inyección del pin principal de proyecto (`is_project: true`) como primer elemento de `map.pois` para el carrusel interactivo de POIs.
+  - Inyección del pin principal de proyecto (`is_project: true`) como primer elemento de `map.pois` con dirección visible real (`map_address` / `direccion`) en `time` y `address` para el carrusel.
 - `database/seeders/InitialInnProjectDetailSeeder.php`:
   - Seeded `map_pin_image_url` y `map_pin_name` para Edificio INN.
 - `tests/Feature/Filament/ProyectoEditDetailFillTest.php`:

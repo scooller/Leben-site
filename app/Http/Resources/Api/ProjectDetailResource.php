@@ -174,6 +174,7 @@ class ProjectDetailResource extends JsonResource
             $projectPoiImage = $detail?->resolved_map_pin_image_url
                 ?: ($proyecto->imageUrl ?: ($detail?->resolved_project_bg_image_url ?: ''));
             $projectName = $detail?->map_pin_name ?: ($proyecto->name ?? 'Proyecto');
+            $projectAddress = $detail?->map_address ?: ($proyecto->direccion ?: '');
 
             $projectPoi = [
                 'id' => 'project-main-pin',
@@ -182,7 +183,8 @@ class ProjectDetailResource extends JsonResource
                 'label' => strtoupper($projectName),
                 'category' => 'Proyecto',
                 'distance' => 'Punto central',
-                'time' => 'Ubicación',
+                'time' => $projectAddress ?: 'Ubicación',
+                'address' => $projectAddress,
                 'x' => (float) ($detail?->map_pin_x ?? 33.3),
                 'y' => (float) ($detail?->map_pin_y ?? 72.4),
                 'direction' => 'right',

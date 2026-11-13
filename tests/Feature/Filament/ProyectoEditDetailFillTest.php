@@ -588,5 +588,7 @@ class ProyectoEditDetailFillTest extends TestCase
         $this->assertTrue($resource['map']['pois'][0]['is_project']);
         $this->assertEquals('Edificio INN Principal', $resource['map']['pois'][0]['name']);
         $this->assertEquals('images/inn/custom_fachada.jpg', $resource['map']['pois'][0]['img']);
+        $this->assertEquals('Vicente Pérez Rosales 991, Puerto Varas', $resource['map']['pois'][0]['time']);
+        $this->assertEquals('Vicente Pérez Rosales 991, Puerto Varas', $resource['map']['pois'][0]['address']);
     }
 }
