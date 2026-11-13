@@ -1094,6 +1094,25 @@ class ProyectoForm
                                                                         }
                                                                     }),
                                                                 TextInput::make('map_pin_logo_url')->label('URL Logo del Pin de Proyecto (Fallback)')->placeholder('images/inn/pin_logo.png'),
+                                                                CuratorPicker::make('map_pin_image_id')
+                                                                    ->label('Foto del Proyecto en Carrusel de POIs (Curator)')
+                                                                    ->helperText('Foto del proyecto que se mostrará como primera tarjeta en el carrusel de Ubicación.')
+                                                                    ->live()
+                                                                    ->afterStateUpdated(function ($state, Set $set) {
+                                                                        $url = ProjectDetail::resolveMediaUrl($state);
+                                                                        if ($url) {
+                                                                            $set('map_pin_image_url', $url);
+                                                                        }
+                                                                    }),
+                                                                TextInput::make('map_pin_image_url')
+                                                                    ->label('URL Foto del Proyecto en Carrusel de POIs (Fallback)')
+                                                                    ->placeholder('images/inn/Fachada_Principal_AI.jpg')
+                                                                    ->helperText('Ruta relativa o URL directa de la foto del proyecto.'),
+                                                                TextInput::make('map_pin_name')
+                                                                    ->label('Nombre del Punto Principal (Proyecto)')
+                                                                    ->placeholder('Edificio INN')
+                                                                    ->helperText('Opcional. Si queda vacío, se usará el nombre del proyecto.')
+                                                                    ->nullable(),
                                                                 RichEditor::make('map_description')->label('Descripción de Ubicación & Entorno')->columnSpanFull(),
                                                                 Repeater::make('map_pois')
                                                                     ->label('Puntos de Interés Interactivos (POIs)')

@@ -86,6 +86,9 @@ class ProjectDetail extends Model
         'map_pin_y',
         'map_pin_logo_id',
         'map_pin_logo_url',
+        'map_pin_image_id',
+        'map_pin_image_url',
+        'map_pin_name',
         'map_pois',
         'map_bg_color',
         'carousel_spacing',
@@ -247,6 +250,13 @@ class ProjectDetail extends Model
                 $resolved = static::resolveMediaUrl($detail->map_pin_logo_id);
                 if ($resolved && (empty($detail->map_pin_logo_url) || $detail->isDirty('map_pin_logo_id'))) {
                     $detail->map_pin_logo_url = $resolved;
+                }
+            }
+
+            if (! empty($detail->map_pin_image_id)) {
+                $resolved = static::resolveMediaUrl($detail->map_pin_image_id);
+                if ($resolved && (empty($detail->map_pin_image_url) || $detail->isDirty('map_pin_image_id'))) {
+                    $detail->map_pin_image_url = $resolved;
                 }
             }
 
@@ -515,6 +525,11 @@ class ProjectDetail extends Model
         return $this->belongsTo(Media::class, 'map_pin_logo_id');
     }
 
+    public function mapPinImageMedia(): BelongsTo
+    {
+        return $this->belongsTo(Media::class, 'map_pin_image_id');
+    }
+
     public function panoramasBgImageMedia(): BelongsTo
     {
         return $this->belongsTo(Media::class, 'panoramas_bg_image_id');
@@ -588,6 +603,11 @@ class ProjectDetail extends Model
     public function getResolvedMapPinLogoUrlAttribute(): ?string
     {
         return $this->mapPinLogoMedia?->url ?? $this->map_pin_logo_url;
+    }
+
+    public function getResolvedMapPinImageUrlAttribute(): ?string
+    {
+        return $this->mapPinImageMedia?->url ?? $this->map_pin_image_url;
     }
 
     public function getResolvedPanoramasBgImageUrlAttribute(): ?string

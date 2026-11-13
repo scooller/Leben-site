@@ -168,6 +168,31 @@ class ProjectDetailResource extends JsonResource
             ])->values()->all();
         }
 
+        $mapPoisList = $mapPois ?? [];
+        $hasProjectPoi = collect($mapPoisList)->contains(fn ($p): bool => ! empty(((array) $p)['is_project']));
+        if (! $hasProjectPoi && ($detail?->resolved_map_pin_image_url || $detail?->resolved_map_pin_logo_url || ! empty($detail?->map_pin_x))) {
+            $projectPoiImage = $detail?->resolved_map_pin_image_url
+                ?: ($proyecto->imageUrl ?: ($detail?->resolved_project_bg_image_url ?: ''));
+            $projectName = $detail?->map_pin_name ?: ($proyecto->name ?? 'Proyecto');
+
+            $projectPoi = [
+                'id' => 'project-main-pin',
+                'is_project' => true,
+                'name' => $projectName,
+                'label' => strtoupper($projectName),
+                'category' => 'Proyecto',
+                'distance' => 'Punto central',
+                'time' => 'Ubicación',
+                'x' => (float) ($detail?->map_pin_x ?? 33.3),
+                'y' => (float) ($detail?->map_pin_y ?? 72.4),
+                'direction' => 'right',
+                'img' => $projectPoiImage,
+                'logo_url' => $detail?->resolved_map_pin_logo_url,
+            ];
+
+            $mapPois = array_merge([$projectPoi], $mapPoisList);
+        }
+
         $rawTours = $detail?->virtual_tours_config ?? [];
         $normalizedTours = collect($rawTours)->map(function (array $tour): array {
             $interiores = collect($tour['interiores'] ?? $tour['images'] ?? [])->map(function ($interior): array {
@@ -310,6 +335,8 @@ class ProjectDetailResource extends JsonResource
                     'x' => $detail?->map_pin_x ?? 33.3,
                     'y' => $detail?->map_pin_y ?? 72.4,
                     'logo_url' => $detail?->resolved_map_pin_logo_url,
+                    'image_url' => $detail?->resolved_map_pin_image_url,
+                    'name' => $detail?->map_pin_name ?: $proyecto->name,
                 ],
                 'pois' => $mapPois ?? [],
             ],

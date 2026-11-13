@@ -2,6 +2,25 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.36] - 2026-11-13
+
+### Added
+- `database/migrations/2026_11_13_154900_add_map_pin_image_and_name_to_project_details_table.php`:
+  - Columnas `map_pin_image_id` (foreign key `curator`), `map_pin_image_url` y `map_pin_name` en tabla `project_details`.
+- `app/Models/ProjectDetail.php`:
+  - Incorporados `map_pin_image_id`, `map_pin_image_url` y `map_pin_name` en `$fillable`.
+  - Relación `mapPinImageMedia` y accessor `resolved_map_pin_image_url`.
+  - Auto-resolución de media en hook `saving`.
+- `app/Filament/Resources/Proyectos/Schemas/ProyectoForm.php`:
+  - En pestaña "6. Ubicación & Mapa": `CuratorPicker` para `map_pin_image_id`, input fallback para `map_pin_image_url` e input opcional `map_pin_name`.
+- `app/Http/Resources/Api/ProjectDetailResource.php`:
+  - Expuestos `image_url` y `name` en el objeto `pin`.
+  - Inyección del pin principal de proyecto (`is_project: true`) como primer elemento de `map.pois` para el carrusel interactivo de POIs.
+- `database/seeders/InitialInnProjectDetailSeeder.php`:
+  - Seeded `map_pin_image_url` y `map_pin_name` para Edificio INN.
+- `tests/Feature/Filament/ProyectoEditDetailFillTest.php`:
+  - Test `test_edit_proyecto_persists_map_pin_image_and_name_and_injects_project_poi` validando persistencia y serialización de API.
+
 ## [1.13.35] - 2026-11-11
 
 ### Added

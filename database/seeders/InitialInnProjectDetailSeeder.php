@@ -242,6 +242,8 @@ class InitialInnProjectDetailSeeder extends Seeder
                 'map_pin_x' => 33.3,
                 'map_pin_y' => 72.4,
                 'map_pin_logo_url' => 'images/inn/pin_logo.png',
+                'map_pin_image_url' => 'images/inn/proyecto/Proyecto_01_Acceso.jpg',
+                'map_pin_name' => 'Edificio INN',
                 'map_pois' => [
                     ['id' => 1, 'name' => 'Mesa Tropera', 'label' => 'MESA TROPERA', 'distance' => '1.2 km', 'category' => 'Gastronomía', 'time' => '12 minutos', 'img' => 'images/inn/ubicacion/Mesa_Tropera_AI.jpg', 'x' => 15.1, 'y' => 33.2, 'direction' => 'right'],
                     ['id' => 2, 'name' => 'Jumbo', 'label' => 'JUMBO', 'distance' => '1.5 km', 'category' => 'Supermercado', 'time' => '15 minutos', 'img' => 'images/inn/ubicacion/Supermercado_Jumbo_AI.jpg', 'x' => 66.9, 'y' => 55.1, 'direction' => 'right'],

@@ -558,4 +558,35 @@ class ProyectoEditDetailFillTest extends TestCase
             ->call('save')
             ->assertHasFormErrors(['detail.carousel_spacing.project.top']);
     }
+
+    public function test_edit_proyecto_persists_map_pin_image_and_name_and_injects_project_poi(): void
+    {
+        $user = User::factory()->create(['user_type' => 'admin']);
+        $this->actingAs($user);
+
+        $this->seed(InitialInnProjectDetailSeeder::class);
+
+        $proyecto = Proyecto::where('slug', 'edificio-inn')->firstOrFail();
+
+        Livewire::test(EditProyecto::class, ['record' => $proyecto->id])
+            ->set('data.detail.map_pin_image_url', 'images/inn/custom_fachada.jpg')
+            ->set('data.detail.map_pin_name', 'Edificio INN Principal')
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertDatabaseHas('project_details', [
+            'project_id' => $proyecto->id,
+            'map_pin_image_url' => 'images/inn/custom_fachada.jpg',
+            'map_pin_name' => 'Edificio INN Principal',
+        ]);
+
+        $resource = (new \App\Http\Resources\Api\ProjectDetailResource($proyecto->fresh()))->toArray(request());
+
+        $this->assertEquals('images/inn/custom_fachada.jpg', $resource['map']['pin']['image_url']);
+        $this->assertEquals('Edificio INN Principal', $resource['map']['pin']['name']);
+        $this->assertNotEmpty($resource['map']['pois']);
+        $this->assertTrue($resource['map']['pois'][0]['is_project']);
+        $this->assertEquals('Edificio INN Principal', $resource['map']['pois'][0]['name']);
+        $this->assertEquals('images/inn/custom_fachada.jpg', $resource['map']['pois'][0]['img']);
+    }
 }
