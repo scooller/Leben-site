@@ -2,6 +2,14 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.37] - 2026-11-17
+
+### Added
+- `app/Filament/Resources/Proyectos/Schemas/ProyectoForm.php`:
+  - Ampliadas las opciones del selector `icon_key` en el repeater `espacios_items` (Espacios Comunes / Amenidades) para incluir 20 nuevos íconos estándar de amenidades (`flame-kindling`, `heater`, `shopping-cart`, `waves-vertical`, `cinema`, `flame`, `building`, `leaf`, `utensils`, `coffee`, `droplets`, `bike`, `fuel`, `concierge-bell`, `sofa`, `fishing-hook`, `microwave`, `plant-pot`, `groceries`, `warehouse-waves`), además de activar búsqueda dinámica con `->searchable()`.
+- `tests/Feature/Filament/ProyectoFormAmenityIconsTest.php`:
+  - Test automatizado que valida la existencia de todas las opciones de íconos en el formulario de proyecto de Filament.
+
 ## [1.13.36] - 2026-11-13
 
 ### Added

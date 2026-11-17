@@ -967,13 +967,34 @@ class ProyectoForm
                                                                             ->label('Ícono')
                                                                             ->options([
                                                                                 'bell' => 'Conserjería / Acceso (Bell)',
+                                                                                'concierge-bell' => 'Conserjería / Timbre (Concierge Bell)',
                                                                                 'table' => 'Atrio / Mesa (Table)',
                                                                                 'chef-hat' => 'Quincho / Gourmet (Chef Hat)',
                                                                                 'dumbbell' => 'Training Zone / Gimnasio (Dumbbell)',
                                                                                 'hot-tub' => 'Rooftop / Jacuzzi (Hot Tub)',
-                                                                                'waves-ladder' => 'Piscina Climatizada (Pool)',
+                                                                                'waves-ladder' => 'Piscina Climatizada (Waves Ladder)',
                                                                                 'kayak' => 'Bodega Náutica (Kayak)',
+                                                                                'flame-kindling' => 'Fogón / Brasero (Flame Kindling)',
+                                                                                'heater' => 'Calefacción / Climatización (Heater)',
+                                                                                'shopping-cart' => 'E-Commerce / Carrito (Shopping Cart)',
+                                                                                'waves-vertical' => 'Ondas Verticales (Waves Vertical)',
+                                                                                'cinema' => 'Cine / Sala Multimedia (Cinema)',
+                                                                                'flame' => 'Fuego / Chimenea (Flame)',
+                                                                                'building' => 'Edificio / Cowork (Building)',
+                                                                                'leaf' => 'Áreas Verdes / Parque (Leaf)',
+                                                                                'utensils' => 'Comedor / Parrilla (Utensils)',
+                                                                                'coffee' => 'Cafetería / Coffee Lounge (Coffee)',
+                                                                                'droplets' => 'Aguas / Spa / Duchas (Droplets)',
+                                                                                'bike' => 'Bicicletero / Ciclovía (Bike)',
+                                                                                'fuel' => 'Electrolinera / Carga EV (Fuel)',
+                                                                                'sofa' => 'Lounge / Sala de Estar (Sofa)',
+                                                                                'fishing-hook' => 'Pesca / Embarcadero (Fishing Hook)',
+                                                                                'microwave' => 'Kitchenette / Microondas (Microwave)',
+                                                                                'plant-pot' => 'Huerto / Macetero / Jardín (Plant Pot)',
+                                                                                'groceries' => 'Minimarket / Almacén (Groceries)',
+                                                                                'warehouse-waves' => 'Bodega Náutica / Muelle (Warehouse Waves)',
                                                                             ])
+                                                                            ->searchable()
                                                                             ->default('bell')
                                                                             ->required(),
                                                                         CuratorPicker::make('media_id')
