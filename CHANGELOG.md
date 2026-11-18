@@ -2,6 +2,18 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.39] - 2026-11-18
+
+### Changed
+- `frontend/src/pages/Home.jsx`:
+  - Adaptada resolución de `homeHero` para aceptar múltiples variantes de nombres de póster (`video_poster_url`, `poster_url`, `video_poster`, `poster`, `hero_video_poster_url`).
+  - Adaptada resolución de video para aceptar fallback directo `video_url` o `video` además de `video_desktop_url`.
+  - Fallback a `config.hero` directo cuando `config.hero.home` no está anidado.
+- `app/Models/SiteSetting.php`:
+  - Expuestos alias `poster_url` y `poster` en `/api/v1/site-config` en el bloque `hero.home`.
+- `app/Http/Resources/Api/ProjectDetailResource.php`:
+  - Expuestos alias `poster_url` y `poster` en el bloque `hero` del proyecto.
+
 ## [1.13.38] - 2026-11-18
 
 ### Added

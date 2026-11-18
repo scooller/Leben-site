@@ -264,6 +264,8 @@ class ProjectDetailResource extends JsonResource
                 'location' => $proyecto->comuna ?? $proyecto->region,
                 'video_url' => $detail?->resolved_hero_video_url ?? $detail?->hero_video_url,
                 'video_poster_url' => $detail?->resolved_hero_video_poster_url ?? $detail?->hero_video_poster_url,
+                'poster_url' => $detail?->resolved_hero_video_poster_url ?? $detail?->hero_video_poster_url,
+                'poster' => $detail?->resolved_hero_video_poster_url ?? $detail?->hero_video_poster_url,
                 'logo_url' => $detail?->resolved_hero_logo_url ?? $proyecto->salesforce_logo_url,
             ],
             'technical_info' => $detail?->technical_info ?? [

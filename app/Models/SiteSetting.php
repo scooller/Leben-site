@@ -688,6 +688,8 @@ class SiteSetting extends Model
                     'video_desktop_url' => $extraSettings['home_hero_video_desktop_url'] ?? null,
                     'video_mobile_url' => $extraSettings['home_hero_video_mobile_url'] ?? null,
                     'video_poster_url' => $homeHeroVideoPoster,
+                    'poster_url' => $homeHeroVideoPoster,
+                    'poster' => $homeHeroVideoPoster,
                     'link' => is_string($extraSettings['home_hero_link'] ?? null) && trim((string) $extraSettings['home_hero_link']) !== ''
                         ? trim((string) $extraSettings['home_hero_link'])
                         : null,

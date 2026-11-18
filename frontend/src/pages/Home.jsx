@@ -1680,13 +1680,23 @@ function Home({ onNavigate, currentPath }) {
     );
   }
 
-  const homeHero = config?.hero?.home || {};
+  const homeHero = config?.hero?.home || config?.hero || {};
   const homeHeroDesktopImage = homeHero?.image_desktop || homeHero?.image || null;
   const homeHeroMobileImage = homeHero?.image_mobile || homeHeroDesktopImage;
   const homeHeroType = homeHero?.type === 'image' && homeHeroDesktopImage ? 'image' : 'video';
-  const homeHeroDesktopVideo = homeHero?.video_desktop_url || 'https://viveelsur.ileben.cl/wp-content/uploads/2025/12/Banner-Hero-Desktop.mp4';
-  const homeHeroMobileVideo = homeHero?.video_mobile_url || 'https://viveelsur.ileben.cl/wp-content/uploads/2025/12/Banner-Hero-MobileV2.mp4';
-  const homeHeroPoster = homeHero?.video_poster_url || homeHeroDesktopImage || homeHeroMobileImage || undefined;
+  const homeHeroDesktopVideo = homeHero?.video_desktop_url
+    || homeHero?.video_url
+    || homeHero?.video
+    || 'https://viveelsur.ileben.cl/wp-content/uploads/2025/12/Banner-Hero-Desktop.mp4';
+  const homeHeroMobileVideo = homeHero?.video_mobile_url || homeHeroDesktopVideo;
+  const homeHeroPoster = homeHero?.video_poster_url
+    || homeHero?.poster_url
+    || homeHero?.video_poster
+    || homeHero?.poster
+    || homeHero?.hero_video_poster_url
+    || homeHeroDesktopImage
+    || homeHeroMobileImage
+    || undefined;
   const homeHeroDisclaimer = config?.hero?.contact?.alt || '';
   const homeHeroLink = homeHero?.link || null;
   const homeHeroLinkNewTab = Boolean(homeHero?.link_new_tab);
