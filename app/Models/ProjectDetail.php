@@ -21,6 +21,8 @@ class ProjectDetail extends Model
         'hero_subtitle',
         'hero_video_url',
         'hero_video_media_id',
+        'hero_video_poster_id',
+        'hero_video_poster_url',
         'hero_logo_id',
         'hero_logo_url',
         'theme_colors',
@@ -166,6 +168,13 @@ class ProjectDetail extends Model
                 $resolved = static::resolveMediaUrl($detail->hero_video_media_id);
                 if ($resolved && (empty($detail->hero_video_url) || $detail->isDirty('hero_video_media_id'))) {
                     $detail->hero_video_url = $resolved;
+                }
+            }
+
+            if (! empty($detail->hero_video_poster_id)) {
+                $resolved = static::resolveMediaUrl($detail->hero_video_poster_id);
+                if ($resolved && (empty($detail->hero_video_poster_url) || $detail->isDirty('hero_video_poster_id'))) {
+                    $detail->hero_video_poster_url = $resolved;
                 }
             }
 
@@ -379,6 +388,9 @@ class ProjectDetail extends Model
                             if (empty($image['img']) && ! empty($image['media_id'])) {
                                 $image['img'] = static::resolveMediaUrl($image['media_id']);
                             }
+                            if (empty($image['thumb']) && ! empty($image['thumb_media_id'])) {
+                                $image['thumb'] = static::resolveMediaUrl($image['thumb_media_id']);
+                            }
                         }
                     }
                 }
@@ -495,6 +507,11 @@ class ProjectDetail extends Model
         return $this->belongsTo(Media::class, 'hero_video_media_id');
     }
 
+    public function heroVideoPosterMedia(): BelongsTo
+    {
+        return $this->belongsTo(Media::class, 'hero_video_poster_id');
+    }
+
     public function virtualTour360Media(): BelongsTo
     {
         return $this->belongsTo(Media::class, 'virtual_tour_360_media_id');
@@ -553,6 +570,11 @@ class ProjectDetail extends Model
     public function getResolvedHeroVideoUrlAttribute(): ?string
     {
         return $this->heroVideoMedia?->url ?? $this->hero_video_url;
+    }
+
+    public function getResolvedHeroVideoPosterUrlAttribute(): ?string
+    {
+        return $this->heroVideoPosterMedia?->url ?? $this->hero_video_poster_url;
     }
 
     public function getResolvedVirtualTour360UrlAttribute(): ?string

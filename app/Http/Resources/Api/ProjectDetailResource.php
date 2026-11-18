@@ -62,6 +62,9 @@ class ProjectDetailResource extends JsonResource
                     if (empty($image['img']) && ! empty($image['media_id'])) {
                         $image['img'] = ProjectDetail::resolveMediaUrl($image['media_id']);
                     }
+                    if (empty($image['thumb']) && ! empty($image['thumb_media_id'])) {
+                        $image['thumb'] = ProjectDetail::resolveMediaUrl($image['thumb_media_id']);
+                    }
 
                     return $image;
                 })->values()->all();
@@ -260,6 +263,7 @@ class ProjectDetailResource extends JsonResource
                 'subtitle' => $detail?->hero_subtitle ?? $proyecto->descripcion,
                 'location' => $proyecto->comuna ?? $proyecto->region,
                 'video_url' => $detail?->resolved_hero_video_url ?? $detail?->hero_video_url,
+                'video_poster_url' => $detail?->resolved_hero_video_poster_url ?? $detail?->hero_video_poster_url,
                 'logo_url' => $detail?->resolved_hero_logo_url ?? $proyecto->salesforce_logo_url,
             ],
             'technical_info' => $detail?->technical_info ?? [

@@ -520,19 +520,34 @@ class ProyectoForm
                                                                     ->rows(2)
                                                                     ->helperText('Presiona Enter para saltos de línea (SplitTitle multilínea en web)'),
                                                                 TextInput::make('hero_subtitle')->label('Subtítulo Hero')->nullable(),
-                                                                TextInput::make('hero_video_url')->label('URL Video Hero (MP4)')->placeholder('https://... o video/inn-new.mp4'),
-                                                                CuratorPicker::make('hero_video_media_id')
-                                                                    ->label('Seleccionar Video Hero desde Curator')
-                                                                    ->buttonLabel('Elegir Video Hero')
-                                                                    ->acceptedFileTypes(['video/*'])
-
-                                                                    ->live()
-                                                                    ->afterStateUpdated(function ($state, Set $set) {
-                                                                        $url = ProjectDetail::resolveMediaUrl($state);
-                                                                        if ($url) {
-                                                                            $set('hero_video_url', $url);
-                                                                        }
-                                                                    }),
+                                                                Group::make([
+                                                                    CuratorPicker::make('hero_video_media_id')
+                                                                        ->label('Seleccionar Video Hero desde Curator')
+                                                                        ->buttonLabel('Elegir Video Hero')
+                                                                        ->acceptedFileTypes(['video/*'])
+                                                                        ->live()
+                                                                        ->afterStateUpdated(function ($state, Set $set) {
+                                                                            $url = ProjectDetail::resolveMediaUrl($state);
+                                                                            if ($url) {
+                                                                                $set('hero_video_url', $url);
+                                                                            }
+                                                                        }),
+                                                                    TextInput::make('hero_video_url')->label('URL Video Hero (MP4)')->placeholder('https://... o video/inn-new.mp4'),
+                                                                ]),
+                                                                Group::make([
+                                                                    CuratorPicker::make('hero_video_poster_id')
+                                                                        ->label('Seleccionar Póster Video Hero desde Curator')
+                                                                        ->buttonLabel('Elegir Póster')
+                                                                        ->acceptedFileTypes(['image/*'])
+                                                                        ->live()
+                                                                        ->afterStateUpdated(function ($state, Set $set) {
+                                                                            $url = ProjectDetail::resolveMediaUrl($state);
+                                                                            if ($url) {
+                                                                                $set('hero_video_poster_url', $url);
+                                                                            }
+                                                                        }),
+                                                                    TextInput::make('hero_video_poster_url')->label('URL Directa de Póster Video Hero (Fallback)')->placeholder('images/inn/hero-poster.webp'),
+                                                                ]),
                                                                 CuratorPicker::make('hero_logo_id')
                                                                     ->label('Logo Header (Curator)')
 
@@ -768,8 +783,18 @@ class ProyectoForm
                                                                                     ->label('URL Imagen Grande (Fallback)')
                                                                                     ->helperText('Opcional si seleccionas desde Curator.')
                                                                                     ->nullable(),
-                                                                                TextInput::make('alt')->label('Descripción / Título')->required(),
+                                                                                CuratorPicker::make('thumb_media_id')
+                                                                                    ->label('Seleccionar Miniatura desde Curator')
+                                                                                    ->buttonLabel('Elegir Miniatura')
+                                                                                    ->live()
+                                                                                    ->afterStateUpdated(function ($state, Set $set) {
+                                                                                        $url = ProjectDetail::resolveMediaUrl($state);
+                                                                                        if ($url) {
+                                                                                            $set('thumb', $url);
+                                                                                        }
+                                                                                    }),
                                                                                 TextInput::make('thumb')->label('Miniatura (Opcional)')->nullable(),
+                                                                                TextInput::make('alt')->label('Descripción / Título')->required()->columnSpanFull(),
                                                                             ])
                                                                             ->columns(2)
                                                                             ->defaultItems(0),
@@ -1141,7 +1166,7 @@ class ProyectoForm
                                                                         TextInput::make('name')->label('Nombre')->required(),
                                                                         TextInput::make('label')->label('Etiqueta en Mapa')->nullable(),
                                                                         TextInput::make('category')->label('Categoría')->placeholder('Gastronomía, Supermercado, etc.')->required(),
-                                                                        TextInput::make('distance')->label('Distancia')->placeholder('1.2 km')->required(),
+                                                                        TextInput::make('distance')->label('Distancia')->placeholder('1.2 km')->nullable(),
                                                                         TextInput::make('time')->label('Tiempo Caminando')->placeholder('12 minutos')->required(),
                                                                         TextInput::make('x')->label('Posición X (%)')->numeric()->required(),
                                                                         TextInput::make('y')->label('Posición Y (%)')->numeric()->required(),

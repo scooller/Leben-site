@@ -591,4 +591,54 @@ class ProyectoEditDetailFillTest extends TestCase
         $this->assertEquals('Vicente Pérez Rosales 991, Puerto Varas', $resource['map']['pois'][0]['time']);
         $this->assertEquals('Vicente Pérez Rosales 991, Puerto Varas', $resource['map']['pois'][0]['address']);
     }
+
+    public function test_edit_proyecto_persists_hero_video_poster_nullable_poi_distance_and_modal_thumb(): void
+    {
+        $user = User::factory()->create(['user_type' => 'admin']);
+        $this->actingAs($user);
+
+        $this->seed(InitialInnProjectDetailSeeder::class);
+
+        $proyecto = Proyecto::where('slug', 'edificio-inn')->firstOrFail();
+
+        Livewire::test(EditProyecto::class, ['record' => $proyecto->id])
+            ->set('data.detail.hero_video_poster_url', 'images/inn/hero-poster.webp')
+            ->set('data.detail.map_pois', [
+                [
+                    'name' => 'Café Danés',
+                    'category' => 'Gastronomía',
+                    'distance' => null,
+                    'time' => '5 min',
+                    'x' => 50,
+                    'y' => 60,
+                ],
+            ])
+            ->set('data.detail.equipment_spaces_modal', [
+                [
+                    'label' => 'Cocina',
+                    'images' => [
+                        [
+                            'alt' => 'Mueble cocina',
+                            'img' => 'images/inn/cocina.webp',
+                            'thumb' => 'images/inn/cocina_thumb.webp',
+                        ],
+                    ],
+                ],
+            ])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertDatabaseHas('project_details', [
+            'project_id' => $proyecto->id,
+            'hero_video_poster_url' => 'images/inn/hero-poster.webp',
+        ]);
+
+        $resource = (new \App\Http\Resources\Api\ProjectDetailResource($proyecto->fresh()))->toArray(request());
+
+        $this->assertEquals('images/inn/hero-poster.webp', $resource['hero']['video_poster_url']);
+        $cafePoi = collect($resource['map']['pois'])->firstWhere('name', 'Café Danés');
+        $this->assertNotNull($cafePoi);
+        $this->assertNull($cafePoi['distance']);
+        $this->assertEquals('images/inn/cocina_thumb.webp', $resource['equipment']['spaces_modal'][0]['images'][0]['thumb']);
+    }
 }

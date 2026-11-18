@@ -2,6 +2,26 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.38] - 2026-11-18
+
+### Added
+- `database/migrations/2026_11_18_092500_add_hero_video_poster_and_nullable_poi_distance.php`:
+  - Columnas `hero_video_poster_id` (foreign key `curator`) y `hero_video_poster_url` en tabla `project_details`.
+  - Columna `distance` en `project_pois` modificada a `nullable`.
+- `app/Models/ProjectDetail.php`:
+  - Atributos `hero_video_poster_id` y `hero_video_poster_url` en `$fillable`.
+  - Relación `heroVideoPosterMedia()` y accessor `resolved_hero_video_poster_url`.
+  - Resolución automática en `saving` hook para `hero_video_poster_id` y para `thumb_media_id` en `equipment_spaces_modal`.
+- `app/Filament/Resources/Proyectos/Schemas/ProyectoForm.php`:
+  - Sección Hero: campos `hero_video_poster_id` (CuratorPicker) y `hero_video_poster_url` (fallback) agrupados lado a lado con Video Hero.
+  - Sección Equipamiento: selector `CuratorPicker` (`thumb_media_id`) para "Miniatura (Opcional)" en `equipment_spaces_modal`.
+  - Sección Ubicación POIs: campo `distance` cambiado a `nullable()` (no requerido).
+- `app/Http/Resources/Api/ProjectDetailResource.php`:
+  - Expuesto `video_poster_url` en bloque `hero`.
+  - Resolución automática de `thumb_media_id` a `thumb` en `equipment_spaces_modal`.
+- `tests/Feature/Filament/ProyectoEditDetailFillTest.php`:
+  - Test automatizado `test_edit_proyecto_persists_hero_video_poster_nullable_poi_distance_and_modal_thumb`.
+
 ## [1.13.37] - 2026-11-17
 
 ### Added
