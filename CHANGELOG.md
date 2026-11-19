@@ -4,7 +4,21 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
-## [1.11.6] - 2026-11-12
+## [1.11.7] - 2026-11-19
+
+### 🌐 SEO / OpenGraph / Social Metadata — Soporte integral de etiquetas OG y Twitter
+- **`app/Models/SiteSetting.php`**:
+  - Normalización de URLs absolutas completas para `og_image` y `sale_event.og_image` asegurando fallback a la imagen general cuando no hay imagen de sale dedicada.
+- **`app/Filament/Pages/SiteSettings.php` & `resources/views/filament/components/serp-snippet-preview.blade.php`**:
+  - Vista previa interactiva de tarjeta social (OpenGraph / Twitter Card) con conmutación dinámica según evento sale.
+- **`frontend/src/components/SeoHead.jsx`**:
+  - Nuevo componente reutilizable para gestión reactiva de meta tags en el head (`og:url`, `og:type`, `og:description`, `og:image`, `og:logo`, `twitter:card`, etc.).
+- **`frontend/src/services/siteConfig.js`**:
+  - Soporte para meta tags `og:logo`, `og:url`, `og:type` y normalización de assets relativos hacia el origen API en `applySeo`.
+- **`frontend/src/pages/Home.jsx`**, **`frontend/src/pages/Contact.jsx`**, **`frontend/src/pages/Payment.jsx`**:
+  - Integración del componente `<SeoHead />` en todas las páginas de la aplicación.
+- **`frontend/scripts/prerender-routes.mjs` & `frontend/index.html`**:
+  - Prerenderizado estático de metadatos OG/Twitter completos incluyendo `/contacto` y validación en `validate-seo.mjs`.
 
 ### Fixed
 - Importacion de plantas: imagen interior y de portada se asocian por orientacion y variantes de nombre de proyecto con acentos (backport desde dev).

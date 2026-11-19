@@ -224,4 +224,109 @@ class SiteSettingFrontendConfigTest extends TestCase
         $response->assertJsonPath('conversion_scripts.post_contact_script', "<script>fbq('track', 'Lead', { name: '{name}' });</script>");
         $response->assertJsonPath('conversion_scripts.post_payment_script', "<script>fbq('track', 'Purchase', { value: {amount} });</script>");
     }
+
+    public function test_og_image_resolves_when_sale_event_active_with_dedicated_image(): void
+    {
+        $generalOg = Media::query()->create([
+            'disk' => 'curator',
+            'directory' => null,
+            'visibility' => 'public',
+            'name' => 'general-og',
+            'path' => 'general-og.jpg',
+            'width' => 1200,
+            'height' => 630,
+            'size' => 100000,
+            'type' => 'image/jpeg',
+            'ext' => 'jpg',
+            'title' => 'General OG',
+        ]);
+
+        $saleOg = Media::query()->create([
+            'disk' => 'curator',
+            'directory' => null,
+            'visibility' => 'public',
+            'name' => 'sale-og',
+            'path' => 'sale-og.jpg',
+            'width' => 1200,
+            'height' => 630,
+            'size' => 120000,
+            'type' => 'image/jpeg',
+            'ext' => 'jpg',
+            'title' => 'Sale OG',
+        ]);
+
+        SiteSetting::current()->update([
+            'evento_sale' => true,
+            'extra_settings' => [
+                'og_image_id' => $generalOg->id,
+                'sale_og_image_id' => $saleOg->id,
+            ],
+        ]);
+
+        $payload = SiteSetting::forFrontend();
+
+        $this->assertStringContainsString('sale-og.jpg', (string) $payload['seo']['og_image']);
+        $this->assertStringContainsString('sale-og.jpg', (string) $payload['seo']['sale_event']['og_image']);
+        $this->assertTrue(str_starts_with($payload['seo']['og_image'], 'http'));
+    }
+
+    public function test_og_image_falls_back_to_general_image_when_sale_active_without_sale_image(): void
+    {
+        $generalOg = Media::query()->create([
+            'disk' => 'curator',
+            'directory' => null,
+            'visibility' => 'public',
+            'name' => 'general-fallback-og',
+            'path' => 'general-fallback-og.jpg',
+            'width' => 1200,
+            'height' => 630,
+            'size' => 100000,
+            'type' => 'image/jpeg',
+            'ext' => 'jpg',
+            'title' => 'General Fallback OG',
+        ]);
+
+        SiteSetting::current()->update([
+            'evento_sale' => true,
+            'extra_settings' => [
+                'og_image_id' => $generalOg->id,
+                'sale_og_image_id' => null,
+            ],
+        ]);
+
+        $payload = SiteSetting::forFrontend();
+
+        $this->assertStringContainsString('general-fallback-og.jpg', (string) $payload['seo']['og_image']);
+        $this->assertStringContainsString('general-fallback-og.jpg', (string) $payload['seo']['sale_event']['og_image']);
+    }
+
+    public function test_og_image_resolves_to_general_image_when_sale_inactive(): void
+    {
+        $generalOg = Media::query()->create([
+            'disk' => 'curator',
+            'directory' => null,
+            'visibility' => 'public',
+            'name' => 'inactive-sale-general-og',
+            'path' => 'inactive-sale-general-og.jpg',
+            'width' => 1200,
+            'height' => 630,
+            'size' => 100000,
+            'type' => 'image/jpeg',
+            'ext' => 'jpg',
+            'title' => 'Inactive Sale General OG',
+        ]);
+
+        SiteSetting::current()->update([
+            'evento_sale' => false,
+            'extra_settings' => [
+                'og_image_id' => $generalOg->id,
+                'sale_og_image_id' => null,
+            ],
+        ]);
+
+        $payload = SiteSetting::forFrontend();
+
+        $this->assertStringContainsString('inactive-sale-general-og.jpg', (string) $payload['seo']['og_image']);
+        $this->assertNull($payload['seo']['sale_event']);
+    }
 }

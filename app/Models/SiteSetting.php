@@ -467,13 +467,27 @@ class SiteSetting extends Model
         }
 
         $extraSettings = is_array($settings->extra_settings) ? $settings->extra_settings : [];
+        $resolveMediaUrl = static function (?int $mediaId): ?string {
+            if (! $mediaId) {
+                return null;
+            }
+            $url = Media::query()->find($mediaId)?->url;
+            if (! $url) {
+                return null;
+            }
+
+            return (str_starts_with($url, 'http://') || str_starts_with($url, 'https://'))
+                ? $url
+                : url($url);
+        };
+
         $homeHeroDesktopImage = Media::query()->find($extraSettings['home_hero_image_desktop_id'] ?? $extraSettings['home_hero_image_id'] ?? null)?->url;
         $homeHeroMobileImage = Media::query()->find($extraSettings['home_hero_image_mobile_id'] ?? $extraSettings['home_hero_image_id'] ?? null)?->url;
         $homeHeroVideoPoster = Media::query()->find($extraSettings['home_hero_video_poster_id'] ?? null)?->url;
         $contactHeroDesktopImage = Media::query()->find($extraSettings['contact_hero_image_desktop_id'] ?? $extraSettings['contact_hero_image_id'] ?? null)?->url;
         $contactHeroMobileImage = Media::query()->find($extraSettings['contact_hero_image_mobile_id'] ?? $extraSettings['contact_hero_image_id'] ?? null)?->url;
-        $ogImageFromCurator = Media::query()->find($extraSettings['og_image_id'] ?? null)?->url;
-        $saleOgImageFromCurator = Media::query()->find($extraSettings['sale_og_image_id'] ?? null)?->url;
+        $ogImageFromCurator = $resolveMediaUrl($extraSettings['og_image_id'] ?? null);
+        $saleOgImageFromCurator = $resolveMediaUrl($extraSettings['sale_og_image_id'] ?? null);
         $priceSource = $extraSettings['price_source'] ?? 'final';
         $pricePercentageSource = $extraSettings['price_percentage_source'] ?? 'web_discount';
 
@@ -579,7 +593,7 @@ class SiteSetting extends Model
                 // og_image: during an active sale event, prefer the dedicated sale OG image
                 'og_image' => ($settings->evento_sale && $saleOgImageFromCurator)
                     ? $saleOgImageFromCurator
-                    : ($ogImageFromCurator ?? ($settings->og_image ? url($settings->og_image) : null)),
+                    : ($ogImageFromCurator ?? ($settings->og_image ? (str_starts_with($settings->og_image, 'http') ? $settings->og_image : url($settings->og_image)) : null)),
                 // sale_event: null when evento_sale is off; object with all fields when on
                 'sale_event' => $settings->evento_sale ? [
                     'name' => is_string($extraSettings['sale_event_name'] ?? null)
@@ -595,7 +609,7 @@ class SiteSetting extends Model
                     'end_date' => is_string($extraSettings['sale_event_end_date'] ?? null)
                         ? trim((string) $extraSettings['sale_event_end_date'])
                         : null,
-                    'og_image' => $saleOgImageFromCurator,
+                    'og_image' => $saleOgImageFromCurator ?: ($ogImageFromCurator ?? ($settings->og_image ? (str_starts_with($settings->og_image, 'http') ? $settings->og_image : url($settings->og_image)) : null)),
                 ] : null,
             ],
             'contact' => [

@@ -763,6 +763,14 @@ class SiteSettings extends Page implements HasForms
                                                 'siteUrl' => $get('site_url') ?: 'https://sale.ileben.cl',
                                                 'siteName' => $get('site_name') ?: 'iLeben',
                                                 'locale' => $get('extra_settings.site_locale') ?: 'es-CL',
+                                                'ogImage' => (function () use ($get): ?string {
+                                                    $isSale = (bool) $get('evento_sale');
+                                                    $mediaId = ($isSale && $get('extra_settings.sale_og_image_id'))
+                                                        ? $get('extra_settings.sale_og_image_id')
+                                                        : ($get('extra_settings.og_image_id') ?: null);
+
+                                                    return $mediaId ? \Awcodes\Curator\Models\Media::query()->find($mediaId)?->url : null;
+                                                })(),
                                             ]))
                                             ->columnSpanFull(),
                                     ]),

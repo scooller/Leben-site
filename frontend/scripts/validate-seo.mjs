@@ -23,6 +23,11 @@ const checks = [
     canonical: 'https://sale.ileben.cl/f',
     robots: 'index,follow',
   },
+  {
+    file: path.join(distDir, 'contacto', 'index.html'),
+    canonical: 'https://sale.ileben.cl/contacto',
+    robots: 'index,follow',
+  },
 ];
 
 const fail = (message) => {
@@ -48,6 +53,18 @@ const run = async () => {
 
     if (!content.includes('hreflang="x-default"')) {
       fail(`[validate-seo] Missing hreflang="x-default" in ${check.file}`);
+    }
+
+    if (!content.includes('property="og:image"')) {
+      fail(`[validate-seo] Missing og:image in ${check.file}`);
+    }
+
+    if (!content.includes('property="og:url"')) {
+      fail(`[validate-seo] Missing og:url in ${check.file}`);
+    }
+
+    if (!content.includes('property="og:logo"')) {
+      fail(`[validate-seo] Missing og:logo in ${check.file}`);
     }
   }));
 

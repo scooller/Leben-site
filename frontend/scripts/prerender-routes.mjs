@@ -31,6 +31,13 @@ const routes = [
     canonical: `${siteUrl}/f`,
     robots: 'index,follow',
   },
+  {
+    path: '/contacto',
+    title: 'iLeben | Contacto',
+    description: 'Comunícate con nuestro equipo para recibir asesoría sobre proyectos inmobiliarios en venta.',
+    canonical: `${siteUrl}/contacto`,
+    robots: 'index,follow',
+  },
 ];
 
 const upsertTag = (html, pattern, replacement, fallbackInsert) => {
@@ -84,6 +91,79 @@ const applyHeadTags = (html, route) => {
     /<link\s+rel=["']alternate["']\s+hreflang=["']x-default["'][^>]*>/i,
     `<link rel="alternate" hreflang="x-default" href="${route.canonical}" />`,
     `<link rel="alternate" hreflang="x-default" href="${route.canonical}" />`
+  );
+
+  const ogImage = route.image || 'https://admin.ileben.cl/curator/15597fd0-9f38-4f2a-83b9-305b0119bea6.png';
+  const ogLogo = route.logo || 'https://admin.ileben.cl/curator/15597fd0-9f38-4f2a-83b9-305b0119bea6.png';
+
+  updated = upsertTag(
+    updated,
+    /<meta\s+property=["']og:type["']\s+content=["'][^"']*["']\s*\/?\s*>/i,
+    '<meta property="og:type" content="website" />',
+    '<meta property="og:type" content="website" />'
+  );
+
+  updated = upsertTag(
+    updated,
+    /<meta\s+property=["']og:title["']\s+content=["'][^"']*["']\s*\/?\s*>/i,
+    `<meta property="og:title" content="${route.title}" />`,
+    `<meta property="og:title" content="${route.title}" />`
+  );
+
+  updated = upsertTag(
+    updated,
+    /<meta\s+property=["']og:description["']\s+content=["'][^"']*["']\s*\/?\s*>/i,
+    `<meta property="og:description" content="${route.description}" />`,
+    `<meta property="og:description" content="${route.description}" />`
+  );
+
+  updated = upsertTag(
+    updated,
+    /<meta\s+property=["']og:image["']\s+content=["'][^"']*["']\s*\/?\s*>/i,
+    `<meta property="og:image" content="${ogImage}" />`,
+    `<meta property="og:image" content="${ogImage}" />`
+  );
+
+  updated = upsertTag(
+    updated,
+    /<meta\s+property=["']og:logo["']\s+content=["'][^"']*["']\s*\/?\s*>/i,
+    `<meta property="og:logo" content="${ogLogo}" />`,
+    `<meta property="og:logo" content="${ogLogo}" />`
+  );
+
+  updated = upsertTag(
+    updated,
+    /<meta\s+property=["']og:url["']\s+content=["'][^"']*["']\s*\/?\s*>/i,
+    `<meta property="og:url" content="${route.canonical}" />`,
+    `<meta property="og:url" content="${route.canonical}" />`
+  );
+
+  updated = upsertTag(
+    updated,
+    /<meta\s+name=["']twitter:card["']\s+content=["'][^"']*["']\s*\/?\s*>/i,
+    '<meta name="twitter:card" content="summary_large_image" />',
+    '<meta name="twitter:card" content="summary_large_image" />'
+  );
+
+  updated = upsertTag(
+    updated,
+    /<meta\s+name=["']twitter:title["']\s+content=["'][^"']*["']\s*\/?\s*>/i,
+    `<meta name="twitter:title" content="${route.title}" />`,
+    `<meta name="twitter:title" content="${route.title}" />`
+  );
+
+  updated = upsertTag(
+    updated,
+    /<meta\s+name=["']twitter:description["']\s+content=["'][^"']*["']\s*\/?\s*>/i,
+    `<meta name="twitter:description" content="${route.description}" />`,
+    `<meta name="twitter:description" content="${route.description}" />`
+  );
+
+  updated = upsertTag(
+    updated,
+    /<meta\s+name=["']twitter:image["']\s+content=["'][^"']*["']\s*\/?\s*>/i,
+    `<meta name="twitter:image" content="${ogImage}" />`,
+    `<meta name="twitter:image" content="${ogImage}" />`
   );
 
   return updated;

@@ -5,7 +5,7 @@ import { proyectosService } from '../services/proyectos';
 import CheckoutService from '../services/checkout';
 import { authService } from '../services/auth';
 import ErrorNotification from '../components/ErrorNotification';
-import siteConfigService from '../services/siteConfig';
+import SeoHead from '../components/SeoHead';
 import { isRetryableError } from '../utils/errorHandler';
 import { getConfiguredEntregaAliases, getProjectSlugsByAlias, getStageKeysByAlias } from '../utils/stageAlias';
 import { trackEvent, trackPageView } from '../utils/tagManager';
@@ -521,14 +521,14 @@ function Home({ onNavigate, currentPath }) {
     return `${PLANT_DETAIL_BASE_PATH}/${encodeURIComponent(projectSlug)}/${encodeURIComponent(unitName)}`;
   }, []);
 
-  useEffect(() => {
+  const seoProps = useMemo(() => {
     const seoConfig = config?.seo || {};
     const siteName = config?.site_name || 'iLeben';
     const siteDescription = config?.site_description || 'Descubre departamentos inmobiliarios disponibles para compra en Chile.';
     const siteUrl = preferredSiteUrl;
     const seoPolicy = resolveSeoPolicy({
       pathname: currentPath,
-      search: window.location.search || '',
+      search: typeof window !== 'undefined' ? (window.location.search || '') : '',
     });
 
     const isListingPage = currentPath === '/plantas' || currentPath === '/f' || currentPath.startsWith('/f/');
@@ -536,7 +536,7 @@ function Home({ onNavigate, currentPath }) {
 
     let title = seoConfig.default_meta_title || `${siteName} | Inicio`;
     let description = siteDescription;
-    let canonical = `${siteUrl || window.location.origin}/`;
+    let canonical = `${siteUrl || (typeof window !== 'undefined' ? window.location.origin : '')}/`;
     let ogType = 'website';
 
     if (isDetailPage) {
@@ -553,7 +553,7 @@ function Home({ onNavigate, currentPath }) {
         comunaName ? `en ${comunaName}` : '',
         price ? `con valor referencial ${price}` : '',
       ].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
-      canonical = `${siteUrl || window.location.origin}${detailPath}`;
+      canonical = `${siteUrl || (typeof window !== 'undefined' ? window.location.origin : '')}${detailPath}`;
       ogType = 'product';
     } else if (isListingPage) {
       const projectLabels = selectedProyecto
@@ -572,10 +572,10 @@ function Home({ onNavigate, currentPath }) {
       description = totalPlants > 0
         ? `Explora ${totalPlants} unidades disponibles en venta. Filtra por proyecto, comuna y características para encontrar tu próximo departamento.`
         : 'Explora departamentos en venta y filtra por proyecto, comuna y características.';
-      canonical = `${siteUrl || window.location.origin}${currentPath === '/plantas' ? '/f' : currentPath}`;
+      canonical = `${siteUrl || (typeof window !== 'undefined' ? window.location.origin : '')}${currentPath === '/plantas' ? '/f' : currentPath}`;
 
       if (seoPolicy.isTemporaryFilterVariant) {
-        canonical = `${siteUrl || window.location.origin}/f`;
+        canonical = `${siteUrl || (typeof window !== 'undefined' ? window.location.origin : '')}/f`;
       }
     }
 
@@ -584,7 +584,7 @@ function Home({ onNavigate, currentPath }) {
       ogImage = selectedPlantDetail?.imageUrl || selectedPlantDetail?.coverImage || seoConfig.og_image;
     }
 
-    siteConfigService.applySeo({
+    return {
       title,
       description,
       keywords: seoConfig.meta_keywords,
@@ -593,17 +593,14 @@ function Home({ onNavigate, currentPath }) {
       robots: seoPolicy.robots || seoConfig.robots_default || 'index,follow',
       ogImage,
       ogType,
-      ogSiteName: siteName,
-      ogLocale: seoConfig.site_locale || 'es-CL',
       twitterCard: 'summary_large_image',
       twitterSite: seoConfig.twitter_site,
-    });
+    };
   }, [
     buildPlantDetailPath,
     config?.seo,
     config?.site_description,
     config?.site_name,
-    config?.site_url,
     currentPath,
     preferredSiteUrl,
     proyectos,
@@ -1694,6 +1691,7 @@ function Home({ onNavigate, currentPath }) {
 
   return (
     <>
+      <SeoHead {...seoProps} />
       {/* Hero Section */}
       <div className={`video-home wa-position-relative wa-overflow-hidden wa-justify-content-center box-shadow-1${trackedHomeHeroLink ? ' has-link' : ''}${homeHeroType === 'image' ? ' is-image' : ''}`}>
         {trackedHomeHeroLink && (

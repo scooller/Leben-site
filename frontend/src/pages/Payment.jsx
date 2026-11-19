@@ -3,6 +3,7 @@ import { useSiteConfig } from '../contexts/SiteConfigContext';
 import { paymentsService } from '../services/payments';
 import { triggerPaymentConversion } from '../utils/conversionTracker';
 import { trackEvent } from '../utils/tagManager';
+import SeoHead from '../components/SeoHead';
 import '../styles/payment.scss' with { type: 'css' };
 
 const RESULT_TEXT = {
@@ -169,6 +170,12 @@ function Payment({ onNavigate, currentPath }) {
 
   return (
     <div className="payment-page">
+      <SeoHead
+        title="iLeben | Estado de pago"
+        description="Detalle del estado de la transacción de reserva."
+        canonical="/pago"
+        robots="noindex,nofollow"
+      />
       <section className="home-container payment-container">
         <div className="wa-stack wa-gap-m">
           <h1 className="payment-title">Resumen de tu pago</h1>
