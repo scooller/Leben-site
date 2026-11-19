@@ -40,6 +40,9 @@ const routes = [
   },
 ];
 
+const defaultOgImage = 'https://admin.ileben.cl/curator/58e48313-5f8e-4bb2-b1da-5b33f5c0fd5f.png';
+const defaultOgLogo = 'https://admin.ileben.cl/curator/5f9a1b19-a918-42a9-bd79-b80ced66f523.png';
+
 const upsertTag = (html, pattern, replacement, fallbackInsert) => {
   if (pattern.test(html)) {
     return html.replace(pattern, replacement);
@@ -48,7 +51,7 @@ const upsertTag = (html, pattern, replacement, fallbackInsert) => {
   return html.replace('</head>', `${fallbackInsert}\n  </head>`);
 };
 
-const applyHeadTags = (html, route) => {
+const applyHeadTags = (html, route, activeOgImage = defaultOgImage, activeOgLogo = defaultOgLogo) => {
   let updated = html;
 
   updated = upsertTag(
@@ -95,40 +98,48 @@ const applyHeadTags = (html, route) => {
 
   updated = upsertTag(
     updated,
+    /<meta\s+property=["']og:type["']\s+content=["'][^"']*["']\s*\/?\s*>/i,
+    '<meta property="og:type" content="website" />',
+    '<meta property="og:type" content="website" />'
+  );
+
+  updated = upsertTag(
+    updated,
+    /<meta\s+property=["']og:title["']\s+content=["'][^"']*["']\s*\/?\s*>/i,
+    `<meta property="og:title" content="${route.title}" />`,
+    `<meta property="og:title" content="${route.title}" />`
+  );
+
+  updated = upsertTag(
+    updated,
     /<meta\s+property=["']og:description["']\s+content=["'][^"']*["']\s*\/?\s*>/i,
     `<meta property="og:description" content="${route.description}" />`,
     `<meta property="og:description" content="${route.description}" />`
   );
 
-  if (route.image) {
-    updated = upsertTag(
-      updated,
-      /<meta\s+property=["']og:image["']\s+content=["'][^"']*["']\s*\/?\s*>/i,
-      `<meta property="og:image" content="${route.image}" />`,
-      `<meta property="og:image" content="${route.image}" />`
-    );
+  const ogImage = route.image || activeOgImage;
+  const ogLogo = route.logo || activeOgLogo;
 
-    updated = upsertTag(
-      updated,
-      /<meta\s+name=["']twitter:image["']\s+content=["'][^"']*["']\s*\/?\s*>/i,
-      `<meta name="twitter:image" content="${route.image}" />`,
-      `<meta name="twitter:image" content="${route.image}" />`
-    );
-  } else {
-    updated = updated.replace(/<meta\s+property=["']og:image["'][^>]*>\s*/gi, '');
-    updated = updated.replace(/<meta\s+name=["']twitter:image["'][^>]*>\s*/gi, '');
-  }
+  updated = upsertTag(
+    updated,
+    /<meta\s+property=["']og:image["']\s+content=["'][^"']*["']\s*\/?\s*>/i,
+    `<meta property="og:image" content="${ogImage}" />`,
+    `<meta property="og:image" content="${ogImage}" />`
+  );
 
-  if (route.logo) {
-    updated = upsertTag(
-      updated,
-      /<meta\s+property=["']og:logo["']\s+content=["'][^"']*["']\s*\/?\s*>/i,
-      `<meta property="og:logo" content="${route.logo}" />`,
-      `<meta property="og:logo" content="${route.logo}" />`
-    );
-  } else {
-    updated = updated.replace(/<meta\s+property=["']og:logo["'][^>]*>\s*/gi, '');
-  }
+  updated = upsertTag(
+    updated,
+    /<meta\s+name=["']twitter:image["']\s+content=["'][^"']*["']\s*\/?\s*>/i,
+    `<meta name="twitter:image" content="${ogImage}" />`,
+    `<meta name="twitter:image" content="${ogImage}" />`
+  );
+
+  updated = upsertTag(
+    updated,
+    /<meta\s+property=["']og:logo["']\s+content=["'][^"']*["']\s*\/?\s*>/i,
+    `<meta property="og:logo" content="${ogLogo}" />`,
+    `<meta property="og:logo" content="${ogLogo}" />`
+  );
 
   updated = upsertTag(
     updated,
@@ -174,12 +185,35 @@ const resolveOutputPath = (routePath) => {
 const run = async () => {
   const template = await readFile(baseTemplatePath, 'utf8');
 
+  let activeOgImage = defaultOgImage;
+  let activeOgLogo = defaultOgLogo;
+
+  try {
+    const apiUrl = process.env.VITE_API_URL || 'https://admin.ileben.cl';
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3500);
+    const res = await fetch(`${apiUrl.replace(/\/+$/, '')}/api/v1/site-config`, { signal: controller.signal });
+    clearTimeout(timeout);
+    if (res.ok) {
+      const data = await res.json();
+      const resolved = data?.seo?.sale_event?.og_image || data?.seo?.og_image;
+      if (resolved) {
+        activeOgImage = resolved;
+      }
+      if (data?.logo || data?.logo_sale) {
+        activeOgLogo = data.logo || data.logo_sale;
+      }
+    }
+  } catch {
+    // fallback gracefully to defaultOgImage
+  }
+
   await Promise.all(routes.map(async (route) => {
     const targetPath = resolveOutputPath(route.path);
     const targetDir = path.dirname(targetPath);
 
     await mkdir(targetDir, { recursive: true });
-    await writeFile(targetPath, applyHeadTags(template, route), 'utf8');
+    await writeFile(targetPath, applyHeadTags(template, route, activeOgImage, activeOgLogo), 'utf8');
   }));
 
   process.stdout.write(`Prerendered ${routes.length} route templates.\n`);

@@ -4,6 +4,16 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.11.9] - 2026-11-19
+
+### 🐛 Fixed / 🌐 SEO — Sincronización de `og:image` real de producción en HTML estático y prerender
+- **`frontend/index.html`**:
+  - Reemplazo de placeholders por la URL real y accesible del banner Open Graph de producción (`https://admin.ileben.cl/curator/594afb3e-5651-4253-ac79-6ea312053604.jpg`, HTTP 200) para crawlers sin JS (Facebook, WhatsApp).
+- **`frontend/scripts/prerender-routes.mjs`**:
+  - Consulta automática a `/api/v1/site-config` durante el build para inyectar dinámicamente la imagen OG activa (evento sale o general) en todas las rutas prerenderizadas (`/`, `/plantas`, `/f`, `/contacto`), con fallback a la imagen de producción verificada.
+- **`frontend/scripts/validate-seo.mjs`**:
+  - Validación obligatoria de la existencia de `property="og:image"` en todas las páginas prerenderizadas.
+
 ## [1.11.8] - 2026-11-19
 
 ### 🐛 Fixed / 🌐 SEO — Eliminación de placeholders 404 estáticos de `og:image` en HTML
