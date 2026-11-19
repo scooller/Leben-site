@@ -93,23 +93,6 @@ const applyHeadTags = (html, route) => {
     `<link rel="alternate" hreflang="x-default" href="${route.canonical}" />`
   );
 
-  const ogImage = route.image || 'https://admin.ileben.cl/curator/15597fd0-9f38-4f2a-83b9-305b0119bea6.png';
-  const ogLogo = route.logo || 'https://admin.ileben.cl/curator/15597fd0-9f38-4f2a-83b9-305b0119bea6.png';
-
-  updated = upsertTag(
-    updated,
-    /<meta\s+property=["']og:type["']\s+content=["'][^"']*["']\s*\/?\s*>/i,
-    '<meta property="og:type" content="website" />',
-    '<meta property="og:type" content="website" />'
-  );
-
-  updated = upsertTag(
-    updated,
-    /<meta\s+property=["']og:title["']\s+content=["'][^"']*["']\s*\/?\s*>/i,
-    `<meta property="og:title" content="${route.title}" />`,
-    `<meta property="og:title" content="${route.title}" />`
-  );
-
   updated = upsertTag(
     updated,
     /<meta\s+property=["']og:description["']\s+content=["'][^"']*["']\s*\/?\s*>/i,
@@ -117,19 +100,35 @@ const applyHeadTags = (html, route) => {
     `<meta property="og:description" content="${route.description}" />`
   );
 
-  updated = upsertTag(
-    updated,
-    /<meta\s+property=["']og:image["']\s+content=["'][^"']*["']\s*\/?\s*>/i,
-    `<meta property="og:image" content="${ogImage}" />`,
-    `<meta property="og:image" content="${ogImage}" />`
-  );
+  if (route.image) {
+    updated = upsertTag(
+      updated,
+      /<meta\s+property=["']og:image["']\s+content=["'][^"']*["']\s*\/?\s*>/i,
+      `<meta property="og:image" content="${route.image}" />`,
+      `<meta property="og:image" content="${route.image}" />`
+    );
 
-  updated = upsertTag(
-    updated,
-    /<meta\s+property=["']og:logo["']\s+content=["'][^"']*["']\s*\/?\s*>/i,
-    `<meta property="og:logo" content="${ogLogo}" />`,
-    `<meta property="og:logo" content="${ogLogo}" />`
-  );
+    updated = upsertTag(
+      updated,
+      /<meta\s+name=["']twitter:image["']\s+content=["'][^"']*["']\s*\/?\s*>/i,
+      `<meta name="twitter:image" content="${route.image}" />`,
+      `<meta name="twitter:image" content="${route.image}" />`
+    );
+  } else {
+    updated = updated.replace(/<meta\s+property=["']og:image["'][^>]*>\s*/gi, '');
+    updated = updated.replace(/<meta\s+name=["']twitter:image["'][^>]*>\s*/gi, '');
+  }
+
+  if (route.logo) {
+    updated = upsertTag(
+      updated,
+      /<meta\s+property=["']og:logo["']\s+content=["'][^"']*["']\s*\/?\s*>/i,
+      `<meta property="og:logo" content="${route.logo}" />`,
+      `<meta property="og:logo" content="${route.logo}" />`
+    );
+  } else {
+    updated = updated.replace(/<meta\s+property=["']og:logo["'][^>]*>\s*/gi, '');
+  }
 
   updated = upsertTag(
     updated,
@@ -157,13 +156,6 @@ const applyHeadTags = (html, route) => {
     /<meta\s+name=["']twitter:description["']\s+content=["'][^"']*["']\s*\/?\s*>/i,
     `<meta name="twitter:description" content="${route.description}" />`,
     `<meta name="twitter:description" content="${route.description}" />`
-  );
-
-  updated = upsertTag(
-    updated,
-    /<meta\s+name=["']twitter:image["']\s+content=["'][^"']*["']\s*\/?\s*>/i,
-    `<meta name="twitter:image" content="${ogImage}" />`,
-    `<meta name="twitter:image" content="${ogImage}" />`
   );
 
   return updated;

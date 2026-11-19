@@ -4,6 +4,16 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.11.8] - 2026-11-19
+
+### 🐛 Fixed / 🌐 SEO — Eliminación de placeholders 404 estáticos de `og:image` en HTML
+- **`frontend/index.html`**:
+  - Eliminación de etiquetas estáticas fijas de `og:image`, `og:logo` y `twitter:image` con rutas inexistentes que provocaban error `HTTP 404` en crawlers y validadores sociales.
+- **`frontend/scripts/prerender-routes.mjs` & `frontend/scripts/validate-seo.mjs`**:
+  - Inyección de `og:image` y `twitter:image` condicionada estrictamente a la existencia de imagen en la ruta, evitando inyectar URLs huérfanas en las plantillas prerenderizadas de `dist/`.
+- **`frontend/src/services/siteConfig.js`**:
+  - `removeMetaTag` y actualización de `setMetaTag`: eliminación limpia de meta tags en el head cuando el valor es nulo o vacío, permitiendo que React gestione dinámicamente y sin residuos la imagen OG configurada en el backend.
+
 ## [1.11.7] - 2026-11-19
 
 ### 🌐 SEO / OpenGraph / Social Metadata — Soporte integral de etiquetas OG y Twitter

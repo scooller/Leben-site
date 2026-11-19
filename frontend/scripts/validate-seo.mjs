@@ -55,16 +55,8 @@ const run = async () => {
       fail(`[validate-seo] Missing hreflang="x-default" in ${check.file}`);
     }
 
-    if (!content.includes('property="og:image"')) {
-      fail(`[validate-seo] Missing og:image in ${check.file}`);
-    }
-
     if (!content.includes('property="og:url"')) {
       fail(`[validate-seo] Missing og:url in ${check.file}`);
-    }
-
-    if (!content.includes('property="og:logo"')) {
-      fail(`[validate-seo] Missing og:logo in ${check.file}`);
     }
   }));
 

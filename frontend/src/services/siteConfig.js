@@ -269,13 +269,28 @@ class SiteConfigService {
   }
 
   /**
-   * Establecer un meta tag
+   * Eliminar un meta tag si existe
+   * @param {string} name - Nombre del meta tag
+   * @param {string} attribute - Atributo (name o property)
+   */
+  removeMetaTag(name, attribute = 'name') {
+    const meta = document.querySelector(`meta[${attribute}="${name}"]`);
+    if (meta) {
+      meta.remove();
+    }
+  }
+
+  /**
+   * Establecer un meta tag (o eliminarlo si content es nulo/vacío)
    * @param {string} name - Nombre del meta tag
    * @param {string} content - Contenido del meta tag
    * @param {string} attribute - Atributo (name o property)
    */
   setMetaTag(name, content, attribute = 'name') {
-    if (!content) return;
+    if (!content) {
+      this.removeMetaTag(name, attribute);
+      return;
+    }
 
     let meta = document.querySelector(`meta[${attribute}="${name}"]`);
     if (!meta) {
@@ -348,15 +363,11 @@ class SiteConfigService {
     }
 
     const ogImage = this.normalizeAbsoluteUrl(seo.ogImage || seo.og_image || seo.image);
-    if (ogImage) {
-      this.setMetaTag('og:image', ogImage, 'property');
-      this.setMetaTag('twitter:image', ogImage);
-    }
+    this.setMetaTag('og:image', ogImage, 'property');
+    this.setMetaTag('twitter:image', ogImage);
 
     const ogLogo = this.normalizeAbsoluteUrl(seo.ogLogo || seo.og_logo || seo.logo);
-    if (ogLogo) {
-      this.setMetaTag('og:logo', ogLogo, 'property');
-    }
+    this.setMetaTag('og:logo', ogLogo, 'property');
 
     this.setMetaTag('og:type', seo.ogType || 'website', 'property');
 
