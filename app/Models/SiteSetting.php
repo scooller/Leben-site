@@ -467,11 +467,53 @@ class SiteSetting extends Model
         }
 
         $extraSettings = is_array($settings->extra_settings) ? $settings->extra_settings : [];
-        $resolveMediaUrl = static function (?int $mediaId): ?string {
-            if (! $mediaId) {
+        $resolveMedia = static function ($rawMediaId): ?Media {
+            if (! $rawMediaId) {
                 return null;
             }
-            $url = Media::query()->find($mediaId)?->url;
+
+            if (is_array($rawMediaId)) {
+                $rawMediaId = $rawMediaId['id'] ?? reset($rawMediaId) ?: null;
+            }
+
+            if (is_object($rawMediaId)) {
+                if ($rawMediaId instanceof Media) {
+                    return $rawMediaId;
+                }
+                if ($rawMediaId instanceof \Illuminate\Support\Collection) {
+                    $first = $rawMediaId->first();
+
+                    return $first instanceof Media ? $first : ($first ? Media::query()->find($first) : null);
+                }
+                $rawMediaId = $rawMediaId->id ?? null;
+            }
+
+            if (! $rawMediaId) {
+                return null;
+            }
+
+            $media = Media::query()->find($rawMediaId);
+
+            if ($media instanceof Media) {
+                return $media;
+            }
+
+            if ($media instanceof \Illuminate\Support\Collection) {
+                return $media->first();
+            }
+
+            return null;
+        };
+
+        $resolveMediaUrl = static function ($rawMediaId) use ($resolveMedia): ?string {
+            if (is_array($rawMediaId) && isset($rawMediaId['url'])) {
+                $url = (string) $rawMediaId['url'];
+            } elseif (is_object($rawMediaId) && isset($rawMediaId->url)) {
+                $url = (string) $rawMediaId->url;
+            } else {
+                $url = $resolveMedia($rawMediaId)?->url;
+            }
+
             if (! $url) {
                 return null;
             }
@@ -481,11 +523,11 @@ class SiteSetting extends Model
                 : url($url);
         };
 
-        $homeHeroDesktopImage = Media::query()->find($extraSettings['home_hero_image_desktop_id'] ?? $extraSettings['home_hero_image_id'] ?? null)?->url;
-        $homeHeroMobileImage = Media::query()->find($extraSettings['home_hero_image_mobile_id'] ?? $extraSettings['home_hero_image_id'] ?? null)?->url;
-        $homeHeroVideoPoster = Media::query()->find($extraSettings['home_hero_video_poster_id'] ?? null)?->url;
-        $contactHeroDesktopImage = Media::query()->find($extraSettings['contact_hero_image_desktop_id'] ?? $extraSettings['contact_hero_image_id'] ?? null)?->url;
-        $contactHeroMobileImage = Media::query()->find($extraSettings['contact_hero_image_mobile_id'] ?? $extraSettings['contact_hero_image_id'] ?? null)?->url;
+        $homeHeroDesktopImage = $resolveMedia($extraSettings['home_hero_image_desktop_id'] ?? $extraSettings['home_hero_image_id'] ?? null)?->url;
+        $homeHeroMobileImage = $resolveMedia($extraSettings['home_hero_image_mobile_id'] ?? $extraSettings['home_hero_image_id'] ?? null)?->url;
+        $homeHeroVideoPoster = $resolveMedia($extraSettings['home_hero_video_poster_id'] ?? null)?->url;
+        $contactHeroDesktopImage = $resolveMedia($extraSettings['contact_hero_image_desktop_id'] ?? $extraSettings['contact_hero_image_id'] ?? null)?->url;
+        $contactHeroMobileImage = $resolveMedia($extraSettings['contact_hero_image_mobile_id'] ?? $extraSettings['contact_hero_image_id'] ?? null)?->url;
         $ogImageFromCurator = $resolveMediaUrl($extraSettings['og_image_id'] ?? null);
         $saleOgImageFromCurator = $resolveMediaUrl($extraSettings['sale_og_image_id'] ?? null);
         $priceSource = $extraSettings['price_source'] ?? 'final';

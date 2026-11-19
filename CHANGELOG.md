@@ -11,6 +11,7 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
   - Normalización de URLs absolutas completas para `og_image` y `sale_event.og_image` asegurando fallback a la imagen general cuando no hay imagen de sale dedicada.
 - **`app/Filament/Pages/SiteSettings.php` & `resources/views/filament/components/serp-snippet-preview.blade.php`**:
   - Vista previa interactiva de tarjeta social (OpenGraph / Twitter Card) con conmutación dinámica según evento sale.
+  - Corrección de resolución de `ogImage` cuando el CuratorPicker almacena IDs en arrays o Collections de Laravel para evitar error `Property [url] does not exist on this collection instance`.
 - **`frontend/src/components/SeoHead.jsx`**:
   - Nuevo componente reutilizable para gestión reactiva de meta tags en el head (`og:url`, `og:type`, `og:description`, `og:image`, `og:logo`, `twitter:card`, etc.).
 - **`frontend/src/services/siteConfig.js`**:

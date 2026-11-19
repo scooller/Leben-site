@@ -765,11 +765,51 @@ class SiteSettings extends Page implements HasForms
                                                 'locale' => $get('extra_settings.site_locale') ?: 'es-CL',
                                                 'ogImage' => (function () use ($get): ?string {
                                                     $isSale = (bool) $get('evento_sale');
-                                                    $mediaId = ($isSale && $get('extra_settings.sale_og_image_id'))
+                                                    $rawMediaId = ($isSale && $get('extra_settings.sale_og_image_id'))
                                                         ? $get('extra_settings.sale_og_image_id')
                                                         : ($get('extra_settings.og_image_id') ?: null);
 
-                                                    return $mediaId ? \Awcodes\Curator\Models\Media::query()->find($mediaId)?->url : null;
+                                                    if (! $rawMediaId) {
+                                                        return null;
+                                                    }
+
+                                                    if (is_array($rawMediaId)) {
+                                                        if (isset($rawMediaId['url'])) {
+                                                            return (string) $rawMediaId['url'];
+                                                        }
+                                                        $rawMediaId = $rawMediaId['id'] ?? reset($rawMediaId) ?: null;
+                                                    }
+
+                                                    if (is_object($rawMediaId)) {
+                                                        if (isset($rawMediaId->url)) {
+                                                            return (string) $rawMediaId->url;
+                                                        }
+                                                        if ($rawMediaId instanceof \Illuminate\Support\Collection) {
+                                                            $rawMediaId = $rawMediaId->first();
+                                                        }
+                                                        if (is_object($rawMediaId)) {
+                                                            if (isset($rawMediaId->url)) {
+                                                                return (string) $rawMediaId->url;
+                                                            }
+                                                            $rawMediaId = $rawMediaId->id ?? null;
+                                                        }
+                                                    }
+
+                                                    if (! $rawMediaId) {
+                                                        return null;
+                                                    }
+
+                                                    $media = \Awcodes\Curator\Models\Media::query()->find($rawMediaId);
+
+                                                    if ($media instanceof \Awcodes\Curator\Models\Media) {
+                                                        return $media->url;
+                                                    }
+
+                                                    if ($media instanceof \Illuminate\Support\Collection) {
+                                                        return $media->first()?->url;
+                                                    }
+
+                                                    return null;
                                                 })(),
                                             ]))
                                             ->columnSpanFull(),

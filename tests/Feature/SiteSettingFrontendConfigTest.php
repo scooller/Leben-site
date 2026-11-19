@@ -2,11 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Pages\SiteSettings;
 use App\Models\SiteSetting;
 use App\Models\User;
 use Awcodes\Curator\Models\Media;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Livewire\Livewire;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class SiteSettingFrontendConfigTest extends TestCase
@@ -328,5 +331,65 @@ class SiteSettingFrontendConfigTest extends TestCase
 
         $this->assertStringContainsString('inactive-sale-general-og.jpg', (string) $payload['seo']['og_image']);
         $this->assertNull($payload['seo']['sale_event']);
+    }
+
+    public function test_og_image_resolves_when_stored_as_array_or_collection(): void
+    {
+        $generalOg = Media::query()->create([
+            'disk' => 'curator',
+            'directory' => null,
+            'visibility' => 'public',
+            'name' => 'array-og',
+            'path' => 'array-og.jpg',
+            'width' => 1200,
+            'height' => 630,
+            'size' => 100000,
+            'type' => 'image/jpeg',
+            'ext' => 'jpg',
+            'title' => 'Array OG',
+        ]);
+
+        SiteSetting::current()->update([
+            'evento_sale' => false,
+            'extra_settings' => [
+                'og_image_id' => [$generalOg->id],
+            ],
+        ]);
+
+        $payload = SiteSetting::forFrontend();
+
+        $this->assertStringContainsString('array-og.jpg', (string) $payload['seo']['og_image']);
+    }
+
+    public function test_filament_site_settings_page_renders_with_collection_or_array_media_id(): void
+    {
+        Role::findOrCreate('admin', 'web');
+        $admin = User::factory()->create(['user_type' => 'admin']);
+        $admin->assignRole('admin');
+
+        $media = Media::query()->create([
+            'disk' => 'curator',
+            'directory' => null,
+            'visibility' => 'public',
+            'name' => 'preview-og',
+            'path' => 'preview-og.jpg',
+            'width' => 1200,
+            'height' => 630,
+            'size' => 100000,
+            'type' => 'image/jpeg',
+            'ext' => 'jpg',
+            'title' => 'Preview OG',
+        ]);
+
+        SiteSetting::current()->update([
+            'extra_settings' => [
+                'og_image_id' => [$media->id],
+                'sale_og_image_id' => collect([$media->id]),
+            ],
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(SiteSettings::class)
+            ->assertSuccessful();
     }
 }
