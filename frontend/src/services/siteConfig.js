@@ -260,18 +260,37 @@ class SiteConfigService {
 
     // Open Graph image
     if (seo.og_image) {
-      this.setMetaTag('og:image', seo.og_image, 'property');
+      const normalizedOgImage = this.normalizeAbsoluteUrl(seo.og_image);
+      if (normalizedOgImage) {
+        this.setMetaTag('og:image', normalizedOgImage, 'property');
+        this.setMetaTag('twitter:image', normalizedOgImage);
+      }
     }
   }
 
   /**
-   * Establecer un meta tag
+   * Eliminar un meta tag si existe
+   * @param {string} name - Nombre del meta tag
+   * @param {string} attribute - Atributo (name o property)
+   */
+  removeMetaTag(name, attribute = 'name') {
+    const meta = document.querySelector(`meta[${attribute}="${name}"]`);
+    if (meta) {
+      meta.remove();
+    }
+  }
+
+  /**
+   * Establecer un meta tag (o eliminarlo si content es nulo/vacío)
    * @param {string} name - Nombre del meta tag
    * @param {string} content - Contenido del meta tag
    * @param {string} attribute - Atributo (name o property)
    */
   setMetaTag(name, content, attribute = 'name') {
-    if (!content) return;
+    if (!content) {
+      this.removeMetaTag(name, attribute);
+      return;
+    }
 
     let meta = document.querySelector(`meta[${attribute}="${name}"]`);
     if (!meta) {
@@ -288,7 +307,18 @@ class SiteConfigService {
     }
 
     try {
-      const url = new URL(value, window.location.origin);
+      const isRelativeAsset = typeof value === 'string' && (value.startsWith('/curator/') || value.startsWith('/storage/'));
+      let baseOrigin = window.location.origin;
+
+      if (isRelativeAsset && import.meta.env?.VITE_API_URL) {
+        try {
+          baseOrigin = new URL(import.meta.env.VITE_API_URL).origin;
+        } catch {
+          baseOrigin = window.location.origin;
+        }
+      }
+
+      const url = new URL(value, baseOrigin);
 
       return url.toString();
     } catch {
@@ -323,23 +353,23 @@ class SiteConfigService {
       this.setMetaTag('robots', seo.robots);
     }
 
-    const canonical = this.normalizeAbsoluteUrl(seo.canonical);
+    const canonical = this.normalizeAbsoluteUrl(seo.canonical || seo.url || seo.ogUrl);
 
     if (canonical) {
       this.setCanonical(canonical);
       this.setHreflang(canonical, seo.ogLocale || 'es-CL');
       this.setMetaTag('og:url', canonical, 'property');
+      this.setMetaTag('twitter:url', canonical);
     }
 
-    const ogImage = this.normalizeAbsoluteUrl(seo.ogImage || seo.image);
-    if (ogImage) {
-      this.setMetaTag('og:image', ogImage, 'property');
-      this.setMetaTag('twitter:image', ogImage);
-    }
+    const ogImage = this.normalizeAbsoluteUrl(seo.ogImage || seo.og_image || seo.image);
+    this.setMetaTag('og:image', ogImage, 'property');
+    this.setMetaTag('twitter:image', ogImage);
 
-    if (seo.ogType) {
-      this.setMetaTag('og:type', seo.ogType, 'property');
-    }
+    const ogLogo = this.normalizeAbsoluteUrl(seo.ogLogo || seo.og_logo || seo.logo);
+    this.setMetaTag('og:logo', ogLogo, 'property');
+
+    this.setMetaTag('og:type', seo.ogType || 'website', 'property');
 
     if (seo.ogSiteName) {
       this.setMetaTag('og:site_name', seo.ogSiteName, 'property');
@@ -350,9 +380,7 @@ class SiteConfigService {
       document.documentElement.setAttribute('lang', seo.ogLocale);
     }
 
-    if (seo.twitterCard) {
-      this.setMetaTag('twitter:card', seo.twitterCard);
-    }
+    this.setMetaTag('twitter:card', seo.twitterCard || 'summary_large_image');
 
     if (seo.twitterSite) {
       this.setMetaTag('twitter:site', seo.twitterSite);

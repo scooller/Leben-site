@@ -479,13 +479,69 @@ class SiteSetting extends Model
         }
 
         $extraSettings = is_array($settings->extra_settings) ? $settings->extra_settings : [];
-        $homeHeroDesktopImage = Media::query()->find($extraSettings['home_hero_image_desktop_id'] ?? $extraSettings['home_hero_image_id'] ?? null)?->url;
-        $homeHeroMobileImage = Media::query()->find($extraSettings['home_hero_image_mobile_id'] ?? $extraSettings['home_hero_image_id'] ?? null)?->url;
-        $homeHeroVideoPoster = Media::query()->find($extraSettings['home_hero_video_poster_id'] ?? null)?->url;
-        $contactHeroDesktopImage = Media::query()->find($extraSettings['contact_hero_image_desktop_id'] ?? $extraSettings['contact_hero_image_id'] ?? null)?->url;
-        $contactHeroMobileImage = Media::query()->find($extraSettings['contact_hero_image_mobile_id'] ?? $extraSettings['contact_hero_image_id'] ?? null)?->url;
-        $ogImageFromCurator = Media::query()->find($extraSettings['og_image_id'] ?? null)?->url;
-        $saleOgImageFromCurator = Media::query()->find($extraSettings['sale_og_image_id'] ?? null)?->url;
+        $resolveMedia = static function ($rawMediaId): ?Media {
+            if (! $rawMediaId) {
+                return null;
+            }
+
+            if (is_array($rawMediaId)) {
+                $rawMediaId = $rawMediaId['id'] ?? reset($rawMediaId) ?: null;
+            }
+
+            if (is_object($rawMediaId)) {
+                if ($rawMediaId instanceof Media) {
+                    return $rawMediaId;
+                }
+                if ($rawMediaId instanceof \Illuminate\Support\Collection) {
+                    $first = $rawMediaId->first();
+
+                    return $first instanceof Media ? $first : ($first ? Media::query()->find($first) : null);
+                }
+                $rawMediaId = $rawMediaId->id ?? null;
+            }
+
+            if (! $rawMediaId) {
+                return null;
+            }
+
+            $media = Media::query()->find($rawMediaId);
+
+            if ($media instanceof Media) {
+                return $media;
+            }
+
+            if ($media instanceof \Illuminate\Support\Collection) {
+                return $media->first();
+            }
+
+            return null;
+        };
+
+        $resolveMediaUrl = static function ($rawMediaId) use ($resolveMedia): ?string {
+            if (is_array($rawMediaId) && isset($rawMediaId['url'])) {
+                $url = (string) $rawMediaId['url'];
+            } elseif (is_object($rawMediaId) && isset($rawMediaId->url)) {
+                $url = (string) $rawMediaId->url;
+            } else {
+                $url = $resolveMedia($rawMediaId)?->url;
+            }
+
+            if (! $url) {
+                return null;
+            }
+
+            return (str_starts_with($url, 'http://') || str_starts_with($url, 'https://'))
+                ? $url
+                : url($url);
+        };
+
+        $homeHeroDesktopImage = $resolveMedia($extraSettings['home_hero_image_desktop_id'] ?? $extraSettings['home_hero_image_id'] ?? null)?->url;
+        $homeHeroMobileImage = $resolveMedia($extraSettings['home_hero_image_mobile_id'] ?? $extraSettings['home_hero_image_id'] ?? null)?->url;
+        $homeHeroVideoPoster = $resolveMedia($extraSettings['home_hero_video_poster_id'] ?? null)?->url;
+        $contactHeroDesktopImage = $resolveMedia($extraSettings['contact_hero_image_desktop_id'] ?? $extraSettings['contact_hero_image_id'] ?? null)?->url;
+        $contactHeroMobileImage = $resolveMedia($extraSettings['contact_hero_image_mobile_id'] ?? $extraSettings['contact_hero_image_id'] ?? null)?->url;
+        $ogImageFromCurator = $resolveMediaUrl($extraSettings['og_image_id'] ?? null);
+        $saleOgImageFromCurator = $resolveMediaUrl($extraSettings['sale_og_image_id'] ?? null);
         $priceSource = $extraSettings['price_source'] ?? 'final';
         $pricePercentageSource = $extraSettings['price_percentage_source'] ?? 'web_discount';
 
@@ -591,7 +647,7 @@ class SiteSetting extends Model
                 // og_image: during an active sale event, prefer the dedicated sale OG image
                 'og_image' => ($settings->evento_sale && $saleOgImageFromCurator)
                     ? $saleOgImageFromCurator
-                    : ($ogImageFromCurator ?? ($settings->og_image ? url($settings->og_image) : null)),
+                    : ($ogImageFromCurator ?? ($settings->og_image ? (str_starts_with($settings->og_image, 'http') ? $settings->og_image : url($settings->og_image)) : null)),
                 // sale_event: null when evento_sale is off; object with all fields when on
                 'sale_event' => $settings->evento_sale ? [
                     'name' => is_string($extraSettings['sale_event_name'] ?? null)
@@ -607,7 +663,7 @@ class SiteSetting extends Model
                     'end_date' => is_string($extraSettings['sale_event_end_date'] ?? null)
                         ? trim((string) $extraSettings['sale_event_end_date'])
                         : null,
-                    'og_image' => $saleOgImageFromCurator,
+                    'og_image' => $saleOgImageFromCurator ?: ($ogImageFromCurator ?? ($settings->og_image ? (str_starts_with($settings->og_image, 'http') ? $settings->og_image : url($settings->og_image)) : null)),
                 ] : null,
             ],
             'contact' => [

@@ -7,6 +7,7 @@ import { getStoredUtmParams } from '../utils/utmSession';
 import { appendSessionUtmsToExternalUrl } from '../utils/externalLinks';
 import { proyectosService } from '../services/proyectos';
 import { isSaleEventActiveByDate } from '../utils/saleEventSchema';
+import SeoHead from '../components/SeoHead';
 import '../styles/contact.scss' with { type: 'css' };
 
 const slugifySegment = (value) => (
@@ -1057,9 +1058,18 @@ function Contact({ onNavigate, currentPath }) {
 
   const isContactLoading = configLoading || projectsLoading || !config;
 
+  const contactSeo = (
+    <SeoHead
+      title={config?.site_name ? `${config.site_name} | Contacto` : 'iLeben | Contacto'}
+      description={config?.site_description || 'Comunícate con nuestro equipo para recibir asesoría sobre proyectos inmobiliarios en venta.'}
+      canonical="/contacto"
+    />
+  );
+
   if (isContactLoading) {
     return (
       <div className="contact-page">
+        {contactSeo}
         <section className="contact-hero home-container">
           <wa-skeleton effect="pulse" style={{ height: '22rem', width: '100%', borderRadius: '1rem', display: 'block' }}></wa-skeleton>
         </section>
@@ -1113,6 +1123,7 @@ function Contact({ onNavigate, currentPath }) {
 
   return (
     <div className="contact-page">
+      {contactSeo}
       {/* Hero section */}
       <section className="contact-hero banner">
         {contactHeroDesktopImage ? (

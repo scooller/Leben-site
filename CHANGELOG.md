@@ -489,6 +489,46 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 - **Tests**:
   - Suite completa de integración en `tests/Feature/Api/V1/BackendIntegrationApiTest.php` (10 pruebas, 224 aserciones).
 
+## [1.11.9] - 2026-11-19
+
+### 🐛 Fixed / 🌐 SEO — Sincronización de `og:image` real de producción en HTML estático y prerender
+- **`frontend/index.html`**:
+  - Reemplazo de placeholders por la URL real y accesible del banner Open Graph de producción (`https://admin.ileben.cl/curator/594afb3e-5651-4253-ac79-6ea312053604.jpg`, HTTP 200) para crawlers sin JS (Facebook, WhatsApp).
+- **`frontend/scripts/prerender-routes.mjs`**:
+  - Consulta automática a `/api/v1/site-config` durante el build para inyectar dinámicamente la imagen OG activa (evento sale o general) en todas las rutas prerenderizadas (`/`, `/plantas`, `/f`, `/contacto`), con fallback a la imagen de producción verificada.
+- **`frontend/scripts/validate-seo.mjs`**:
+  - Validación obligatoria de la existencia de `property="og:image"` en todas las páginas prerenderizadas.
+
+## [1.11.8] - 2026-11-19
+
+### 🐛 Fixed / 🌐 SEO — Eliminación de placeholders 404 estáticos de `og:image` en HTML
+- **`frontend/index.html`**:
+  - Eliminación de etiquetas estáticas fijas de `og:image`, `og:logo` y `twitter:image` con rutas inexistentes que provocaban error `HTTP 404` en crawlers y validadores sociales.
+- **`frontend/scripts/prerender-routes.mjs` & `frontend/scripts/validate-seo.mjs`**:
+  - Inyección de `og:image` y `twitter:image` condicionada estrictamente a la existencia de imagen en la ruta, evitando inyectar URLs huérfanas en las plantillas prerenderizadas de `dist/`.
+- **`frontend/src/services/siteConfig.js`**:
+  - `removeMetaTag` y actualización de `setMetaTag`: eliminación limpia de meta tags en el head cuando el valor es nulo o vacío, permitiendo que React gestione dinámicamente y sin residuos la imagen OG configurada en el backend.
+
+## [1.11.7] - 2026-11-19
+
+### 🌐 SEO / OpenGraph / Social Metadata — Soporte integral de etiquetas OG y Twitter
+- **`app/Models/SiteSetting.php`**:
+  - Normalización de URLs absolutas completas para `og_image` y `sale_event.og_image` asegurando fallback a la imagen general cuando no hay imagen de sale dedicada.
+- **`app/Filament/Pages/SiteSettings.php` & `resources/views/filament/components/serp-snippet-preview.blade.php`**:
+  - Vista previa interactiva de tarjeta social (OpenGraph / Twitter Card) con conmutación dinámica según evento sale.
+  - Corrección de resolución de `ogImage` cuando el CuratorPicker almacena IDs en arrays o Collections de Laravel para evitar error `Property [url] does not exist on this collection instance`.
+- **`frontend/src/components/SeoHead.jsx`**:
+  - Nuevo componente reutilizable para gestión reactiva de meta tags en el head (`og:url`, `og:type`, `og:description`, `og:image`, `og:logo`, `twitter:card`, etc.).
+- **`frontend/src/services/siteConfig.js`**:
+  - Soporte para meta tags `og:logo`, `og:url`, `og:type` y normalización de assets relativos hacia el origen API en `applySeo`.
+- **`frontend/src/pages/Home.jsx`**, **`frontend/src/pages/Contact.jsx`**, **`frontend/src/pages/Payment.jsx`**:
+  - Integración del componente `<SeoHead />` en todas las páginas de la aplicación.
+- **`frontend/scripts/prerender-routes.mjs` & `frontend/index.html`**:
+  - Prerenderizado estático de metadatos OG/Twitter completos incluyendo `/contacto` y validación en `validate-seo.mjs`.
+
+### Fixed
+- Importacion de plantas: imagen interior y de portada se asocian por orientacion y variantes de nombre de proyecto con acentos (backport desde dev).
+
 ## [1.11.5] - 2026-11-03
 
 ### 🐛 Fixed / 🗄️ Database — Permitir `null` en columna `descuento_iva` de proyectos

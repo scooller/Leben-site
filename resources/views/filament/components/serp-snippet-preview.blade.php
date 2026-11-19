@@ -47,6 +47,15 @@
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
                 <span>Mobile</span>
             </button>
+            <button
+                type="button"
+                @click="mode = 'social'"
+                :class="mode === 'social' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm font-medium' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'"
+                class="px-2.5 py-1 rounded-md transition-colors flex items-center space-x-1"
+            >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
+                <span>Social (OG Card)</span>
+            </button>
         </div>
     </div>
 
@@ -98,6 +107,26 @@
             <p class="text-[13px] leading-relaxed text-[#4d5156] dark:text-[#bdc1c6] line-clamp-3">
                 {{ $displayDesc }}
             </p>
+        </div>
+
+        <!-- Social OG Card Container -->
+        <div x-show="mode === 'social'" class="max-w-[480px] mx-auto rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden bg-gray-50 dark:bg-gray-800 shadow-sm font-sans">
+            @if ($ogImage ?? null)
+                <div class="w-full h-52 bg-gray-200 dark:bg-gray-700 overflow-hidden flex items-center justify-center">
+                    <img src="{{ $ogImage }}" alt="Open Graph Preview" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<div class=\'p-4 text-xs text-amber-500\'>No se pudo cargar la imagen</div>'" />
+                </div>
+            @else
+                <div class="w-full h-40 bg-gray-100 dark:bg-gray-900 flex flex-col items-center justify-center text-gray-400 p-4 text-center">
+                    <svg class="w-8 h-8 mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    <span class="text-xs font-medium">No hay imagen Open Graph seleccionada</span>
+                    <span class="text-[11px] text-gray-400 mt-0.5">Selecciona una imagen en los campos de abajo</span>
+                </div>
+            @endif
+            <div class="p-3 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 space-y-1">
+                <span class="text-[11px] uppercase tracking-wider text-gray-400 dark:text-gray-500 block truncate">{{ parse_url($url, PHP_URL_HOST) ?: 'sale.ileben.cl' }}</span>
+                <h4 class="text-[14px] font-semibold text-gray-900 dark:text-white leading-snug truncate">{{ $displayTitle }}</h4>
+                <p class="text-[12px] text-gray-500 dark:text-gray-400 line-clamp-2 leading-relaxed">{{ $displayDesc }}</p>
+            </div>
         </div>
     </div>
 
