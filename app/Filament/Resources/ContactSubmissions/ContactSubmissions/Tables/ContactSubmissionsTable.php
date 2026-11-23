@@ -178,7 +178,7 @@ class ContactSubmissionsTable
                     ->sortable()
                     ->toggleable();
 
-                if (in_array(Str::lower($key), ['name', 'nombre'], true)) {
+                if (in_array(Str::lower($key), ['name', 'rut', 'email'], true)) {
                     $column->sticky();
                 }
 
@@ -237,7 +237,6 @@ class ContactSubmissionsTable
                 TextColumn::make('name')
                     ->label('Nombre')
                     ->state(fn ($record): string => (string) ($record->name ?? '-'))
-                    ->sticky()
                     ->wrap()
                     ->toggleable(),
                 TextColumn::make('fields_summary')

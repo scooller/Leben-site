@@ -4,6 +4,14 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.11.13] - 2026-11-23
+
+### 🐛 Fixed / 🔌 Filament — Sticky Header Z-Index Stacking
+- **`resources/css/filament/admin/theme.css`**:
+  - Corrección de superposición del encabezado sticky (`.fi-header`): ajuste de `z-index: 25 !important` para situarse por encima de las cabeceras y celdas sticky de las tablas (`z-index: 18-21`).
+  - Fondo opaco en modo oscuro (`var(--gray-900)`) para el pseudo-elemento `:before` del encabezado sticky.
+  - Asegurado `z-index: 28` para `.fi-sidebar` y `z-index: 30` para `.fi-topbar-ctn` evitando colisiones con el fondo del encabezado sticky.
+
 ## [1.11.12] - 2026-11-23
 
 ### ⚡ Feature / 🔌 Filament — Column Pinning (Sticky), Reordering & Resizing
