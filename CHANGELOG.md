@@ -4,6 +4,14 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.11.19] - 2026-11-23
+
+### 🐛 Fixed / 🔌 Filament — Prevención de Doble Scroll Superior en Carga Inicial
+- **`app/Providers/AppServiceProvider.php` & `public/js/filament-dual-scroll.js`**:
+  - Removido el registro duplicado de `filament-dual-scroll.js` en `AppServiceProvider` (mantenido únicamente en `AdminPanelProvider` vía renderHook con timestamp para evitar ejecuciones concurrentes).
+  - Añadido guard de inicialización única (`window.__filamentDualScrollInitialized`) para prevenir que el script corra dos veces.
+  - Implementada limpieza activa en el DOM de elementos mirror huérfanos o duplicados antes de montar el scroll superior, garantizando exactamente 1 sola barra superior sincronizada tanto en carga inicial como tras aplicar filtros.
+
 ## [1.11.18] - 2026-11-23
 
 ### 🛡️ Security / 🔌 Filament — Restricción a Solo Desactivación de Descuentos Propios

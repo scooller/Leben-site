@@ -12,8 +12,6 @@ use App\Services\FinMail\FinMailNotificationService;
 use App\Services\Payment\PaymentGatewayManager;
 use App\Services\PlantReservationService;
 use Awcodes\Curator\Facades\Curator;
-use Filament\Support\Assets\Js;
-use Filament\Support\Facades\FilamentAsset;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Sanctum\Sanctum;
 
@@ -77,9 +75,5 @@ class AppServiceProvider extends ServiceProvider
         if (class_exists(\BinaryBuilds\CommandRunner\Models\CommandRun::class)) {
             \BinaryBuilds\CommandRunner\Models\CommandRun::observe(CommandRunObserver::class);
         }
-
-        FilamentAsset::register([
-            Js::make('filament-dual-scroll', asset('js/filament-dual-scroll.js')),
-        ]);
     }
 }

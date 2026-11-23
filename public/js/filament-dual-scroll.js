@@ -1,22 +1,47 @@
 (function () {
     'use strict';
 
+    if (window.__filamentDualScrollInitialized) {
+        return;
+    }
+    window.__filamentDualScrollInitialized = true;
+
+    function isMirrorElement(el) {
+        if (!el || el.nodeType !== Node.ELEMENT_NODE) {
+            return false;
+        }
+        return el.classList.contains('fi-ta-dual-scroll') ||
+            (el.tagName === 'DIV' && el.getAttribute('aria-hidden') === 'true' && el.style.overflowX === 'auto');
+    }
+
     function setupDualScroll(container) {
         if (!container || !container.isConnected) {
             return;
         }
 
-        let mirror = container.previousElementSibling;
-        const hasMirror = mirror && mirror.classList && mirror.classList.contains('fi-ta-dual-scroll');
+        // Clean up any stray, duplicated, or untagged mirror elements before container
+        let prev = container.previousElementSibling;
+        let existingMirror = null;
 
-        if (hasMirror) {
-            if (typeof mirror._syncDimensions === 'function') {
-                mirror._syncDimensions();
+        while (isMirrorElement(prev)) {
+            const current = prev;
+            prev = prev.previousElementSibling;
+
+            if (!existingMirror && current.classList.contains('fi-ta-dual-scroll')) {
+                existingMirror = current;
+            } else {
+                current.remove();
+            }
+        }
+
+        if (existingMirror) {
+            if (typeof existingMirror._syncDimensions === 'function') {
+                existingMirror._syncDimensions();
             }
             return;
         }
 
-        mirror = document.createElement('div');
+        const mirror = document.createElement('div');
         mirror.className = 'fi-ta-dual-scroll';
         mirror.setAttribute('wire:ignore', '');
         mirror.setAttribute('aria-hidden', 'true');
