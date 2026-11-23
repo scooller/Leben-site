@@ -298,10 +298,25 @@ class PlantsTable
                     ->label(fn (Plant $record): string => $record->unidad_sale ? 'Desactivar en Sale' : 'Activar en Sale')
                     ->icon(fn (Plant $record): string => $record->unidad_sale ? 'heroicon-o-bookmark-slash' : 'heroicon-o-bookmark')
                     ->color(fn (Plant $record): string => $record->unidad_sale ? 'warning' : 'success')
+                    ->action(function (Plant $record): bool {
+                        $newSale = ! $record->unidad_sale;
+                        $attributes = ['unidad_sale' => $newSale];
+
+                        if (! $newSale) {
+                            $attributes['priorizar_descuentos'] = false;
+                        }
+
+                        return $record->update($attributes);
+                    })
+                    ->successNotificationTitle(fn (?Plant $record = null): string => $record?->unidad_sale ? '1 planta activada en Sale' : '1 planta fuera de Sale (descuentos propios desactivados)'),
+                Action::make('togglePriorizarDescuentos')
+                    ->label(fn (Plant $record): string => $record->priorizar_descuentos ? 'Desactivar Dcto. Propio' : 'Activar Dcto. Propio')
+                    ->icon(fn (Plant $record): string => $record->priorizar_descuentos ? 'heroicon-o-tag' : 'heroicon-o-receipt-percent')
+                    ->color(fn (Plant $record): string => $record->priorizar_descuentos ? 'danger' : 'info')
                     ->action(fn (Plant $record): bool => $record->update([
-                        'unidad_sale' => ! $record->unidad_sale,
+                        'priorizar_descuentos' => ! $record->priorizar_descuentos,
                     ]))
-                    ->successNotificationTitle(fn (?Plant $record = null): string => $record?->unidad_sale ? '1 planta activada en Sale' : '1 planta fuera de Sale'),
+                    ->successNotificationTitle(fn (?Plant $record = null): string => $record?->priorizar_descuentos ? '1 planta con descuento propio activado' : '1 planta con descuento propio desactivado'),
                 Action::make('viewInSalesforce')
                     ->label('Ver en Salesforce')
                     ->icon('heroicon-o-arrow-top-right-on-square')
@@ -362,6 +377,7 @@ class PlantsTable
                         ->action(function (Collection $records): void {
                             $records->each->update([
                                 'unidad_sale' => false,
+                                'priorizar_descuentos' => false,
                             ]);
                         })
                         ->successNotificationTitle(fn ($records = null): string => ($count = is_countable($records) ? count($records) : null) ? "{$count} ".($count === 1 ? 'planta fuera de Sale' : 'plantas fuera de Sale') : 'Plantas fuera de Sale'),

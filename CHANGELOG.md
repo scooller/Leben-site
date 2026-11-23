@@ -4,7 +4,22 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
-## [1.11.14] - 2026-11-23
+## [1.11.15] - 2026-11-23
+
+### ⚡ Feature / 🔌 Filament — Dual Scroll Superior y Desactivación de Descuentos Propios en Sale
+- **`app/Filament/Actions/ResetSalePlantsAction.php`**:
+  - Al resetear plantas Sale, ahora también se desactivan automáticamente los descuentos propios (`priorizar_descuentos = false`) en todas las plantas para iniciar la selección limpia desde cero.
+  - Actualización de textos del modal y de la notificación de éxito.
+- **`app/Filament/Resources/Plants/Tables/PlantsTable.php`**:
+  - Al desactivar una unidad Sale desde la acción de fila `toggleUnidadSale`, se desactiva también su `priorizar_descuentos`.
+  - En la acción masiva `deactivateSaleSelected`, se desactiva `unidad_sale` y `priorizar_descuentos`.
+  - Nueva acción de fila `togglePriorizarDescuentos` para alternar directamente la prioridad de descuento propio en la planta.
+- **`public/js/filament-dual-scroll.js` & `app/Providers/Filament/AdminPanelProvider.php`**:
+  - Implementación minimalista (filosofía ponytail) de scrollbar horizontal superior sincronizado bidireccionalmente con el scrollbar inferior en todas las tablas de Filament.
+  - Ocultación automática cuando la tabla no desborda horizontalmente y soporte para redimensionamiento con `ResizeObserver` y mutaciones Livewire v3.
+  - Registro directo en `AdminPanelProvider` mediante `PanelsRenderHook::BODY_END` para asegurar su carga en todas las páginas del panel.
+- **`tests/Feature/Filament/Actions/ResetSalePlantsActionTest.php`**:
+  - Pruebas unitarias y de integración actualizadas para validar el reseteo simultáneo de `unidad_sale` y `priorizar_descuentos`.
 
 ### 🌐 I18n / 🔌 Filament — Traducciones al español para asmit/resized-column
 - **`lang/vendor/asmit-resized-column/es/sticky-panel.php`**:

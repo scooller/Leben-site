@@ -20,7 +20,7 @@ class ResetSalePlantsAction
             ->color('warning')
             ->requiresConfirmation()
             ->modalHeading('⚠️ Resetear plantas Sale')
-            ->modalDescription('¿Estás seguro de que deseas quitar todas las unidades Sale? Se desmarcarán todas las plantas actualmente asignadas como unidades Sale para que puedas seleccionarlas nuevamente.')
+            ->modalDescription('¿Estás seguro de que deseas quitar todas las unidades Sale y desactivar sus descuentos propios? Se desmarcarán todas las plantas actualmente asignadas como unidades Sale y se desactivarán sus descuentos propios para reiniciar la selección desde cero.')
             ->modalSubmitActionLabel('Sí, resetear')
             ->modalCancelActionLabel('Cancelar')
             ->action(function () {
@@ -40,17 +40,24 @@ class ResetSalePlantsAction
     public static function execute(): array
     {
         try {
-            $count = Plant::query()->where('unidad_sale', true)->count();
+            $count = Plant::query()
+                ->where('unidad_sale', true)
+                ->orWhere('priorizar_descuentos', true)
+                ->count();
 
-            Plant::query()->where('unidad_sale', true)->update([
-                'unidad_sale' => false,
-            ]);
+            Plant::query()
+                ->where('unidad_sale', true)
+                ->orWhere('priorizar_descuentos', true)
+                ->update([
+                    'unidad_sale' => false,
+                    'priorizar_descuentos' => false,
+                ]);
 
             return [
                 'success' => true,
                 'message' => $count > 0
-                    ? "Se resetearon {$count} plantas Sale correctamente"
-                    : 'No había plantas asignadas como unidad Sale',
+                    ? "Se resetearon {$count} plantas Sale y sus descuentos propios correctamente"
+                    : 'No había plantas asignadas como unidad Sale ni con descuentos propios',
                 'count' => $count,
             ];
         } catch (Throwable $throwable) {
