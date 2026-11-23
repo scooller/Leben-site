@@ -4,6 +4,31 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.11.18] - 2026-11-23
+
+### 🛡️ Security / 🔌 Filament — Restricción a Solo Desactivación de Descuentos Propios
+- **`app/Filament/Resources/Plants/Tables/PlantsTable.php`**:
+  - Eliminada la acción masiva `Activar dcto propio`; se mantiene exclusivamente `Desactivar dcto propio` para evitar activar priorización de descuentos sin completar montos ni porcentajes requeridos.
+  - El switch interactivo `Dcto. Propio` (`ToggleColumn`) se deshabilita automáticamente si la planta no tiene descuentos propios activos, permitiendo únicamente apagarlo cuando esté activo.
+  - La acción de registro se restringe a `deactivatePriorizarDescuentos`, visible únicamente en plantas que tienen descuentos propios activados.
+
+## [1.11.17] - 2026-11-23
+
+### ⚡ Feature / 🔌 Filament — Toggle Directo y Acciones Masivas para Descuentos Propios en Plantas
+- **`app/Filament/Resources/Plants/Tables/PlantsTable.php`**:
+  - Reemplazo de columnas de sólo lectura (`IconColumn`) por columnas conmutables interactivas (`ToggleColumn`) para `Unidad Sale` y `Dcto. Propio`, visibles directamente en la tabla.
+  - Al apagar el switch de `Unidad Sale` en cualquier fila, se desactiva en cascada el switch de `priorizar_descuentos`.
+  - Agregadas las acciones masivas `Desactivar dcto propio` y `Activar dcto propio` en el menú de selección masiva (`Abrir acciones`) para aplicar cambios en lote sobre múltiples plantas seleccionadas.
+
+## [1.11.16] - 2026-11-23
+
+### 🐛 Fixed / 🔌 Filament — Persistencia de Scroll Superior tras Filtrar Tablas
+- **`public/js/filament-dual-scroll.js` & `app/Providers/Filament/AdminPanelProvider.php`**:
+  - Detección reactiva de descarte de DOM: se elimina el bloqueo por `dataset.dualScroll = '1'` y se comprueba la presencia real del elemento mirror en el DOM (`container.previousElementSibling`).
+  - Integración con el ciclo de vida de Livewire v3: escucha mediante `commit` (`succeed(...)`) y `morph.updated`, además de un `MutationObserver` con debounce en `requestAnimationFrame` para restaurar y re-sincronizar el scroll superior ante filtros, búsquedas o paginación.
+  - Atributo `wire:ignore` en el contenedor mirror para evitar que el algoritmo de morphing lo descarte.
+  - Cache busting automático en `AdminPanelProvider` con timestamp `?v=...` para garantizar actualización en navegador sin caché persistente.
+
 ## [1.11.15] - 2026-11-23
 
 ### ⚡ Feature / 🔌 Filament — Dual Scroll Superior y Desactivación de Descuentos Propios en Sale

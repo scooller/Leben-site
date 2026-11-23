@@ -110,7 +110,7 @@ class AdminPanelProvider extends PanelProvider
             )
             ->renderHook(
                 PanelsRenderHook::BODY_END,
-                fn (): string => '<script src="'.asset('js/filament-dual-scroll.js').'" defer></script>',
+                fn (): string => '<script src="'.asset('js/filament-dual-scroll.js').'?v='.@filemtime(public_path('js/filament-dual-scroll.js')).'" defer></script>',
             )
             ->colors([
                 'primary' => '#eb0029',
