@@ -4,6 +4,15 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.11.20] - 2026-11-23
+
+### 🐛 Fixed / 🔌 Filament — Renderizado Servidor de Dual Scroll para Evitar Corrupción de Morphdom al Filtrar
+- **`resources/views/filament/components/dual-scroll.blade.php` & `app/Providers/Filament/AdminPanelProvider.php`**:
+  - El contenedor de scroll superior (`fi-ta-dual-scroll`) ahora se renderiza del lado del servidor vía `TablesRenderHook::TOOLBAR_AFTER` con Blade y Alpine.js.
+  - Elimina por completo las inserciones (`insertBefore`) y eliminaciones (`remove()`) manuales de JavaScript en el árbol DOM de Livewire, las cuales causaban colisiones de índices en el algoritmo de morphdom al aplicar filtros AJAX e impedían que se renderizaran las filas de la tabla.
+- **`public/js/filament-dual-scroll.js`**:
+  - Migrado a componente declarativo Alpine.js (`filamentDualScroll`), eliminando el `MutationObserver` global. Sincroniza bidireccionalmente el desplazamiento (`scrollLeft`) y visibilidad (`ResizeObserver`, `Livewire.hook('commit')`) sin alterar la estructura del DOM.
+
 ## [1.11.19] - 2026-11-23
 
 ### 🐛 Fixed / 🔌 Filament — Prevención de Doble Scroll Superior en Carga Inicial

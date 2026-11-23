@@ -35,6 +35,7 @@ use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\Tables\View\TablesRenderHook;
 use Filament\View\PanelsRenderHook;
 use Filament\Widgets\AccountWidget;
 use FinityLabs\FinMail\FinMailPlugin;
@@ -107,6 +108,10 @@ class AdminPanelProvider extends PanelProvider
             ->renderHook(
                 PanelsRenderHook::GLOBAL_SEARCH_AFTER,
                 fn (): \Illuminate\Contracts\View\View => view('filament.components.view-web-button'),
+            )
+            ->renderHook(
+                TablesRenderHook::TOOLBAR_AFTER,
+                fn (): \Illuminate\Contracts\View\View => view('filament.components.dual-scroll'),
             )
             ->renderHook(
                 PanelsRenderHook::BODY_END,
