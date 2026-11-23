@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "4ea68204221d9607b0dc4b531ed2be73",
+    "content-hash": "01211576b7ac6acd39d14987e756f643",
     "packages": [
         {
             "name": "achyutn/filament-log-viewer",
@@ -245,6 +245,65 @@
             "time": "2026-03-27T16:21:06+00:00"
         },
         {
+            "name": "asmit/resized-column",
+            "version": "4.0.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/AsmitNepali/resized-column.git",
+                "reference": "7743d92b8d3b8935e2bdb5e99018e544f279f72e"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/AsmitNepali/resized-column/zipball/7743d92b8d3b8935e2bdb5e99018e544f279f72e",
+                "reference": "7743d92b8d3b8935e2bdb5e99018e544f279f72e",
+                "shasum": ""
+            },
+            "require": {
+                "filament/support": "^3.2|^4.0|^5.0"
+            },
+            "require-dev": {
+                "filament/filament": "^4.0",
+                "filament/tables": "^4.0",
+                "orchestra/testbench": "^9.0|^10.0|^11.0",
+                "pestphp/pest": "^3.0 || ^4.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Asmit\\ResizedColumn\\ResizedColumnServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Asmit\\ResizedColumn\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "AsmitNepali",
+                    "email": "mail2asmitnepali@gmail.com"
+                }
+            ],
+            "description": "Resizeable column for filament",
+            "support": {
+                "issues": "https://github.com/AsmitNepali/resized-column/issues",
+                "source": "https://github.com/AsmitNepali/resized-column/tree/v4.0.2"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/asmitnepali",
+                    "type": "github"
+                }
+            ],
+            "time": "2026-07-31T23:55:44+00:00"
+        },
+        {
             "name": "awcodes/filament-curator",
             "version": "v5.0.2",
             "source": {
@@ -326,6 +385,79 @@
                 }
             ],
             "time": "2026-01-28T17:14:11+00:00"
+        },
+        {
+            "name": "awcodes/filament-sticky-header",
+            "version": "v4.2.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/awcodes/filament-sticky-header.git",
+                "reference": "a1d40581f00f6506ec84daa349367a98b2a6358b"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/awcodes/filament-sticky-header/zipball/a1d40581f00f6506ec84daa349367a98b2a6358b",
+                "reference": "a1d40581f00f6506ec84daa349367a98b2a6358b",
+                "shasum": ""
+            },
+            "require": {
+                "filament/filament": "^4.0|^5.0",
+                "php": "^8.2",
+                "spatie/laravel-package-tools": "^1.15.0"
+            },
+            "require-dev": {
+                "awcodes/focus": "^1.0",
+                "larastan/larastan": "^3.0",
+                "laravel/pint": "^1.0",
+                "nunomaduro/collision": "^8.0",
+                "orchestra/testbench": "^9.0|^10.0|^11.0",
+                "pestphp/pest": "^4.0",
+                "pestphp/pest-plugin-arch": "^4.0",
+                "pestphp/pest-plugin-laravel": "^4.0",
+                "rector/rector": "^2.0",
+                "spatie/laravel-ray": "^1.26"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Awcodes\\StickyHeader\\StickyHeaderServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Awcodes\\StickyHeader\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Adam Weston",
+                    "email": "awcodes1@gmail.com",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Keep a Filament panel's page header visible while scrolling.",
+            "keywords": [
+                "filament",
+                "framework",
+                "laravel"
+            ],
+            "support": {
+                "issues": "https://github.com/awcodes/filament-sticky-header/issues",
+                "source": "https://github.com/awcodes/filament-sticky-header/tree/v4.2.2"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/awcodes",
+                    "type": "github"
+                }
+            ],
+            "time": "2026-11-21T21:18:21+00:00"
         },
         {
             "name": "bacon/bacon-qr-code",
@@ -13104,5 +13236,5 @@
         "php": "^8.2"
     },
     "platform-dev": {},
-    "plugin-api-version": "2.9.0"
+    "plugin-api-version": "2.6.0"
 }

@@ -4,6 +4,28 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.11.11] - 2026-11-23
+
+### 📦 Added / 🔌 Filament — Plugin awcodes/filament-sticky-header
+- **`composer.json`**:
+  - Instalación del paquete `awcodes/filament-sticky-header` (^4.2) para mantener fijos los encabezados de página al hacer scroll en Filament.
+- **`resources/css/filament/admin/theme.css`**:
+  - Inclusión de los estilos del plugin (`vendor/awcodes/filament-sticky-header/resources/css/plugin.css`) en el tema del panel administrativo.
+- **`app/Providers/Filament/AdminPanelProvider.php`**:
+  - Registro de `StickyHeaderPlugin::make()` en los plugins del panel de administración.
+- **Assets**:
+  - Publicación y compilación de assets para Filament (`php artisan filament:assets` y `npm run build:all`).
+
+## [1.11.10] - 2026-11-23
+
+### 📦 Added / 🔌 Filament — Plugin asmit/resized-column
+- **`composer.json`**:
+  - Instalación del paquete `asmit/resized-column` (^4.0) para redimensionar, reordenar y fijar columnas en tablas de Filament.
+- **`app/Providers/Filament/AdminPanelProvider.php`**:
+  - Registro de `ResizedColumnPlugin::make()` en los plugins del panel de administración.
+- **Assets**:
+  - Publicación de assets de frontend para el plugin mediante `php artisan filament:assets`.
+
 ## [1.11.9] - 2026-11-19
 
 ### 🐛 Fixed / 🌐 SEO — Sincronización de `og:image` real de producción en HTML estático y prerender
