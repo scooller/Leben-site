@@ -30,6 +30,8 @@ class ContactSubmissionsTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->dragReorderableColumns()
+            ->stickableColumns()
             ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['channel:id,name,slug_badge_color']))
             ->columns(self::columns())
             ->defaultSort('submitted_at', 'desc')
@@ -176,6 +178,10 @@ class ContactSubmissionsTable
                     ->sortable()
                     ->toggleable();
 
+                if (in_array(Str::lower($key), ['name', 'rut', 'email'], true)) {
+                    $column->sticky();
+                }
+
                 return $column;
             })
             ->values()
@@ -228,6 +234,11 @@ class ContactSubmissionsTable
 
         if ($dynamicColumns === []) {
             $dynamicColumns = [
+                TextColumn::make('name')
+                    ->label('Nombre')
+                    ->state(fn ($record): string => (string) ($record->name ?? '-'))
+                    ->wrap()
+                    ->toggleable(),
                 TextColumn::make('fields_summary')
                     ->label('Campos')
                     ->state(fn ($record): string => self::summarizeDynamicFields($record->fields))
@@ -270,7 +281,8 @@ class ContactSubmissionsTable
                 ->badge()
                 ->color(fn ($record): array => self::resolveBadgeColor($record->channel?->slug_badge_color))
                 ->sortable()
-                ->toggleable(),
+                ->toggleable()
+                ->sticky(),
             // TextColumn::make('rut')
             //     ->label('RUT')
             //     ->placeholder('-')

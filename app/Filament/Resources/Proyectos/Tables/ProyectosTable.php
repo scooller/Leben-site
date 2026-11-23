@@ -29,6 +29,8 @@ class ProyectosTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->dragReorderableColumns()
+            ->stickableColumns()
             ->description(function (): ?Htmlable {
                 $inactiveProjects = Proyecto::query()
                     ->where('is_active', false)
@@ -105,7 +107,8 @@ class ProyectosTable
             TextColumn::make('name')
                 ->label('Nombre')
                 ->searchable()
-                ->sortable(),
+                ->sortable()
+                ->sticky(),
 
             TextColumn::make('etapa')
                 ->label('Etapa')
@@ -139,7 +142,8 @@ class ProyectosTable
                 ->badge()
                 ->color('amber')
                 ->formatStateUsing(fn ($state): string => $state !== null ? number_format((float) $state, 2, ',', '.').'%' : '-')
-                ->sortable(),
+                ->sortable()
+                ->sticky(),
 
             TextColumn::make('descuento_iva')
                 ->label('Dcto. IVA')

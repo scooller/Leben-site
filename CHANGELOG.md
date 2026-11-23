@@ -489,6 +489,56 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 - **Tests**:
   - Suite completa de integración en `tests/Feature/Api/V1/BackendIntegrationApiTest.php` (10 pruebas, 224 aserciones).
 
+## [1.11.14] - 2026-11-23
+
+### 🌐 I18n / 🔌 Filament — Traducciones al español para asmit/resized-column
+- **`lang/vendor/asmit-resized-column/es/sticky-panel.php`**:
+  - Traducción al español (`Fijar columnas`) para el disparador, tooltip y encabezado del panel de fijación de columnas, evitando que se muestre la clave cruda `asmit-resized-column::sticky-panel.heading` en el panel de administración.
+
+## [1.11.13] - 2026-11-23
+
+### 🐛 Fixed / 🔌 Filament — Sticky Header Z-Index Stacking
+- **`resources/css/filament/admin/theme.css`**:
+  - Corrección de superposición del encabezado sticky (`.fi-header`): ajuste de `z-index: 25 !important` para situarse por encima de las cabeceras y celdas sticky de las tablas (`z-index: 18-21`).
+  - Fondo opaco en modo oscuro (`var(--gray-900)`) para el pseudo-elemento `:before` del encabezado sticky.
+  - Asegurado `z-index: 28` para `.fi-sidebar` y `z-index: 30` para `.fi-topbar-ctn` evitando colisiones con el fondo del encabezado sticky.
+
+## [1.11.12] - 2026-11-23
+
+### ⚡ Feature / 🔌 Filament — Column Pinning (Sticky), Reordering & Resizing
+- **`app/Filament/Resources/*/Pages/List*.php`**:
+  - Incorporación del trait `HasResizableColumn` en `ListAsesores`, `ListPlants`, `ListProyectos` y `ListContactSubmissions` para habilitar el motor de redimensionamiento y reordenamiento interactivo.
+- **`app/Filament/Resources/*/Tables/*Table.php`**:
+  - Activación de `->dragReorderableColumns()` y `->stickableColumns()` en las tablas de Asesores, Plantas, Proyectos y Contactos.
+  - **Asesores**: fijado (`->sticky()`) de columnas `full_name`, `avatar_url` y `whatsapp_owner`; visualización de proyectos asignados como lista de badges (`proyectos.name`) en lugar de conteo numérico.
+  - **Plantas**: fijado (`->sticky()`) de `name` y `proyecto.name`.
+  - **Proyectos**: fijado (`->sticky()`) de `name` y `descuento_maximo_unidad`.
+  - **Contactos**: fijado (`->sticky()`) de `name` (campo dinámico del formulario) y `channel.name`.
+- **`resources/css/filament/admin/theme.css`**:
+  - Importación de los estilos de redimensionamiento (`asmit/resized-column/resources/css/resized-column.css`) en el tema compilado de Vite.
+
+## [1.11.11] - 2026-11-23
+
+### 📦 Added / 🔌 Filament — Plugin awcodes/filament-sticky-header
+- **`composer.json`**:
+  - Instalación del paquete `awcodes/filament-sticky-header` (^4.2) para mantener fijos los encabezados de página al hacer scroll en Filament.
+- **`resources/css/filament/admin/theme.css`**:
+  - Inclusión de los estilos del plugin (`vendor/awcodes/filament-sticky-header/resources/css/plugin.css`) en el tema del panel administrativo.
+- **`app/Providers/Filament/AdminPanelProvider.php`**:
+  - Registro de `StickyHeaderPlugin::make()` en los plugins del panel de administración.
+- **Assets**:
+  - Publicación y compilación de assets para Filament (`php artisan filament:assets` y `npm run build:all`).
+
+## [1.11.10] - 2026-11-23
+
+### 📦 Added / 🔌 Filament — Plugin asmit/resized-column
+- **`composer.json`**:
+  - Instalación del paquete `asmit/resized-column` (^4.0) para redimensionar, reordenar y fijar columnas en tablas de Filament.
+- **`app/Providers/Filament/AdminPanelProvider.php`**:
+  - Registro de `ResizedColumnPlugin::make()` en los plugins del panel de administración.
+- **Assets**:
+  - Publicación de assets de frontend para el plugin mediante `php artisan filament:assets`.
+
 ## [1.11.9] - 2026-11-19
 
 ### 🐛 Fixed / 🌐 SEO — Sincronización de `og:image` real de producción en HTML estático y prerender

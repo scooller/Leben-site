@@ -7,11 +7,14 @@ use App\Filament\Actions\ResetSalePlantsAction;
 use App\Filament\Actions\SyncFromProductionAction;
 use App\Filament\Actions\SyncPlantsAction;
 use App\Filament\Resources\Plants\PlantResource;
+use Asmit\ResizedColumn\HasResizableColumn;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 
 class ListPlants extends ListRecords
 {
+    use HasResizableColumn;
+
     protected static string $resource = PlantResource::class;
 
     public function getTitle(): string

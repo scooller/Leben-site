@@ -24,6 +24,8 @@ use App\Filament\Widgets\SyncProjectsWidget;
 use App\Filament\Widgets\UsersChartWidget;
 use App\Http\Middleware\EnsureMarketingPanelAccess;
 use App\Models\SiteSetting;
+use Asmit\ResizedColumn\ResizedColumnPlugin;
+use Awcodes\StickyHeader\StickyHeaderPlugin;
 use BinaryBuilds\CommandRunner\CommandRunnerPlugin;
 use Filament\FontProviders\LocalFontProvider;
 use Filament\Http\Middleware\Authenticate;
@@ -175,6 +177,8 @@ class AdminPanelProvider extends PanelProvider
                     ->navigationIcon('heroicon-o-command-line')
                     ->navigationSort(1),
                 FinMailPlugin::make(),
+                ResizedColumnPlugin::make(),
+                StickyHeaderPlugin::make(),
             ])
             ->middleware([
                 EncryptCookies::class,
