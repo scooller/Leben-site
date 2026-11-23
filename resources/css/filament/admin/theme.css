@@ -1,6 +1,7 @@
 @import '../../../../vendor/filament/filament/resources/css/theme.css';
 @import '../../../../vendor/awcodes/filament-curator/resources/css/plugin.css';
 @import '../../../../vendor/awcodes/filament-sticky-header/resources/css/plugin.css';
+@import '../../../../vendor/asmit/resized-column/resources/css/resized-column.css';
 @import 'cropperjs/dist/cropper.css';
 
 @source '../../../../app/Filament/**/*';

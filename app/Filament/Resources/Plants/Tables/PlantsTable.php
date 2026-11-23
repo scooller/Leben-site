@@ -32,6 +32,8 @@ class PlantsTable
 
         return $table
             ->defaultSort('name', 'asc')
+            ->dragReorderableColumns()
+            ->stickableColumns()
             ->columns([
                 TextColumn::make('last_synced_at')
                     ->label('Sincronizado')
@@ -49,7 +51,8 @@ class PlantsTable
                         }
 
                         return $query->orderByRaw('CASE WHEN (name + 0) > 0 THEN (name + 0) ELSE 0 END DESC, LENGTH(name) DESC, name DESC');
-                    }),
+                    })
+                    ->sticky(),
                 ImageColumn::make('plant_image')
                     ->label('Plano')
                     ->state(fn (Plant $record): ?string => $record->coverImageMedia?->url
@@ -65,7 +68,8 @@ class PlantsTable
                     ->badge()
                     ->color('indigo')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->sticky(),
                 IconColumn::make('unidad_sale')
                     ->label('Unidad Sale')
                     ->boolean()

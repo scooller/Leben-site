@@ -26,16 +26,20 @@ class AsesoresTable
     {
         return $table
             ->defaultSort('first_name', 'asc')
+            ->dragReorderableColumns()
+            ->stickableColumns()
             ->columns([
                 TextColumn::make('full_name')
                     ->label('Nombre')
                     ->searchable(['first_name', 'last_name'])
-                    ->sortable(['first_name', 'last_name']),
+                    ->sortable(['first_name', 'last_name'])
+                    ->sticky(),
 
                 ImageColumn::make('avatar_url')
                     ->label('Avatar')
                     ->getStateUsing(fn ($record): ?string => $record->resolved_avatar_url)
-                    ->circular(),
+                    ->circular()
+                    ->sticky(),
 
                 TextColumn::make('email')
                     ->label('Email')
@@ -44,7 +48,8 @@ class AsesoresTable
 
                 TextColumn::make('whatsapp_owner')
                     ->label('WhatsApp')
-                    ->searchable(),
+                    ->searchable()
+                    ->sticky(),
 
                 TextColumn::make('qr_short_url')
                     ->label('Link QR')
@@ -58,10 +63,12 @@ class AsesoresTable
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
-                TextColumn::make('proyectos_count')
+                TextColumn::make('proyectos.name')
                     ->label('Proyectos')
-                    ->counts('proyectos')
-                    ->sortable(),
+                    ->badge()
+                    ->color('info')
+                    ->separator(', ')
+                    ->searchable(),
 
                 TextColumn::make('updated_at')
                     ->label('Actualizado')

@@ -4,6 +4,20 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.11.12] - 2026-11-23
+
+### ⚡ Feature / 🔌 Filament — Column Pinning (Sticky), Reordering & Resizing
+- **`app/Filament/Resources/*/Pages/List*.php`**:
+  - Incorporación del trait `HasResizableColumn` en `ListAsesores`, `ListPlants`, `ListProyectos` y `ListContactSubmissions` para habilitar el motor de redimensionamiento y reordenamiento interactivo.
+- **`app/Filament/Resources/*/Tables/*Table.php`**:
+  - Activación de `->dragReorderableColumns()` y `->stickableColumns()` en las tablas de Asesores, Plantas, Proyectos y Contactos.
+  - **Asesores**: fijado (`->sticky()`) de columnas `full_name`, `avatar_url` y `whatsapp_owner`; visualización de proyectos asignados como lista de badges (`proyectos.name`) en lugar de conteo numérico.
+  - **Plantas**: fijado (`->sticky()`) de `name` y `proyecto.name`.
+  - **Proyectos**: fijado (`->sticky()`) de `name` y `descuento_maximo_unidad`.
+  - **Contactos**: fijado (`->sticky()`) de `name` (campo dinámico del formulario) y `channel.name`.
+- **`resources/css/filament/admin/theme.css`**:
+  - Importación de los estilos de redimensionamiento (`asmit/resized-column/resources/css/resized-column.css`) en el tema compilado de Vite.
+
 ## [1.11.11] - 2026-11-23
 
 ### 📦 Added / 🔌 Filament — Plugin awcodes/filament-sticky-header
