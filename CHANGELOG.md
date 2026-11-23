@@ -4,6 +4,12 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.11.14] - 2026-11-23
+
+### 🌐 I18n / 🔌 Filament — Traducciones al español para asmit/resized-column
+- **`lang/vendor/asmit-resized-column/es/sticky-panel.php`**:
+  - Traducción al español (`Fijar columnas`) para el disparador, tooltip y encabezado del panel de fijación de columnas, evitando que se muestre la clave cruda `asmit-resized-column::sticky-panel.heading` en el panel de administración.
+
 ## [1.11.13] - 2026-11-23
 
 ### 🐛 Fixed / 🔌 Filament — Sticky Header Z-Index Stacking
