@@ -1,56 +1,88 @@
 (function () {
     'use strict';
 
-    function setupDualScroll(container) {
-        if (container.dataset.dualScroll === '1') {
+    function registerDualScroll() {
+        if (!window.Alpine || window.__filamentDualScrollAlpineRegistered) {
             return;
         }
+        window.__filamentDualScrollAlpineRegistered = true;
 
-        container.dataset.dualScroll = '1';
+        window.Alpine.data('filamentDualScroll', () => ({
+            init() {
+                const mirror = this.$el;
+                const inner = this.$refs.inner;
+                const ctn = mirror.closest('.fi-ta-ctn') || mirror.parentElement;
+                const container = ctn?.querySelector('.fi-ta-content-ctn');
 
-        const mirror = document.createElement('div');
-        mirror.style.cssText = 'overflow-x: auto; overflow-y: hidden; height: 14px;';
-        mirror.setAttribute('aria-hidden', 'true');
+                if (!container || !inner) {
+                    return;
+                }
 
-        const inner = document.createElement('div');
-        inner.style.height = '1px';
-        mirror.appendChild(inner);
+                const sync = () => {
+                    if (!container.isConnected || !mirror.isConnected) {
+                        return;
+                    }
 
-        container.parentNode.insertBefore(mirror, container);
+                    const scrollWidth = container.scrollWidth;
+                    const clientWidth = container.clientWidth;
 
-        function syncWidth() {
-            inner.style.width = container.scrollWidth + 'px';
-        }
+                    if (scrollWidth > clientWidth) {
+                        mirror.style.display = 'block';
+                        inner.style.width = scrollWidth + 'px';
+                        if (Math.abs(mirror.scrollLeft - container.scrollLeft) > 1) {
+                            mirror.scrollLeft = container.scrollLeft;
+                        }
+                    } else {
+                        mirror.style.display = 'none';
+                    }
+                };
 
-        syncWidth();
+                sync();
+                requestAnimationFrame(sync);
+                setTimeout(sync, 100);
 
-        const resizeObserver = new ResizeObserver(syncWidth);
-        resizeObserver.observe(container);
+                const ro = new ResizeObserver(sync);
+                ro.observe(container);
 
-        let syncing = false;
+                let isSyncing = false;
 
-        mirror.addEventListener('scroll', () => {
-            if (!syncing) {
-                syncing = true;
-                container.scrollLeft = mirror.scrollLeft;
-                syncing = false;
+                mirror.addEventListener('scroll', () => {
+                    if (!isSyncing) {
+                        isSyncing = true;
+                        container.scrollLeft = mirror.scrollLeft;
+                        isSyncing = false;
+                    }
+                }, { passive: true });
+
+                container.addEventListener('scroll', () => {
+                    if (!isSyncing) {
+                        isSyncing = true;
+                        mirror.scrollLeft = container.scrollLeft;
+                        isSyncing = false;
+                    }
+                }, { passive: true });
+
+                if (window.Livewire) {
+                    window.Livewire.hook('commit', ({ succeed }) => {
+                        succeed(() => {
+                            requestAnimationFrame(sync);
+                            setTimeout(sync, 50);
+                        });
+                    });
+                    window.Livewire.hook('morph.updated', () => {
+                        requestAnimationFrame(sync);
+                    });
+                }
+
+                document.addEventListener('resized-column:table-scrolled', sync);
+                document.addEventListener('resized-column:sticky-refreshed', sync);
             }
-        });
-
-        container.addEventListener('scroll', () => {
-            if (!syncing) {
-                syncing = true;
-                mirror.scrollLeft = container.scrollLeft;
-                syncing = false;
-            }
-        });
+        }));
     }
 
-    function init() {
-        document.querySelectorAll('.fi-ta-content-ctn').forEach(setupDualScroll);
+    if (window.Alpine) {
+        registerDualScroll();
+    } else {
+        document.addEventListener('alpine:init', registerDualScroll);
     }
-
-    document.addEventListener('DOMContentLoaded', init);
-    document.addEventListener('livewire:navigated', init);
-    document.addEventListener('livewire:update', () => setTimeout(init, 50));
 })();

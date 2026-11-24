@@ -14,6 +14,7 @@ use Filament\Actions\ExportAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -70,10 +71,25 @@ class PlantsTable
                     ->searchable()
                     ->sortable()
                     ->sticky(),
-                IconColumn::make('unidad_sale')
+                ToggleColumn::make('unidad_sale')
                     ->label('Unidad Sale')
-                    ->boolean()
-                    ->color(fn (bool $state): string => $state ? 'warning' : 'gray')
+                    ->onColor('warning')
+                    ->offColor('gray')
+                    ->afterStateUpdated(function (Plant $record, bool $state): void {
+                        if (! $state) {
+                            $record->update(['priorizar_descuentos' => false]);
+                        }
+                    })
+                    ->sortable(),
+                ToggleColumn::make('priorizar_descuentos')
+                    ->label('Dcto. Propio')
+                    ->onColor('danger')
+                    ->offColor('gray')
+                    ->tooltip('Solo permite desactivar. Para activar debe editarse la planta y configurar sus descuentos.')
+                    ->disabled(fn (Plant $record): bool => ! (bool) $record->priorizar_descuentos || ! (auth()->user()?->canManageFinancialValues() ?? false))
+                    ->beforeStateUpdated(function (Plant $record, bool $state): bool {
+                        return ! $state;
+                    })
                     ->sortable(),
                 TextColumn::make('sku')
                     ->label('SKU')
@@ -212,12 +228,7 @@ class PlantsTable
                             "CASE WHEN plants.priorizar_descuentos = 1 THEN COALESCE(plants.descuento_defecto_cotizacion_web, {$fallback}) ELSE COALESCE((SELECT p.descuento_defecto_cotizacion_web FROM proyectos p WHERE p.salesforce_id = plants.salesforce_proyecto_id LIMIT 1), {$fallback}) END {$direction}"
                         );
                     }),
-                IconColumn::make('priorizar_descuentos')
-                    ->label('Dcto. Propio')
-                    ->boolean()
-                    ->tooltip('Indica si esta planta tiene descuentos propios priorizados')
-                    ->toggleable(isToggledHiddenByDefault: true)
-                    ->sortable(),
+
                 // TextColumn::make('superficie_util')
                 //     ->label('Sup. Útil')
                 //     ->suffix(' m²')
@@ -298,10 +309,26 @@ class PlantsTable
                     ->label(fn (Plant $record): string => $record->unidad_sale ? 'Desactivar en Sale' : 'Activar en Sale')
                     ->icon(fn (Plant $record): string => $record->unidad_sale ? 'heroicon-o-bookmark-slash' : 'heroicon-o-bookmark')
                     ->color(fn (Plant $record): string => $record->unidad_sale ? 'warning' : 'success')
+                    ->action(function (Plant $record): bool {
+                        $newSale = ! $record->unidad_sale;
+                        $attributes = ['unidad_sale' => $newSale];
+
+                        if (! $newSale) {
+                            $attributes['priorizar_descuentos'] = false;
+                        }
+
+                        return $record->update($attributes);
+                    })
+                    ->successNotificationTitle(fn (?Plant $record = null): string => $record?->unidad_sale ? '1 planta activada en Sale' : '1 planta fuera de Sale (descuentos propios desactivados)'),
+                Action::make('deactivatePriorizarDescuentos')
+                    ->label('Desactivar Dcto. Propio')
+                    ->icon('heroicon-o-receipt-percent')
+                    ->color('danger')
+                    ->visible(fn (Plant $record): bool => (bool) $record->priorizar_descuentos)
                     ->action(fn (Plant $record): bool => $record->update([
-                        'unidad_sale' => ! $record->unidad_sale,
+                        'priorizar_descuentos' => false,
                     ]))
-                    ->successNotificationTitle(fn (?Plant $record = null): string => $record?->unidad_sale ? '1 planta activada en Sale' : '1 planta fuera de Sale'),
+                    ->successNotificationTitle('1 planta con descuento propio desactivado'),
                 Action::make('viewInSalesforce')
                     ->label('Ver en Salesforce')
                     ->icon('heroicon-o-arrow-top-right-on-square')
@@ -362,9 +389,21 @@ class PlantsTable
                         ->action(function (Collection $records): void {
                             $records->each->update([
                                 'unidad_sale' => false,
+                                'priorizar_descuentos' => false,
                             ]);
                         })
                         ->successNotificationTitle(fn ($records = null): string => ($count = is_countable($records) ? count($records) : null) ? "{$count} ".($count === 1 ? 'planta fuera de Sale' : 'plantas fuera de Sale') : 'Plantas fuera de Sale'),
+                    BulkAction::make('deactivatePriorizarDescuentosSelected')
+                        ->label('Desactivar dcto propio')
+                        ->icon('heroicon-o-receipt-percent')
+                        ->color('warning')
+                        ->requiresConfirmation()
+                        ->action(function (Collection $records): void {
+                            $records->each->update([
+                                'priorizar_descuentos' => false,
+                            ]);
+                        })
+                        ->successNotificationTitle(fn ($records = null): string => ($count = is_countable($records) ? count($records) : null) ? "{$count} ".($count === 1 ? 'planta con descuento propio desactivado' : 'plantas con descuento propio desactivado') : 'Descuentos propios desactivados'),
                     DeleteBulkAction::make()
                         ->successNotificationTitle(fn ($records = null): string => ($count = is_countable($records) ? count($records) : null) ? "{$count} ".($count === 1 ? 'planta eliminada' : 'plantas eliminadas') : 'Plantas eliminadas'),
                 ]),

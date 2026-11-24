@@ -489,7 +489,64 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 - **Tests**:
   - Suite completa de integración en `tests/Feature/Api/V1/BackendIntegrationApiTest.php` (10 pruebas, 224 aserciones).
 
-## [1.11.14] - 2026-11-23
+## [1.11.20] - 2026-11-23
+
+### 🐛 Fixed / 🔌 Filament — Renderizado Servidor de Dual Scroll para Evitar Corrupción de Morphdom al Filtrar
+- **`resources/views/filament/components/dual-scroll.blade.php` & `app/Providers/Filament/AdminPanelProvider.php`**:
+  - El contenedor de scroll superior (`fi-ta-dual-scroll`) ahora se renderiza del lado del servidor vía `TablesRenderHook::TOOLBAR_AFTER` con Blade y Alpine.js.
+  - Elimina por completo las inserciones (`insertBefore`) y eliminaciones (`remove()`) manuales de JavaScript en el árbol DOM de Livewire, las cuales causaban colisiones de índices en el algoritmo de morphdom al aplicar filtros AJAX e impedían que se renderizaran las filas de la tabla.
+- **`public/js/filament-dual-scroll.js`**:
+  - Migrado a componente declarativo Alpine.js (`filamentDualScroll`), eliminando el `MutationObserver` global. Sincroniza bidireccionalmente el desplazamiento (`scrollLeft`) y visibilidad (`ResizeObserver`, `Livewire.hook('commit')`) sin alterar la estructura del DOM.
+
+## [1.11.19] - 2026-11-23
+
+### 🐛 Fixed / 🔌 Filament — Prevención de Doble Scroll Superior en Carga Inicial
+- **`app/Providers/AppServiceProvider.php` & `public/js/filament-dual-scroll.js`**:
+  - Removido el registro duplicado de `filament-dual-scroll.js` en `AppServiceProvider` (mantenido únicamente en `AdminPanelProvider` vía renderHook con timestamp para evitar ejecuciones concurrentes).
+  - Añadido guard de inicialización única (`window.__filamentDualScrollInitialized`) para prevenir que el script corra dos veces.
+  - Implementada limpieza activa en el DOM de elementos mirror huérfanos o duplicados antes de montar el scroll superior, garantizando exactamente 1 sola barra superior sincronizada tanto en carga inicial como tras aplicar filtros.
+
+## [1.11.18] - 2026-11-23
+
+### 🛡️ Security / 🔌 Filament — Restricción a Solo Desactivación de Descuentos Propios
+- **`app/Filament/Resources/Plants/Tables/PlantsTable.php`**:
+  - Eliminada la acción masiva `Activar dcto propio`; se mantiene exclusivamente `Desactivar dcto propio` para evitar activar priorización de descuentos sin completar montos ni porcentajes requeridos.
+  - El switch interactivo `Dcto. Propio` (`ToggleColumn`) se deshabilita automáticamente si la planta no tiene descuentos propios activos, permitiendo únicamente apagarlo cuando esté activo.
+  - La acción de registro se restringe a `deactivatePriorizarDescuentos`, visible únicamente en plantas que tienen descuentos propios activados.
+
+## [1.11.17] - 2026-11-23
+
+### ⚡ Feature / 🔌 Filament — Toggle Directo y Acciones Masivas para Descuentos Propios en Plantas
+- **`app/Filament/Resources/Plants/Tables/PlantsTable.php`**:
+  - Reemplazo de columnas de sólo lectura (`IconColumn`) por columnas conmutables interactivas (`ToggleColumn`) para `Unidad Sale` y `Dcto. Propio`, visibles directamente en la tabla.
+  - Al apagar el switch de `Unidad Sale` en cualquier fila, se desactiva en cascada el switch de `priorizar_descuentos`.
+  - Agregadas las acciones masivas `Desactivar dcto propio` y `Activar dcto propio` en el menú de selección masiva (`Abrir acciones`) para aplicar cambios en lote sobre múltiples plantas seleccionadas.
+
+## [1.11.16] - 2026-11-23
+
+### 🐛 Fixed / 🔌 Filament — Persistencia de Scroll Superior tras Filtrar Tablas
+- **`public/js/filament-dual-scroll.js` & `app/Providers/Filament/AdminPanelProvider.php`**:
+  - Detección reactiva de descarte de DOM: se elimina el bloqueo por `dataset.dualScroll = '1'` y se comprueba la presencia real del elemento mirror en el DOM (`container.previousElementSibling`).
+  - Integración con el ciclo de vida de Livewire v3: escucha mediante `commit` (`succeed(...)`) y `morph.updated`, además de un `MutationObserver` con debounce en `requestAnimationFrame` para restaurar y re-sincronizar el scroll superior ante filtros, búsquedas o paginación.
+  - Atributo `wire:ignore` en el contenedor mirror para evitar que el algoritmo de morphing lo descarte.
+  - Cache busting automático en `AdminPanelProvider` con timestamp `?v=...` para garantizar actualización en navegador sin caché persistente.
+
+## [1.11.15] - 2026-11-23
+
+### ⚡ Feature / 🔌 Filament — Dual Scroll Superior y Desactivación de Descuentos Propios en Sale
+- **`app/Filament/Actions/ResetSalePlantsAction.php`**:
+  - Al resetear plantas Sale, ahora también se desactivan automáticamente los descuentos propios (`priorizar_descuentos = false`) en todas las plantas para iniciar la selección limpia desde cero.
+  - Actualización de textos del modal y de la notificación de éxito.
+- **`app/Filament/Resources/Plants/Tables/PlantsTable.php`**:
+  - Al desactivar una unidad Sale desde la acción de fila `toggleUnidadSale`, se desactiva también su `priorizar_descuentos`.
+  - En la acción masiva `deactivateSaleSelected`, se desactiva `unidad_sale` y `priorizar_descuentos`.
+  - Nueva acción de fila `togglePriorizarDescuentos` para alternar directamente la prioridad de descuento propio en la planta.
+- **`public/js/filament-dual-scroll.js` & `app/Providers/Filament/AdminPanelProvider.php`**:
+  - Implementación minimalista (filosofía ponytail) de scrollbar horizontal superior sincronizado bidireccionalmente con el scrollbar inferior en todas las tablas de Filament.
+  - Ocultación automática cuando la tabla no desborda horizontalmente y soporte para redimensionamiento con `ResizeObserver` y mutaciones Livewire v3.
+  - Registro directo en `AdminPanelProvider` mediante `PanelsRenderHook::BODY_END` para asegurar su carga en todas las páginas del panel.
+- **`tests/Feature/Filament/Actions/ResetSalePlantsActionTest.php`**:
+  - Pruebas unitarias y de integración actualizadas para validar el reseteo simultáneo de `unidad_sale` y `priorizar_descuentos`.
 
 ### 🌐 I18n / 🔌 Filament — Traducciones al español para asmit/resized-column
 - **`lang/vendor/asmit-resized-column/es/sticky-panel.php`**:

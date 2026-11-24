@@ -19,17 +19,26 @@ class ResetSalePlantsActionTest extends TestCase
     {
         $project = Proyecto::factory()->create();
 
-        Plant::factory()->count(3)->create([
+        Plant::factory()->count(2)->create([
             'salesforce_proyecto_id' => $project->salesforce_id,
             'unidad_sale' => true,
+            'priorizar_descuentos' => true,
+        ]);
+
+        Plant::factory()->create([
+            'salesforce_proyecto_id' => $project->salesforce_id,
+            'unidad_sale' => false,
+            'priorizar_descuentos' => true,
         ]);
 
         Plant::factory()->count(2)->create([
             'salesforce_proyecto_id' => $project->salesforce_id,
             'unidad_sale' => false,
+            'priorizar_descuentos' => false,
         ]);
 
-        self::assertSame(3, Plant::query()->where('unidad_sale', true)->count());
+        self::assertSame(2, Plant::query()->where('unidad_sale', true)->count());
+        self::assertSame(3, Plant::query()->where('priorizar_descuentos', true)->count());
 
         $result = ResetSalePlantsAction::execute();
 
@@ -37,6 +46,7 @@ class ResetSalePlantsActionTest extends TestCase
         self::assertSame(3, $result['count']);
         self::assertStringContainsString('3', $result['message']);
         self::assertSame(0, Plant::query()->where('unidad_sale', true)->count());
+        self::assertSame(0, Plant::query()->where('priorizar_descuentos', true)->count());
         self::assertSame(5, Plant::query()->count());
     }
 
@@ -47,14 +57,16 @@ class ResetSalePlantsActionTest extends TestCase
         Plant::factory()->count(2)->create([
             'salesforce_proyecto_id' => $project->salesforce_id,
             'unidad_sale' => false,
+            'priorizar_descuentos' => false,
         ]);
 
         $result = ResetSalePlantsAction::execute();
 
         self::assertTrue($result['success']);
         self::assertSame(0, $result['count']);
-        self::assertSame('No había plantas asignadas como unidad Sale', $result['message']);
+        self::assertSame('No había plantas asignadas como unidad Sale ni con descuentos propios', $result['message']);
         self::assertSame(0, Plant::query()->where('unidad_sale', true)->count());
+        self::assertSame(0, Plant::query()->where('priorizar_descuentos', true)->count());
     }
 
     public function test_list_plants_header_action_is_registered_and_executable(): void
@@ -65,9 +77,11 @@ class ResetSalePlantsActionTest extends TestCase
         Plant::factory()->count(2)->create([
             'salesforce_proyecto_id' => $project->salesforce_id,
             'unidad_sale' => true,
+            'priorizar_descuentos' => true,
         ]);
 
         self::assertSame(2, Plant::query()->where('unidad_sale', true)->count());
+        self::assertSame(2, Plant::query()->where('priorizar_descuentos', true)->count());
 
         Livewire::actingAs($admin)
             ->test(ListPlants::class)
@@ -76,5 +90,6 @@ class ResetSalePlantsActionTest extends TestCase
             ->assertHasNoActionErrors();
 
         self::assertSame(0, Plant::query()->where('unidad_sale', true)->count());
+        self::assertSame(0, Plant::query()->where('priorizar_descuentos', true)->count());
     }
 }
