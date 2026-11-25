@@ -541,38 +541,43 @@ class SiteSetting extends Model
         $contactHeroDesktopImage = $resolveMedia($extraSettings['contact_hero_image_desktop_id'] ?? $extraSettings['contact_hero_image_id'] ?? null)?->url;
         $contactHeroMobileImage = $resolveMedia($extraSettings['contact_hero_image_mobile_id'] ?? $extraSettings['contact_hero_image_id'] ?? null)?->url;
 
-        $projectOfMonthPhoto = $resolveMediaUrl($extraSettings['project_of_month_photo_id'] ?? null)
-            ?: ($extraSettings['project_of_month_photo_url'] ?? '/storage/inn/RAPC_EXT_Elevacioen-Tarde_Media16.jpg');
-
-        $projectOfMonthProjectId = $extraSettings['project_of_month_project_id'] ?? 40;
-        $projectOfMonthProject = null;
-        if ($projectOfMonthProjectId) {
-            $proj = Proyecto::query()->find($projectOfMonthProjectId);
-            if ($proj) {
-                $projectOfMonthProject = [
-                    'id' => $proj->id,
-                    'name' => $proj->name,
-                    'slug' => $proj->slug,
-                    'comuna' => $proj->comuna,
-                    'ciudad' => $proj->ciudad,
+        $featuredProjectId = $extraSettings['featured_project_id'] ?? $extraSettings['project_of_month_project_id'] ?? 40;
+        $featuredProject = null;
+        if ($featuredProjectId) {
+            $fProj = Proyecto::query()->with('plantas')->find($featuredProjectId);
+            if ($fProj) {
+                $minPrice = $fProj->plantas->where('is_active', true)->min('precio_lista');
+                $featuredProject = [
+                    'id' => $fProj->id,
+                    'name' => $fProj->name,
+                    'slug' => $fProj->slug,
+                    'comuna' => $fProj->comuna,
+                    'location' => $fProj->comuna ? ucfirst(strtolower($fProj->comuna)) . ', Chile' : 'Chile',
+                    'price' => $minPrice ? 'UF ' . number_format($minPrice, 0, ',', '.') : '—',
+                    'main_image' => $resolveMediaUrl($extraSettings['featured_project_main_image_id'] ?? null),
+                    'side_image' => $resolveMediaUrl($extraSettings['featured_project_side_image_id'] ?? null),
+                    'button_link' => '/proyectos/' . $fProj->slug,
+                    'month_label' => $extraSettings['featured_project_month_label'] ?? 'Proyecto destacado del mes',
                 ];
             }
         }
 
-        $projectOfMonth = [
-            'enabled' => (bool) ($extraSettings['project_of_month_enabled'] ?? true),
-            'project_id' => $projectOfMonthProjectId,
-            'project' => $projectOfMonthProject,
-            'title' => $extraSettings['project_of_month_title'] ?? 'María Gracia en',
-            'title_highlight' => $extraSettings['project_of_month_title_highlight'] ?? 'Leben',
-            'description' => $extraSettings['project_of_month_description'] ?? 'La creadora de contenido y conductora María Gracia Subercaseaux visitó junto a su marido Waldemar Méndez nuestro proyecto INN en Puerto Varas y quedó maravillada con sus espacios interiores, terminaciones, diseño y la calidez de los ambientes. Una visita muy especial que nos permite mostrar cómo este edificio no solo propone departamentos frente al lago, sino una nueva forma de disfrutar el sur con sofisticación.',
-            'text' => $extraSettings['project_of_month_description'] ?? 'La creadora de contenido y conductora María Gracia Subercaseaux visitó junto a su marido Waldemar Méndez nuestro proyecto INN en Puerto Varas y quedó maravillada con sus espacios interiores, terminaciones, diseño y la calidez de los ambientes. Una visita muy especial que nos permite mostrar cómo este edificio no solo propone departamentos frente al lago, sino una nueva forma de disfrutar el sur con sofisticación.',
-            'photo' => $projectOfMonthPhoto,
-            'photo_url' => $projectOfMonthPhoto,
-            'video' => $extraSettings['project_of_month_video_url'] ?? '/storage/video/maria-gracia.mp4',
-            'video_url' => $extraSettings['project_of_month_video_url'] ?? '/storage/video/maria-gracia.mp4',
-            'button_text' => $extraSettings['project_of_month_button_text'] ?? ($projectOfMonthProject ? 'Ver proyecto ' . $projectOfMonthProject['name'] : 'Ver proyecto INN'),
-            'button_link' => $extraSettings['project_of_month_button_link'] ?? ($projectOfMonthProject ? '/proyectos/' . $projectOfMonthProject['slug'] : '/proyectos/inn'),
+        $newsOfMonthPhoto = $resolveMediaUrl($extraSettings['news_of_month_photo_id'] ?? $extraSettings['project_of_month_photo_id'] ?? null);
+        $rawVideoUrl = $extraSettings['news_of_month_video_url'] ?? $extraSettings['project_of_month_video_url'] ?? null;
+        if (is_string($rawVideoUrl) && (str_starts_with($rawVideoUrl, '/storage/') || str_starts_with($rawVideoUrl, 'storage/'))) {
+            $rawVideoUrl = null;
+        }
+
+        $newsOfMonth = [
+            'enabled' => (bool) ($extraSettings['news_of_month_enabled'] ?? $extraSettings['project_of_month_enabled'] ?? true),
+            'title' => $extraSettings['news_of_month_title'] ?? $extraSettings['project_of_month_title'] ?? 'María Gracia en',
+            'title_highlight' => $extraSettings['news_of_month_title_highlight'] ?? $extraSettings['project_of_month_title_highlight'] ?? 'Leben',
+            'description' => $extraSettings['news_of_month_description'] ?? $extraSettings['project_of_month_description'] ?? 'La creadora de contenido y conductora María Gracia Subercaseaux visitó junto a su marido Waldemar Méndez nuestro proyecto INN en Puerto Varas y quedó maravillada con sus espacios interiores, terminaciones, diseño y la calidez de los ambientes. Una visita muy especial que nos permite mostrar cómo este edificio no solo propone departamentos frente al lago, sino una nueva forma de disfrutar el sur con sofisticación.',
+            'text' => $extraSettings['news_of_month_description'] ?? $extraSettings['project_of_month_description'] ?? 'La creadora de contenido y conductora María Gracia Subercaseaux visitó junto a su marido Waldemar Méndez nuestro proyecto INN en Puerto Varas y quedó maravillada con sus espacios interiores, terminaciones, diseño y la calidez de los ambientes. Una visita muy especial que nos permite mostrar cómo este edificio no solo propone departamentos frente al lago, sino una nueva forma de disfrutar el sur con sofisticación.',
+            'photo_url' => $newsOfMonthPhoto,
+            'video_url' => $rawVideoUrl,
+            'button_text' => $extraSettings['news_of_month_button_text'] ?? $extraSettings['project_of_month_button_text'] ?? 'Ver proyecto INN',
+            'button_link' => $extraSettings['news_of_month_button_link'] ?? $extraSettings['project_of_month_button_link'] ?? '/proyectos/inn',
         ];
         $ogImageFromCurator = $resolveMediaUrl($extraSettings['og_image_id'] ?? null);
         $saleOgImageFromCurator = $resolveMediaUrl($extraSettings['sale_og_image_id'] ?? null);
@@ -769,7 +774,9 @@ class SiteSetting extends Model
             'plants_default_order' => $extraSettings['plants_default_order'] ?? 'discounts',
             'maintenance_mode' => $settings->maintenance_mode && ! $isPreviewAuthorized,
             'maintenance_message' => $settings->maintenance_message,
-            'project_of_month' => $projectOfMonth,
+            'featured_project' => $featuredProject,
+            'news_of_month' => $newsOfMonth,
+            'project_of_month' => $newsOfMonth,
             'hero' => [
                 'home' => [
                     'type' => $extraSettings['home_hero_type'] ?? 'video',

@@ -255,40 +255,36 @@ class SiteSettings extends Page implements HasForms
             data_set($data, 'extra_settings.salesforce_sync_inactive_projects', true);
         }
 
-        if (data_get($data, 'extra_settings.project_of_month_enabled') === null) {
-            data_set($data, 'extra_settings.project_of_month_enabled', true);
+        if (data_get($data, 'extra_settings.featured_project_id') === null) {
+            data_set($data, 'extra_settings.featured_project_id', data_get($data, 'extra_settings.project_of_month_project_id', 40));
         }
 
-        if (data_get($data, 'extra_settings.project_of_month_project_id') === null) {
-            data_set($data, 'extra_settings.project_of_month_project_id', 40);
+        if (data_get($data, 'extra_settings.featured_project_month_label') === null) {
+            data_set($data, 'extra_settings.featured_project_month_label', 'Proyecto destacado del mes');
         }
 
-        if (data_get($data, 'extra_settings.project_of_month_title') === null) {
-            data_set($data, 'extra_settings.project_of_month_title', 'María Gracia en');
+        if (data_get($data, 'extra_settings.news_of_month_enabled') === null) {
+            data_set($data, 'extra_settings.news_of_month_enabled', data_get($data, 'extra_settings.project_of_month_enabled', true));
         }
 
-        if (data_get($data, 'extra_settings.project_of_month_title_highlight') === null) {
-            data_set($data, 'extra_settings.project_of_month_title_highlight', 'Leben');
+        if (data_get($data, 'extra_settings.news_of_month_title') === null) {
+            data_set($data, 'extra_settings.news_of_month_title', data_get($data, 'extra_settings.project_of_month_title', 'María Gracia en'));
         }
 
-        if (data_get($data, 'extra_settings.project_of_month_description') === null) {
-            data_set($data, 'extra_settings.project_of_month_description', 'La creadora de contenido y conductora María Gracia Subercaseaux visitó junto a su marido Waldemar Méndez nuestro proyecto INN en Puerto Varas y quedó maravillada con sus espacios interiores, terminaciones, diseño y la calidez de los ambientes. Una visita muy especial que nos permite mostrar cómo este edificio no solo propone departamentos frente al lago, sino una nueva forma de disfrutar el sur con sofisticación.');
+        if (data_get($data, 'extra_settings.news_of_month_title_highlight') === null) {
+            data_set($data, 'extra_settings.news_of_month_title_highlight', data_get($data, 'extra_settings.project_of_month_title_highlight', 'Leben'));
         }
 
-        if (data_get($data, 'extra_settings.project_of_month_photo_url') === null) {
-            data_set($data, 'extra_settings.project_of_month_photo_url', '/storage/inn/RAPC_EXT_Elevacioen-Tarde_Media16.jpg');
+        if (data_get($data, 'extra_settings.news_of_month_description') === null) {
+            data_set($data, 'extra_settings.news_of_month_description', data_get($data, 'extra_settings.project_of_month_description', 'La creadora de contenido y conductora María Gracia Subercaseaux visitó junto a su marido Waldemar Méndez nuestro proyecto INN en Puerto Varas y quedó maravillada con sus espacios interiores, terminaciones, diseño y la calidez de los ambientes. Una visita muy especial que nos permite mostrar cómo este edificio no solo propone departamentos frente al lago, sino una nueva forma de disfrutar el sur con sofisticación.'));
         }
 
-        if (data_get($data, 'extra_settings.project_of_month_video_url') === null) {
-            data_set($data, 'extra_settings.project_of_month_video_url', '/storage/video/maria-gracia.mp4');
+        if (data_get($data, 'extra_settings.news_of_month_button_text') === null) {
+            data_set($data, 'extra_settings.news_of_month_button_text', data_get($data, 'extra_settings.project_of_month_button_text', 'Ver proyecto INN'));
         }
 
-        if (data_get($data, 'extra_settings.project_of_month_button_text') === null) {
-            data_set($data, 'extra_settings.project_of_month_button_text', 'Ver proyecto INN');
-        }
-
-        if (data_get($data, 'extra_settings.project_of_month_button_link') === null) {
-            data_set($data, 'extra_settings.project_of_month_button_link', '/proyectos/inn');
+        if (data_get($data, 'extra_settings.news_of_month_button_link') === null) {
+            data_set($data, 'extra_settings.news_of_month_button_link', data_get($data, 'extra_settings.project_of_month_button_link', '/proyectos/inn'));
         }
 
         $this->form->fill($data);
@@ -539,73 +535,76 @@ class SiteSettings extends Page implements HasForms
                                     ->columns(1),
                             ]),
 
-                        Tabs\Tab::make('Proyecto Destacado')
+                        Tabs\Tab::make('Proyecto y Noticia Destacada')
                             ->icon('heroicon-o-sparkles')
                             ->schema([
-                                Section::make('Proyecto del Mes (Home)')
-                                    ->description('Configura el proyecto y contenido destacado para la sección del mes en la página de inicio.')
+                                Section::make('1. Proyecto Destacado del Mes (Sección Obras / Videos #proyecto-del-mes)')
+                                    ->description('Selecciona el proyecto inmobiliario del catálogo que protagonizará la sección de Proyecto Destacado del Mes en el Home.')
                                     ->schema([
-                                        Toggle::make('extra_settings.project_of_month_enabled')
-                                            ->label('Mostrar sección en página de inicio')
-                                            ->default(true)
-                                            ->columnSpanFull(),
-
-                                        Select::make('extra_settings.project_of_month_project_id')
-                                            ->label('Proyecto Asociado')
+                                        Select::make('extra_settings.featured_project_id')
+                                            ->label('Proyecto Destacado')
                                             ->options(fn () => Proyecto::query()->where('is_active', true)->orderBy('name')->pluck('name', 'id'))
                                             ->searchable()
                                             ->preload()
-                                            ->helperText('Selecciona un proyecto del catálogo para asociar automáticamente enlaces y datos.')
-                                            ->reactive()
-                                            ->afterStateUpdated(function ($state, Set $set) {
-                                                if ($state) {
-                                                    $project = Proyecto::find($state);
-                                                    if ($project) {
-                                                        $set('extra_settings.project_of_month_button_link', '/proyectos/' . $project->slug);
-                                                        $set('extra_settings.project_of_month_button_text', 'Ver proyecto ' . $project->name);
-                                                    }
-                                                }
-                                            }),
+                                            ->default(40)
+                                            ->helperText('Al seleccionar un proyecto, la sección #proyecto-del-mes mostrará automáticamente su nombre, comuna, precio y enlace.'),
 
-                                        TextInput::make('extra_settings.project_of_month_title')
-                                            ->label('Título de Campaña')
+                                        TextInput::make('extra_settings.featured_project_month_label')
+                                            ->label('Etiqueta Superior')
+                                            ->default('Proyecto destacado del mes')
+                                            ->maxLength(255),
+
+                                        CuratorPicker::make('extra_settings.featured_project_main_image_id')
+                                            ->label('Imagen Principal de la Obra (Curator)')
+                                            ->helperText('Imagen destacada izquierda. Si se omite, se usa la imagen estática del front.'),
+
+                                        CuratorPicker::make('extra_settings.featured_project_side_image_id')
+                                            ->label('Imagen Secundaria de la Obra (Curator)')
+                                            ->helperText('Imagen complementaria derecha. Si se omite, se usa la imagen estática del front.'),
+                                    ])
+                                    ->columns(2),
+
+                                Section::make('2. Noticia / Colaboración del Mes (Sección Editorial .lb-project-month)')
+                                    ->description('Configura la noticia, entrevista o colaboración especial del mes (ej: visita de María Gracia).')
+                                    ->schema([
+                                        Toggle::make('extra_settings.news_of_month_enabled')
+                                            ->label('Mostrar Noticia / Colaboración en el Home')
+                                            ->default(true)
+                                            ->columnSpanFull(),
+
+                                        TextInput::make('extra_settings.news_of_month_title')
+                                            ->label('Título Noticia')
                                             ->default('María Gracia en')
                                             ->placeholder('Ej: María Gracia en')
                                             ->maxLength(255),
 
-                                        TextInput::make('extra_settings.project_of_month_title_highlight')
+                                        TextInput::make('extra_settings.news_of_month_title_highlight')
                                             ->label('Texto Resaltado')
                                             ->default('Leben')
                                             ->placeholder('Ej: Leben')
                                             ->maxLength(255),
 
-                                        Textarea::make('extra_settings.project_of_month_description')
-                                            ->label('Descripción / Reseña')
+                                        Textarea::make('extra_settings.news_of_month_description')
+                                            ->label('Texto de la Noticia / Reseña')
                                             ->rows(4)
-                                            ->helperText('Texto editorial o reseña que acompaña al proyecto.')
+                                            ->helperText('Texto descriptivo de la visita o noticia.')
                                             ->columnSpanFull(),
 
-                                        CuratorPicker::make('extra_settings.project_of_month_photo_id')
-                                            ->label('Foto Destacada (Curator Media)')
-                                            ->helperText('Foto vertical para la columna izquierda.'),
+                                        CuratorPicker::make('extra_settings.news_of_month_photo_id')
+                                            ->label('Foto Vertical (Curator)')
+                                            ->helperText('Foto vertical. Si se omite, se usa el fallback local del front.'),
 
-                                        TextInput::make('extra_settings.project_of_month_photo_url')
-                                            ->label('URL Directa de Foto (Opcional)')
-                                            ->placeholder('/storage/... o https://...')
-                                            ->helperText('Si se define, prevalece sobre Curator.'),
+                                        TextInput::make('extra_settings.news_of_month_video_url')
+                                            ->label('URL Video Vertical')
+                                            ->placeholder('https://... (dejar vacío para usar el video local del front)')
+                                            ->helperText('Video vertical de smartphone. Si se omite, se usa el video local del front.'),
 
-                                        TextInput::make('extra_settings.project_of_month_video_url')
-                                            ->label('URL de Video Vertical')
-                                            ->placeholder('/storage/video/maria-gracia.mp4 o https://...')
-                                            ->helperText('Video vertical reproducido en el marco de smartphone.')
-                                            ->columnSpanFull(),
-
-                                        TextInput::make('extra_settings.project_of_month_button_text')
-                                            ->label('Texto del Botón (CTA)')
+                                        TextInput::make('extra_settings.news_of_month_button_text')
+                                            ->label('Texto del Botón')
                                             ->default('Ver proyecto INN')
                                             ->maxLength(255),
 
-                                        TextInput::make('extra_settings.project_of_month_button_link')
+                                        TextInput::make('extra_settings.news_of_month_button_link')
                                             ->label('Enlace del Botón')
                                             ->default('/proyectos/inn')
                                             ->maxLength(2048),

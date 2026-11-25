@@ -2,6 +2,19 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.50] - 2026-11-25
+
+### Changed
+- `app/Filament/Pages/SiteSettings.php`:
+  - Separada explícitamente la pestaña en dos bloques independientes:
+    1. **Proyecto Destacado del Mes** (`featured_project_*`): selector de proyecto activo de catálogo, etiqueta de mes, imágenes destacada y lateral desde Curator.
+    2. **Noticia / Colaboración del Mes** (`news_of_month_*`): toggle de visibilidad, título, título resaltado, reseña/descripción editorial, foto vertical Curator, URL de video y botón CTA.
+- `app/Models/SiteSetting.php`:
+  - En `forFrontend()`, expuestos `featured_project` (con datos reales del catálogo: id, slug, nombre, comuna, precio más bajo calculado, imágenes y link) y `news_of_month` (con compatibilidad con `project_of_month`).
+  - Filtrado de rutas no existentes `/storage/...` en video para delegar el fallback seguro a recursos del frontend.
+- `database/seeders/InitialSiteSettingsSeeder.php`:
+  - Limpieza de datos por defecto sin rutas `/storage/` rotas, asignando proyecto destacado activo por defecto.
+
 ## [1.13.49] - 2026-11-25
 
 ### Changed
