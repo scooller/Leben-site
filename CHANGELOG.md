@@ -2,6 +2,14 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.44] - 2026-11-25
+
+### Added
+- `app/Filament/Resources/Proyectos/Schemas/ProyectoForm.php`:
+  - Campo opcional `description` (`Textarea` de 2 filas) en el repeater de tarjetas de panoramas (`slides`), permitiendo a los editores redactar detalles para cada destino/experiencia.
+- `database/seeders/InitialInnProjectDetailSeeder.php`:
+  - Pobladas descripciones iniciales descriptivas para todos los destinos turísticos del proyecto INN.
+
 ## [1.13.43] - 2026-11-25
 
 ### Added

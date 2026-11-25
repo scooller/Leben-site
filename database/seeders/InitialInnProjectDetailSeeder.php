@@ -282,9 +282,9 @@ class InitialInnProjectDetailSeeder extends Seeder
                         'name' => 'Ruta del lago',
                         'tabLabel' => 'RUTA DEL LAGO',
                         'slides' => [
-                            ['id' => 'ensenada', 'title' => 'Ensenada', 'distance' => '40 km', 'image' => 'images/inn/panoramas/Ensenada_04_IA.jpg'],
-                            ['id' => 'playa-venado', 'title' => 'Playa Venado, Ruta 225, km 16', 'distance' => '14 km', 'image' => 'images/inn/panoramas/Fundo Playa Venado_2.jpg'],
-                            ['id' => 'once-bellavista', 'title' => 'Onces Bellavista', 'distance' => '32 km', 'image' => 'images/inn/panoramas/Onces_Bellavista_IA.jpg'],
+                            ['id' => 'ensenada', 'title' => 'Ensenada', 'distance' => '40 km', 'image' => 'images/inn/panoramas/Ensenada_04_IA.jpg', 'description' => 'Playa y pueblo ribereño con gastronomía típica frente al lago y volcanes.'],
+                            ['id' => 'playa-venado', 'title' => 'Playa Venado, Ruta 225, km 16', 'distance' => '14 km', 'image' => 'images/inn/panoramas/Fundo Playa Venado_2.jpg', 'description' => 'Sector de descanso familiar y tradiciones campestres en la ribera sur.'],
+                            ['id' => 'once-bellavista', 'title' => 'Onces Bellavista', 'distance' => '32 km', 'image' => 'images/inn/panoramas/Onces_Bellavista_IA.jpg', 'description' => 'Tradicional repostería alemana y onces campestres sureñas.'],
                         ],
                     ],
                     [
@@ -292,10 +292,10 @@ class InitialInnProjectDetailSeeder extends Seeder
                         'name' => 'Naturaleza en grande',
                         'tabLabel' => 'NATURALEZA EN GRANDE',
                         'slides' => [
-                            ['id' => 'saltos-del-petrohue', 'title' => 'Saltos del Petrohué', 'distance' => '53 km', 'image' => 'images/inn/panoramas/Saltos_del_Petrohue_AI.jpg'],
-                            ['id' => 'todos-los-santos', 'title' => 'Lago Todos los Santos', 'distance' => '59 km', 'image' => 'images/inn/panoramas/Lago_Todos_los Santos_AI.jpg'],
-                            ['id' => 'volcan-osorno', 'title' => 'Volcán Osorno, Centro de Sky', 'distance' => '57 km', 'image' => 'images/inn/panoramas/Centro de Sky.jpg'],
-                            ['id' => 'volcan-calbuco', 'title' => 'Volcán Calbuco, Reserva Nacional Llanquihue', 'distance' => '60 km', 'image' => 'images/inn/panoramas/Volcan_Calbuco_AI.jpg'],
+                            ['id' => 'saltos-del-petrohue', 'title' => 'Saltos del Petrohué', 'distance' => '53 km', 'image' => 'images/inn/panoramas/Saltos_del_Petrohue_AI.jpg', 'description' => 'Cascadas de aguas esmeralda sobre roca volcánica en el Parque Nacional Vicente Pérez Rosales.'],
+                            ['id' => 'todos-los-santos', 'title' => 'Lago Todos los Santos', 'distance' => '59 km', 'image' => 'images/inn/panoramas/Lago_Todos_los Santos_AI.jpg', 'description' => 'Navegación entre bosques nativos y vistas panorámicas a volcanes milenarios.'],
+                            ['id' => 'volcan-osorno', 'title' => 'Volcán Osorno, Centro de Sky', 'distance' => '57 km', 'image' => 'images/inn/panoramas/Centro de Sky.jpg', 'description' => 'Centro de montaña con vistas al Lago Llanquihue y actividades en nieve y senderismo.'],
+                            ['id' => 'volcan-calbuco', 'title' => 'Volcán Calbuco, Reserva Nacional Llanquihue', 'distance' => '60 km', 'image' => 'images/inn/panoramas/Volcan_Calbuco_AI.jpg', 'description' => 'Senderos nativos de alerces y miradores de alta montaña.'],
                         ],
                     ],
                     [
@@ -303,10 +303,10 @@ class InitialInnProjectDetailSeeder extends Seeder
                         'name' => 'Cultura junto al lago',
                         'tabLabel' => 'CULTURA JUNTO AL LAGO',
                         'slides' => [
-                            ['id' => 'muelle-frutillar', 'title' => 'Muelle de Frutillar', 'distance' => '34 km', 'image' => 'images/inn/panoramas/Muelle_Frutillar_AI.jpg'],
-                            ['id' => 'futrillar-teatro-del-lago', 'title' => 'Frutillar, Teatro del Lago', 'distance' => '32 km', 'image' => 'images/inn/panoramas/Teatro_del_Lago_AI.jpg'],
-                            ['id' => 'futrillar-museo-colonial', 'title' => 'Frutillar, Museo Colonial Alemán', 'distance' => '32 km', 'image' => 'images/inn/panoramas/Museo Aleman.jpg'],
-                            ['id' => 'casco-historico-puerto-octay', 'title' => 'Casco histórico de Puerto Octay', 'distance' => '55 km', 'image' => 'images/inn/panoramas/Casco_historico_Puerto_Octay.jpg'],
+                            ['id' => 'muelle-frutillar', 'title' => 'Muelle de Frutillar', 'distance' => '34 km', 'image' => 'images/inn/panoramas/Muelle_Frutillar_AI.jpg', 'description' => 'Paseo icónico con vista al Volcán Osorno y la bahía de Frutillar Bajo.'],
+                            ['id' => 'futrillar-teatro-del-lago', 'title' => 'Frutillar, Teatro del Lago', 'distance' => '32 km', 'image' => 'images/inn/panoramas/Teatro_del_Lago_AI.jpg', 'description' => 'Epicentro cultural y musical de nivel internacional a orillas del lago.'],
+                            ['id' => 'futrillar-museo-colonial', 'title' => 'Frutillar, Museo Colonial Alemán', 'distance' => '32 km', 'image' => 'images/inn/panoramas/Museo Aleman.jpg', 'description' => 'Historia y arquitectura de la colonización alemana en hermosos jardines.'],
+                            ['id' => 'casco-historico-puerto-octay', 'title' => 'Casco histórico de Puerto Octay', 'distance' => '55 km', 'image' => 'images/inn/panoramas/Casco_historico_Puerto_Octay.jpg', 'description' => 'Patrimonio arquitectónico, tranquilidad y miradores lacustres.'],
                         ],
                     ],
                     [
@@ -314,9 +314,9 @@ class InitialInnProjectDetailSeeder extends Seeder
                         'name' => 'Escapadas memorables',
                         'tabLabel' => 'ESCAPADAS MEMORABLES',
                         'slides' => [
-                            ['id' => 'cruce-a-chiloé-pargua', 'title' => 'Cruce a Chiloé, Pargua', 'distance' => '76 km', 'image' => 'images/inn/panoramas/Cruce_Chiloe_Pargua_AI.jpg'],
-                            ['id' => 'isla-chiloe', 'title' => 'Chiloé', 'distance' => '115 km', 'image' => 'images/inn/panoramas/Iglesia_Chiloe_AI.jpg'],
-                            ['id' => 'termas-del-sol', 'title' => 'Termas del Sol', 'distance' => '127 km', 'image' => 'images/inn/panoramas/Termas_del_Sol_AI.jpg'],
+                            ['id' => 'cruce-a-chiloé-pargua', 'title' => 'Cruce a Chiloé, Pargua', 'distance' => '76 km', 'image' => 'images/inn/panoramas/Cruce_Chiloe_Pargua_AI.jpg', 'description' => 'Conexión marítima por el Canal de Chacao hacia la magia del archipiélago.'],
+                            ['id' => 'isla-chiloe', 'title' => 'Chiloé', 'distance' => '115 km', 'image' => 'images/inn/panoramas/Iglesia_Chiloe_AI.jpg', 'description' => 'Iglesias patrimonio de la humanidad, palafitos y mitología única.'],
+                            ['id' => 'termas-del-sol', 'title' => 'Termas del Sol', 'distance' => '127 km', 'image' => 'images/inn/panoramas/Termas_del_Sol_AI.jpg', 'description' => 'Pozones termales naturales integrados en plena selva valdiviana.'],
                         ],
                     ],
                 ],

@@ -1238,6 +1238,12 @@ class ProyectoForm
                                                                                 TextInput::make('id')->label('ID')->required(),
                                                                                 TextInput::make('title')->label('Título del Destino')->required(),
                                                                                 TextInput::make('distance')->label('Distancia')->placeholder('40 km')->required(),
+                                                                                Textarea::make('description')
+                                                                                    ->label('Descripción (Opcional)')
+                                                                                    ->placeholder('Breve descripción o detalle del destino...')
+                                                                                    ->rows(2)
+                                                                                    ->nullable()
+                                                                                    ->columnSpanFull(),
                                                                                 CuratorPicker::make('media_id')
                                                                                     ->label('Seleccionar Foto desde Curator')
                                                                                     ->buttonLabel('Elegir Foto')
