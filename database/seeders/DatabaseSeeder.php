@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
             FinMailPasswordResetTemplateSeeder::class,
             BrokerSeeder::class,
             TestimonialSeeder::class,
+            InitialSiteSettingsSeeder::class,
             InitialPagesSeeder::class,
             InitialMenusSeeder::class,
         ]);

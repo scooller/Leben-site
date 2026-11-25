@@ -32,6 +32,16 @@ class InitialSiteSettingsSeeder extends Seeder
         $extra['announcement_message'] = 'Informamos a nuestros clientes e inversionistas que durante este periodo atenderemos vía WhatsApp y canal digital.';
         $extra['announcement_button_text'] = 'Entendido';
 
+        $extra['project_of_month_enabled'] = true;
+        $extra['project_of_month_project_id'] = 40;
+        $extra['project_of_month_title'] = 'María Gracia en';
+        $extra['project_of_month_title_highlight'] = 'Leben';
+        $extra['project_of_month_description'] = 'La creadora de contenido y conductora María Gracia Subercaseaux visitó junto a su marido Waldemar Méndez nuestro proyecto INN en Puerto Varas y quedó maravillada con sus espacios interiores, terminaciones, diseño y la calidez de los ambientes. Una visita muy especial que nos permite mostrar cómo este edificio no solo propone departamentos frente al lago, sino una nueva forma de disfrutar el sur con sofisticación.';
+        $extra['project_of_month_photo_url'] = '/storage/inn/RAPC_EXT_Elevacioen-Tarde_Media16.jpg';
+        $extra['project_of_month_video_url'] = '/storage/video/maria-gracia.mp4';
+        $extra['project_of_month_button_text'] = 'Ver proyecto INN';
+        $extra['project_of_month_button_link'] = '/proyectos/inn';
+
         $setting->update([
             'contact_phone' => '+569 9129 7804',
             'contact_email' => 'info@ileben.cl',

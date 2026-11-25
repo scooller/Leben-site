@@ -2,6 +2,18 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.48] - 2026-11-25
+
+### Added
+- `app/Filament/Pages/SiteSettings.php`:
+  - Nueva pestaña **"Proyecto Destacado"** en Configuración del Sitio (Site Settings) con selector dinámico de proyecto (`Proyecto`), toggle de visibilidad en home, títulos con texto resaltado, descripción/reseña editorial, foto destacada (Curator Media / URL directa), video vertical y botones CTA configurables.
+- `app/Models/SiteSetting.php`:
+  - Expuesto objeto `project_of_month` en método `forFrontend()` consumido por `/api/v1/site-config`.
+- `app/Http/Resources/Api/PageResource.php`:
+  - Sincronizada automáticamente la sección `project_of_month` de la página de inicio (`pages/home`) con los valores y estado configurados en Site Settings.
+- `database/seeders/InitialSiteSettingsSeeder.php`:
+  - Poblados valores iniciales de `project_of_month` para asociar Edificio INN y datos de María Gracia.
+
 ## [1.13.47] - 2026-11-25
 
 ### Changed
