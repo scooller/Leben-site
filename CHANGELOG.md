@@ -2,6 +2,12 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.47] - 2026-11-25
+
+### Changed
+- `database/seeders/InitialMenusSeeder.php`:
+  - Enriquecido menú `header_dropdown` con soporte completo de items padre e hijos anidados (`children`), proveyendo enlaces planos ('Proyectos', 'Locales comerciales') y agrupaciones completas ('Nosotros', 'Personas') para alimentar el dropdown del navbar 100% desde la API sin recurrir a fallbacks en frontend.
+
 ## [1.13.46] - 2026-11-25
 
 ### Added

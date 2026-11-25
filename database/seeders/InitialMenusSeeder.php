@@ -23,11 +23,31 @@ class InitialMenusSeeder extends Seeder
             'header_dropdown' => [
                 'name' => 'Menú Desplegable de Cabecera',
                 'items' => [
-                    ['label' => 'Proyectos Santiago', 'url' => '/proyectos?region=metropolitana', 'target' => '_self', 'is_featured' => false, 'sort_order' => 1],
-                    ['label' => 'Proyectos Sur de Chile', 'url' => '/proyectos?region=los-lagos', 'target' => '_self', 'is_featured' => false, 'sort_order' => 2],
-                    ['label' => 'Quiénes Somos', 'url' => '/nosotros', 'target' => '_self', 'is_featured' => false, 'sort_order' => 3],
-                    ['label' => 'Bases Legales', 'url' => '/bases-legales', 'target' => '_self', 'is_featured' => false, 'sort_order' => 4],
-                    ['label' => 'Trabaja en Leben', 'url' => '/trabaja-en-leben', 'target' => '_self', 'is_featured' => false, 'sort_order' => 5],
+                    ['label' => 'Proyectos', 'url' => '/cotizador#proyectos', 'target' => '_self', 'is_featured' => false, 'sort_order' => 1],
+                    ['label' => 'Locales comerciales', 'url' => 'https://locales.ileben.cl/', 'target' => '_blank', 'is_featured' => false, 'sort_order' => 2],
+                    [
+                        'label' => 'Nosotros',
+                        'url' => '#nosotros',
+                        'target' => '_self',
+                        'is_featured' => false,
+                        'sort_order' => 3,
+                        'children' => [
+                            ['label' => 'Quiénes somos', 'url' => '/quienes-somos', 'target' => '_self', 'is_featured' => false, 'sort_order' => 1],
+                            ['label' => 'Información de la empresa', 'url' => '/informacion-de-la-empresa', 'target' => '_self', 'is_featured' => false, 'sort_order' => 2],
+                            ['label' => 'Proyectos realizados', 'url' => '/nosotros', 'target' => '_self', 'is_featured' => false, 'sort_order' => 3],
+                        ],
+                    ],
+                    [
+                        'label' => 'Personas',
+                        'url' => '#personas',
+                        'target' => '_self',
+                        'is_featured' => false,
+                        'sort_order' => 4,
+                        'children' => [
+                            ['label' => 'Canal de denuncias y consultas', 'url' => 'https://denuncias.ileben.cl/', 'target' => '_blank', 'is_featured' => false, 'sort_order' => 1],
+                            ['label' => 'Acceso Colaboradores', 'url' => 'https://leben.buk.cl', 'target' => '_blank', 'is_featured' => false, 'sort_order' => 2],
+                        ],
+                    ],
                 ],
             ],
             'footer_corporate' => [
@@ -56,11 +76,22 @@ class InitialMenusSeeder extends Seeder
 
             $activeUrls = [];
             foreach ($menuData['items'] as $itemData) {
+                $children = $itemData['children'] ?? [];
+                unset($itemData['children']);
                 $activeUrls[] = $itemData['url'];
-                MenuItem::query()->updateOrCreate(
+
+                $parentItem = MenuItem::query()->updateOrCreate(
                     ['menu_id' => $menu->id, 'url' => $itemData['url']],
-                    array_merge($itemData, ['menu_id' => $menu->id, 'is_active' => true])
+                    array_merge($itemData, ['menu_id' => $menu->id, 'parent_id' => null, 'is_active' => true])
                 );
+
+                foreach ($children as $cData) {
+                    $activeUrls[] = $cData['url'];
+                    MenuItem::query()->updateOrCreate(
+                        ['menu_id' => $menu->id, 'url' => $cData['url']],
+                        array_merge($cData, ['menu_id' => $menu->id, 'parent_id' => $parentItem->id, 'is_active' => true])
+                    );
+                }
             }
             MenuItem::query()->where('menu_id', $menu->id)->whereNotIn('url', $activeUrls)->delete();
         }
