@@ -2,6 +2,15 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.41] - 2026-11-25
+
+### Changed
+- `app/Http/Controllers/Api/Concerns/EnrichesPlantPayload.php`:
+  - Agregado `resolveFallbackPlantImageUrl()` y parámetros opcionales pre-resueltos (`$defaultAdvisorAvatarUrl`, `$pricePercentageSource`, `$fallbackImageUrl`) en `buildPlantPayload()`, `buildCompactPlantPayload()`, `resolveImageUrl()` y `resolveDetailImageUrl()` para eliminar consultas repetidas a `SiteSetting` por planta.
+- `app/Http/Controllers/Api/PlantController.php`:
+  - Eager loading de `proyecto.projectImage` y `proyecto.detail:id,project_id,custom_css,custom_js` en `index()`, `show()` y `showByProjectSlugAndUnitName()`.
+  - Resolución única por request de `$defaultAdvisorAvatarUrl`, `$fallbackImageUrl` y cache por proyecto (`$projectPayloadMap`) en `index()` para reducir drásticamente consultas SQL N+1.
+
 ## [1.13.40] - 2026-11-25
 
 ### Added

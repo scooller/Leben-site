@@ -22,7 +22,17 @@ class PlantController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = Plant::query()
-            ->with(['proyecto.asesores.avatarImageMedia', 'asesor.avatarImageMedia', 'activeReservation', 'completedReservation', 'completedPayment', 'coverImageMedia', 'interiorImageMedia'])
+            ->with([
+                'proyecto.asesores.avatarImageMedia',
+                'proyecto.projectImage',
+                'proyecto.detail:id,project_id,custom_css,custom_js',
+                'asesor.avatarImageMedia',
+                'activeReservation',
+                'completedReservation',
+                'completedPayment',
+                'coverImageMedia',
+                'interiorImageMedia',
+            ])
             ->whereHas('proyecto', function ($projectQuery) {
                 $projectQuery->where('is_active', true);
             });
@@ -325,8 +335,32 @@ class PlantController extends Controller
 
         $query->orderBy('id');
 
-        $plants = $query->paginate($perPage)->through(function (Plant $plant) use ($eventoSale): array {
-            return $this->plantPayload($plant, $eventoSale);
+        $defaultAdvisorAvatarUrl = $this->getDefaultAdvisorAvatarUrl();
+        $fallbackImageUrl = $this->resolveFallbackPlantImageUrl();
+        $projectPayloadMap = [];
+
+        $plants = $query->paginate($perPage)->through(function (Plant $plant) use (
+            $eventoSale,
+            $defaultAdvisorAvatarUrl,
+            $pricePercentageSource,
+            $fallbackImageUrl,
+            &$projectPayloadMap
+        ): array {
+            $projectId = $plant->proyecto?->id;
+            if ($projectId !== null && ! array_key_exists($projectId, $projectPayloadMap)) {
+                $projectPayloadMap[$projectId] = $this->projectPayload($plant->proyecto, $defaultAdvisorAvatarUrl);
+            }
+
+            $payload = $this->buildPlantPayload(
+                $plant,
+                $eventoSale,
+                $defaultAdvisorAvatarUrl,
+                $pricePercentageSource,
+                $fallbackImageUrl
+            );
+            $payload['proyecto'] = $projectId !== null ? $projectPayloadMap[$projectId] : null;
+
+            return $payload;
         });
 
         return $this->noStoreJson($plants);
@@ -407,7 +441,17 @@ class PlantController extends Controller
         $eventoSale = $this->resolveEventoSaleActive($request);
 
         $plant = Plant::query()
-            ->with(['proyecto.asesores.avatarImageMedia', 'asesor.avatarImageMedia', 'activeReservation', 'completedReservation', 'completedPayment', 'coverImageMedia', 'interiorImageMedia'])
+            ->with([
+                'proyecto.asesores.avatarImageMedia',
+                'proyecto.projectImage',
+                'proyecto.detail:id,project_id,custom_css,custom_js',
+                'asesor.avatarImageMedia',
+                'activeReservation',
+                'completedReservation',
+                'completedPayment',
+                'coverImageMedia',
+                'interiorImageMedia',
+            ])
             ->whereHas('proyecto', function ($projectQuery) {
                 $projectQuery->where('is_active', true);
             })
@@ -423,7 +467,17 @@ class PlantController extends Controller
         $normalizedUnitSlug = Str::of($normalizedUnitName)->lower()->replace(' ', '-')->value();
 
         $plant = Plant::query()
-            ->with(['proyecto.asesores.avatarImageMedia', 'asesor.avatarImageMedia', 'activeReservation', 'completedReservation', 'completedPayment', 'coverImageMedia', 'interiorImageMedia'])
+            ->with([
+                'proyecto.asesores.avatarImageMedia',
+                'proyecto.projectImage',
+                'proyecto.detail:id,project_id,custom_css,custom_js',
+                'asesor.avatarImageMedia',
+                'activeReservation',
+                'completedReservation',
+                'completedPayment',
+                'coverImageMedia',
+                'interiorImageMedia',
+            ])
             ->where('is_active', true)
             ->where(function ($plantQuery) use ($normalizedUnitName, $normalizedUnitSlug) {
                 $plantQuery
@@ -565,13 +619,13 @@ class PlantController extends Controller
         return $this->normalizeBoolean($request->input('evento_sale'));
     }
 
-    private function projectPayload(?Proyecto $proyecto): ?array
+    private function projectPayload(?Proyecto $proyecto, ?string $defaultAdvisorAvatarUrl = null): ?array
     {
         if (! $proyecto) {
             return null;
         }
 
-        $defaultAdvisorAvatarUrl = $this->getDefaultAdvisorAvatarUrl();
+        $defaultAdvisorAvatarUrl = $defaultAdvisorAvatarUrl ?? $this->getDefaultAdvisorAvatarUrl();
 
         return [
             'id' => $proyecto->id,

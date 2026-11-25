@@ -12,11 +12,16 @@ trait EnrichesPlantPayload
     /**
      * Build the enriched API payload for a plant, including computed fields.
      */
-    private function buildPlantPayload(Plant $plant, ?bool $eventoSale): array
-    {
+    private function buildPlantPayload(
+        Plant $plant,
+        ?bool $eventoSale,
+        ?string $defaultAdvisorAvatarUrl = null,
+        ?string $pricePercentageSource = null,
+        ?string $fallbackImageUrl = null,
+    ): array {
         $payload = $plant->toArray();
-        $defaultAdvisorAvatarUrl = $this->getDefaultAdvisorAvatarUrl();
-        $apiDiscountPercentage = $this->resolveApiDiscountPercentage($plant, $eventoSale);
+        $defaultAdvisorAvatarUrl = $defaultAdvisorAvatarUrl ?? $this->getDefaultAdvisorAvatarUrl();
+        $apiDiscountPercentage = $this->resolveApiDiscountPercentage($plant, $eventoSale, $pricePercentageSource);
 
         unset($payload['cover_image_id'], $payload['interior_image_id']);
 
@@ -28,8 +33,8 @@ trait EnrichesPlantPayload
         $payload['asesores'] = $this->resolvePlantAdvisors($plant, $defaultAdvisorAvatarUrl);
         $payload['projectLogoUrl'] = $this->resolveProjectLogoUrl($plant);
         $payload['proyectoImageUrl'] = $plant->proyecto?->image_url;
-        $payload['imageUrl'] = $this->resolveImageUrl($plant);
-        $payload['detailImageUrl'] = $this->resolveDetailImageUrl($plant);
+        $payload['imageUrl'] = $this->resolveImageUrl($plant, $fallbackImageUrl);
+        $payload['detailImageUrl'] = $this->resolveDetailImageUrl($plant, $fallbackImageUrl);
         $payload['is_paid'] = $plant->completedReservation !== null || $plant->completedPayment !== null;
         $payload['is_available'] = $plant->activeReservation === null
             && $plant->completedReservation === null
@@ -43,17 +48,22 @@ trait EnrichesPlantPayload
         return $payload;
     }
 
-    private function buildCompactPlantPayload(Plant $plant, ?bool $eventoSale, ?string $defaultAdvisorAvatarUrl): array
-    {
+    private function buildCompactPlantPayload(
+        Plant $plant,
+        ?bool $eventoSale,
+        ?string $defaultAdvisorAvatarUrl,
+        ?string $pricePercentageSource = null,
+        ?string $fallbackImageUrl = null,
+    ): array {
         $payload = $plant->toArray();
-        $apiDiscountPercentage = $this->resolveApiDiscountPercentage($plant, $eventoSale);
+        $apiDiscountPercentage = $this->resolveApiDiscountPercentage($plant, $eventoSale, $pricePercentageSource);
 
         unset($payload['cover_image_id'], $payload['interior_image_id']);
 
         $payload['cover_image_url'] = $plant->coverImageMedia?->url;
         $payload['interior_image_url'] = $plant->interiorImageMedia?->url ?: $plant->salesforce_interior_image_url;
-        $payload['imageUrl'] = $this->resolveImageUrl($plant);
-        $payload['detailImageUrl'] = $this->resolveDetailImageUrl($plant);
+        $payload['imageUrl'] = $this->resolveImageUrl($plant, $fallbackImageUrl);
+        $payload['detailImageUrl'] = $this->resolveDetailImageUrl($plant, $fallbackImageUrl);
         $payload['priorizar_descuentos'] = (bool) ($plant->priorizar_descuentos ?? false);
         $payload['descuento_defecto_cotizacion_web'] = $plant->getEffectiveDescuentoDefectoCotizacionWeb();
         $payload['descuento_maximo_unidad'] = $plant->getEffectiveDescuentoMaximoUnidad();
@@ -114,7 +124,17 @@ trait EnrichesPlantPayload
             ->all() ?? [];
     }
 
-    private function resolveImageUrl(Plant $plant): string
+    private function resolveFallbackPlantImageUrl(): string
+    {
+        $siteSettings = SiteSetting::query()->with('logoMedia')->first();
+        if ($siteSettings?->logoMedia?->url) {
+            return (string) $siteSettings->logoMedia->url;
+        }
+
+        return $this->getDefaultImageUrl();
+    }
+
+    private function resolveImageUrl(Plant $plant, ?string $fallbackImageUrl = null): string
     {
         if ($plant->coverImageMedia?->url) {
             return $plant->coverImageMedia->url;
@@ -124,15 +144,10 @@ trait EnrichesPlantPayload
             return $plant->proyecto->image_url;
         }
 
-        $siteSettings = SiteSetting::first();
-        if ($siteSettings?->logoMedia?->url) {
-            return $siteSettings->logoMedia->url;
-        }
-
-        return $this->getDefaultImageUrl();
+        return $fallbackImageUrl ?? $this->resolveFallbackPlantImageUrl();
     }
 
-    private function resolveDetailImageUrl(Plant $plant): string
+    private function resolveDetailImageUrl(Plant $plant, ?string $fallbackImageUrl = null): string
     {
         if ($plant->interiorImageMedia?->url) {
             return $plant->interiorImageMedia->url;
@@ -142,7 +157,7 @@ trait EnrichesPlantPayload
             return (string) $plant->salesforce_interior_image_url;
         }
 
-        return $this->resolveImageUrl($plant);
+        return $this->resolveImageUrl($plant, $fallbackImageUrl);
     }
 
     private function resolveProjectLogoUrl(Plant $plant): ?string
