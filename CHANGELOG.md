@@ -2,6 +2,20 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.49] - 2026-11-25
+
+### Changed
+- `app/Filament/Resources/ContentPages/Schemas/ContentPageForm.php`:
+  - Reemplazado control de claves/valores `KeyValue::make('data')` por un editor visual WYSIWYG `RichEditor::make('content')` con soporte para formato enriquecido (negrita, cursiva, listas, encabezados, enlaces).
+- `database/migrations/2026_11_25_200000_add_content_to_page_sections_table.php`:
+  - Creada columna `content` (`longText`, nullable) en tabla `page_sections` y migrado texto previo existente desde `data`.
+- `app/Models/PageSection.php`:
+  - Agregado `'content'` a `$fillable`.
+- `database/seeders/InitialPagesSeeder.php`:
+  - Añadida lógica automática para poblar la columna `content` en formato HTML para el editor WYSIWYG a partir de `description`, `text`, `disclaimer` o `paragraphs`.
+- `app/Http/Resources/Api/PageResource.php`:
+  - Añadido campo `'content'` a la respuesta de cada sección entregada a los clientes frontend.
+
 ## [1.13.48] - 2026-11-25
 
 ### Added
@@ -9,6 +23,8 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
   - Nueva pestaña **"Proyecto Destacado"** en Configuración del Sitio (Site Settings) con selector dinámico de proyecto (`Proyecto`), toggle de visibilidad en home, títulos con texto resaltado, descripción/reseña editorial, foto destacada (Curator Media / URL directa), video vertical y botones CTA configurables.
 - `app/Models/SiteSetting.php`:
   - Expuesto objeto `project_of_month` en método `forFrontend()` consumido por `/api/v1/site-config`.
+- `database/seeders/InitialPagesSeeder.php`:
+  - Añadida lógica automática para poblar la columna `content` en formato HTML para el editor WYSIWYG a partir de `description`, `text`, `disclaimer` o `paragraphs`.
 - `app/Http/Resources/Api/PageResource.php`:
   - Sincronizada automáticamente la sección `project_of_month` de la página de inicio (`pages/home`) con los valores y estado configurados en Site Settings.
 - `database/seeders/InitialSiteSettingsSeeder.php`:

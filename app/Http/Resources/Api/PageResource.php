@@ -59,12 +59,15 @@ class PageResource extends JsonResource
                     }
                 }
 
+                $content = $section->content ?: ($data['content'] ?? $data['description'] ?? $data['text'] ?? null);
+
                 return [
                     'key' => $section->section_key,
                     'title' => $title,
                     'subtitle' => $section->subtitle,
                     'eyebrow' => $section->eyebrow,
                     'type' => $section->type,
+                    'content' => $content,
                     'sort_order' => $section->sort_order,
                     'is_active' => $isActive,
                     'data' => $data,

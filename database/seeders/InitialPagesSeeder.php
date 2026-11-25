@@ -414,6 +414,21 @@ class InitialPagesSeeder extends Seeder
 
             // Sync sections
             foreach ($sections as $sData) {
+                if (empty($sData['content']) && ! empty($sData['data'])) {
+                    $d = $sData['data'];
+                    if (! empty($d['content'])) {
+                        $sData['content'] = (string) $d['content'];
+                    } elseif (! empty($d['description'])) {
+                        $sData['content'] = '<p>' . nl2br(e($d['description'])) . '</p>';
+                    } elseif (! empty($d['text'])) {
+                        $sData['content'] = '<p>' . nl2br(e($d['text'])) . '</p>';
+                    } elseif (! empty($d['disclaimer'])) {
+                        $sData['content'] = '<p>' . nl2br(e($d['disclaimer'])) . '</p>';
+                    } elseif (! empty($d['paragraphs']) && is_array($d['paragraphs'])) {
+                        $sData['content'] = implode("\n", array_map(fn ($p) => '<p>' . $p . '</p>', $d['paragraphs']));
+                    }
+                }
+
                 PageSection::updateOrCreate(
                     [
                         'page_id' => $page->id,

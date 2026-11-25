@@ -3,8 +3,8 @@
 namespace App\Filament\Resources\ContentPages\Schemas;
 
 use Awcodes\Curator\Components\Forms\CuratorPicker;
-use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -113,9 +113,10 @@ class ContentPageForm
                                             ->label('Activa')
                                             ->default(true),
 
-                                        KeyValue::make('data')
-                                            ->label('Datos Estructurados (Data JSON / Clave-Valor)')
-                                            ->reorderable(),
+                                        RichEditor::make('content')
+                                            ->label('Contenido de la Sección (WYSIWYG)')
+                                            ->helperText('Redacta y formatea el contenido visualmente (negritas, cursivas, listas, enlaces).')
+                                            ->columnSpanFull(),
                                     ])->columns(2),
                             ]),
 

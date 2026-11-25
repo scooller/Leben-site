@@ -17,6 +17,7 @@ class PageSection extends Model
         'subtitle',
         'eyebrow',
         'type',
+        'content',
         'data',
         'sort_order',
         'is_active',
