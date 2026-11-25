@@ -121,7 +121,6 @@ Route::prefix('v1')->group(function () {
         Route::get('/proyectos/{slugOrId}/content', [App\Http\Controllers\Api\ProjectDetailController::class, 'show']);
         Route::get('/proyectos/{id}/gallery', [App\Http\Controllers\Api\ProyectoController::class, 'gallery']);
         Route::get('/proyectos/{id}', [App\Http\Controllers\Api\ProyectoController::class, 'show']);
-        Route::get('/testimonials', [App\Http\Controllers\Api\TestimonialController::class, 'index']);
         Route::get('/menus/{location}', [App\Http\Controllers\Api\MenuController::class, 'showByLocation']);
 
         Route::get('/plantas', [App\Http\Controllers\Api\PlantController::class, 'index']);
@@ -140,6 +139,9 @@ Route::prefix('v1')->group(function () {
         Route::post('/reservations', [App\Http\Controllers\Api\PlantReservationController::class, 'reserve']);
         Route::delete('/reservations/{sessionToken}', [App\Http\Controllers\Api\PlantReservationController::class, 'release']);
     });
+
+    // Testimonios (público)
+    Route::get('/testimonials', [App\Http\Controllers\Api\TestimonialController::class, 'index']);
 
     // Brokers (público)
     Route::get('/brokers', [App\Http\Controllers\Api\BrokerController::class, 'index']);

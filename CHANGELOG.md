@@ -2,6 +2,18 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.45] - 2026-11-25
+
+### Added
+- `database/seeders/TestimonialSeeder.php`:
+  - Seeder de testimonios con creación y vinculación de avatares en `CuratorMedia` (`storage/app/public/testimonials/`).
+  - Vinculación con proyecto INN y datos reales (Herman Oettinger, Fernando Cid, John Von Achon).
+  - Registrado en `DatabaseSeeder.php`.
+- `routes/api.php`:
+  - Movido endpoint `/api/v1/testimonials` al grupo público para acceso directo desde el frontend sin requerir token.
+- `tests/Feature/TestimonialApiTest.php`:
+  - Test automatizado que valida la respuesta de testimonios publicados en `/api/v1/testimonials`.
+
 ## [1.13.44] - 2026-11-25
 
 ### Added
