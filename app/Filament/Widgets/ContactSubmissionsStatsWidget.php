@@ -10,7 +10,7 @@ class ContactSubmissionsStatsWidget extends StatsOverviewWidget
 {
     protected ?string $heading = 'Contactos';
 
-    protected ?string $pollingInterval = '60s';
+    protected ?string $pollingInterval = null;
 
     protected function getStats(): array
     {

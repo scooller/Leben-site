@@ -11,7 +11,7 @@ class ApiMonitoringWidget extends StatsOverviewWidget
 {
     protected ?string $heading = 'Monitoreo API';
 
-    protected ?string $pollingInterval = '60s';
+    protected ?string $pollingInterval = null;
 
     protected function getStats(): array
     {

@@ -2,6 +2,16 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.42] - 2026-11-25
+
+### Fixed
+- `public/.htaccess` & `routes/web.php`:
+  - Reescritura directa en Apache para servir archivos estáticos `/curator/*` desde `/storage/*` sin levantar PHP ni abrir sesión en MySQL (evita saturación LVE / HTTP 508 por streams de video y archivos estáticos); ruta fallback `/curator/{path}` ahora excluye middlewares de sesión, CSRF y markdown e incluye `Cache-Control: public, max-age=31536000`.
+- `app/Providers/Filament/AdminPanelProvider.php` & `app/Filament/Widgets/*`:
+  - Deshabilitado polling automático en segundo plano (`databaseNotificationsPolling(null)` y `$pollingInterval = null` en 10 widgets del dashboard) para evitar acumulación de peticiones Livewire en pestañas abiertas.
+- `bootstrap/app.php`:
+  - Acotado `ini_set('memory_limit', '512M')` exclusivamente a CLI y rutas `/admin` y `/livewire`.
+
 ## [1.13.41] - 2026-11-25
 
 ### Changed

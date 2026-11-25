@@ -21,6 +21,12 @@
     RewriteCond %{REQUEST_URI} (.+)/$
     RewriteRule ^ %1 [L,R=301]
 
+    # Serve static /curator/* files directly from /storage/* symlink via Apache (0 PHP workers)
+    RewriteCond %{QUERY_STRING} !(^|&)s= [NC]
+    RewriteCond %{REQUEST_URI} !\.\.
+    RewriteCond %{DOCUMENT_ROOT}/storage/$1 -f
+    RewriteRule ^curator/(.*)$ storage/$1 [L]
+
     # Send Requests To Front Controller...
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f

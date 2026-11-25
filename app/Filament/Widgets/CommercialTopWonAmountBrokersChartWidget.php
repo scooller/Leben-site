@@ -9,7 +9,7 @@ class CommercialTopWonAmountBrokersChartWidget extends ChartWidget
 {
     protected ?string $heading = 'Top brokers por monto ganado (all-time)';
 
-    protected ?string $pollingInterval = '300s';
+    protected ?string $pollingInterval = null;
 
     protected int|string|array $columnSpan = [
         'md' => 2,

@@ -10,7 +10,7 @@ class CommercialPipelineStatsWidget extends StatsOverviewWidget
 {
     protected ?string $heading = 'Pipeline comercial (Salesforce)';
 
-    protected ?string $pollingInterval = '300s';
+    protected ?string $pollingInterval = null;
 
     protected function getStats(): array
     {

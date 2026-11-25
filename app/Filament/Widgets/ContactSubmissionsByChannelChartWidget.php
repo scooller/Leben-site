@@ -11,7 +11,7 @@ class ContactSubmissionsByChannelChartWidget extends ChartWidget
 {
     protected ?string $heading = 'Contactos por Canal';
 
-    protected ?string $pollingInterval = '60s';
+    protected ?string $pollingInterval = null;
 
     protected function getData(): array
     {

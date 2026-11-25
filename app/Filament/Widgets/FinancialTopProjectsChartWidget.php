@@ -10,7 +10,7 @@ class FinancialTopProjectsChartWidget extends ChartWidget
 {
     protected ?string $heading = 'Top proyectos por pagos completados (30d)';
 
-    protected ?string $pollingInterval = '300s';
+    protected ?string $pollingInterval = null;
 
     protected int|string|array $columnSpan = [
         'md' => 2,

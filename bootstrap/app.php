@@ -1,7 +1,12 @@
 <?php
 
-// Ensure adequate memory limit for Filament admin panel and complex schemas
-if ((int) ini_get('memory_limit') < 512 && ini_get('memory_limit') !== '-1') {
+// Ensure adequate memory limit for Filament admin panel, Livewire, and CLI commands
+$reqUri = $_SERVER['REQUEST_URI'] ?? '';
+if (
+    (PHP_SAPI === 'cli' || str_starts_with($reqUri, '/admin') || str_starts_with($reqUri, '/livewire'))
+    && (int) ini_get('memory_limit') < 512
+    && ini_get('memory_limit') !== '-1'
+) {
     @ini_set('memory_limit', '512M');
 }
 

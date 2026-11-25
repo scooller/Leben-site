@@ -9,7 +9,7 @@ class CommercialTopBrokersChartWidget extends ChartWidget
 {
     protected ?string $heading = 'Top brokers atribuidos por oportunidades (all-time)';
 
-    protected ?string $pollingInterval = '300s';
+    protected ?string $pollingInterval = null;
 
     protected int|string|array $columnSpan = [
         'md' => 2,

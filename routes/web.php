@@ -216,8 +216,15 @@ Route::get('/curator/{path}', function (string $path) {
         abort(404);
     }
 
-    return response()->file($fullPath);
-})->where('path', '.*');
+    return response()->file($fullPath, [
+        'Cache-Control' => 'public, max-age=31536000',
+    ]);
+})->withoutMiddleware([
+    \Illuminate\Session\Middleware\StartSession::class,
+    \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+    \Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class,
+    \App\Http\Middleware\NegotiateMarkdownForAgents::class,
+])->where('path', '.*');
 
 // Rutas públicas para acortador
 Route::get('/s/{slug}', ShortLinkRedirectController::class)

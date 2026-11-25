@@ -11,7 +11,7 @@ class ContactSubmissionsTrendChartWidget extends ChartWidget
 {
     protected ?string $heading = 'Contactos - Últimos 30 días';
 
-    protected ?string $pollingInterval = '60s';
+    protected ?string $pollingInterval = null;
 
     protected int|string|array $columnSpan = [
         'md' => 2,

@@ -9,7 +9,7 @@ class CommercialTopOpenBrokersChartWidget extends ChartWidget
 {
     protected ?string $heading = 'Brokers con mas oportunidades abiertas (all-time)';
 
-    protected ?string $pollingInterval = '300s';
+    protected ?string $pollingInterval = null;
 
     protected int|string|array $columnSpan = [
         'md' => 2,

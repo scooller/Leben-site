@@ -11,7 +11,7 @@ class ApiUsageChartWidget extends ChartWidget
 {
     protected ?string $heading = 'Uso API (Últimos 7 días)';
 
-    protected ?string $pollingInterval = '60s';
+    protected ?string $pollingInterval = null;
 
     protected function getData(): array
     {
