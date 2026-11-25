@@ -80,6 +80,7 @@ class ProyectoController extends Controller
         'salesforce_portada_url',
         'project_image_id',
         'gallery_image_ids',
+        'recursos',
         'precio_desde',
         'tipologias',
         'gallery',

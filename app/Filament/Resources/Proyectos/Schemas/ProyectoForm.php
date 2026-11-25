@@ -8,6 +8,7 @@ use Awcodes\Curator\Components\Forms\CuratorPicker;
 use Filament\Actions\Action;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\RichEditor;
@@ -1361,6 +1362,69 @@ class ProyectoForm
                                             ->buttonLabel('Seleccionar Imágenes')
                                             ->multiple()
 
+                                            ->columnSpanFull(),
+                                    ]),
+                            ]),
+
+                        Tab::make('Recursos de Marketing')
+                            ->icon('heroicon-o-folder-arrow-down')
+                            ->schema([
+                                Section::make('Recursos de Marketing del Proyecto')
+                                    ->description('Sube documentos, brochures, renders, fichas técnicas o videos promocionales para mostrar en el portal de brokers y la web.')
+                                    ->schema([
+                                        Repeater::make('recursos')
+                                            ->label('Lista de Recursos')
+                                            ->schema([
+                                                FileUpload::make('file')
+                                                    ->label('Archivo / Documento')
+                                                    ->disk('public')
+                                                    ->directory('proyectos/recursos')
+                                                    ->maxSize(51200)
+                                                    ->live()
+                                                    ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                                                        if ($state && blank($get('name'))) {
+                                                            if (is_object($state) && method_exists($state, 'getClientOriginalName')) {
+                                                                $set('name', pathinfo($state->getClientOriginalName(), PATHINFO_FILENAME));
+                                                            } elseif (is_string($state)) {
+                                                                $set('name', pathinfo($state, PATHINFO_FILENAME));
+                                                            }
+                                                        }
+                                                    })
+                                                    ->required(),
+
+                                                TextInput::make('name')
+                                                    ->label('Nombre del Recurso')
+                                                    ->helperText('Se autorellena al subir el archivo, editable manualmente')
+                                                    ->required(),
+
+                                                Select::make('type')
+                                                    ->label('Tipo de Recurso')
+                                                    ->options([
+                                                        'PDF' => 'Documento PDF (Brochure, Ficha, Planos)',
+                                                        'ZIP' => 'Archivo Comprimido ZIP (Renders, Fotos)',
+                                                        'MP4' => 'Video MP4',
+                                                        'IMG' => 'Imagen JPG / PNG',
+                                                        'XLS' => 'Planilla Excel / Lista de Precios',
+                                                        'OTRO' => 'Otro',
+                                                    ])
+                                                    ->default('PDF')
+                                                    ->required(),
+
+                                                Toggle::make('is_visible')
+                                                    ->label('Visible en Portal')
+                                                    ->default(true),
+
+                                                TextInput::make('descripcion')
+                                                    ->label('Descripción (opcional)')
+                                                    ->placeholder('Ej: Brochure oficial actualizado con terminaciones')
+                                                    ->nullable()
+                                                    ->columnSpanFull(),
+                                            ])
+                                            ->columns(2)
+                                            ->collapsible()
+                                            ->cloneable()
+                                            ->itemLabel(fn (array $state): ?string => $state['name'] ?? null)
+                                            ->defaultItems(0)
                                             ->columnSpanFull(),
                                     ]),
                             ]),

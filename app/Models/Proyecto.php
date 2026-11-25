@@ -89,6 +89,7 @@ class Proyecto extends Model
         'manual_payment_instructions',
         'manual_payment_bank_accounts',
         'manual_payment_link',
+        'recursos',
     ];
 
     protected $casts = [
@@ -104,6 +105,7 @@ class Proyecto extends Model
         'sort_order' => 'integer',
         'gallery_image_ids' => 'array',
         'manual_payment_bank_accounts' => 'array',
+        'recursos' => 'array',
     ];
 
     /**

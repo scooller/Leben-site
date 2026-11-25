@@ -2,6 +2,18 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.40] - 2026-11-25
+
+### Added
+- `database/migrations/2026_11_25_100000_add_recursos_to_proyectos_table.php`:
+  - Agregada columna `recursos` (`json` nullable) en la tabla `proyectos`.
+- `app/Models/Proyecto.php`:
+  - Agregado `recursos` a `$fillable` y `$casts` (`array`).
+- `app/Filament/Resources/Proyectos/Schemas/ProyectoForm.php`:
+  - Agregada pestaña `Recursos de Marketing` con `Repeater::make('recursos')` permitiendo subir archivos (`FileUpload` a `proyectos/recursos`) con autorelleno de nombre original, selector de tipo, toggle de visibilidad (`is_visible`) y descripción opcional.
+- `app/Http/Controllers/Api/ProyectoController.php`:
+  - Agregado `recursos` a `$allowedFields`.
+
 ## [1.13.39] - 2026-11-18
 
 ### Changed
