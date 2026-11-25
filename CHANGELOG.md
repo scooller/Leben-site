@@ -2,6 +2,18 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.46] - 2026-11-25
+
+### Added
+- `database/seeders/InitialPagesSeeder.php`:
+  - Datos de `project_of_month` (Proyecto del mes) en sección de página `home` con título, título destacado (`title_highlight`), descripción detallada, fotos y botón CTA.
+- `database/seeders/InitialMenusSeeder.php`:
+  - Estructuración y sincronización exacta de menús `header_main`, `header_dropdown`, `footer_corporate` y `footer_legal`.
+- `routes/api.php`:
+  - Movidos endpoints públicos `/api/v1/pages/{slug}` y `/api/v1/menus/{location}` fuera de la restricción de token para consumo directo desde frontend.
+- `database/seeders/DatabaseSeeder.php`:
+  - Registrados `InitialPagesSeeder::class` e `InitialMenusSeeder::class`.
+
 ## [1.13.45] - 2026-11-25
 
 ### Added

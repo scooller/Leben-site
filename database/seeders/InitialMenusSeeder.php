@@ -33,19 +33,17 @@ class InitialMenusSeeder extends Seeder
             'footer_corporate' => [
                 'name' => 'Pie de Página Corporativo',
                 'items' => [
-                    ['label' => 'Quiénes Somos', 'url' => '/nosotros', 'target' => '_self', 'is_featured' => false, 'sort_order' => 1],
-                    ['label' => 'Proceso de Reserva Online', 'url' => '/proceso-reserva-en-linea', 'target' => '_self', 'is_featured' => false, 'sort_order' => 2],
-                    ['label' => 'Inversionistas Leben Invest', 'url' => '/invest', 'target' => '_self', 'is_featured' => false, 'sort_order' => 3],
-                    ['label' => 'Círculo Brokers', 'url' => '/brokers', 'target' => '_self', 'is_featured' => false, 'sort_order' => 4],
-                    ['label' => 'Canal de Denuncias', 'url' => 'https://canaldenuncias.cl/leben', 'target' => '_blank', 'is_featured' => false, 'sort_order' => 5],
+                    ['label' => 'Trabaja en Leben', 'url' => '/trabaja-en-leben', 'target' => '_self', 'is_featured' => false, 'sort_order' => 1],
+                    ['label' => 'Bases legales', 'url' => '/bases-legales', 'target' => '_self', 'is_featured' => false, 'sort_order' => 2],
+                    ['label' => 'Proceso de Reserva en línea', 'url' => '/proceso-reserva-en-linea', 'target' => '_self', 'is_featured' => false, 'sort_order' => 3],
                 ],
             ],
             'footer_legal' => [
                 'name' => 'Pie de Página Legal',
                 'items' => [
-                    ['label' => 'Bases Legales y Promociones', 'url' => '/bases-legales', 'target' => '_self', 'is_featured' => false, 'sort_order' => 1],
-                    ['label' => 'Información de la Empresa', 'url' => '/informacion-de-la-empresa', 'target' => '_self', 'is_featured' => false, 'sort_order' => 2],
-                    ['label' => 'Política de Privacidad y Cookies', 'url' => '/cookies', 'target' => '_self', 'is_featured' => false, 'sort_order' => 3],
+                    ['label' => 'Información de la empresa', 'url' => '/informacion-de-la-empresa', 'target' => '_self', 'is_featured' => false, 'sort_order' => 1],
+                    ['label' => 'Política de cookies', 'url' => '/cookies', 'target' => '_self', 'is_featured' => false, 'sort_order' => 2],
+                    ['label' => 'Canal de Denuncias y Consultas', 'url' => 'https://denuncias.ileben.cl/', 'target' => '_blank', 'is_featured' => false, 'sort_order' => 3],
                 ],
             ],
         ];
@@ -56,12 +54,15 @@ class InitialMenusSeeder extends Seeder
                 ['name' => $menuData['name']]
             );
 
+            $activeUrls = [];
             foreach ($menuData['items'] as $itemData) {
-                MenuItem::query()->firstOrCreate(
+                $activeUrls[] = $itemData['url'];
+                MenuItem::query()->updateOrCreate(
                     ['menu_id' => $menu->id, 'url' => $itemData['url']],
                     array_merge($itemData, ['menu_id' => $menu->id, 'is_active' => true])
                 );
             }
+            MenuItem::query()->where('menu_id', $menu->id)->whereNotIn('url', $activeUrls)->delete();
         }
     }
 }

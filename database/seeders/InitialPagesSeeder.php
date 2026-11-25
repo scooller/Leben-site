@@ -53,16 +53,20 @@ class InitialPagesSeeder extends Seeder
                     ],
                     [
                         'section_key' => 'project_of_month',
-                        'title' => 'María Gracia en Leben',
+                        'title' => 'María Gracia en',
                         'subtitle' => 'Visita exclusiva a Edificio INN Puerto Varas',
                         'eyebrow' => 'Proyecto Destacado',
                         'type' => 'custom',
                         'sort_order' => 2,
                         'is_active' => true,
                         'data' => [
-                            'description' => 'La creadora de contenido y conductora María Gracia Subercaseaux visitó y recomendó Edificio INN en Puerto Varas.',
+                            'title_highlight' => 'Leben',
+                            'description' => 'La creadora de contenido y conductora María Gracia Subercaseaux visitó junto a su marido Waldemar Méndez nuestro proyecto INN en Puerto Varas y quedó maravillada con sus espacios interiores, terminaciones, diseño y la calidez de los ambientes. Una visita muy especial que nos permite mostrar cómo este edificio no solo propone departamentos frente al lago, sino una nueva forma de disfrutar el sur con sofisticación.',
+                            'text' => 'La creadora de contenido y conductora María Gracia Subercaseaux visitó junto a su marido Waldemar Méndez nuestro proyecto INN en Puerto Varas y quedó maravillada con sus espacios interiores, terminaciones, diseño y la calidez de los ambientes. Una visita muy especial que nos permite mostrar cómo este edificio no solo propone departamentos frente al lago, sino una nueva forma de disfrutar el sur con sofisticación.',
                             'photo_url' => '/storage/inn/RAPC_EXT_Elevacioen-Tarde_Media16.jpg',
                             'video_url' => '/storage/video/maria-gracia.mp4',
+                            'button_text' => 'Ver proyecto INN',
+                            'button_link' => '/proyectos/inn',
                             'cta' => [
                                 'label' => 'Ver proyecto INN',
                                 'url' => '/proyectos/inn',

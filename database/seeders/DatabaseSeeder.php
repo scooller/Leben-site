@@ -22,6 +22,8 @@ class DatabaseSeeder extends Seeder
             FinMailPasswordResetTemplateSeeder::class,
             BrokerSeeder::class,
             TestimonialSeeder::class,
+            InitialPagesSeeder::class,
+            InitialMenusSeeder::class,
         ]);
 
         // User::factory(10)->create();
