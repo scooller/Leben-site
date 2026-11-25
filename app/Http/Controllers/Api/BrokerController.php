@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Broker;
+use App\Models\BrokerAlliance;
+use App\Models\BrokerEvent;
 use App\Models\BrokerGallery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -52,6 +54,89 @@ class BrokerController extends Controller
         })->values();
 
         return response()->json(['data' => $brokers]);
+    }
+
+    public function portal(Request $request): JsonResponse
+    {
+        $broker = Broker::query()
+            ->with(['avatarImageMedia', 'category.benefits'])
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->first();
+
+        $alliancesQuery = BrokerAlliance::query()
+            ->with('imageMedia')
+            ->where('is_active', true)
+            ->orderBy('sort_order');
+
+        if ($broker) {
+            $alliancesQuery->where('broker_id', $broker->id);
+        }
+
+        $alliances = $alliancesQuery->get()->map(fn ($alliance): array => [
+            'id' => $alliance->id,
+            'name' => $alliance->name,
+            'url' => $alliance->url,
+            'image_url' => $alliance->imageMedia?->url,
+        ])->values();
+
+        $eventsQuery = BrokerEvent::query()
+            ->with('imageMedia')
+            ->where('is_published', true)
+            ->orderBy('starts_at');
+
+        if ($broker) {
+            $eventsQuery->where('broker_id', $broker->id);
+        }
+
+        $events = $eventsQuery->get()->map(fn ($event): array => [
+            'id' => $event->id,
+            'title' => $event->title,
+            'description' => $event->description,
+            'starts_at' => optional($event->starts_at)?->toIso8601String(),
+            'ends_at' => optional($event->ends_at)?->toIso8601String(),
+            'location' => $event->location,
+            'image_url' => $event->imageMedia?->url,
+        ])->values();
+
+        $galleriesQuery = BrokerGallery::query()
+            ->with(['items' => fn ($q) => $q->with('imageMedia')->where('is_active', true)->orderBy('sort_order')])
+            ->where('is_published', true)
+            ->orderByDesc('year')
+            ->orderByDesc('month')
+            ->orderBy('sort_order');
+
+        if ($broker) {
+            $galleriesQuery->where('broker_id', $broker->id);
+        }
+
+        $galleries = $galleriesQuery->get()->map(fn ($gallery): array => [
+            'id' => $gallery->id,
+            'title' => $gallery->title,
+            'year' => $gallery->year,
+            'month' => $gallery->month,
+            'items_count' => $gallery->items->count(),
+            'items' => $gallery->items->map(fn ($item): array => [
+                'id' => $item->id,
+                'caption' => $item->caption,
+                'image_url' => $item->imageMedia?->url,
+            ])->values(),
+        ])->values();
+
+        return response()->json([
+            'data' => [
+                'broker' => $broker ? [
+                    'id' => $broker->id,
+                    'name' => $broker->resolved_name,
+                    'email' => $broker->resolved_email,
+                    'phone' => $broker->resolved_phone,
+                    'avatar_url' => $broker->avatarImageMedia?->url,
+                ] : null,
+                'alliances' => $alliances,
+                'events' => $events,
+                'galleries' => $galleries,
+            ],
+        ]);
     }
 
     public function alliances(Broker $broker): JsonResponse

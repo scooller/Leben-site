@@ -104,4 +104,45 @@ class BrokerApiTest extends TestCase
             ->assertJsonPath('data.items.0.caption', 'Imagen principal')
             ->assertJsonCount(1, 'data.items');
     }
+
+    public function test_broker_portal_endpoint_returns_aggregated_data(): void
+    {
+        $broker = Broker::factory()->create(['is_active' => true]);
+
+        BrokerAlliance::factory()->create([
+            'broker_id' => $broker->id,
+            'name' => 'Alianza Global',
+            'is_active' => true,
+        ]);
+
+        BrokerEvent::factory()->create([
+            'broker_id' => $broker->id,
+            'title' => 'Evento Portal',
+            'is_published' => true,
+        ]);
+
+        $gallery = BrokerGallery::factory()->create([
+            'broker_id' => $broker->id,
+            'title' => 'Galeria 2025',
+            'year' => 2025,
+            'month' => 7,
+            'is_published' => true,
+        ]);
+
+        BrokerGalleryItem::factory()->create([
+            'broker_gallery_id' => $gallery->id,
+            'caption' => 'Foto 1',
+            'is_active' => true,
+        ]);
+
+        $response = $this->getJson('/api/v1/brokers/portal');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('data.broker.id', $broker->id)
+            ->assertJsonPath('data.alliances.0.name', 'Alianza Global')
+            ->assertJsonPath('data.events.0.title', 'Evento Portal')
+            ->assertJsonPath('data.galleries.0.title', 'Galeria 2025')
+            ->assertJsonPath('data.galleries.0.items.0.caption', 'Foto 1');
+    }
 }

@@ -2,6 +2,18 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.43] - 2026-11-25
+
+### Added
+- `database/seeders/BrokerSeeder.php`:
+  - Seeder de datos reales para brokers: asegura categoría base (`BrokerCategorySeeder`), crea broker institucional (`Círculo Leben`), 20 alianzas comerciales con logos en Curator Media, 4 eventos de comunidad y 4 galerías (2025, 2024, 2023, Nuevas Alianzas) con sus 40 fotos.
+  - Integrado a `DatabaseSeeder.php`.
+- `app/Http/Controllers/Api/BrokerController.php` & `routes/api.php`:
+  - Registradas rutas públicas `/api/v1/brokers`, `/api/v1/brokers/portal`, `/api/v1/brokers/{broker}/alliances`, `/api/v1/brokers/{broker}/events`, `/api/v1/brokers/{broker}/galleries` y `/api/v1/brokers/{broker}/galleries/{gallery}`.
+  - Nuevo método `portal()` para retornar de forma agregada el broker principal, alianzas activas, eventos publicados y galerías con items e imágenes para el frontend.
+- `tests/Feature/BrokerApiTest.php`:
+  - Agregado test automatizado `test_broker_portal_endpoint_returns_aggregated_data()` (3 tests pasando con 23 aserciones).
+
 ## [1.13.42] - 2026-11-25
 
 ### Fixed

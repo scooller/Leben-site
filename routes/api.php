@@ -141,6 +141,14 @@ Route::prefix('v1')->group(function () {
         Route::delete('/reservations/{sessionToken}', [App\Http\Controllers\Api\PlantReservationController::class, 'release']);
     });
 
+    // Brokers (público)
+    Route::get('/brokers', [App\Http\Controllers\Api\BrokerController::class, 'index']);
+    Route::get('/brokers/portal', [App\Http\Controllers\Api\BrokerController::class, 'portal']);
+    Route::get('/brokers/{broker}/alliances', [App\Http\Controllers\Api\BrokerController::class, 'alliances']);
+    Route::get('/brokers/{broker}/events', [App\Http\Controllers\Api\BrokerController::class, 'events']);
+    Route::get('/brokers/{broker}/galleries', [App\Http\Controllers\Api\BrokerController::class, 'galleries']);
+    Route::get('/brokers/{broker}/galleries/{gallery}', [App\Http\Controllers\Api\BrokerController::class, 'showGallery']);
+
     // Endpoints públicos mínimos
 });
 
