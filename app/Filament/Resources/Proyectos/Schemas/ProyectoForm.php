@@ -1218,7 +1218,8 @@ class ProyectoForm
 
                                                                 TextInput::make('panoramas_title')
                                                                     ->label('Título del Modal')
-                                                                    ->placeholder('EL SUR, A TU MANERA')
+                                                                    ->placeholder('UNA EXPERIENCIA <span>COTIDIANA</span>')
+                                                                    ->helperText('Permite etiquetas HTML como <span>Texto</span>')
                                                                     ->maxLength(255),
 
                                                                 Textarea::make('panoramas_description')
