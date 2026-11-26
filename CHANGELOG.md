@@ -2,6 +2,11 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.51] - 2026-11-26
+
+### Security
+- Actualizado `package-lock.json` vía `npm audit fix`: parcheadas 10 vulnerabilidades (axios 1.21.1, vite 6.4.6, concurrently 9.2.5, shell-quote 1.12.0, nanoid, postcss, source-map-js, immutable, form-data, follow-redirects). Auditoría reporta 0 vulnerabilidades.
+
 ## [1.13.50] - 2026-11-25
 
 ### Changed
