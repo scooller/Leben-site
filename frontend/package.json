@@ -11,7 +11,7 @@
     "seo:validate": "node ./scripts/validate-seo.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
-    "install:webawesome": "npx dotenv run -- npm install"
+    "install:webawesome": "npx dotenv-cli -- npm install"
   },
   "dependencies": {
     "@fancyapps/ui": "^6.1.14",
