@@ -2,6 +2,18 @@
 
 Todos los cambios relevantes de este proyecto serán documentados en este archivo.
 
+## [1.13.52] - 2026-11-26
+
+### Added
+- `app/Filament/Resources/Proyectos/Schemas/ProyectoForm.php`:
+  - Agregados campos editables `panoramas_eyebrow` (etiqueta al lado de Ubicación), `panoramas_title` (título) y `panoramas_description` (descripción) en la pestaña "7. Panoramas", situados arriba de la selección de imagen de fondo del modal.
+- `database/migrations/2026_11_26_160000_add_editorial_fields_to_panoramas_in_project_details_table.php`:
+  - Migración para añadir `panoramas_eyebrow`, `panoramas_title` y `panoramas_description` a la tabla `project_details`.
+- `app/Models/ProjectDetail.php`:
+  - Registrados `panoramas_eyebrow`, `panoramas_title` y `panoramas_description` en `$fillable`.
+- `app/Http/Resources/Api/ProjectDetailResource.php`:
+  - Expuestos `eyebrow`, `title` y `description` dentro del objeto `panoramas` para el consumo del frontend.
+
 ## [1.13.51] - 2026-11-26
 
 ### Fixed

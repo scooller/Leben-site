@@ -1211,6 +1211,22 @@ class ProyectoForm
                                                         Section::make('Modal Panoramas / Experiencias del Sur')
                                                             ->description('Categorías y tarjetas de turismo, gastronomía y paseos en la zona (activadas desde el botón del Mapa)')
                                                             ->schema([
+                                                                TextInput::make('panoramas_eyebrow')
+                                                                    ->label('Eyebrow / Etiqueta (al lado de Ubicación)')
+                                                                    ->placeholder('Experiencias')
+                                                                    ->maxLength(150),
+
+                                                                TextInput::make('panoramas_title')
+                                                                    ->label('Título del Modal')
+                                                                    ->placeholder('EL SUR, A TU MANERA')
+                                                                    ->maxLength(255),
+
+                                                                Textarea::make('panoramas_description')
+                                                                    ->label('Descripción del Modal')
+                                                                    ->placeholder('Desde {proyecto}, descubre paisajes, sabores y escapadas que hacen de cada día una experiencia inolvidable.')
+                                                                    ->rows(2)
+                                                                    ->columnSpanFull(),
+
                                                                 CuratorPicker::make('panoramas_bg_image_id')
                                                                     ->label('Imagen de Fondo del Modal (Curator)')
 

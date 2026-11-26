@@ -363,6 +363,9 @@ class ProjectDetailResource extends JsonResource
             ],
             'designers' => $designers,
             'panoramas' => [
+                'eyebrow' => $detail?->panoramas_eyebrow ?? 'Experiencias',
+                'title' => $detail?->panoramas_title ?? 'EL SUR, A TU MANERA',
+                'description' => $detail?->panoramas_description,
                 'bg_image_url' => $detail?->resolved_panoramas_bg_image_url,
                 'categories' => $panoramasCategories,
             ],
