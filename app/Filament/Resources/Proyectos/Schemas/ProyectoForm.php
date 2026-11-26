@@ -1254,7 +1254,7 @@ class ProyectoForm
                                                                             ->schema([
                                                                                 TextInput::make('id')->label('ID')->required(),
                                                                                 TextInput::make('title')->label('Título del Destino')->required(),
-                                                                                TextInput::make('distance')->label('Distancia')->placeholder('40 km')->required(),
+                                                                                TextInput::make('distance')->label('Distancia (Opcional)')->placeholder('40 km')->nullable(),
                                                                                 Textarea::make('description')
                                                                                     ->label('Descripción (Opcional)')
                                                                                     ->placeholder('Breve descripción o detalle del destino...')

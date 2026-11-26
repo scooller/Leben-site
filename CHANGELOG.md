@@ -4,6 +4,10 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [1.13.52] - 2026-11-26
 
+### Changed
+- `app/Filament/Resources/Proyectos/Schemas/ProyectoForm.php`:
+  - El campo `distance` en las tarjetas de destinos de panoramas pasa a ser opcional (`nullable`), permitiendo dejarlo vacío sin exigir una distancia fija.
+
 ### Added
 - `app/Filament/Resources/Proyectos/Schemas/ProyectoForm.php`:
   - Agregados campos editables `panoramas_eyebrow` (etiqueta al lado de Ubicación), `panoramas_title` (título con soporte para HTML, ej: `UNA EXPERIENCIA <span>COTIDIANA</span>`) y `panoramas_description` (descripción) en la pestaña "7. Panoramas", situados arriba de la selección de imagen de fondo del modal.
