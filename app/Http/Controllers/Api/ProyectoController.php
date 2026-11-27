@@ -139,7 +139,7 @@ class ProyectoController extends Controller
 
         $needsPlantSummary = count(array_intersect(['precio_desde', 'tipologias'], $computedFields)) > 0;
         $hideSalesforceId = false;
-        if ($needsPlantSummary && ! in_array('salesforce_id', $databaseFields, true)) {
+        if ($needsPlantSummary && !in_array('salesforce_id', $databaseFields, true)) {
             $databaseFields[] = 'salesforce_id';
             $hideSalesforceId = true;
         }
@@ -163,8 +163,8 @@ class ProyectoController extends Controller
         $proyectos->transform(function (Proyecto $proyecto) use ($computedFields, $discountFields, $plantSummaries, $hideSalesforceId): array {
             $data = $proyecto->toArray();
 
-            if (! empty($data['entrega_inmediata'])) {
-                $data['etapa'] = 'Entrega inmediata';
+            if (!empty($data['entrega_inmediata'])) {
+                $data['etapa'] = 'Entrega futura';
             }
 
             foreach ($computedFields as $field) {
@@ -208,7 +208,7 @@ class ProyectoController extends Controller
         $summaryFields = array_intersect(['precio_desde', 'tipologias'], $requestedFields);
         $selectableFields = array_diff($requestedFields, $summaryFields);
 
-        if (($includePlantas || count($summaryFields) > 0) && ! in_array('salesforce_id', $selectableFields, true)) {
+        if (($includePlantas || count($summaryFields) > 0) && !in_array('salesforce_id', $selectableFields, true)) {
             $selectableFields[] = 'salesforce_id';
             $hideSalesforceId = true;
         }
@@ -251,7 +251,7 @@ class ProyectoController extends Controller
 
         $payload = $proyecto->toArray();
 
-        if (! empty($payload['entrega_inmediata'])) {
+        if (!empty($payload['entrega_inmediata'])) {
             $payload['etapa'] = 'Entrega inmediata';
         }
 
@@ -287,11 +287,11 @@ class ProyectoController extends Controller
 
                 // Override default advisor resolution: use proyecto's asesores collection
                 // since plantas loaded via Proyecto don't have proyecto->asesores preloaded per plant
-                if ($plant->asesor === null || ! (bool) $plant->asesor->is_active) {
+                if ($plant->asesor === null || !(bool) $plant->asesor->is_active) {
                     $plantPayload['asesores'] = $proyecto->asesores
                         ->where('is_active', true)
                         ->values()
-                        ->map(fn (Asesor $asesor): array => $this->asesorPayload($asesor, $defaultAdvisorAvatarUrl))
+                        ->map(fn(Asesor $asesor): array => $this->asesorPayload($asesor, $defaultAdvisorAvatarUrl))
                         ->all();
                 }
 
@@ -352,7 +352,7 @@ class ProyectoController extends Controller
 
         foreach ($rows as $row) {
             $sid = $row->salesforce_proyecto_id;
-            if (! isset($summaries[$sid])) {
+            if (!isset($summaries[$sid])) {
                 continue;
             }
 
@@ -394,7 +394,7 @@ class ProyectoController extends Controller
 
         $allowed = array_values(array_intersect($requested, $this->allowedFields));
 
-        if (! in_array('id', $allowed, true)) {
+        if (!in_array('id', $allowed, true)) {
             $allowed[] = 'id';
         }
 
@@ -407,7 +407,7 @@ class ProyectoController extends Controller
     private function normalizeInputValues(mixed $value): array
     {
         if (is_array($value)) {
-            return array_values(array_filter(array_map(static fn (mixed $item): string => trim((string) $item), $value), static fn (string $item): bool => $item !== ''));
+            return array_values(array_filter(array_map(static fn(mixed $item): string => trim((string) $item), $value), static fn(string $item): bool => $item !== ''));
         }
 
         if (is_string($value)) {
@@ -418,7 +418,7 @@ class ProyectoController extends Controller
             if (str_contains($value, ',')) {
                 $parts = explode(',', $value);
 
-                return array_values(array_filter(array_map(static fn (string $item): string => trim($item), $parts), static fn (string $item): bool => $item !== ''));
+                return array_values(array_filter(array_map(static fn(string $item): string => trim($item), $parts), static fn(string $item): bool => $item !== ''));
             }
 
             return [trim($value)];
