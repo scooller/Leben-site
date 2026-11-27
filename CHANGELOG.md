@@ -4,6 +4,19 @@ Todos los cambios relevantes de este proyecto serán documentados en este archiv
 
 ## [Unreleased]
 
+## [1.11.21] - 2026-11-26
+
+### 🐛 Fixed / 💳 Checkout — Eliminación de Restricción Unique en RUT de Usuarios para Pagos Múltiples
+- **`database/migrations/2026_11_26_231500_drop_unique_rut_from_users_table.php`**:
+  - Migración que elimina el índice de unicidad `users_rut_unique` en la columna `rut` de la tabla `users` y añade un índice ordinario `users_rut_index`.
+  - Permite que múltiples compras por usuarios invitados (o usuarios con correos diferentes compartiendo un mismo RUT familiar/empresarial) no arrojen violación de integridad `SQLSTATE[23000]: 1062 Duplicate entry for key 'users_rut_unique'`.
+- **`app/Filament/Resources/Users/Schemas/UserForm.php`**:
+  - Removida la validación de unicidad `unique(ignoreRecord: true)` en el campo `rut` del formulario de Filament para permitir registrar o editar usuarios sin bloquear RUTs compartidos.
+- **`app/Http/Requests/CheckoutInitiateRequest.php`**:
+  - Removido mensaje residual `rut.unique` para reflejar la desestimación de unicidad en RUT durante el checkout.
+- **`tests/Feature/Feature/Api/ManualCheckoutFlowTest.php`**:
+  - Incorporada prueba automatizada `test_guest_checkout_allows_multiple_purchases_with_same_rut_and_different_emails_without_duplicate_rut_error` validando compras concurrentes y consecutivas con un mismo RUT sin error.
+
 ## [1.11.20] - 2026-11-23
 
 ### 🐛 Fixed / 🔌 Filament — Renderizado Servidor de Dual Scroll para Evitar Corrupción de Morphdom al Filtrar

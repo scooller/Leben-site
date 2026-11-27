@@ -924,4 +924,111 @@ class ManualCheckoutFlowTest extends TestCase
         $this->assertSame('11111111-1', $existingCustomer->rut);
         $this->assertSame(1, User::query()->where('email', 'cliente.existente@example.com')->count());
     }
+
+    public function test_guest_checkout_allows_multiple_purchases_with_same_rut_and_different_emails_without_duplicate_rut_error(): void
+    {
+        $project = Proyecto::factory()->create([
+            'manual_payment_instructions' => 'Instrucciones manuales',
+        ]);
+
+        $firstPlant = Plant::factory()->create([
+            'salesforce_proyecto_id' => $project->salesforce_id,
+            'is_active' => true,
+        ]);
+
+        $secondPlant = Plant::factory()->create([
+            'salesforce_proyecto_id' => $project->salesforce_id,
+            'is_active' => true,
+        ]);
+
+        SiteSetting::current()->update([
+            'gateway_manual_enabled' => true,
+            'gateway_manual_config' => [
+                'instructions' => 'Instrucciones manuales',
+                'auto_expire_hours' => 48,
+            ],
+        ]);
+
+        $guestApiToken = 'guest-site-origin-token';
+        \App\Models\PersonalAccessToken::query()->create([
+            'name' => 'site-token',
+            'token' => hash('sha256', $guestApiToken),
+            'tokenable_type' => SiteSetting::class,
+            'tokenable_id' => SiteSetting::current()->id,
+            'abilities' => ['*'],
+            'authorized_url' => null,
+        ]);
+        $this->withToken($guestApiToken);
+
+        // 1. Guest creates reservation 1 and checks out with email 1 and rut 11111111-1
+        $firstReservation = app(PlantReservationService::class)->reserve($firstPlant->id, null);
+
+        $firstCheckout = $this->postJson('/api/v1/checkout', [
+            'plant_id' => $firstPlant->id,
+            'quantity' => 1,
+            'gateway' => 'manual',
+            'name' => 'Comprador Uno',
+            'email' => 'primera.compra@example.com',
+            'phone' => '911111111',
+            'rut' => '11111111-1',
+            'session_token' => $firstReservation->session_token,
+        ]);
+
+        $firstCheckout->assertOk();
+
+        $firstPayment = Payment::query()->findOrFail((int) $firstCheckout->json('payment_id'));
+        $this->assertSame('11111111-1', $firstPayment->billing_rut);
+        $this->assertSame('primera.compra@example.com', $firstPayment->billing_email);
+
+        $firstUser = User::query()->where('email', 'primera.compra@example.com')->firstOrFail();
+        $this->assertSame('11111111-1', $firstUser->rut);
+
+        // 2. Guest creates reservation 2 and checks out with different email and SAME rut 11111111-1
+        $secondReservation = app(PlantReservationService::class)->reserve($secondPlant->id, null);
+
+        $secondCheckout = $this->postJson('/api/v1/checkout', [
+            'plant_id' => $secondPlant->id,
+            'quantity' => 1,
+            'gateway' => 'manual',
+            'name' => 'Comprador Dos',
+            'email' => 'segunda.compra@example.com',
+            'phone' => '922222222',
+            'rut' => '11111111-1',
+            'session_token' => $secondReservation->session_token,
+        ]);
+
+        $secondCheckout->assertOk();
+
+        $secondPayment = Payment::query()->findOrFail((int) $secondCheckout->json('payment_id'));
+        $this->assertSame('11111111-1', $secondPayment->billing_rut);
+        $this->assertSame('segunda.compra@example.com', $secondPayment->billing_email);
+
+        $secondUser = User::query()->where('email', 'segunda.compra@example.com')->firstOrFail();
+        $this->assertSame('11111111-1', $secondUser->rut);
+        $this->assertNotSame($firstUser->id, $secondUser->id);
+
+        // 3. User 1 buys again with the same email
+        $thirdPlant = Plant::factory()->create([
+            'salesforce_proyecto_id' => $project->salesforce_id,
+            'is_active' => true,
+        ]);
+        $thirdReservation = app(PlantReservationService::class)->reserve($thirdPlant->id, null);
+
+        $thirdCheckout = $this->postJson('/api/v1/checkout', [
+            'plant_id' => $thirdPlant->id,
+            'quantity' => 1,
+            'gateway' => 'manual',
+            'name' => 'Comprador Uno Recompra',
+            'email' => 'primera.compra@example.com',
+            'phone' => '911111111',
+            'rut' => '11111111-1',
+            'session_token' => $thirdReservation->session_token,
+        ]);
+
+        $thirdCheckout->assertOk();
+
+        $thirdPayment = Payment::query()->findOrFail((int) $thirdCheckout->json('payment_id'));
+        $this->assertSame($firstUser->id, $thirdPayment->user_id);
+        $this->assertSame('11111111-1', $thirdPayment->billing_rut);
+    }
 }

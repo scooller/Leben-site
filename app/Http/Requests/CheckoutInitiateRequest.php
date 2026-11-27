@@ -48,7 +48,6 @@ class CheckoutInitiateRequest extends FormRequest
     {
         return [
             'email.unique' => 'El correo electrónico ya está registrado en otra cuenta.',
-            'rut.unique' => 'El RUT ya está registrado en otra cuenta.',
         ];
     }
 

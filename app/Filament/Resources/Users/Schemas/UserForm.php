@@ -36,7 +36,6 @@ class UserForm
 
                         TextInput::make('rut')
                             ->label('RUT')
-                            ->unique(ignoreRecord: true)
                             ->maxLength(12)
                             ->placeholder('12.345.678-9')
                             ->helperText('Formato: 12.345.678-9'),
